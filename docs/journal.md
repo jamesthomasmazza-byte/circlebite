@@ -152,3 +152,31 @@ every scan: two scans in a grocery aisle is friction that gets an app deleted. G
 allergens, stale records, thin data, or an unconfirmed "safe."
 
 **Next:** Idea submission by Sept 14. Then auth, with the circle in scope from the start.
+
+---
+
+## 2026-09-09 — Brought the principles and COPPA specs into the repo
+
+**Did:** Copied two documents from the prototype's working folder into `docs/`: the mission and
+operating principles, and the COPPA implementation spec. Both are my own writing, not generated
+project code. Edited the principles doc to remove a licensing cost figure and cross-references to a
+private competitive-strategy document, since this repo is public. Adapted three lines of the COPPA
+spec where it assumed row-level security from the hosted platform.
+
+Wired them in: `CLAUDE.md` and `AGENTS.md` now point at both, the age gate is a Week 1 backlog item
+inside auth, and the verification checklist is a Week 9 item. Also corrected the corroboration
+thresholds in `legacy-spec.md` — one report to add a warning, three to remove one, which is more
+precise than what was there.
+
+**Decided:** Deliberately left out of the public repo: the marketing plan and creator outreach docs
+(real people's email addresses), and the competitive analysis, moat action items, IP assessment and
+licensing costs (publishing a moat strategy hands it to competitors). Those stay on my Desktop.
+
+**Learned:** The public repo is a publishing decision, not just a version control one. Worth asking
+of any file before it gets committed: who else can read this, and does it hurt me that they can.
+
+Also: the age gate has to be built inside auth, not after it. It changes signup, terminology,
+invites, admin exports, deletion and retention — bolting it on in November would mean touching all of
+those again. Better to know that the week before writing auth than the week after.
+
+**Next:** Idea submission by Sept 14. Then auth, with the age gate and the circle in from the start.

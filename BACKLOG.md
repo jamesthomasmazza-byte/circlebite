@@ -28,6 +28,11 @@ often isn't the person whose allergies are at stake.
 - [x] `.gitignore` and `.env.example` committed; real `.env` lives only on the server *(R8)*
 - [x] Hello World page deployed, reachable at the public URL
 - [ ] Registration, login, logout, session handling — written from scratch, no managed auth *(R6, R7)*
+- [ ] **Neutral date-of-birth age gate at signup**, enforced server-side; store `age_attested_adult`
+      and `age_attested_at` only, never the raw DOB *(`docs/coppa.md` §2.1)*
+- [ ] Retry prevention on a failed age gate; under-18 failure screen with no "try again"
+- [ ] Adult-manager terminology throughout — "a profile you manage", never "your allergies"
+- [ ] Authorization checks in application code on every query — no RLS layer exists here
 - [ ] Route guard: every protected route redirects unauthenticated users
 
 ## Weeks 2–3 — Sept 22 – Oct 5 · Profiles, schema, and the circle
@@ -82,6 +87,8 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
 - [ ] Accessibility pass — keyboard navigation, contrast, labels, screen reader on the verdict card *[bonus]*
 - [ ] Mobile layout verified on a real phone
 - [ ] Run the full compliance check in `CONTEST_RULES.md` §9
+- [ ] Run the age-gate verification checklist in `docs/coppa.md` §4
+- [ ] Account deletion: removes profiles, scans, corrections, follow relationships
 - [ ] Judge account seeded and tested end to end from a fresh browser
 
 ## Weeks 10–11 — Nov 17–25 · Submission prep *[10% presentation]*

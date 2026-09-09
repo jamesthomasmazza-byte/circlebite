@@ -60,6 +60,14 @@ opened. It was disclosed to Prof. Yoest and cleared. **No code, commits, or gene
 project may be copied into this repository.** Its schema and product decisions may be used as
 reference and re-implemented from scratch — that is the approved arrangement.
 
+## Decision documents
+
+- `docs/principles.md` — the tie-breaker when a tradeoff is ambiguous. Read it instead of guessing.
+- `docs/coppa.md` — accounts are 18+, children are profiles their guardians own, raw date of birth is
+  never stored. Binding on signup, terminology, invites, admin exports, deletion and retention.
+- `docs/legacy-spec.md` — what the prototype does, as design reference for the rebuild.
+- `docs/verdict-engine.md` — the AI layer and its safety rules.
+
 ## Scope discipline
 
 The contest deliverable is a web app behind a login. The spine is: auth → allergen profile → circle

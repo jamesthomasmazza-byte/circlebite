@@ -177,7 +177,11 @@ The trust loop. Users are the check on the product database, and (in the rebuild
 | `flag_missing` | add_caution | "You missed an allergen that is in this product" |
 | `wrong_product` | remove_caution | "This barcode returned the wrong product entirely" |
 
-Status moves pending → corroborated (enough independent reports agree) or rejected.
+Status moves pending → corroborated or rejected. **The thresholds are deliberately asymmetric: one
+report to *add* a warning, three to *remove* one.** A community report of unknown provenance resolves
+to "direct ingredient," not "trace." When an addition and a removal conflict, the warning survives.
+This follows from `principles.md` §1 — false caution beats false safety — and is not a detail to
+simplify away.
 
 **Confirmations** are the positive signal: a user affirming the verdict was right for a given barcode
 and allergen. Unique per user so one person can't inflate the count.

@@ -34,6 +34,19 @@ TypeScript — React front end, Node server, self-hosted PostgreSQL. Granted as 
 the contest's Laravel default (`docs/approvals/`). Do not propose framework changes or dependencies
 that reintroduce a managed service.
 
+## When a tradeoff is genuinely ambiguous
+
+Read `docs/principles.md` before asking or guessing. It records decisions already made and what each
+one costs. Ordering that has held: safety outranks specificity outranks speed of delivery;
+reversibility is a precondition, not a tradeoff.
+
+## Accounts are 18+
+
+Adults hold accounts; children exist only as profiles their guardians own. A neutral date-of-birth
+gate runs at signup and **the raw date of birth is never stored** — only a boolean and a timestamp.
+Full spec in `docs/coppa.md`. This shapes signup, terminology, and the invite flow, so build it into
+auth rather than bolting it on later.
+
 ## Verdict engine
 
 `docs/verdict-engine.md`. Fail closed, model escalates only, every claim cites a verbatim span,
