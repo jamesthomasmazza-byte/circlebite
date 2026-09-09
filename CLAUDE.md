@@ -1,4 +1,4 @@
-# ClaraBite — contest entry
+# CircleBite — contest entry
 
 Read `CONTEST_RULES.md` and `AGENTS.md` before proposing or changing anything in this repository.
 They are binding until judging ends (week of November 26, 2026), and they override normal

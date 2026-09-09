@@ -1,4 +1,4 @@
-# ClaraBite
+# CircleBite
 
 **AI Vibe Coding Competition — Busch School of Business, Fall 2026**
 Built by JT Mazza (mazzajt@cua.edu) · Individual entry
@@ -12,9 +12,9 @@ soy lecithin. Existing scanner apps only work when a product happens to be in a 
 structured allergen tags. When it isn't — an imported item, a bakery package, a store brand — the app
 returns nothing, and the person is back to guessing.
 
-**The solution.** ClaraBite lets a user build an allergen profile with per-allergen severity, then
+**The solution.** CircleBite lets a user build an allergen profile with per-allergen severity, then
 scan a grocery barcode for a clear **safe / contains / unable to confirm** verdict. Where existing
-tools stop, ClaraBite continues: when a barcode isn't in the product database, the user photographs
+tools stop, CircleBite continues: when a barcode isn't in the product database, the user photographs
 the ingredients panel and an AI model reads it, reasons about whether the product is safe for that
 specific profile, and cites the exact ingredient that produced the verdict.
 
