@@ -1,0 +1,32 @@
+# Secrets — R8, never commit any of these
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+credentials.json
+secrets/
+
+# Uploaded label images — may contain real personal information (R9)
+uploads/
+storage/label-captures/
+
+# Dependencies and builds
+node_modules/
+dist/
+build/
+.output/
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+logs/
+
+# Editor and OS
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
