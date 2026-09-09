@@ -11,19 +11,19 @@ is optional and returns only if weeks allow.
 ## Week 0 — Sept 8–14 · Setup and submission
 
 - [x] Framework exception approved in writing by Prof. Yoest — save email to `docs/approvals/`
-- [ ] Public GitHub repo created, this README as first commit *[15%]*
-- [ ] AWS account created; **billing alerts before provisioning anything** (also one of the five
+- [x] Public GitHub repo created, this README as first commit *[15%]*
+- [x] AWS account created; **billing alerts before provisioning anything** (also one of the five
       onboarding tasks that raises free credits from $100 to $200)
 - [ ] Idea submission sent — due **Sept 14**
-- [ ] Domain purchased (~$12/yr) — needed for HTTPS on the login page
+- [x] Domain purchased (~$12/yr) — needed for HTTPS on the login page
 
 ## Week 1 — Sept 15–21 · Hello World behind a login
 
-- [ ] EC2 instance provisioned (t3.micro; add a 2GB swap file so Node builds don't run out of memory)
-- [ ] Nginx, Node, PostgreSQL installed on the instance — **all three on the box, no hosted services** *(R5, R6)*
-- [ ] Domain pointed at the instance; Let's Encrypt certificate issued
-- [ ] `.gitignore` and `.env.example` committed; real `.env` lives only on the server *(R8)*
-- [ ] Hello World page deployed, reachable at the public URL
+- [x] EC2 instance provisioned (t3.micro; add a 2GB swap file so Node builds don't run out of memory)
+- [x] Nginx, Node, PostgreSQL installed on the instance — **all three on the box, no hosted services** *(R5, R6)*
+- [x] Domain pointed at the instance; Let's Encrypt certificate issued
+- [x] `.gitignore` and `.env.example` committed; real `.env` lives only on the server *(R8)*
+- [x] Hello World page deployed, reachable at the public URL
 - [ ] Registration, login, logout, session handling — written from scratch, no managed auth *(R6, R7)*
 - [ ] Route guard: every protected route redirects unauthenticated users
 

@@ -81,3 +81,28 @@ isn't enough, and the failure looks like a code error rather than a memory error
 
 **Next:** Domain and DNS, Let's Encrypt certificate, nginx reverse proxy, then the app itself behind
 a working login.
+
+---
+
+## 2026-09-09 — Live at circlebite.app
+
+**Did:** Pushed the repo public (github.com/jamesthomasmazza-byte/circlebite). Bought circlebite.app,
+pointed both A records at the Elastic IP, wrote an nginx server block, and got a Let's Encrypt
+certificate via certbot. The site is live over HTTPS with a placeholder page.
+
+**Hit a wall on:** Neither `gh` nor Homebrew was installed on my Mac, so pushing turned into a
+half-hour detour installing a package manager first. Also pasted the repo commands into the SSH
+session instead of my own terminal — the prompt tells you which machine you're on, and I wasn't
+reading it.
+
+**Decided:** Went with `.app` over `.com`. It's on the HSTS preload list, so browsers refuse to load
+it over plain HTTP at all — free security posture for a graded hygiene category. Used my personal
+email for certificate renewal notices rather than my school address, since the domain outlives my
+CUA account.
+
+**Learned:** DNS has to resolve before certbot runs, not after — the challenge is an actual HTTP
+request to the domain, so `dig +short` is the gate. And `.app` can't be tested over http:// at all,
+which makes a failed certificate look like a broken server.
+
+**Next:** Node app on 127.0.0.1:3000, swap nginx from static files to a reverse proxy, systemd unit,
+then a real login. Idea submission due Sept 14.
