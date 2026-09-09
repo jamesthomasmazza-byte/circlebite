@@ -180,3 +180,22 @@ invites, admin exports, deletion and retention — bolting it on in November wou
 those again. Better to know that the week before writing auth than the week after.
 
 **Next:** Idea submission by Sept 14. Then auth, with the age gate and the circle in from the start.
+
+---
+
+## 2026-09-09 — Idea submission sent
+
+**Did:** Sent the idea submission, five days ahead of the Sept 14 deadline. Short email with the
+thesis in the body and a one-page PDF attached. Framed the thesis as a Golden Circle — why, how,
+what — which fit because the *why* is genuinely where this project started rather than something
+reverse-engineered from a feature.
+
+**Decided:** Put the repo and live URL in the email body, not only the PDF, so they're clickable even
+if only the email gets read. Most submissions this week will be a paragraph of prose; this one links
+to a working HTTPS site and a public repo with real commits.
+
+**Learned:** Writing the one-pager forced the pitch to get shorter and clearer than the version I had
+in my head, and the cross-reference idea — barcode plus label, database as a claim rather than a fact
+— only landed as the headline once I had to fit it in three sentences.
+
+**Next:** Auth, with the age gate and the circle in scope from the start.

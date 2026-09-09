@@ -17,7 +17,7 @@ often isn't the person whose allergies are at stake.
 - [x] Public GitHub repo created, this README as first commit *[15%]*
 - [x] AWS account created; **billing alerts before provisioning anything** (also one of the five
       onboarding tasks that raises free credits from $100 to $200)
-- [ ] Idea submission sent — due **Sept 14**
+- [x] Idea submission sent (Sept 9) — Golden Circle framing, one-page PDF, links to the live site and repo
 - [x] Domain purchased (~$12/yr) — needed for HTTPS on the login page
 
 ## Week 1 — Sept 15–21 · Hello World behind a login
