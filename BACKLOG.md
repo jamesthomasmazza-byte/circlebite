@@ -44,6 +44,12 @@ often isn't the person whose allergies are at stake.
 - [ ] **Invite someone into a profile's circle** — single-use token link, accept flow, revoke
 - [ ] Share levels: full profile vs. severe allergens only
 - [ ] Profile picker: a user in multiple circles chooses whose profile they're scanning for
+- [ ] **Deletion design, decided here not in week 9** — account deletion cascades profiles, scans,
+      corrections and follow relationships; real deletion, not a soft-delete flag, for health data;
+      if scan volume is needed for analytics, keep an anonymized counter row with no profile linkage
+      *(`docs/coppa.md` §2.6)*
+- [ ] Retention: scan history older than 24 months purged automatically, and the job actually runs
+      *(`docs/coppa.md` §2.7 — an unenforced stated policy is worse than none)*
 - [ ] Seed script: invented families, profiles, and circle members for the judge account *(R9)*
 
 ## Weeks 4–5 — Oct 6–19 · Scan to verdict, end to end
