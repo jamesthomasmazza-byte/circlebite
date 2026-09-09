@@ -81,8 +81,14 @@ Treated here as a requirement, not a suggestion:
 ## 7. Out of scope until after judging
 
 - iOS / Capacitor native build — judging is a web URL behind a login; the native shell earns nothing
-- Circle sharing, follows, co-manager invites — restore only if weeks allow after the spine ships
+- Scan history beyond the last handful per profile
 - Admin analytics beyond the AI accuracy report
+- Migrating real alpha tester data
+
+**Not out of scope: the circle.** Invites, follow relationships, and scanning on another person's
+behalf are core to the product, not an extra. The problem is that the person eating the food usually
+isn't the person reading the label — a single-user scanner does not address it. Scoping the circle
+out would leave a commodity barcode app and forfeit most of the 20% for problem identification.
 
 ## 8. Getting unstuck
 

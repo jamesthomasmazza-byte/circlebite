@@ -5,41 +5,53 @@ Built by JT Mazza (mazzajt@cua.edu) · Individual entry
 
 ## Thesis
 
-**The problem.** People with food allergies — and the parents managing a child's allergies — have to
-read every ingredient panel of every product, every time, and translate it themselves. Allergens hide
-behind names that don't look like allergens: *sodium caseinate* is milk, *albumen* is egg, *E322* is
-soy lecithin. Existing scanner apps only work when a product happens to be in a database with clean,
-structured allergen tags. When it isn't — an imported item, a bakery package, a store brand — the app
-returns nothing, and the person is back to guessing.
+**The problem.** The person eating the food usually isn't the person reading the label. A parent
+manages a child's allergies, but the child eats at a grandparent's house, a friend's birthday party,
+a babysitter's kitchen — and the adult holding the package in those moments doesn't know that this
+kid reacts to trace dairy but not baked egg. Meanwhile allergens hide behind names that don't look
+like allergens: *sodium caseinate* is milk, *albumen* is egg, *E322* is soy lecithin. Existing
+scanner apps assume one person scanning for themselves, and only work when a product happens to be
+in a database with clean, structured allergen tags.
 
-**The solution.** CircleBite lets a user build an allergen profile with per-allergen severity, then
-scan a grocery barcode for a clear **safe / contains / unable to confirm** verdict. Where existing
-tools stop, CircleBite continues: when a barcode isn't in the product database, the user photographs
-the ingredients panel and an AI model reads it, reasons about whether the product is safe for that
-specific profile, and cites the exact ingredient that produced the verdict.
+**The solution.** CircleBite. A parent builds an allergen profile for their child with per-allergen
+severity, then invites trusted people into that child's circle — grandparents, a babysitter, a
+friend's parent. Anyone in the circle scans a grocery barcode and gets a verdict *for that child
+specifically*: **safe / contains / unable to confirm**. The person scanning doesn't need to know the
+allergies. They need to know whether this food is safe for this kid.
+
+Where existing tools stop, CircleBite continues: when a barcode isn't in the product database, the
+user photographs the ingredients panel and an AI model reads it, reasons about whether the product
+is safe for that specific profile, and cites the exact ingredient that produced the verdict.
 
 **How AI does the work.** A deterministic keyword matcher runs first and is treated as ground truth.
 The model then reasons over what the matcher structurally cannot resolve — unfamiliar derivatives,
 non-English labels, additive codes, and text extracted from a photograph. Every claim it makes must
 cite a verbatim span of the source text, validated in code. The model may escalate a verdict or
 resolve an unknown; it may never clear an allergen the matcher found, and it never returns *safe* on
-low confidence. Every verdict is explained in plain language, and the user can overrule it — each
-overrule logged against the model and prompt version that produced it.
+low confidence.
 
-**Target user.** Parents managing a child's food allergies, and adults with severe allergies who
-currently read every label by hand.
+This matters more in a circle than it would in a single-user app. Someone scanning on a child's
+behalf has no intuition to fall back on, so the verdict has to explain itself — which ingredient
+triggered it, and why. Any circle member can overrule a verdict, and each overrule is logged against
+the model and prompt version that produced it.
+
+**Target user.** Parents managing a child's food allergies, and the ring of people who feed that
+child when the parent isn't in the room.
 
 **Success criteria.**
 
-1. A user can register, build an allergen profile, scan a product, and receive an explained verdict.
-2. Products missing from the database still produce a verdict, from a photograph of the label.
-3. Every AI verdict cites the ingredient that triggered it and can be overruled by the user.
-4. The system never returns *safe* when it is not confident.
-5. Measured overrule rate is visible in the app, not asserted in a slide.
+1. A parent can register, build an allergen profile, and invite someone into that profile's circle.
+2. A circle member can scan a product and get an explained verdict for a child whose allergies they
+   have never memorized.
+3. Products missing from the database still produce a verdict, from a photograph of the label.
+4. Every AI verdict cites the ingredient that triggered it and can be overruled.
+5. The system never returns *safe* when it is not confident.
+6. Measured overrule rate is visible in the app, not asserted in a slide.
 
 ## Status
 
-Under active development, September–November 2026. Not yet deployed.
+Under active development, September–November 2026. Deployed at
+[circlebite.app](https://circlebite.app) — placeholder page while authentication is built.
 
 ## Rules
 

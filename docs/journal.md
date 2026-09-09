@@ -106,3 +106,22 @@ which makes a failed certificate look like a broken server.
 
 **Next:** Node app on 127.0.0.1:3000, swap nginx from static files to a reverse proxy, systemd unit,
 then a real login. Idea submission due Sept 14.
+
+---
+
+## 2026-09-09 — Corrected the scope: the circle is the product
+
+**Did:** Rewrote the README thesis, `CONTEST_RULES.md` §7, `CLAUDE.md`, `AGENTS.md`, and the backlog
+to put circle sharing back in the core spine instead of the "if weeks allow" pile.
+
+**Decided:** The spine is now auth → profile → **circle invite** → scan → AI verdict → correction.
+Scan history and admin analytics move out to make room.
+
+**Learned:** I let a scoping instinct — ship the smallest thing that works — quietly cut the feature
+the whole product is named after. The premise isn't "scanning labels is tedious," it's that the
+person holding the package usually isn't the person whose allergies are at stake. A parent knows
+their kid's allergies by heart; a grandparent or a friend's mom doesn't. Without the circle it's a
+commodity barcode scanner, and the AI explanation matters far less, because the person scanning
+already has the context. Worth remembering when a plan starts optimizing for what's easy to finish.
+
+**Next:** Idea submission by Sept 14, then auth.

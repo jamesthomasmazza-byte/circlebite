@@ -41,5 +41,7 @@ prompts carry no personal data, disclaimer renders on the verdict card. These ar
 
 ## Scope
 
-Web app behind a login. iOS/Capacitor, circle sharing, and broad admin analytics are out of scope
-until after judging. Say so if asked to build one before then.
+Web app behind a login. The spine is: auth → allergen profile → **circle invite** → scan → AI verdict
+→ correction. The circle is core — the whole premise is that someone other than the profile owner is
+holding the package. iOS/Capacitor, broad admin analytics, and deep scan history are out of scope
+until after judging. Say so if asked to build one of those before then.

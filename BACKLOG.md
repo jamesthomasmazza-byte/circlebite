@@ -3,8 +3,11 @@
 Ordered by the eleven weeks to judging. Every item is checked against `CONTEST_RULES.md` before it is
 started. Rubric weights in brackets show what a section is buying.
 
-Ship the spine first: **auth → allergen profile → scan → AI verdict → correction.** Everything else
-is optional and returns only if weeks allow.
+Ship the spine first: **auth → allergen profile → circle invite → scan → AI verdict → correction.**
+Everything else is optional and returns only if weeks allow.
+
+The circle is part of the spine, not an extra. The premise is that the person holding the package
+often isn't the person whose allergies are at stake.
 
 ---
 
@@ -27,12 +30,16 @@ is optional and returns only if weeks allow.
 - [ ] Registration, login, logout, session handling — written from scratch, no managed auth *(R6, R7)*
 - [ ] Route guard: every protected route redirects unauthenticated users
 
-## Weeks 2–3 — Sept 22 – Oct 5 · Profiles and schema
+## Weeks 2–3 — Sept 22 – Oct 5 · Profiles, schema, and the circle
 
 - [ ] Migrations: users, allergen_profiles, allergens (name, severity, treat_traces_as_unsafe), scans
+- [ ] Migrations: profile_managers, follow_relationships (status, share_level), manager_invites
 - [ ] Create, edit, delete an allergen profile
 - [ ] Severity levels: mild / moderate / severe; per-allergen trace handling
-- [ ] Seed script: invented families and profiles for the judge account *(R9)*
+- [ ] **Invite someone into a profile's circle** — single-use token link, accept flow, revoke
+- [ ] Share levels: full profile vs. severe allergens only
+- [ ] Profile picker: a user in multiple circles chooses whose profile they're scanning for
+- [ ] Seed script: invented families, profiles, and circle members for the judge account *(R9)*
 
 ## Weeks 4–5 — Oct 6–19 · Scan to verdict, end to end
 
@@ -95,6 +102,6 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
 Out of scope per `CONTEST_RULES.md` §7 — do not start these before November 26.
 
 - iOS build via Capacitor, Apple Developer Program enrollment ($99/yr), App Store submission
-- Circle sharing, follow relationships, co-manager invite tokens
 - Admin analytics beyond the AI accuracy page
+- Scan history beyond the last handful per profile
 - Migrating real alpha tester data

@@ -62,6 +62,13 @@ reference and re-implemented from scratch — that is the approved arrangement.
 
 ## Scope discipline
 
-The contest deliverable is a web app behind a login. iOS/Capacitor, circle sharing, and broad admin
-analytics are explicitly out of scope until after judging (`CONTEST_RULES.md` §7). If asked to build
-one of those before judging, note that it is out of scope and confirm before proceeding.
+The contest deliverable is a web app behind a login. The spine is: auth → allergen profile → circle
+invite → scan → AI verdict → correction.
+
+**The circle is core, not optional.** A parent builds a profile for their child and invites trusted
+people — grandparents, a babysitter, a friend's parent — who can then scan on that child's behalf.
+That is the product. Do not propose deferring it to ship faster.
+
+iOS/Capacitor, broad admin analytics beyond the AI accuracy page, and deep scan history are out of
+scope until after judging (`CONTEST_RULES.md` §7). If asked to build one of those before judging,
+note that it is out of scope and confirm before proceeding.
