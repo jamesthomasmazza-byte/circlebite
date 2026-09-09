@@ -1,13 +1,11 @@
 import { useState, type FormEvent } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../lib/AuthContext";
 
 export function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-  const justRegistered = Boolean((location.state as { justRegistered?: boolean } | null)?.justRegistered);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,7 +29,6 @@ export function Login() {
   return (
     <main>
       <h1>Log in</h1>
-      {justRegistered && <p>Account created — log in to continue.</p>}
       <form onSubmit={handleSubmit}>
         <label>
           Email

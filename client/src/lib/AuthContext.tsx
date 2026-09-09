@@ -5,6 +5,7 @@ import {
   fetchMe,
   login as apiLogin,
   logout as apiLogout,
+  register as apiRegister,
   type CurrentUser,
 } from "./api";
 
@@ -13,6 +14,7 @@ type AuthState = {
   actingProfileId: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  register: (input: { email: string; password: string; displayName: string; dob: string }) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -52,6 +54,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [refresh],
   );
 
+  const register = useCallback(
+    async (input: { email: string; password: string; displayName: string; dob: string }) => {
+      await apiRegister(input);
+      await refresh();
+    },
+    [refresh],
+  );
+
   const logout = useCallback(async () => {
     await apiLogout();
     setUser(null);
@@ -59,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, actingProfileId, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, actingProfileId, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

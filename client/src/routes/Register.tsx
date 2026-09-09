@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-import { ApiRequestError, register } from "../lib/api";
+import { ApiRequestError } from "../lib/api";
+import { useAuth } from "../lib/AuthContext";
 
 const ERROR_COPY: Record<string, string> = {
   invalid_request: "Check that every field is filled in, and that your password is at least 8 characters.",
@@ -10,9 +11,11 @@ const ERROR_COPY: Record<string, string> = {
 };
 
 export function Register() {
+  const { register } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [dob, setDob] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -22,10 +25,19 @@ export function Register() {
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
+
+    // Checked client-side, before the request: auto-login means there's no second chance to
+    // catch a typo at a login screen, and password reset doesn't exist yet, so a mistyped
+    // password here would lock the account out with no way back in.
+    if (password !== confirmPassword) {
+      setError("Passwords don't match.");
+      return;
+    }
+
     setSubmitting(true);
     try {
       await register({ email, password, displayName, dob });
-      navigate("/login", { state: { justRegistered: true } });
+      navigate("/dashboard");
     } catch (err) {
       if (err instanceof ApiRequestError && err.message === "age_gate_blocked") {
         setBlocked(true);
@@ -79,6 +91,17 @@ export function Register() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
+            minLength={8}
+            required
+          />
+        </label>
+        <label>
+          Confirm password
+          <input
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
             autoComplete="new-password"
             minLength={8}
             required

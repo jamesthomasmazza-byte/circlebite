@@ -76,7 +76,14 @@ authRouter.post(
         [normalizedEmail, passwordHash, trimmedDisplayName],
       );
       const user = rows[0]!;
-      res.status(201).json({ id: user.id, email: user.email, displayName: user.display_name });
+      const { token, expiresAt } = await createSession(user.id);
+      res.cookie(SESSION_COOKIE_NAME, token, sessionCookieOptions());
+      res.status(201).json({
+        id: user.id,
+        email: user.email,
+        displayName: user.display_name,
+        expiresAt,
+      });
     } catch (err) {
       if (isUniqueViolation(err)) {
         res.status(409).json({ error: "email_taken" });
