@@ -10,8 +10,25 @@ Governed by `../CONTEST_RULES.md` §3. Safety rules in this document are require
 | A | Barcode found, structured allergen tags present | Works | Unchanged; AI only writes the explanation |
 | B | Barcode found, only a messy `ingredients_text` string | `unable_to_confirm` | Model parses and resolves it |
 | C | No barcode, or product absent entirely | Impossible | Photograph the panel, OCR, then Path B |
+| D | Barcode found **and** the label photographed | Not attempted | Reconcile the two — the database is a claim, the package is ground truth |
 
-Paths B and C are the reason there is an AI in the product.
+Paths B, C and D are the reason there is an AI in the product. **Path D is the strongest of them.**
+
+Open Food Facts is crowd-sourced and goes stale — manufacturers reformulate and the record doesn't
+follow. The dangerous failure isn't a missing record, it's a record that says *safe* about a product
+that has since added milk. No keyword matcher can catch that, because the matcher only ever sees one
+source. Reconciling two sources that disagree structurally requires reasoning.
+
+When to ask for the label photo, rather than always:
+
+- The profile has a **severe** allergen — the stakes justify the extra step
+- The product record is **stale** (`product_last_updated` more than ~12 months old)
+- The record is thin — tags missing, ingredient text short or absent
+- The verdict came back `safe` on a product nobody has confirmed before
+- The user asks for it
+
+Otherwise the barcode alone is the fast path. Two scans every time is friction that gets the app
+abandoned in a grocery aisle.
 
 ## Pipeline
 
@@ -59,6 +76,19 @@ reasonVerdict(input: {
   unresolvedTerms: string[]
 }>
 
+reconcileSources(input: {
+  offRecord: ProductRecord          // what the database claims
+  offLastUpdated: Date | null
+  labelText: string                 // what the physical package says
+  allergens: ProfileAllergen[]
+}): Promise<{
+  agreement: "consistent" | "label_stricter" | "label_looser" | "different_product"
+  allergensOnLabelNotInRecord: { allergen: string; citedSpan: string }[]
+  allergensInRecordNotOnLabel: string[]
+  recommendation: "trust_label" | "flag_conflict"
+  reason: string
+}>
+
 mergeVerdict(det: MatchedAllergen[], ai: Findings): {
   verdict: "safe" | "contains_allergen" | "unable_to_confirm"
   confidence: "high" | "medium" | "low"
@@ -80,13 +110,21 @@ aiAccuracyReport(since: Date): { scans, overruled, rate, byAllergen }
    allergen the keyword matcher found.
 3. **No claim without a span.** If `citedSpan` is not a substring of the source text, discard the
    finding before it reaches the screen. This is the cheapest hallucination guard available.
-4. **The human wins.** A user correction overrides the verdict for that product on their profile
+4. **The label outranks the database.** When the two sources disagree, the physical package wins and
+   the verdict escalates. `label_stricter` — the label names an allergen the record omits — always
+   produces `contains_allergen`. `label_looser` — the record flags something the label doesn't — is
+   **not** a clearance; it produces `unable_to_confirm` and a correction prompt, because the likelier
+   explanation is a bad photo than a wrong database.
+5. **A conflict is shown, never resolved silently.** If the sources disagree, the verdict card says
+   so and names both readings. That disagreement is also the highest-value correction report the app
+   can generate, and it can be contributed back upstream to Open Food Facts.
+6. **The human wins.** A user correction overrides the verdict for that product on their profile
    immediately, and enters the review queue for everyone else.
-5. **Minimum data in the prompt.** Allergen names and severities only. No names, profile labels, or
+7. **Minimum data in the prompt.** Allergen names and severities only. No names, profile labels, or
    ages — these are health details about real people, often children.
-6. **Every verdict is reproducible.** Store model name, prompt version, and exact input alongside the
+8. **Every verdict is reproducible.** Store model name, prompt version, and exact input alongside the
    output. A verdict that cannot be reconstructed cannot be defended.
-7. **The disclaimer renders on the verdict card**, and most prominently on AI-generated verdicts.
+9. **The disclaimer renders on the verdict card**, and most prominently on AI-generated verdicts.
    Current wording: *a screening aid, not a guarantee — always check the physical label, especially
    for "may contain" warnings.*
 
@@ -115,13 +153,16 @@ unresolved_terms (json), latency_ms, tokens, cost_cents, created_at
 
 Write each as a separate, named migration commit.
 
-## Demo sequence — five beats, in this order
+## Demo sequence — six beats, in this order
 
 1. Scan a well-known product. Instant, high confidence, no AI needed — the boring path is solid.
 2. Scan something obscure with a messy ingredient string. Show which **word** made the call.
 3. Camera on a label with **no barcode** — the case a database-only app cannot serve.
-4. Show a low-confidence result **refusing to say safe**. Restraint, not a demo tuned to always win.
-5. Overrule the model live, then open the accuracy page showing overrule rate by allergen.
+4. **The headline.** Scan a product whose database record is out of date, then photograph the label.
+   The app catches the database being wrong and escalates the verdict. Every competitor trusts the
+   record; this one checks it.
+5. Show a low-confidence result **refusing to say safe**. Restraint, not a demo tuned to always win.
+6. Overrule the model live, then open the accuracy page showing overrule rate by allergen.
 
 ## Cost
 

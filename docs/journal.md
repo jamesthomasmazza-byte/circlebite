@@ -125,3 +125,30 @@ commodity barcode scanner, and the AI explanation matters far less, because the 
 already has the context. Worth remembering when a plan starts optimizing for what's easy to finish.
 
 **Next:** Idea submission by Sept 14, then auth.
+
+---
+
+## 2026-09-09 — Legacy spec written, and a better AI idea
+
+**Did:** Wrote `docs/legacy-spec.md` — the prototype's seventeen routes, eight tables, allergen
+synonym clusters, verdict rules, circle/invite model, and correction lifecycle, described in prose so
+Claude Code can build from it a section at a time. No code copied; this is the design-as-reference
+arrangement Prof. Yoest approved.
+
+**Decided:** Added a fourth input path to the verdict engine — scan the barcode *and* photograph the
+label, then reconcile the two. My own idea, and better than the OCR-fallback I had specced. Open Food
+Facts is crowd-sourced and goes stale when manufacturers reformulate, so the dangerous case isn't a
+missing record, it's a record that says safe about a product that has since added milk. The keyword
+matcher can never catch that because it only ever sees one source.
+
+Rules that came out of it: the label outranks the database; a stricter label always escalates the
+verdict; a looser label is never a clearance (a bad photo is likelier than a wrong database); and a
+conflict is displayed, never silently resolved.
+
+**Learned:** Two things the prototype already stores turn out to be exactly what this needs —
+`product_last_updated` is the staleness signal that decides when to ask for the label photo, and the
+raw `product_data` snapshot makes any verdict reconstructable later. Also that this shouldn't fire on
+every scan: two scans in a grocery aisle is friction that gets an app deleted. Gate it on severe
+allergens, stale records, thin data, or an unconfirmed "safe."
+
+**Next:** Idea submission by Sept 14. Then auth, with the circle in scope from the start.
