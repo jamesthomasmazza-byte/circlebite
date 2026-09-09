@@ -54,3 +54,30 @@ Saved the email to `docs/approvals/`.
 requirement rather than advice. It's written into `CONTEST_RULES.md` §3.
 
 **Next:** Repo and AWS setup.
+
+---
+
+## 2026-09-09 — Server provisioned
+
+**Did:** Launched the production box: EC2 t3.micro, Ubuntu 24.04 LTS, 30 GiB, us-east-2, with an
+Elastic IP so the address survives reboots. Security group allows SSH from my IP only, HTTP and HTTPS
+from anywhere. Zero-spend billing alert set before provisioning anything. Added a 2GB swap file,
+installed nginx, Node 22, and PostgreSQL 16, rebooted for the new kernel, and created the
+`circlebite` database and role. Full runbook in `docs/server-setup.md`.
+
+**Hit a wall on:** Ran the database setup with the literal placeholder `PASTE_PASSWORD_HERE` still in
+the command, so the role got created with that as its actual password. Fixed it with `ALTER USER`,
+and rewrote the step so it generates the password and writes it straight into `.env` — no copying, so
+the mistake can't happen again.
+
+**Decided:** Ubuntu 24.04 over 26.04. 26.04 is newer but third-party repos like NodeSource lag a new
+release, and I'd rather not lose an evening to a packaging problem that has nothing to do with the
+app. Also used hex rather than base64 for the database password, because `/` and `+` need escaping
+inside a connection URL.
+
+**Learned:** Swap has to be added before the first Node build, not after it fails — 1 GiB of RAM
+isn't enough, and the failure looks like a code error rather than a memory error. And the
+`/etc/fstab` line is the part that actually matters; without it the swap vanishes on the next reboot.
+
+**Next:** Domain and DNS, Let's Encrypt certificate, nginx reverse proxy, then the app itself behind
+a working login.
