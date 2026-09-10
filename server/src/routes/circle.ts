@@ -1,6 +1,10 @@
 import { Router } from "express";
 
-import { assertCanManageProfile, getProfileAccess } from "../authorization/profiles.js";
+import {
+  assertCanManageProfile,
+  assertIsProfileOwner,
+  getProfileAccess,
+} from "../authorization/profiles.js";
 import { requireAuth } from "../auth/requireAuth.js";
 import { pool } from "../db/pool.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
@@ -111,6 +115,124 @@ circleRouter.post(
   }),
 );
 
+// ---- Co-manager invites ----
+
+circleRouter.post(
+  "/profiles/:id/manager-invites",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const profileId = req.params.id;
+    await assertCanManageProfile(req.user!.id, profileId);
+
+    const token = generateInviteToken();
+    const { rows } = await pool.query<{ id: string }>(
+      `INSERT INTO manager_invites (allergen_profile_id, token_hash, created_by)
+       VALUES ($1, $2, $3)
+       RETURNING id`,
+      [profileId, hashInviteToken(token), req.user!.id],
+    );
+
+    res.status(201).json({ id: rows[0]!.id, token });
+  }),
+);
+
+// Public: no requireAuth, same reasoning as GET /follow/:token.
+circleRouter.get(
+  "/co-manager/:token",
+  asyncHandler(async (req, res) => {
+    const { rows } = await pool.query<{
+      label: string;
+      revoked_at: string | null;
+      accepted_at: string | null;
+    }>(
+      `SELECT p.label, mi.revoked_at, mi.accepted_at
+       FROM manager_invites mi
+       JOIN allergen_profiles p ON p.id = mi.allergen_profile_id
+       WHERE mi.token_hash = $1`,
+      [hashInviteToken(req.params.token)],
+    );
+    const row = rows[0];
+    if (!row) throw new HttpError(404, "not_found");
+
+    const status = row.revoked_at ? "revoked" : row.accepted_at ? "accepted" : "pending";
+    res.json({ profileLabel: row.label, status });
+  }),
+);
+
+circleRouter.post(
+  "/co-manager/:token/accept",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const userId = req.user!.id;
+    const tokenHash = hashInviteToken(req.params.token);
+
+    const { rows } = await pool.query<{ id: string; allergen_profile_id: string; manager_id: string }>(
+      `SELECT mi.id, mi.allergen_profile_id, p.manager_id
+       FROM manager_invites mi
+       JOIN allergen_profiles p ON p.id = mi.allergen_profile_id
+       WHERE mi.token_hash = $1 AND mi.revoked_at IS NULL AND mi.accepted_at IS NULL`,
+      [tokenHash],
+    );
+    const invite = rows[0];
+    if (!invite) throw new HttpError(404, "invalid_or_used_invite");
+
+    if (invite.manager_id === userId) throw new HttpError(400, "cannot_accept_own_invite");
+
+    // Simplification, not an oversight: a follower accepting a co-manager invite for the same
+    // profile could reasonably "upgrade" them instead of being rejected, but that path isn't
+    // built yet — treated the same as any other existing access for now, consistent with the
+    // follow-invite accept handler.
+    const existingAccess = await getProfileAccess(userId, invite.allergen_profile_id);
+    if (existingAccess) throw new HttpError(409, "already_have_access");
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const { rowCount } = await client.query(
+        `UPDATE manager_invites SET accepted_at = now(), accepted_by = $2
+         WHERE id = $1 AND revoked_at IS NULL AND accepted_at IS NULL`,
+        [invite.id, userId],
+      );
+      // Same atomicity reasoning as the follow-accept handler: this guard makes the whole
+      // operation safe against a concurrent double-accept race.
+      if (rowCount === 0) throw new HttpError(404, "invalid_or_used_invite");
+
+      await client.query(
+        `INSERT INTO profile_managers (allergen_profile_id, user_id, added_by) VALUES ($1, $2, $3)`,
+        [invite.allergen_profile_id, userId, invite.manager_id],
+      );
+      await client.query("COMMIT");
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    res.status(200).json({ allergenProfileId: invite.allergen_profile_id });
+  }),
+);
+
+circleRouter.delete(
+  "/profiles/:id/managers/:userId",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const profileId = req.params.id;
+    // Owner-only, deliberately stricter than assertCanManageProfile: a co-manager can edit the
+    // profile but not restructure who else has access to it.
+    await assertIsProfileOwner(req.user!.id, profileId);
+
+    const { rowCount } = await pool.query(
+      "DELETE FROM profile_managers WHERE allergen_profile_id = $1 AND user_id = $2",
+      [profileId, req.params.userId],
+    );
+    if (rowCount === 0) throw new HttpError(404, "not_found");
+    res.status(204).end();
+  }),
+);
+
+// ---- Circle summary ----
+
 circleRouter.get(
   "/profiles/:id/circle",
   requireAuth,
@@ -133,6 +255,13 @@ circleRouter.get(
        ORDER BY f.responded_at`,
       [profileId],
     );
+    const { rows: pendingManagerInvites } = await pool.query(
+      `SELECT id, created_at
+       FROM manager_invites
+       WHERE allergen_profile_id = $1 AND revoked_at IS NULL AND accepted_at IS NULL
+       ORDER BY created_at`,
+      [profileId],
+    );
     const { rows: managers } = await pool.query(
       `SELECT pm.user_id, pm.added_at, u.display_name, u.email
        FROM profile_managers pm
@@ -142,6 +271,6 @@ circleRouter.get(
       [profileId],
     );
 
-    res.json({ pendingFollows, followers, managers });
+    res.json({ pendingFollows, followers, pendingManagerInvites, managers });
   }),
 );
