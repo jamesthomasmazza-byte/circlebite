@@ -12,6 +12,18 @@ of a session, not the beginning.
 
 ---
 
+## Status as of 2026-09-10
+
+Through Week 7 of `BACKLOG.md`: auth, allergen profiles, and the full circle invite flow are built;
+scan-to-verdict works end to end, deterministic matcher plus the Path B AI verdict engine, both
+confirmed against the real deployed app with a real key — a genuine AI escalation, the fail-closed
+path, and a real defect in the deterministic matcher's word-boundary matching that the AI surfaced
+and got fixed (see the three 2026-09-10 entries below). Still open from earlier weeks, not yet
+started: the 24-month scan-history retention job, the judge-account seed script, a `DELETE /account`
+endpoint, password reset, and rate limiting on login. Week 8 — the overrule loop — is next.
+
+---
+
 ## Template
 
 ```
