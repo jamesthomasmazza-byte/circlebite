@@ -125,6 +125,10 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
 - [ ] Mobile layout verified on a real phone
 - [ ] Run the full compliance check in `CONTEST_RULES.md` §9
 - [ ] Run the age-gate verification checklist in `docs/coppa.md` §4
+- [ ] Password reset flow — must revoke all other sessions for that user on success (set
+      `revoked_at` on every session row except the new one). Found doing a manual password
+      rotation for the judge account: there's no change-password flow yet, so the old session
+      stayed live after the password changed, which defeats the point of a rotation.
 - [ ] Account deletion: removes profiles, scans, corrections, follow relationships
 - [ ] Judge account seeded and tested end to end from a fresh browser
 
