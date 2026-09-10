@@ -14,4 +14,5 @@ export const env = {
   port: Number(process.env.PORT ?? 3000),
   databaseUrl: required("DATABASE_URL"),
   sessionSecret: required("SESSION_SECRET"),
+  offUserAgent: required("OFF_USER_AGENT"),
 };
