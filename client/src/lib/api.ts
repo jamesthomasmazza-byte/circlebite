@@ -234,14 +234,31 @@ export type ScanResult = {
   created_at: string;
 };
 
+export type CorrectionType = "flag_wrong" | "flag_missing" | "wrong_product";
+export type CorrectionStatus = "pending" | "corroborated" | "rejected";
+
+export type ScanCorrection = {
+  id: string;
+  correctionType: CorrectionType;
+  direction: "add_caution" | "remove_caution";
+  allergen: string | null;
+  note: string | null;
+  status: CorrectionStatus;
+  createdAt: string;
+};
+
 export type ScanHistoryEntry = {
   id: string;
   barcode: string;
   product_name: string | null;
   product_brand: string | null;
-  result: Verdict;
-  matched_allergens: MatchedAllergen[];
   created_at: string;
+  original: { result: Verdict; matched_allergens: MatchedAllergen[] };
+  // CONTEST_RULES.md §3: the requester's own correction(s) override their view immediately — never
+  // in place of `original`, always alongside it, so the UI can show both and be transparent about
+  // what changed. null when this user has no corrections on this scan.
+  effective: { result: Verdict; matched_allergens: MatchedAllergen[] } | null;
+  corrections: ScanCorrection[];
 };
 
 export function createScan(allergenProfileId: string, barcode: string): Promise<ScanResult> {
@@ -250,4 +267,36 @@ export function createScan(allergenProfileId: string, barcode: string): Promise<
 
 export function getScanHistory(profileId: string): Promise<ScanHistoryEntry[]> {
   return apiFetch(`/profiles/${profileId}/scans`);
+}
+
+export type CorrectionResult = { id: string; status: CorrectionStatus; corroborated: boolean };
+
+/**
+ * multipart/form-data, not the JSON apiFetch() helper above — a File can't be JSON-serialized, and
+ * manually setting Content-Type on a FormData body would break the multipart boundary the browser
+ * needs to set itself.
+ */
+export async function createCorrection(
+  scanId: string,
+  input: { correctionType: CorrectionType; allergen: string | null; note: string | null; photo: File },
+): Promise<CorrectionResult> {
+  const form = new FormData();
+  form.set("correctionType", input.correctionType);
+  if (input.allergen) form.set("allergen", input.allergen);
+  if (input.note) form.set("note", input.note);
+  form.set("photo", input.photo);
+
+  const res = await fetch(`/api/scans/${scanId}/corrections`, {
+    method: "POST",
+    credentials: "include",
+    body: form,
+  });
+  const body = await res.json().catch(() => undefined);
+
+  if (!res.ok) {
+    const code = (body as { error?: string } | undefined)?.error ?? `request_failed_${res.status}`;
+    throw new ApiRequestError(code, res.status);
+  }
+
+  return body as CorrectionResult;
 }

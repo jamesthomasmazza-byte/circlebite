@@ -2,7 +2,21 @@ import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser"
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
-import { createScan, listProfiles, type ProfileSummary, type ScanResult } from "../lib/api";
+import {
+  ApiRequestError,
+  createCorrection,
+  createScan,
+  listProfiles,
+  type CorrectionType,
+  type ProfileSummary,
+  type ScanResult,
+} from "../lib/api";
+
+const CORRECTION_TYPE_LABEL: Record<CorrectionType, string> = {
+  flag_wrong: "This allergen isn't actually in this product",
+  flag_missing: "This product has an allergen the card didn't flag",
+  wrong_product: "This is the wrong product entirely",
+};
 
 const VERDICT_LABEL: Record<ScanResult["result"], string> = {
   safe: "Safe",
@@ -50,6 +64,15 @@ export function Scan() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
 
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportType, setReportType] = useState<CorrectionType>("flag_wrong");
+  const [reportAllergen, setReportAllergen] = useState("");
+  const [reportNote, setReportNote] = useState("");
+  const [reportPhoto, setReportPhoto] = useState<File | null>(null);
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [reportOutcome, setReportOutcome] = useState<string | null>(null);
+
   useEffect(() => {
     listProfiles()
       .then((res) => {
@@ -65,6 +88,12 @@ export function Scan() {
   async function runScan(rawBarcode: string, targetProfileId: string) {
     setError(null);
     setResult(null);
+    setReportOpen(false);
+    setReportAllergen("");
+    setReportNote("");
+    setReportPhoto(null);
+    setReportError(null);
+    setReportOutcome(null);
 
     if (!targetProfileId) {
       setError("Pick who you're scanning for.");
@@ -89,6 +118,47 @@ export function Scan() {
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     await runScan(barcode, profileId);
+  }
+
+  async function handleReportSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (!result) return;
+
+    setReportError(null);
+    if (!reportPhoto) {
+      setReportError("A photo of the physical label is required.");
+      return;
+    }
+    if (reportType !== "wrong_product" && !reportAllergen) {
+      setReportError("Pick which allergen this is about.");
+      return;
+    }
+
+    setReportSubmitting(true);
+    try {
+      const outcome = await createCorrection(result.id, {
+        correctionType: reportType,
+        allergen: reportType === "wrong_product" ? null : reportAllergen,
+        note: reportNote.trim() || null,
+        photo: reportPhoto,
+      });
+      setReportOutcome(
+        outcome.corroborated
+          ? "Reported — enough other reports agreed that this is now corroborated."
+          : "Reported — thanks. This is now in the review queue.",
+      );
+      setReportOpen(false);
+    } catch (err) {
+      if (err instanceof ApiRequestError && err.status === 400 && err.message === "photo_too_large") {
+        setReportError("That photo is too large — try a smaller image.");
+      } else if (err instanceof ApiRequestError && err.status === 400 && err.message === "invalid_file_type") {
+        setReportError("That doesn't look like a photo — please attach a JPEG, PNG, or WebP image.");
+      } else {
+        setReportError("Couldn't submit that report. Try again.");
+      }
+    } finally {
+      setReportSubmitting(false);
+    }
   }
 
   function stopCamera() {
@@ -217,6 +287,85 @@ export function Scan() {
           )}
 
           <p role="note">{DISCLAIMER}</p>
+
+          {reportOutcome && <p role="status">{reportOutcome}</p>}
+
+          {!reportOutcome && (
+            <>
+              {reportOpen ? (
+                <form onSubmit={handleReportSubmit}>
+                  <h3>Report a problem with this verdict</h3>
+                  <fieldset>
+                    <legend>What's wrong?</legend>
+                    {(Object.keys(CORRECTION_TYPE_LABEL) as CorrectionType[]).map((type) => (
+                      <label key={type}>
+                        <input
+                          type="radio"
+                          name="correctionType"
+                          value={type}
+                          checked={reportType === type}
+                          onChange={() => {
+                            setReportType(type);
+                            setReportAllergen("");
+                          }}
+                        />
+                        {CORRECTION_TYPE_LABEL[type]}
+                      </label>
+                    ))}
+                  </fieldset>
+
+                  {reportType !== "wrong_product" && (
+                    <label>
+                      Which allergen?
+                      <select value={reportAllergen} onChange={(e) => setReportAllergen(e.target.value)} required>
+                        <option value="" disabled>
+                          Choose one
+                        </option>
+                        {/* Scoped to what this card actually shows — never an allergen the viewer
+                            can't see, and never a picker offering the wrong direction for the
+                            claim they're making. */}
+                        {result.matched_allergens
+                          .filter((m) => (reportType === "flag_wrong" ? m.classification !== "clear" : m.classification === "clear"))
+                          .map((m) => (
+                            <option key={m.allergenName} value={m.allergenName}>
+                              {m.allergenName}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                  )}
+
+                  <label>
+                    Photo of the physical label (required)
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={(e) => setReportPhoto(e.target.files?.[0] ?? null)}
+                      required
+                    />
+                  </label>
+
+                  <label>
+                    Notes (optional)
+                    <textarea value={reportNote} onChange={(e) => setReportNote(e.target.value)} />
+                  </label>
+
+                  {reportError && <p role="alert">{reportError}</p>}
+
+                  <button type="submit" disabled={reportSubmitting}>
+                    {reportSubmitting ? "Submitting…" : "Submit report"}
+                  </button>
+                  <button type="button" onClick={() => setReportOpen(false)}>
+                    Cancel
+                  </button>
+                </form>
+              ) : (
+                <button type="button" onClick={() => setReportOpen(true)}>
+                  Report a problem with this verdict
+                </button>
+              )}
+            </>
+          )}
         </section>
       )}
     </main>
