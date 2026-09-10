@@ -160,6 +160,15 @@ revert is just re-pointing a symlink. Two scripts, both in `scripts/`:
 
 ```bash
 mkdir -p ~/circlebite/releases
+
+# Correction photo storage — a sibling of releases/ and current/, never inside either. The app
+# refuses to boot without UPLOAD_DIR set (server/src/env.ts, required() — no default), specifically
+# because a prior default resolved inside the release tree and every correction photo was silently
+# deleted on the next deploy. Create the directory and set the var in the same step so a rebuild
+# from this runbook can't reproduce that gap by setting one without the other.
+mkdir -p ~/circlebite/uploads
+echo "UPLOAD_DIR=/home/ubuntu/circlebite/uploads" >> ~/circlebite/.env
+
 # copy scripts/deploy.sh from the repo to ~/circlebite/deploy.sh, chmod +x
 
 # generate the session secret on the box — never locally, never in the repo

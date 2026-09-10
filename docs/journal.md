@@ -820,3 +820,49 @@ the original reporter.
 
 **Next:** part 2 — corroboration propagating to other profiles' future scans, then the accuracy
 page (`aiAccuracyReport()`, overrule rate overall and by prompt version).
+
+---
+
+## 2026-09-10 (still later) — A live bug in UPLOAD_DIR, found by checking the box, not the comment
+
+**Did:** JT checked `~/circlebite/.env` on the box after the overrule-loop deploy. No `UPLOAD_DIR`
+line at all — meaning production had been running on `env.ts`'s default the whole time this feature
+was live, not the override the code comment claimed it needed.
+
+**The bug:** that default was `path.join(process.cwd(), "uploads")`. Absolute path, looked fine.
+But `process.cwd()` for the systemd service is whatever `WorkingDirectory` sets
+(`scripts/circlebite.service`: `~/circlebite/current/server`), and `current` is exactly the symlink
+`scripts/release.sh` repoints to a new release on every deploy. So the default resolved to
+`~/circlebite/current/server/uploads` — *inside* the versioned release tree, not outside it. Every
+correction photo submitted on production was one deploy away from becoming unreachable the instant
+`current` got repointed, not eventually when an old release got pruned. Correction photos are
+required evidence for corroboration — this was a live, silent path to losing exactly the evidence
+the whole feature exists to keep.
+
+**What actually caught it:** not a test, not a code review — JT reading the real file on the real
+box and asking "what does this actually resolve to" instead of trusting the comment that said
+production "must" override the default. The comment was correct in intent and wrong in effect: the
+override was never actually made, and nothing enforced that it had to be. Verified the resolution
+chain precisely before touching anything (`scripts/circlebite.service`'s `WorkingDirectory`, no
+`process.chdir()` anywhere in the codebase to override it) rather than assuming.
+
+**Fixed, in order — deliberately, not both at once:** JT set `UPLOAD_DIR` on the box and confirmed
+the directory existed *first*, specifically because shipping the `env.ts` hardening before that
+would have made the app refuse to boot and taken the site down. Only then: `uploadDir:
+required("UPLOAD_DIR")`, no default, same pattern as `DATABASE_URL`/`SESSION_SECRET`/
+`OFF_USER_AGENT` — a missing correction-photo path now fails loudly at startup instead of silently
+picking a dangerous one. Verified both directions for real: booted with `UPLOAD_DIR` unset locally,
+watched it throw `Missing required environment variable: UPLOAD_DIR` and exit 1; restored it,
+watched `/health` come back clean. `docs/server-setup.md` §8's bootstrap block and `.env.example`
+both updated so a rebuild from that runbook sets `UPLOAD_DIR` in the same step it creates the
+directory — can't reproduce this gap by doing one without the other.
+
+**Learned:** the local-dev-only "defaults to X, fine for local dev only" comment style — used twice
+now in this file (`AI_DAILY_SPEND_CAP_CENTS`'s blank-string bug earlier today, now this) — is a real
+pattern worth naming: a comment describing what production *should* do is not a guarantee about
+what it *actually* does, and the gap between those two only closes by checking the running system,
+not by re-reading the comment more carefully. Worth an explicit pass at some point over every
+`env.ts` default with the same question JT just asked: what does this actually resolve to on the
+box, right now, today — not what the comment claims.
+
+**Next:** same as the previous entry — Week 8 part 2.
