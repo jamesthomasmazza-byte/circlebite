@@ -63,20 +63,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void refresh();
   }, [refresh]);
 
-  const login = useCallback(
-    async (email: string, password: string) => {
-      await apiLogin(email, password);
-      await refresh();
-    },
-    [refresh],
-  );
+  const login = useCallback(async (email: string, password: string) => {
+    const authUser = await apiLogin(email, password);
+    // A brand new session from a fresh login always starts with no acting profile selected, so
+    // there's no need to fetch it — bump the generation counter (invalidating any in-flight
+    // refresh(), e.g. a slow mount-time check) and set state directly from this response instead
+    // of paying for a redundant GET /me.
+    requestIdRef.current += 1;
+    setUser(authUser);
+    setActingProfileId(null);
+  }, []);
 
   const register = useCallback(
     async (input: { email: string; password: string; displayName: string; dob: string }) => {
-      await apiRegister(input);
-      await refresh();
+      const authUser = await apiRegister(input);
+      requestIdRef.current += 1;
+      setUser(authUser);
+      setActingProfileId(null);
     },
-    [refresh],
+    [],
   );
 
   const logout = useCallback(async () => {
