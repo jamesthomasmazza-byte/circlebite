@@ -12,6 +12,7 @@ import { ProfileDetail } from "./routes/ProfileDetail";
 import { Profiles } from "./routes/Profiles";
 import { Register } from "./routes/Register";
 import { Scan } from "./routes/Scan";
+import { ScanHistory } from "./routes/ScanHistory";
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
             <Route path="/profiles" element={<Profiles />} />
             <Route path="/profiles/:id" element={<ProfileDetail />} />
             <Route path="/scan" element={<Scan />} />
+            <Route path="/profiles/:id/history" element={<ScanHistory />} />
           </Route>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Routes>

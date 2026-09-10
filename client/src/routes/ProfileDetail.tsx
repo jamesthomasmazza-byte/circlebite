@@ -177,6 +177,8 @@ export function ProfileDetail() {
       <p>Your access: {profile.access.level === "follower" ? `following (${profile.access.shareLevel})` : profile.access.level}</p>
       <p>
         <Link to={`/scan?profile=${id}`}>Scan a product for {profile.label}</Link>
+        {" · "}
+        <Link to={`/profiles/${id}/history`}>Recent scans</Link>
       </p>
 
       {canManage ? (
