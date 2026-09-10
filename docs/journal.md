@@ -594,3 +594,85 @@ together, next session.
 
 **Next:** the live-key smoke test above, then Week 8's overrule loop once Path B is confirmed for
 real. The label-photo path (C) and cross-reference reconciliation (D) stay out of scope until then.
+
+---
+
+## 2026-09-10 (later) — The live smoke test: the AI call had never once succeeded in production
+
+**Did:** Ran the required live-key smoke test from the previous entry. It failed on all three
+scans — not the escalation-not-yet-proven kind of failure, the kind that means Path B's `reasonVerdict()`
+had never actually completed a real model call in production, at all, despite passing 40+ unit
+tests and every fail-closed check done with no key configured.
+
+**What made this findable:** the first deploy of this session's code (`e1b1ec6`..`c8c24ce`) reused
+`AI_API_KEY` correctly and the app booted fine, but every Path B scan against the real deployed
+server returned `unable_to_confirm` where a working key should have produced `safe` (Diet Coke,
+nothing to find) or an escalation (a Coffee-Mate creamer whose ingredients name "sodium caseinate"
+with no structured allergen tags and no literal word "milk" anywhere — a genuine miss for the
+deterministic matcher, confirmed against the real product data before ever touching the live key).
+JT ran the model directly from the box with the exact key and model ID from `.env` — real 200,
+real completion — which ruled out the key, the model name, credit, and outbound network in one
+step, and pointed squarely at "the failure is in our code."
+
+**First wrong turn, corrected on the spot:** re-reading `env.ts` surfaced a real bug —
+`process.env.AI_DAILY_SPEND_CAP_CENTS ?? 200` doesn't fall back for an empty string, only for
+`undefined`, and `.env.example` ships that var as a bare blank `KEY=` line, which is exactly what
+copying the template would produce. Flagged it as the "leading suspect," fixed it
+(`parseOptionalCents()`, 6 tests pinning the exact bug class), and got called on it directly: JT
+checked the box first — the var wasn't blank, it was *absent* from the file entirely, and
+`undefined ?? 200` already resolves to `200` correctly. The fix was real (a genuinely different env
+var left blank elsewhere would still hit it) but it was not the cause of this incident, and saying
+so plainly instead of letting the fix quietly stand in for a diagnosis was the right call — this
+gets written down explicitly *because* it would have been easy to let a real, deployed fix look like
+an explanation it wasn't.
+
+**The actual diagnostic gap:** `aiClient.ts` caught every failure — auth errors, timeouts, a
+response that didn't match the schema — into a bare `{ ok: false }` with nothing logged anywhere
+and no reason stored in `verdict_explanations`. Three failed production scans and there was
+nothing in the database or the logs that said why. Fixed that first, deliberately before chasing
+the root cause further: real `APIError`s now log status/type/body and map to `api_error_<status>`;
+a schema-invalid response logs the actual content instead of discarding it; `failureReason` threads
+through `reasonVerdict()` and is stored on `verdict_explanations` via a new column. Verified against
+the real Anthropic API with a deliberately invalid key (confirmed a genuine 401 gets logged in full
+and mapped to `api_error_401`) before this was ever pointed at the real incident.
+
+**Root cause, found immediately once that logging existed:** redeployed, re-ran the scan,
+`failure_reason = api_error_400`, `tokens null` — rejected at request validation, before any
+inference. JT reproduced the app's exact tool schema with a raw `curl` from the box using the real
+key, got Anthropic's own error back: `"tools.0.custom: For 'object' type, 'additionalProperties'
+must be explicitly set to false"`. `FINDINGS_TOOL` in `aiClient.ts` sets `strict: true` but never
+sets `additionalProperties: false` on either of its object schemas (the root, and `findings.items`)
+— strict mode requires it on every object node, not just the top level, and rejects the whole
+request if even one is missing. **The AI call had never once succeeded in this app, in any
+environment, for the entire time Path B existed.** Confirmed the exact fix worked by replaying the
+corrected schema against the live API first (200, real tool_use response) — *before* touching the
+code, so the fix was known-correct rather than hoped-correct by the time it landed.
+
+**Fixed:** `additionalProperties: false` added to both object schemas, `strict: true` kept (it's
+what stops the model inventing fields outside the schema — worth more than the two lines it costs).
+Added a test that walks `FINDINGS_TOOL.input_schema` recursively and asserts every object node sets
+`additionalProperties: false` — not a hardcoded check of today's two spots, because a schema node
+added later without it would reproduce this exact incident silently again. Verified the test
+actually catches the regression it's meant to catch, twice: once by reverting the whole fix
+(import failure — `FINDINGS_TOOL` wasn't exported yet either) and once by stripping just the two
+`additionalProperties: false` lines while keeping the export, which failed the assertion directly
+with the exact offending schema node in the message.
+
+**Learned, the part worth keeping:** the whole suite passed the entire time this bug existed —
+50 tests, including a hand-rolled fake AI client in `reasonVerdict.test.ts` that never once
+validated the real schema against the real API's actual rules, because it didn't need to; it just
+returned whatever `AiClientResult` the test told it to. A mock that returns exactly what you tell
+it to can prove your merge logic is correct while proving nothing about whether the real request
+this code sends would ever succeed. That gap — not any individual line of code — is the actual
+lesson here. It's also *why* the live-key smoke test was made a required, non-optional gate for
+this slice rather than an afterthought: no amount of unit-test coverage was ever going to catch a
+request the API itself rejects before inference, because the boundary between "our code" and "their
+API" is exactly the boundary unit tests can't see across. And the diagnostics-first-before-guessing
+sequencing mattered concretely, not just philosophically — the empty-cap fix would have shipped as
+an unverified "probably fixed it" if the logging fix hadn't gone in first and immediately proven it
+wrong.
+
+**Next:** Path B is now confirmed working end to end against the real deployed app with a real key
+— the escalation case is still worth re-running once more to see a real `contains_allergen` from a
+genuine AI finding (not yet observed, only the fail-closed and deterministic-only paths were seen
+before this fix). Then Week 8's overrule loop.

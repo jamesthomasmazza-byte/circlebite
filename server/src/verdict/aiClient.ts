@@ -15,7 +15,12 @@ const TOOL_NAME = "report_allergen_findings";
 const INPUT_CENTS_PER_TOKEN = 100 / 1_000_000;
 const OUTPUT_CENTS_PER_TOKEN = 500 / 1_000_000;
 
-const FINDINGS_TOOL: Anthropic.Tool = {
+// Exported so tests can walk the actual schema sent to the API — see aiClient.test.ts. This is
+// the object that broke every Path B scan in production for as long as this tool existed:
+// strict: true requires additionalProperties: false on EVERY object node in input_schema, not
+// just the root, and the API rejects the whole request (400, before any inference happens) if
+// even one is missing. The two object nodes below (the root and findings.items) both need it.
+export const FINDINGS_TOOL: Anthropic.Tool = {
   name: TOOL_NAME,
   description: "Report structured allergen findings for the given ingredient text.",
   strict: true,
@@ -38,11 +43,13 @@ const FINDINGS_TOOL: Anthropic.Tool = {
             confidence: { type: "string", enum: ["high", "medium", "low"] },
           },
           required: ["allergen", "present", "citedSpan", "reason", "confidence"],
+          additionalProperties: false,
         },
       },
       unresolvedTerms: { type: "array", items: { type: "string" } },
     },
     required: ["findings", "unresolvedTerms"],
+    additionalProperties: false,
   },
 };
 
