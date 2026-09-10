@@ -493,3 +493,44 @@ just re-reading old code before writing new code in the same area.
 the single largest discretionary rubric block. The 24-month retention job and the judge-account seed
 script are still open from Weeks 2–3, now genuinely actionable since `scans` finally exists for the
 retention job to act on.
+
+---
+
+## 2026-09-09 (later that night) — Camera preview showed nothing; real bug, found and fixed live
+
+**Did:** Deployed weeks 4–5, then got a real bug report a few minutes later: "I'm unable to see what
+the camera sees while using the app." Not the known, already-documented verification gap (no camera
+in the sandboxed test browser) — a real production bug hit by an actual device with an actual camera.
+
+**Root cause:** `Scan.tsx`'s `<video>` element was only rendered inside the `cameraActive ? ... : ...`
+branch. `startCamera()` calls `setCameraActive(true)` and then, in that same synchronous call,
+immediately reads `videoRef.current` to hand to `decodeFromVideoDevice()` — but React hadn't
+re-rendered yet, so the `<video>` tag didn't exist in the DOM and the ref was still `null` from the
+previous render. zxing silently falls back to creating its own detached video element when it isn't
+handed a real one, so decoding could still technically run — nothing was actually broken at the
+network or permissions level — but there was never an on-page element for the stream to be visible
+in. This is exactly the kind of bug the sandboxed verification gap from earlier tonight was
+structurally unable to catch: no amount of code review or a "does it initialize without throwing"
+check surfaces a bug that only manifests as "the picture never shows up," because nothing throws.
+
+**Fix:** keep `<video>` always mounted, toggle visibility with CSS `display` instead of conditional
+rendering, so `videoRef.current` already points at the real on-page element by the time
+`startCamera()` reads it. Added `muted` and `playsInline` too, needed for the video to actually
+autoplay on mobile rather than sitting paused — a second latent bug in the same code that hadn't
+caused a user-visible symptom yet.
+
+**Verified:** confirmed structurally in this session's sandboxed browser (the `<video>` node exists
+in the DOM immediately on page load now, and toggling `cameraActive` flips the same node between
+`display:none`/`block` instead of mounting/unmounting a new one) and then confirmed for real by the
+person who reported it, on an actual device with an actual camera, right after the fix deployed.
+
+**Learned:** the honest "known verification gap" framing from earlier tonight was correct about what
+it couldn't prove (a live pixel feed) but didn't go far enough — it should have been a flag to get a
+real device in front of the feature before calling it done, not just a footnote to ship past. A
+sandboxed "does it initialize" check is a fundamentally different, weaker claim than "a user can see
+their camera," and this project's own verification standard (real Postgres, real HTTP, real browser
+clicks) already says not to trust the weaker claim when a stronger one is available — worth actually
+asking, next time a feature has a stated verification gap, whether that gap is closeable by just
+asking the person to try it on their own device before considering the feature shipped.
+
+**Next:** same as above — Weeks 6–7. Ending the session here for the night; nothing else in flight.

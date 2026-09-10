@@ -62,9 +62,10 @@ often isn't the person whose allergies are at stake.
 
 ## Weeks 4–5 — Oct 6–19 · Scan to verdict, end to end
 
-- [x] Barcode scanning in the browser — manual entry (fully verified) plus camera scanning via
-      `@zxing/browser` layered on top (code-level check only; no physical camera available in the
-      sandboxed test environment this session, see `docs/journal.md`)
+- [x] Barcode scanning in the browser — manual entry plus camera scanning via `@zxing/browser`.
+      Camera shipped with a real bug (video element conditionally mounted, so the live stream had
+      nowhere on-page to bind to — decoding could work with nothing ever visible); fixed and
+      confirmed working on a real device the same night, see `docs/journal.md`
 - [x] Open Food Facts lookup, with a local `products` cache table (24h TTL, caches confirmed
       not-found too)
 - [x] Port the deterministic allergen matcher — synonym clusters, tags, trace handling
