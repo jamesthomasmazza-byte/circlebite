@@ -200,8 +200,12 @@ export function acceptCoManagerInvite(token: string): Promise<{ allergenProfileI
 }
 
 export type MatchSource = "tag" | "ingredients" | "trace";
-export type Classification = "contains" | "caution" | "clear";
+// "unresolved" only ever appears on a scan that ran the AI reasoning step (docs/verdict-engine.md
+// Path B) — the model raised real uncertainty about this allergen rather than staying silent, so
+// it's shown distinctly from "clear" rather than folded into it.
+export type Classification = "contains" | "caution" | "clear" | "unresolved";
 export type Verdict = "safe" | "contains_allergen" | "may_contain_caution" | "unable_to_confirm";
+export type Confidence = "high" | "medium" | "low";
 
 export type MatchedAllergen = {
   allergenName: string;
@@ -209,6 +213,10 @@ export type MatchedAllergen = {
   source: MatchSource | null;
   severity: Severity;
   classification: Classification;
+  // Present (and true) only when the AI reasoning step changed this allergen's classification
+  // from what the deterministic keyword matcher alone found.
+  aiEscalated?: boolean;
+  citedSpan?: string;
 };
 
 export type ScanResult = {
@@ -220,6 +228,9 @@ export type ScanResult = {
   product_last_updated: string | null;
   result: Verdict;
   matched_allergens: MatchedAllergen[];
+  source: "barcode" | "label_photo" | "manual";
+  confidence: Confidence | null;
+  explanation: string | null;
   created_at: string;
 };
 

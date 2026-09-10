@@ -16,10 +16,22 @@ const VERDICT_LABEL: Record<ScanResult["result"], string> = {
 const DISCLAIMER =
   "This is a screening aid, not a guarantee — always check the physical label, especially for “may contain” warnings.";
 
-function sourceLabel(source: ScanResult["matched_allergens"][number]["source"]): string {
-  if (source === "tag") return "listed ingredient";
-  if (source === "ingredients") return "found in ingredient text";
-  if (source === "trace") return "may contain traces";
+function classificationLabel(m: ScanResult["matched_allergens"][number]): string {
+  if (m.classification === "contains") return "contains";
+  if (m.classification === "unresolved") return "couldn't confirm from the label text";
+  return "may contain traces";
+}
+
+function sourceLabel(m: ScanResult["matched_allergens"][number]): string {
+  // AI-escalated findings carry their own citedSpan rather than the deterministic source
+  // (tag/ingredients/trace) — the deterministic matcher found nothing for these, that's exactly
+  // why the AI reasoning step ran.
+  if (m.aiEscalated) {
+    return m.citedSpan ? `AI review — "${m.citedSpan}"` : "flagged by AI review";
+  }
+  if (m.source === "tag") return "listed ingredient";
+  if (m.source === "ingredients") return "found in ingredient text";
+  if (m.source === "trace") return "may contain traces";
   return "not found";
 }
 
@@ -190,14 +202,15 @@ export function Scan() {
             {result.product_brand && ` — ${result.product_brand}`}
           </p>
 
+          {result.explanation && <p>{result.explanation}</p>}
+
           {result.matched_allergens.length > 0 && (
             <ul>
               {result.matched_allergens
                 .filter((m) => m.classification !== "clear")
                 .map((m) => (
                   <li key={m.allergenName}>
-                    <strong>{m.allergenName}</strong> ({m.severity}) —{" "}
-                    {m.classification === "contains" ? "contains" : "may contain traces"} — {sourceLabel(m.source)}
+                    <strong>{m.allergenName}</strong> ({m.severity}) — {classificationLabel(m)} — {sourceLabel(m)}
                   </li>
                 ))}
             </ul>

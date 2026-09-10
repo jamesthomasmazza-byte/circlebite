@@ -10,6 +10,14 @@ const VERDICT_LABEL: Record<Verdict, string> = {
   unable_to_confirm: "Unable to confirm",
 };
 
+// "unresolved" only appears on a scan that ran the AI reasoning step (docs/verdict-engine.md Path
+// B) — real model uncertainty, distinct from "may contain traces".
+function classificationLabel(classification: ScanHistoryEntry["matched_allergens"][number]["classification"]): string {
+  if (classification === "contains") return "contains";
+  if (classification === "unresolved") return "couldn't confirm from the label text";
+  return "may contain traces";
+}
+
 export function ScanHistory() {
   const { id } = useParams<{ id: string }>();
   const [scans, setScans] = useState<ScanHistoryEntry[] | null>(null);
@@ -45,7 +53,7 @@ export function ScanHistory() {
                     .filter((m) => m.classification !== "clear")
                     .map((m) => (
                       <li key={m.allergenName}>
-                        {m.allergenName} ({m.severity}) — {m.classification === "contains" ? "contains" : "may contain traces"}
+                        {m.allergenName} ({m.severity}) — {classificationLabel(m.classification)}
                       </li>
                     ))}
                 </ul>
