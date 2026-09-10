@@ -1,14 +1,19 @@
-import type { AllergenVerdictDetail, Severity, Verdict } from "../matcher/match.js";
+import type { AllergenVerdictDetail, Verdict } from "../matcher/match.js";
 import type { AiFinding, ProfileAllergen, ReasonVerdictResult } from "./types.js";
 
 export type MergedClassification = "contains" | "caution" | "clear" | "unresolved";
 export type Confidence = "high" | "medium" | "low";
 
-export type MergedAllergenDetail = {
-  allergenName: string;
-  severity: Severity;
+/**
+ * Deliberately keeps `matched`/`source` as the deterministic matcher's own fields, unchanged —
+ * that's what today's verdict card already renders ("listed ingredient" / "found in ingredient
+ * text" / "may contain traces"), and Path B is additive to it, not a replacement. `classification`
+ * is the final, post-merge outcome; `aiEscalated` says whether the AI changed it from what the
+ * deterministic pass alone produced, and `citedSpan`/`reason` are only ever set when it did.
+ */
+export type MergedAllergenDetail = Omit<AllergenVerdictDetail, "classification"> & {
   classification: MergedClassification;
-  source: "deterministic" | "ai";
+  aiEscalated: boolean;
   citedSpan?: string;
   reason?: string;
 };
@@ -40,35 +45,35 @@ function classifyAllergen(
   det: AllergenVerdictDetail,
   finding: AiFinding | undefined,
   treatTracesAsUnsafe: boolean,
-): Pick<MergedAllergenDetail, "classification" | "source" | "citedSpan" | "reason"> {
+): Pick<MergedAllergenDetail, "classification" | "aiEscalated" | "citedSpan" | "reason"> {
   if (det.classification === "contains") {
-    return { classification: "contains", source: "deterministic" };
+    return { classification: "contains", aiEscalated: false };
   }
 
   if (det.classification === "caution") {
     if (finding?.present === "yes") {
-      return { classification: "contains", source: "ai", citedSpan: finding.citedSpan, reason: finding.reason };
+      return { classification: "contains", aiEscalated: true, citedSpan: finding.citedSpan, reason: finding.reason };
     }
-    return { classification: "caution", source: "deterministic" };
+    return { classification: "caution", aiEscalated: false };
   }
 
   // det.classification === "clear"
   if (!finding || finding.present === "no") {
-    return { classification: "clear", source: "deterministic" };
+    return { classification: "clear", aiEscalated: false };
   }
   if (finding.present === "unknown") {
-    return { classification: "unresolved", source: "ai", reason: finding.reason };
+    return { classification: "unresolved", aiEscalated: true, reason: finding.reason };
   }
   if (finding.present === "trace") {
     return {
       classification: treatTracesAsUnsafe ? "contains" : "caution",
-      source: "ai",
+      aiEscalated: true,
       citedSpan: finding.citedSpan,
       reason: finding.reason,
     };
   }
   // finding.present === "yes"
-  return { classification: "contains", source: "ai", citedSpan: finding.citedSpan, reason: finding.reason };
+  return { classification: "contains", aiEscalated: true, citedSpan: finding.citedSpan, reason: finding.reason };
 }
 
 function rollupVerdict(details: MergedAllergenDetail[]): Verdict {
@@ -90,8 +95,7 @@ export function mergeVerdict(
     const key = det.allergenName.toLowerCase();
     const finding = ai.failed ? undefined : aiByName.get(key);
     return {
-      allergenName: det.allergenName,
-      severity: det.severity,
+      ...det,
       ...classifyAllergen(det, finding, treatTracesAsUnsafeByName.get(key) ?? false),
     };
   });

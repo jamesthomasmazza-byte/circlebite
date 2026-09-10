@@ -50,7 +50,7 @@ test("a deterministic 'contains' is never touched by the AI, even if the AI repo
   );
   assert.equal(verdict, "contains_allergen");
   assert.equal(matchedAllergens[0].classification, "contains");
-  assert.equal(matchedAllergens[0].source, "deterministic");
+  assert.equal(matchedAllergens[0].aiEscalated, false);
 });
 
 test("a deterministic 'caution' (trace tag) escalates to 'contains' only on an AI present:'yes'", () => {
@@ -60,7 +60,10 @@ test("a deterministic 'caution' (trace tag) escalates to 'contains' only on an A
     ALLERGENS,
   );
   assert.equal(matchedAllergens[0].classification, "contains");
-  assert.equal(matchedAllergens[0].source, "ai");
+  assert.equal(matchedAllergens[0].aiEscalated, true);
+  // The deterministic trace-tag source is preserved even though the AI escalated the outcome —
+  // the client still has the original evidence available, not just the final verdict.
+  assert.equal(matchedAllergens[0].source, "trace");
 });
 
 test("a deterministic 'caution' is not disturbed by an AI finding that isn't 'yes'", () => {
@@ -70,7 +73,7 @@ test("a deterministic 'caution' is not disturbed by an AI finding that isn't 'ye
     ALLERGENS,
   );
   assert.equal(matchedAllergens[0].classification, "caution");
-  assert.equal(matchedAllergens[0].source, "deterministic");
+  assert.equal(matchedAllergens[0].aiEscalated, false);
 });
 
 test("a 'clear' allergen escalates to 'contains' on present:'yes' with a valid span", () => {
