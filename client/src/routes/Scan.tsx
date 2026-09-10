@@ -136,15 +136,23 @@ export function Scan() {
           </label>
 
           <section>
+            {/* Always mounted, visibility toggled by CSS rather than conditional rendering — a
+                conditionally-rendered <video> wouldn't exist in the DOM yet when startCamera() reads
+                videoRef.current synchronously (before the setCameraActive(true) re-render happens),
+                so zxing would silently fall back to an off-screen video element and the user would
+                never see a feed even though decoding still technically worked. */}
+            <video
+              ref={videoRef}
+              style={{ width: "100%", maxWidth: 400, display: cameraActive ? "block" : "none" }}
+              muted
+              playsInline
+            />
             {cameraActive ? (
-              <>
-                <video ref={videoRef} style={{ width: "100%", maxWidth: 400 }} />
-                <p>
-                  <button type="button" onClick={stopCamera}>
-                    Stop camera
-                  </button>
-                </p>
-              </>
+              <p>
+                <button type="button" onClick={stopCamera}>
+                  Stop camera
+                </button>
+              </p>
             ) : (
               <p>
                 <button type="button" onClick={startCamera}>
