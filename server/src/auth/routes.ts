@@ -61,7 +61,14 @@ authRouter.post(
     }
 
     if (!gate.isAdult) {
-      await blockSignup(normalizedEmail);
+      // Best-effort: the block is a UX deterrent against an immediate retry, not the safety
+      // boundary (evaluateAgeGate re-checks every request regardless of this table). A transient
+      // DB error here must not turn a clean 403 into a 500, or skip refusing the request.
+      try {
+        await blockSignup(normalizedEmail);
+      } catch (err) {
+        console.error("blockSignup failed", err);
+      }
       res.status(403).json({ error: "age_gate_blocked" });
       return;
     }
