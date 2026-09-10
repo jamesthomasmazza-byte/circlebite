@@ -2,8 +2,15 @@ import { Router } from "express";
 
 import { assertCanReadProfile } from "../authorization/profiles.js";
 import { requireAuth } from "../auth/requireAuth.js";
-import { applyUserCorrections, type UserCorrection } from "../corrections/applyCorrections.js";
+import {
+  applyCommunityCorrections,
+  type AppliedCommunityAddition,
+  type CommunityAddition,
+} from "../corrections/applyCommunityCorrections.js";
+import { applyUserCorrections, type MatchedAllergenLike, type UserCorrection } from "../corrections/applyCorrections.js";
+import { loadCommunityAdditions } from "../corrections/communityAdditions.js";
 import { pool } from "../db/pool.js";
+import { env } from "../env.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { HttpError } from "../lib/httpError.js";
 import { getProduct } from "../lib/productLookup.js";
@@ -22,6 +29,13 @@ export const scansRouter = Router();
 
 const HISTORY_LIMIT = 20; // "the last handful," not deep history — CONTEST_RULES.md §7
 const BARCODE_PATTERN = /^\d{6,14}$/;
+
+// What the client gets about community reports: which of this profile's allergens a report
+// changed, and how many people made it. Not the correction ids, and not how other people's
+// profiles spelled the allergen — that's their data (docs/principles.md principle 5).
+function publicCommunityReports(applied: AppliedCommunityAddition[]) {
+  return applied.map(({ allergenName, reporterCount }) => ({ allergenName, reporterCount }));
+}
 
 scansRouter.post(
   "/scans",
@@ -88,11 +102,29 @@ scansRouter.post(
       explanation = explainVerdict(merged);
     }
 
+    // Week 8 part 2: corroborated community additions for this barcode escalate this profile's
+    // view — layered on top of the engine's verdict, never written into it. scans.result stays
+    // what the matcher + AI produced (the accuracy report measures the engine, and the kill switch
+    // has to revert without touching data); community_corrections_applied records what was layered
+    // on, with null meaning the switch was off. docs/server-setup.md §11.
+    let community: ReturnType<typeof applyCommunityCorrections> = null;
+    let communityApplied: AppliedCommunityAddition[] | null = null;
+    if (env.communityCorrections) {
+      const additions = (await loadCommunityAdditions([barcode])).get(barcode) ?? [];
+      community = applyCommunityCorrections(
+        { result: verdict, matchedAllergens: matchedAllergens as MatchedAllergenLike[] },
+        allergens,
+        additions,
+      );
+      communityApplied = community?.applied ?? [];
+    }
+
     const { rows } = await pool.query(
       `INSERT INTO scans
          (scanner_id, allergen_profile_id, barcode, product_name, product_brand, ingredients_text,
-          product_data, product_last_updated, result, matched_allergens, source, confidence)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'barcode', $11)
+          product_data, product_last_updated, result, matched_allergens, source, confidence,
+          community_corrections_applied)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'barcode', $11, $12)
        RETURNING id, barcode, product_name, product_brand, ingredients_text, product_last_updated,
                  result, matched_allergens, source, confidence, created_at`,
       [
@@ -107,6 +139,7 @@ scansRouter.post(
         verdict,
         JSON.stringify(matchedAllergens),
         confidence,
+        communityApplied === null ? null : JSON.stringify(communityApplied),
       ],
     );
 
@@ -137,8 +170,15 @@ scansRouter.post(
     }
 
     // Full detail, unfiltered — this is the live, active-decision response, not history. See the
-    // GET handler below for why history gets the opposite treatment.
-    res.status(201).json({ ...rows[0], explanation });
+    // GET handler below for why history gets the opposite treatment. `effective` is null when no
+    // community report changed anything; the client headlines it when present and always shows
+    // the engine's own verdict alongside it (docs/legacy-spec.md §4 — never silently).
+    res.status(201).json({
+      ...rows[0],
+      explanation,
+      effective: community && { result: community.result, matched_allergens: community.matchedAllergens },
+      community_reports: publicCommunityReports(community?.applied ?? []),
+    });
   }),
 );
 
@@ -178,6 +218,21 @@ scansRouter.get(
       correctionsByScanId.set(scan_id, existing);
     }
 
+    // Community additions are read fresh here rather than from each scan's
+    // community_corrections_applied snapshot: a warning reported after someone bought a product is
+    // exactly what they need to see when they look back at it. The snapshot is the audit record of
+    // what they were told at the time; this is what's known now. Current allergens, not the scan's
+    // snapshot, because a not-found scan has no per-allergen snapshot to match against at all.
+    let additionsByBarcode = new Map<string, CommunityAddition[]>();
+    let profileAllergens: { name: string; severity: Severity }[] = [];
+    if (env.communityCorrections && rows.length > 0) {
+      additionsByBarcode = await loadCommunityAdditions([...new Set(rows.map((r) => r.barcode as string))]);
+      ({ rows: profileAllergens } = await pool.query<{ name: string; severity: Severity }>(
+        "SELECT name, severity FROM allergens WHERE allergen_profile_id = $1",
+        [profileId],
+      ));
+    }
+
     // Unlike the live scan result, history is browsing at leisure, not an active safety decision
     // — the same category of access the profile page's own severity filtering already applies to
     // a severe_only follower, so it gets the same treatment here.
@@ -187,12 +242,28 @@ scansRouter.get(
 
     const history = rows.map(({ result, matched_allergens, ...row }) => {
       const corrections = correctionsByScanId.get(row.id) ?? [];
-      const effective = applyUserCorrections({ result, matchedAllergens: matched_allergens }, corrections);
+      const userEffective = applyUserCorrections({ result, matchedAllergens: matched_allergens }, corrections);
+      // On top of the user's own corrections, not under them: if this user reported an allergen
+      // isn't there and the community has corroborated that it is, the warning survives
+      // (docs/legacy-spec.md §6) — and the card shows both notes, so neither is silent.
+      const community = applyCommunityCorrections(
+        userEffective ?? { result, matchedAllergens: matched_allergens },
+        profileAllergens,
+        additionsByBarcode.get(row.barcode) ?? [],
+      );
+      const effective = community ?? userEffective;
+      const shownAllergens = effective ? filterSevere(effective.matchedAllergens) : [];
+      // Filtered to what the list itself shows: a severe_only follower mustn't learn the name of a
+      // mild allergen from the community note when the allergen list hides it.
+      const shownNames = new Set(shownAllergens.map((m) => m.allergenName.toLowerCase()));
       return {
         ...row,
         original: { result, matched_allergens: filterSevere(matched_allergens) },
-        effective: effective && { result: effective.result, matched_allergens: filterSevere(effective.matchedAllergens) },
+        effective: effective && { result: effective.result, matched_allergens: shownAllergens },
         corrections,
+        community_reports: publicCommunityReports(
+          (community?.applied ?? []).filter((a) => shownNames.has(a.allergenName.toLowerCase())),
+        ),
       };
     });
 
