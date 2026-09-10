@@ -217,7 +217,16 @@ export type MatchedAllergen = {
   // from what the deterministic keyword matcher alone found.
   aiEscalated?: boolean;
   citedSpan?: string;
+  // Present (and true) only when a corroborated community report — not the product data or the AI
+  // — is why this allergen shows as "contains". docs/principles.md principle 7: "shoppers told
+  // us" is a different claim from "the label says", and the card must say which one it is.
+  communityReported?: boolean;
+  communityReporterCount?: number;
 };
+
+// Which of this profile's allergens a corroborated community report changed, and how many people
+// reported it. Never the reporters themselves or how their own profiles spelled the allergen.
+export type CommunityReport = { allergenName: string; reporterCount: number };
 
 export type ScanResult = {
   id: string;
@@ -232,6 +241,11 @@ export type ScanResult = {
   confidence: Confidence | null;
   explanation: string | null;
   created_at: string;
+  // `result`/`matched_allergens` above are always the engine's own verdict. `effective` is set
+  // only when a corroborated community report escalated it — the card headlines `effective` and
+  // still shows the engine's verdict alongside it, never silently replacing it.
+  effective: { result: Verdict; matched_allergens: MatchedAllergen[] } | null;
+  community_reports: CommunityReport[];
 };
 
 export type CorrectionType = "flag_wrong" | "flag_missing" | "wrong_product";
@@ -254,11 +268,14 @@ export type ScanHistoryEntry = {
   product_brand: string | null;
   created_at: string;
   original: { result: Verdict; matched_allergens: MatchedAllergen[] };
-  // CONTEST_RULES.md §3: the requester's own correction(s) override their view immediately — never
-  // in place of `original`, always alongside it, so the UI can show both and be transparent about
-  // what changed. null when this user has no corrections on this scan.
+  // CONTEST_RULES.md §3: the requester's own correction(s) override their view immediately, and
+  // corroborated community reports that an allergen is present escalate it — never in place of
+  // `original`, always alongside it, so the UI can show both and be transparent about what
+  // changed. null when neither changed anything on this scan.
   effective: { result: Verdict; matched_allergens: MatchedAllergen[] } | null;
   corrections: ScanCorrection[];
+  // Filtered to what this viewer's share level shows, same as matched_allergens.
+  community_reports: CommunityReport[];
 };
 
 export function createScan(allergenProfileId: string, barcode: string): Promise<ScanResult> {

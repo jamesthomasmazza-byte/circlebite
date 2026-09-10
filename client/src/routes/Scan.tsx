@@ -36,7 +36,16 @@ function classificationLabel(m: ScanResult["matched_allergens"][number]): string
   return "may contain traces";
 }
 
+function shopperCount(n: number): string {
+  return n === 1 ? "1 shopper" : `${n} shoppers`;
+}
+
 function sourceLabel(m: ScanResult["matched_allergens"][number]): string {
+  // docs/principles.md principle 7: a community report is a different claim from the label data,
+  // and says so on the card rather than borrowing the label's authority.
+  if (m.communityReported) {
+    return `reported by ${shopperCount(m.communityReporterCount ?? 1)} with a label photo — not in the product data`;
+  }
   // AI-escalated findings carry their own citedSpan rather than the deterministic source
   // (tag/ingredients/trace) — the deterministic matcher found nothing for these, that's exactly
   // why the AI reasoning step ran.
@@ -191,6 +200,10 @@ export function Scan() {
   // Stop the camera on unmount so it doesn't keep the device open after navigating away.
   useEffect(() => () => controlsRef.current?.stop(), []);
 
+  // The engine's own verdict unless a corroborated community report escalated it. Both are always
+  // on the card: the headline is what to act on, the note under it says what changed it.
+  const shown = result && (result.effective ?? { result: result.result, matched_allergens: result.matched_allergens });
+
   if (loadingProfiles) return <p>Loading…</p>;
 
   return (
@@ -264,9 +277,9 @@ export function Scan() {
         </>
       )}
 
-      {result && (
+      {result && shown && (
         <section>
-          <h2>{VERDICT_LABEL[result.result]}</h2>
+          <h2>{VERDICT_LABEL[shown.result]}</h2>
           <p>
             {result.product_name ?? "Unknown product"}
             {result.product_brand && ` — ${result.product_brand}`}
@@ -274,9 +287,9 @@ export function Scan() {
 
           {result.explanation && <p>{result.explanation}</p>}
 
-          {result.matched_allergens.length > 0 && (
+          {shown.matched_allergens.length > 0 && (
             <ul>
-              {result.matched_allergens
+              {shown.matched_allergens
                 .filter((m) => m.classification !== "clear")
                 .map((m) => (
                   <li key={m.allergenName}>
@@ -284,6 +297,22 @@ export function Scan() {
                   </li>
                 ))}
             </ul>
+          )}
+
+          {result.effective && (
+            <div role="note">
+              <p>
+                The product data alone says <strong>{VERDICT_LABEL[result.result]}</strong>. Changed because other
+                shoppers reported, each with a photo of the label:
+              </p>
+              <ul>
+                {result.community_reports.map((r) => (
+                  <li key={r.allergenName}>
+                    {r.allergenName} is in this product — {shopperCount(r.reporterCount)}
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
 
           <p role="note">{DISCLAIMER}</p>
@@ -324,7 +353,7 @@ export function Scan() {
                         {/* Scoped to what this card actually shows — never an allergen the viewer
                             can't see, and never a picker offering the wrong direction for the
                             claim they're making. */}
-                        {result.matched_allergens
+                        {shown.matched_allergens
                           .filter((m) => (reportType === "flag_wrong" ? m.classification !== "clear" : m.classification === "clear"))
                           .map((m) => (
                             <option key={m.allergenName} value={m.allergenName}>
