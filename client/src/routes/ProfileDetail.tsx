@@ -175,6 +175,9 @@ export function ProfileDetail() {
       </p>
       <h1>{profile.label}</h1>
       <p>Your access: {profile.access.level === "follower" ? `following (${profile.access.shareLevel})` : profile.access.level}</p>
+      <p>
+        <Link to={`/scan?profile=${id}`}>Scan a product for {profile.label}</Link>
+      </p>
 
       {canManage ? (
         <form onSubmit={handleSaveDetails}>

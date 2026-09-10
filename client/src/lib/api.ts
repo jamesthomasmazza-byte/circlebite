@@ -198,3 +198,45 @@ export function getCoManagerInvite(
 export function acceptCoManagerInvite(token: string): Promise<{ allergenProfileId: string }> {
   return apiFetch(`/co-manager/${token}/accept`, { method: "POST" });
 }
+
+export type MatchSource = "tag" | "ingredients" | "trace";
+export type Classification = "contains" | "caution" | "clear";
+export type Verdict = "safe" | "contains_allergen" | "may_contain_caution" | "unable_to_confirm";
+
+export type MatchedAllergen = {
+  allergenName: string;
+  matched: boolean;
+  source: MatchSource | null;
+  severity: Severity;
+  classification: Classification;
+};
+
+export type ScanResult = {
+  id: string;
+  barcode: string;
+  product_name: string | null;
+  product_brand: string | null;
+  ingredients_text: string | null;
+  product_last_updated: string | null;
+  result: Verdict;
+  matched_allergens: MatchedAllergen[];
+  created_at: string;
+};
+
+export type ScanHistoryEntry = {
+  id: string;
+  barcode: string;
+  product_name: string | null;
+  product_brand: string | null;
+  result: Verdict;
+  matched_allergens: MatchedAllergen[];
+  created_at: string;
+};
+
+export function createScan(allergenProfileId: string, barcode: string): Promise<ScanResult> {
+  return apiFetch("/scans", { method: "POST", body: JSON.stringify({ allergenProfileId, barcode }) });
+}
+
+export function getScanHistory(profileId: string): Promise<ScanHistoryEntry[]> {
+  return apiFetch(`/profiles/${profileId}/scans`);
+}

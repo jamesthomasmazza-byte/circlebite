@@ -25,8 +25,10 @@ export function Dashboard() {
         Signed in as {user?.displayName} ({user?.email}).
       </p>
       <p>
-        <Link to="/profiles">Profiles you manage and follow</Link> — recent scans will live here
-        once scanning exists.
+        <Link to="/profiles">Profiles you manage and follow</Link>
+      </p>
+      <p>
+        <Link to="/scan">Scan a product</Link>
       </p>
       <button onClick={handleLogout}>Log out</button>
     </main>

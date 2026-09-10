@@ -11,6 +11,7 @@ import { Login } from "./routes/Login";
 import { ProfileDetail } from "./routes/ProfileDetail";
 import { Profiles } from "./routes/Profiles";
 import { Register } from "./routes/Register";
+import { Scan } from "./routes/Scan";
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profiles" element={<Profiles />} />
             <Route path="/profiles/:id" element={<ProfileDetail />} />
+            <Route path="/scan" element={<Scan />} />
           </Route>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Routes>
