@@ -51,9 +51,15 @@ export async function isSignupBlocked(email: string): Promise<boolean> {
 }
 
 export async function blockSignup(email: string): Promise<void> {
+  // ON CONFLICT DO NOTHING, not DO UPDATE: this must be non-renewable. blockSignup is only ever
+  // reached when isSignupBlocked just returned false (see register handler), so an existing row
+  // here is always already-expired — an unauthenticated caller could otherwise keep an arbitrary
+  // victim's email permanently blocked by resubmitting an under-18 attempt once per ~24h forever.
+  // The block existing only to deter an *immediate* retry (docs/coppa.md §2.1), not to be a
+  // renewable lock, this is safe: evaluateAgeGate independently re-checks every request regardless.
   await pool.query(
     `INSERT INTO signup_blocks (email, blocked_at) VALUES ($1, now())
-     ON CONFLICT (email) DO UPDATE SET blocked_at = now()`,
+     ON CONFLICT (email) DO NOTHING`,
     [normalizeEmail(email)],
   );
 }
