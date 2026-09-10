@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import "dotenv/config";
 
 function required(name: string): string {
@@ -37,4 +39,10 @@ export const env = {
   aiModel: process.env.AI_MODEL ?? "claude-haiku-4-5-20251001",
   // In-app spend rail, on top of (not instead of) the console-side cap on the sandbox key itself.
   aiDailySpendCapCents: parseOptionalCents(process.env.AI_DAILY_SPEND_CAP_CENTS, 200),
+  // Where correction photos land. Deliberately outside the versioned release tree in production
+  // (~/circlebite/uploads/, a sibling of releases/ and current/ — see docs/server-setup.md) since
+  // scripts/release.sh prunes old releases via a symlink swap; anything stored inside
+  // ~/circlebite/current/ would be silently deleted the next time an old release gets pruned.
+  // Local dev default is gitignored (see .gitignore's `uploads/` pattern) at any nesting depth.
+  uploadDir: process.env.UPLOAD_DIR?.trim() || path.join(process.cwd(), "uploads"),
 };
