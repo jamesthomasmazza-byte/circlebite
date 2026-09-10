@@ -676,3 +676,74 @@ wrong.
 — the escalation case is still worth re-running once more to see a real `contains_allergen` from a
 genuine AI finding (not yet observed, only the fail-closed and deterministic-only paths were seen
 before this fix). Then Week 8's overrule loop.
+
+---
+
+## 2026-09-10 (still later) — Re-ran the escalation after the fix, and the AI found a real defect in the matcher itself
+
+**Did:** Redeployed with the corrected tool schema and re-ran the exact same scan that had been
+failing (French Vanilla Coffee Mate, barcode `0050000328420`, Milk/severe on the judge's test
+profile). It worked, for the first time:
+
+**Before** (deterministic matcher alone, `matchAllergen("Milk", ...)` against this exact product's
+real ingredient text): `{ matched: false, source: null }`. Silent — the profile card would have
+read "safe."
+
+**After** (Path B, real Anthropic response): `verdict: "contains_allergen"`, `aiEscalated: true`,
+`citedSpan: "sodium caseinate"` (a real verbatim substring, passed span validation), `reason:
+"Caseinate is a milk-derived protein product made from milk casein. It is a direct milk derivative
+and clearly indicates the presence of milk in the product."` Saved as
+`docs/evidence/path-b-escalation-scan.json`. This is the first real evidence the whole point of
+Path B — resolving a term the deterministic matcher structurally cannot — actually works, not just
+in unit tests against a fake client, but against a real model reading a real, messy ingredient list.
+
+**Then the more important part:** the AI didn't just produce a correct answer for this one scan —
+it surfaced a genuine, permanent defect in the deterministic matcher, the layer this whole app calls
+"ground truth." `matchAllergen`'s `\bkeyword\b` regex requires a keyword to appear as its own word
+token; it silently misses any real ingredient term where the keyword is embedded as a prefix or
+suffix of a single compound word with no space, because there's no regex boundary between two word
+characters. "casein" is a prefix of "caseinate" with nothing between them — miss.
+
+Audited the rest of `synonyms.ts` for the same bug class rather than patching just this one case.
+Every addition below was confirmed against real ingredient text from a real Open Food Facts product
+first — via the search API, then `matchAllergen()` directly on the isolated ingredient string — not
+added on the strength of "this seems like a real word." Two early checks (`eggnog`, `buttermilk`)
+were caught with confounded test strings on the first try — the real product's own ingredient list
+happened to *also* separately mention the base word — and had to be re-tested in isolation before
+they counted as confirmed:
+
+| Term added | Cluster | Confirmed via |
+|---|---|---|
+| `caseinate`, `caseinates` | Milk | barcode `0050000328420` itself |
+| `buttermilk` | Milk | real buttermilk pancake mix ("buttermilk powder") |
+| `soymilk` | Soy | real "Organic Unsweetened Soymilk" ("organic soymilk (filtered water...)") |
+| `crabmeat` | Crustacean | real "imitation crabmeat" in a seafood salad |
+| `eggnog` | Egg | real gelato ("Eggnog (milk, cane sugar, egg yolks...)") |
+| `bisulfite`, `bisulphite` | Sulfite | ~15 real citrus juices ("sodium bisulfite (preservative)") |
+| `metabisulfite`, `metabisulphite` | Sulfite | real trail mix ("sodium metabisulfite [as preservative]") |
+(each singular addition above paired with its plural form in the actual keyword list)
+
+**Checked but not added — no real product found to confirm it, stated rather than guessed:**
+`milkfat` as a single compound word. Plausible (it's a real dairy-labeling term), but every search
+attempt came back empty, so it's a documented open gap, not a fix. Also noticed, but a different bug
+class entirely (missing vocabulary, not a boundary-matching miss — the words don't share a
+substring with anything already in the list): `lactalbumin`, `lactoglobulin`, `lactoferrin`,
+`albumen`. Real dairy/egg derivative terms, worth a future pass, deliberately not folded into this
+one since they're not the same defect.
+
+New `server/src/matcher/match.test.ts` (the matcher had no tests before this session's test infra
+existed) — one case per confirmed fix, each using the real isolated ingredient text, plus a
+regression check that an unrelated product (Diet Coke) is still a clean miss. 57/57 passing across
+the whole suite.
+
+**Learned:** this is the actual value case for Path B that the spec's own framing (`docs/verdict-
+engine.md`: "the dangerous failure isn't a missing record, it's a record that says safe about a
+product that's wrong") was written for — except it showed up one layer down from where the doc
+expected it. The AI didn't just paper over a gap in *Open Food Facts's* data; it exposed a gap in
+*our own* ground-truth layer, on a real product, and closing that gap makes every future scan of a
+product mentioning "sodium caseinate" — Path A, B, or deterministic-only — correct, not just this
+one AI-assisted scan. Fixing the demo case would have been the wrong scope; fixing the actual defect
+is what makes the demo worth anything.
+
+**Next:** Week 8's overrule loop. The `milkfat` gap and the missing-vocabulary items above are noted
+for a future pass, not blocking.
