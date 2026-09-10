@@ -9,14 +9,12 @@ import { createSession, revokeSession, SESSION_COOKIE_NAME, sessionCookieOptions
 
 const MIN_PASSWORD_LENGTH = 8;
 
-// Hashed once, lazily, and reused for every "email not found" login attempt so that path
-// costs roughly the same CPU time as a real password check — otherwise a fast 401 for unknown
-// emails vs. a slow one for known emails leaks which emails have accounts.
-let dummyHash: Promise<string> | undefined;
-function getDummyHash(): Promise<string> {
-  dummyHash ??= hashPassword("not-a-real-password-used-only-for-timing");
-  return dummyHash;
-}
+// Hashed once, eagerly at module load, and reused for every "email not found" login attempt so
+// that path costs roughly the same CPU time as a real password check — otherwise a fast 401 for
+// unknown emails vs. a slow one for known emails leaks which emails have accounts. Eager, not
+// lazy: a lazy first-call init would itself cost an extra scrypt on the very first unknown-email
+// probe after each restart, reintroducing the exact timing gap this exists to close.
+const dummyHash: Promise<string> = hashPassword("not-a-real-password-used-only-for-timing");
 
 export const authRouter = Router();
 
@@ -122,7 +120,7 @@ authRouter.post(
     const user = rows[0];
 
     if (!user) {
-      await verifyPassword(password, await getDummyHash());
+      await verifyPassword(password, await dummyHash);
       res.status(401).json({ error: "invalid_credentials" });
       return;
     }
