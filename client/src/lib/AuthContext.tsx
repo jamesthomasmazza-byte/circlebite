@@ -1,7 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 
 import {
-  ApiRequestError,
   fetchMe,
   login as apiLogin,
   logout as apiLogout,
@@ -30,13 +29,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const me = await fetchMe();
       setUser(me.user);
       setActingProfileId(me.actingProfileId);
-    } catch (err) {
-      if (err instanceof ApiRequestError && err.status === 401) {
-        setUser(null);
-        setActingProfileId(null);
-      } else {
-        throw err;
-      }
+    } catch {
+      // Any failure to confirm identity — 401 or a transient network/server error — just means
+      // we don't currently know who's logged in. Never rethrow: login()/register() call this
+      // right after their own request already succeeded, and a hiccup here must not surface as
+      // a false "something went wrong" on a registration or login that actually went through.
+      setUser(null);
+      setActingProfileId(null);
     } finally {
       setLoading(false);
     }
