@@ -18,7 +18,14 @@ const CORRECTION_TYPE_LABEL: Record<ScanCorrection["correctionType"], string> = 
 
 // "unresolved" only appears on a scan that ran the AI reasoning step (docs/verdict-engine.md Path
 // B) — real model uncertainty, distinct from "may contain traces".
-function classificationLabel(classification: MatchedAllergen["classification"]): string {
+function shopperCount(n: number): string {
+  return n === 1 ? "1 shopper" : `${n} shoppers`;
+}
+
+function classificationLabel(m: MatchedAllergen): string {
+  const { classification } = m;
+  // docs/principles.md principle 7: say when it's shoppers, not the label, saying so.
+  if (m.communityReported) return `contains — reported by ${shopperCount(m.communityReporterCount ?? 1)}`;
   if (classification === "contains") return "contains";
   if (classification === "unresolved") return "couldn't confirm from the label text";
   return "may contain traces";
@@ -64,7 +71,7 @@ export function ScanHistory() {
                       .filter((m) => m.classification !== "clear")
                       .map((m) => (
                         <li key={m.allergenName}>
-                          {m.allergenName} ({m.severity}) — {classificationLabel(m.classification)}
+                          {m.allergenName} ({m.severity}) — {classificationLabel(m)}
                         </li>
                       ))}
                   </ul>
@@ -72,19 +79,31 @@ export function ScanHistory() {
                 {scan.effective && (
                   <div role="note">
                     <p>
-                      Originally <strong>{VERDICT_LABEL[scan.original.result]}</strong> — changed because of your
-                      report{scan.corrections.length > 1 ? "s" : ""}:
+                      Originally <strong>{VERDICT_LABEL[scan.original.result]}</strong> — changed because of:
                     </p>
                     <ul>
                       {scan.corrections.map((c) => (
                         <li key={c.id}>
-                          {c.allergen ? `${c.allergen} ` : ""}
+                          Your report: {c.allergen ? `${c.allergen} ` : ""}
                           {CORRECTION_TYPE_LABEL[c.correctionType]}
                           {" — "}
                           {c.status === "corroborated" ? "corroborated" : "pending review"}
                           {c.note && ` — "${c.note}"`}
                         </li>
                       ))}
+                      {/* Read fresh, so this can name a report made after the scan itself — which is
+                          the point: a warning about something already in the pantry. */}
+                      {scan.community_reports.map((r) => (
+                        <li key={`community-${r.allergenName}`}>
+                          {shopperCount(r.reporterCount)} reported {r.allergenName} is in this product, with a photo
+                          of the label
+                        </li>
+                      ))}
+                      {/* A severe_only follower can have a verdict changed by a report about an
+                          allergen their share level hides. Still never silent — just not named. */}
+                      {scan.corrections.length === 0 && scan.community_reports.length === 0 && (
+                        <li>A shopper report about an allergen on this profile that isn't shared with you</li>
+                      )}
                     </ul>
                   </div>
                 )}
