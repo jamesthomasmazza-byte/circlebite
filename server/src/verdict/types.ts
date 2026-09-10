@@ -31,6 +31,11 @@ export type ReasonVerdictResult = {
    *  from a successful call that simply found nothing, which callers must not treat the same way
    *  (see mergeVerdict.ts rule 4). */
   failed: boolean;
+  /** Why `failed` is true — "no_api_key", "spend_cap_exceeded", "unparseable_response", an
+   *  "api_error_<status>" from the provider, or "request_failed" for anything else (network error,
+   *  timeout). Null when failed is false. Stored alongside the scan so a failure can actually be
+   *  diagnosed from the database instead of an empty findings array that could mean anything. */
+  failureReason: string | null;
   model: string;
   promptVersion: string;
   latencyMs: number;

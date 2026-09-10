@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import Anthropic, { APIError } from "@anthropic-ai/sdk";
 
 import { env } from "../env.js";
 import { buildUserPrompt, SYSTEM_PROMPT, type PromptInput } from "./prompt.js";
@@ -92,7 +92,16 @@ export async function callAi(input: PromptInput): Promise<AiClientResult> {
       (block): block is Anthropic.ToolUseBlock => block.type === "tool_use" && block.name === TOOL_NAME,
     );
     const parsed = toolUse ? parseToolInput(toolUse.input) : null;
-    if (!parsed) return { ok: false, reason: "unparseable_response" };
+    if (!parsed) {
+      // Not a network/API failure — the call succeeded but the model's response didn't match the
+      // schema `strict: true` is supposed to guarantee. Log the actual content so this is
+      // diagnosable instead of just "unparseable" with no evidence of what came back.
+      console.error("[verdict] Anthropic response failed schema validation", {
+        stopReason: response.stop_reason,
+        content: response.content,
+      });
+      return { ok: false, reason: "unparseable_response" };
+    }
 
     const tokensIn = response.usage.input_tokens;
     const tokensOut = response.usage.output_tokens;
@@ -106,7 +115,20 @@ export async function callAi(input: PromptInput): Promise<AiClientResult> {
       tokensOut,
       costCents: tokensIn * INPUT_CENTS_PER_TOKEN + tokensOut * OUTPUT_CENTS_PER_TOKEN,
     };
-  } catch {
+  } catch (err) {
+    if (err instanceof APIError) {
+      // status/error are exactly what a curl against the API directly would show — logging them
+      // here is what makes "the key works when I curl it myself" vs. "the app's call fails"
+      // actually diagnosable from this process's own logs, instead of indistinguishable from
+      // every other failure mode.
+      console.error("[verdict] Anthropic API call failed", {
+        status: err.status,
+        type: err.type,
+        body: err.error,
+      });
+      return { ok: false, reason: `api_error_${err.status ?? "unknown"}` };
+    }
+    console.error("[verdict] Anthropic API call failed", err);
     return { ok: false, reason: "request_failed" };
   }
 }

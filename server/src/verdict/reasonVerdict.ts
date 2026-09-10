@@ -25,11 +25,12 @@ function discardUnverifiableClaims(findings: AiFinding[], ingredientsText: strin
   });
 }
 
-function failedResult(): ReasonVerdictResult {
+function failedResult(reason: string): ReasonVerdictResult {
   return {
     findings: [],
     unresolvedTerms: [],
     failed: true,
+    failureReason: reason,
     model: env.aiModel,
     promptVersion: PROMPT_VERSION,
     latencyMs: 0,
@@ -48,15 +49,16 @@ export async function reasonVerdict(input: PromptInput, deps: ReasonVerdictDeps 
   const callAi = deps.callAi ?? defaultCallAi;
   const underDailySpendCap = deps.underDailySpendCap ?? defaultUnderDailySpendCap;
 
-  if (!(await underDailySpendCap())) return failedResult();
+  if (!(await underDailySpendCap())) return failedResult("spend_cap_exceeded");
 
   const result = await callAi(input);
-  if (!result.ok) return failedResult();
+  if (!result.ok) return failedResult(result.reason);
 
   return {
     findings: discardUnverifiableClaims(result.findings, input.ingredientsText),
     unresolvedTerms: result.unresolvedTerms,
     failed: false,
+    failureReason: null,
     model: env.aiModel,
     promptVersion: PROMPT_VERSION,
     latencyMs: result.latencyMs,

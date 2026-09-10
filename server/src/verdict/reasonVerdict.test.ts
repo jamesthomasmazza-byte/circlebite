@@ -50,6 +50,7 @@ test("over the spend cap: fails closed without calling the AI client", async () 
   });
 
   assert.equal(result.failed, true);
+  assert.equal(result.failureReason, "spend_cap_exceeded");
   assert.equal(result.findings.length, 0);
   assert.equal(callAiInvoked, false);
 });
@@ -63,6 +64,23 @@ test("AI client failure (network/timeout/unparseable): fails closed", async () =
   assert.equal(result.failed, true);
   assert.equal(result.findings.length, 0);
   assert.equal(result.unresolvedTerms.length, 0);
+});
+
+test("the AI client's specific failure reason is preserved, not collapsed into a generic one", async () => {
+  // This exact behavior was missing in production: aiClient.ts's own reason (e.g. which API status
+  // code came back) needs to survive up through reasonVerdict.ts and into what gets stored,
+  // otherwise a real failure and a spend-cap refusal are indistinguishable after the fact.
+  const result = await reasonVerdict(INPUT, {
+    underDailySpendCap: async () => true,
+    callAi: async () => ({ ok: false, reason: "api_error_401" }),
+  });
+
+  assert.equal(result.failureReason, "api_error_401");
+});
+
+test("failureReason is null on a successful call", async () => {
+  const result = await reasonVerdict(INPUT, { underDailySpendCap: async () => true, callAi: fakeOk() });
+  assert.equal(result.failureReason, null);
 });
 
 test("a 'yes' finding whose citedSpan doesn't verbatim-match the source is downgraded to unknown, not dropped", async () => {

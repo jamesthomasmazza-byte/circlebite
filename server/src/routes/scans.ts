@@ -116,8 +116,8 @@ scansRouter.post(
       await pool.query(
         `INSERT INTO verdict_explanations
            (scan_id, model, prompt_version, verdict, confidence, findings, unresolved_terms,
-            latency_ms, tokens_in, tokens_out, cost_cents)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+            latency_ms, tokens_in, tokens_out, cost_cents, failure_reason)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
         [
           rows[0].id,
           aiResult.model,
@@ -130,6 +130,7 @@ scansRouter.post(
           aiResult.tokensIn,
           aiResult.tokensOut,
           aiResult.costCents,
+          aiResult.failureReason,
         ],
       );
     }
