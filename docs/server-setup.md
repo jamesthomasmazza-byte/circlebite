@@ -116,17 +116,96 @@ nothing about this database should be reachable from the internet.
 `~/circlebite/.env` on the server, mode 600, owned by `ubuntu`. Nowhere else. It is never committed —
 `.gitignore` blocks it and `scripts/check-secrets.sh` refuses the commit if it is ever staged.
 
-To read the connection string back: `cat ~/circlebite/.env`.
+Four keys live there now: `DATABASE_URL` (set when the database was created, §5),
+`SESSION_SECRET` (generated on the box with `openssl rand -hex 32`, appended when the app was first
+deployed, §7 below), and `NODE_ENV=production` / `PORT=3000`.
 
-## 7. Still to do
+To read it back: `cat ~/circlebite/.env`.
 
-- [ ] Domain purchased and DNS A record pointed at the Elastic IP
-- [ ] Let's Encrypt certificate via certbot, HTTPS working
-- [ ] nginx reverse proxy in front of the Node app on port 3000
-- [ ] systemd unit so the app restarts on reboot and on crash
-- [ ] Deploy path: pull from GitHub, build, restart
+## 7. Deploy status
 
-## 8. Rules that constrain this box
+- [x] Domain purchased and DNS A record pointed at the Elastic IP
+- [x] Let's Encrypt certificate via certbot, HTTPS working
+- [x] nginx reverse proxy in front of the Node app on port 3000
+- [x] systemd unit so the app restarts on reboot and on crash
+- [x] Deploy path: pull from GitHub, build, migrate, restart — atomic, with a tested rollback
+
+Live at [circlebite.app](https://circlebite.app), deployed 2026-09-10.
+
+## 8. Deploying
+
+Atomic, symlink-swap releases — a failed build or migration never reaches the running app, and a
+revert is just re-pointing a symlink. Two scripts, both in `scripts/`:
+
+- **`scripts/deploy.sh`** — installed once as `~/circlebite/deploy.sh` (see bootstrap below), rarely
+  needs to change again. Clones `main` fresh into `~/circlebite/releases/<timestamp>/` and hands off
+  to that release's own `scripts/release.sh`.
+- **`scripts/release.sh`** — the real logic, always run from inside the fresh clone, so it's
+  automatically the latest version every time: `npm install`, build both workspaces, run migrations
+  via the compiled runner (`node server/dist/db/migrate.js`, not `tsx` — production doesn't depend on
+  a dev tool working). Only if every step succeeds does it swap the `~/circlebite/current` symlink to
+  the new release and `systemctl restart circlebite`, then polls `/health` to confirm the restart
+  actually came up. Keeps the 5 most recent releases, prunes older ones.
+
+**To deploy:** `ssh -i ~/.ssh/circlebite-prod.pem ubuntu@circlebite.app "~/circlebite/deploy.sh"`.
+
+**One-time bootstrap** (already done; here for when the box is ever rebuilt from this file):
+
+```bash
+mkdir -p ~/circlebite/releases
+# copy scripts/deploy.sh from the repo to ~/circlebite/deploy.sh, chmod +x
+
+# generate the session secret on the box — never locally, never in the repo
+{
+  echo "SESSION_SECRET=$(openssl rand -hex 32)"
+  echo "NODE_ENV=production"
+  echo "PORT=3000"
+} >> ~/circlebite/.env
+chmod 600 ~/circlebite/.env
+
+# copy scripts/circlebite.service from the repo to /etc/systemd/system/circlebite.service
+sudo systemctl daemon-reload
+sudo systemctl enable circlebite   # not started yet — `current` doesn't exist until the first deploy
+```
+
+Then run `~/circlebite/deploy.sh` once to create the first release, and switch nginx from the
+placeholder to the reverse proxy (nginx config is `scripts/nginx-circlebite.conf` in the repo, as a
+reference copy — the live file at `/etc/nginx/sites-available/circlebite.app` is the operative one;
+see §9 for the backup this depends on).
+
+`WorkingDirectory` in the systemd unit points at the `current` symlink, not a specific release, so
+nothing about the unit needs to change on a normal deploy or a manual revert.
+
+## 9. Rollback — two layers, for two different failure modes
+
+**1. A bad deploy never goes live in the first place.** `scripts/release.sh`'s atomicity means a
+failed install/build/migration leaves `current` and the running service completely untouched. If a
+release somehow goes live but is unhealthy in a way its own post-restart health check didn't catch,
+revert with:
+
+```bash
+ln -sfn <previous-release-dir> ~/circlebite/current && sudo systemctl restart circlebite
+```
+
+`<previous-release-dir>` is `ls -1dt ~/circlebite/releases/*/ | sed -n 2p` (second-newest — the
+newest is the one being reverted away from).
+
+**2. Node itself is down for any other reason** (crash loop, out-of-memory, database unreachable) —
+the app-level revert above doesn't help without a healthy release to point at, or if the problem
+isn't in the app at all. This is what the nginx-level fallback is for: it serves the static
+placeholder regardless of what's wrong with Node or the database. A backup of the pre-Node config is
+kept on the box at a fixed filename specifically so this never needs a lookup:
+
+```bash
+sudo cp /etc/nginx/sites-available/circlebite.app.pre-node-backup /etc/nginx/sites-available/circlebite.app
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Both tested for real on 2026-09-10, not just written down: restored the placeholder config mid-deploy,
+confirmed `/` served the actual placeholder page and `/health` 404'd (no Node behind it), then
+reapplied the working config and confirmed the real app came back.
+
+## 10. Rules that constrain this box
 
 - The instance **stays running through judging week** — do not stop it to save credits (R10).
 - No managed AWS services in the application path: no RDS, no ElastiCache, no Cognito (R6).
