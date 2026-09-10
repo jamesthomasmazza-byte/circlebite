@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import { assertCanReadProfile } from "../authorization/profiles.js";
 import { requireAuth } from "../auth/requireAuth.js";
+import { applyUserCorrections, type UserCorrection } from "../corrections/applyCorrections.js";
 import { pool } from "../db/pool.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { HttpError } from "../lib/httpError.js";
@@ -157,20 +158,43 @@ scansRouter.get(
       [profileId, HISTORY_LIMIT],
     );
 
+    // CONTEST_RULES.md §3: a user's own correction overrides the verdict for their view
+    // immediately. Only this requester's own corrections — never someone else's, and never
+    // silently: the original always ships alongside the effective override, in the response below.
+    const { rows: correctionRows } = await pool.query<
+      { scan_id: string } & Pick<UserCorrection, "id" | "correctionType" | "direction" | "allergen" | "note" | "status" | "createdAt">
+    >(
+      `SELECT id, scan_id, correction_type AS "correctionType", direction, allergen, note, status,
+              created_at AS "createdAt"
+       FROM product_corrections
+       WHERE scan_id = ANY($1) AND reported_by = $2
+       ORDER BY created_at ASC`,
+      [rows.map((r) => r.id), req.user!.id],
+    );
+    const correctionsByScanId = new Map<string, UserCorrection[]>();
+    for (const { scan_id, ...correction } of correctionRows) {
+      const existing = correctionsByScanId.get(scan_id) ?? [];
+      existing.push(correction);
+      correctionsByScanId.set(scan_id, existing);
+    }
+
     // Unlike the live scan result, history is browsing at leisure, not an active safety decision
     // — the same category of access the profile page's own severity filtering already applies to
     // a severe_only follower, so it gets the same treatment here.
     const severeOnly = access.level === "follower" && access.shareLevel === "severe_only";
-    const history = severeOnly
-      ? rows.map((row) => ({
-          ...row,
-          // Structurally compatible whether this scan's matched_allergens came from the plain
-          // deterministic matcher or the Path B merge — both always carry `severity`.
-          matched_allergens: (row.matched_allergens as { severity: Severity }[]).filter(
-            (m) => m.severity === "severe",
-          ),
-        }))
-      : rows;
+    const filterSevere = <T extends { severity: string }>(matchedAllergens: T[]): T[] =>
+      severeOnly ? matchedAllergens.filter((m) => m.severity === "severe") : matchedAllergens;
+
+    const history = rows.map(({ result, matched_allergens, ...row }) => {
+      const corrections = correctionsByScanId.get(row.id) ?? [];
+      const effective = applyUserCorrections({ result, matchedAllergens: matched_allergens }, corrections);
+      return {
+        ...row,
+        original: { result, matched_allergens: filterSevere(matched_allergens) },
+        effective: effective && { result: effective.result, matched_allergens: filterSevere(effective.matchedAllergens) },
+        corrections,
+      };
+    });
 
     res.json(history);
   }),
