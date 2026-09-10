@@ -88,9 +88,9 @@ Full spec in `docs/verdict-engine.md`. Give this two full weeks.
 - [x] Span validator — discard any finding whose cited text isn't in the source *(hallucination guard)*
 - [x] `mergeVerdict()` — deterministic merge; model may escalate only, never clear a matched allergen
 - [x] Fail closed on error, timeout, bad parse, or missing key — verified against the real route
-      with no `AI_API_KEY` configured; the one thing NOT yet verified with a real key is the
-      opposite path (a real model response that actually finds something) — that's the pending
-      live-key smoke test, not "done"
+      with no `AI_API_KEY` configured, and both directions now confirmed live: a real deployed
+      call escalating a real finding, and the deterministic matcher independently confirmed
+      unaffected either way *(`docs/journal.md` 2026-09-10, evidence in `docs/evidence/`)*
 - [ ] `extractLabel()` — photograph the ingredients panel, OCR, then the same reasoning path *(Path
       C, not started — Path B was the smallest useful slice and comes first per spec)*
 - [x] `explainVerdict()` — plain-language explanation naming the triggering ingredient
@@ -100,8 +100,13 @@ Full spec in `docs/verdict-engine.md`. Give this two full weeks.
 - [x] Prompts carry allergen names and severities only — no names, labels, or ages *(§3, asserted by
       a test that fails if profile identity ever leaks into the prompt)*
 - [x] Sandbox API key with a hard spend cap — in-app daily cap enforced in code
-      (`AI_DAILY_SPEND_CAP_CENTS`); the console-side cap on the actual sandbox key is JT's own
-      account setup, still to be done before the live smoke test
+      (`AI_DAILY_SPEND_CAP_CENTS`), console-side cap confirmed set on the actual sandbox key
+
+**Path B confirmed working end to end against the real deployed app with a real key** — the AI
+call, the escalation, the span validation, the spend/reproducibility tracking, and a real defect it
+surfaced in the deterministic matcher (fixed, see `docs/journal.md` 2026-09-10) are all verified
+against production, not just unit tests. Paths A (AI-authored explanation only)/C (OCR)/D
+(reconciliation) remain future work.
 
 ## Week 8 — Nov 3–9 · The overrule loop *[bonus 5%]*
 
