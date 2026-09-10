@@ -137,3 +137,64 @@ export function updateAllergen(
 export function deleteAllergen(profileId: string, allergenId: string): Promise<void> {
   return apiFetch(`/profiles/${profileId}/allergens/${allergenId}`, { method: "DELETE" });
 }
+
+export type ShareLevel = "all" | "severe_only";
+
+export type CircleData = {
+  pendingFollows: { id: string; share_level: ShareLevel; message: string | null; created_at: string }[];
+  followers: {
+    id: string;
+    share_level: ShareLevel;
+    responded_at: string;
+    display_name: string;
+    email: string;
+  }[];
+  pendingManagerInvites: { id: string; created_at: string }[];
+  managers: { user_id: string; added_at: string; display_name: string; email: string }[];
+};
+
+export function getCircle(profileId: string): Promise<CircleData> {
+  return apiFetch(`/profiles/${profileId}/circle`);
+}
+
+export function createFollowInvite(
+  profileId: string,
+  input: { shareLevel: ShareLevel; message?: string },
+): Promise<{ id: string; token: string }> {
+  return apiFetch(`/profiles/${profileId}/follow-invites`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function revokeFollow(profileId: string, followId: string): Promise<void> {
+  return apiFetch(`/profiles/${profileId}/follows/${followId}/revoke`, { method: "POST" });
+}
+
+export function createManagerInvite(profileId: string): Promise<{ id: string; token: string }> {
+  return apiFetch(`/profiles/${profileId}/manager-invites`, { method: "POST" });
+}
+
+export function removeManager(profileId: string, userId: string): Promise<void> {
+  return apiFetch(`/profiles/${profileId}/managers/${userId}`, { method: "DELETE" });
+}
+
+export function getFollowInvite(
+  token: string,
+): Promise<{ profileLabel: string; shareLevel: ShareLevel; status: "pending" | "accepted" | "revoked" }> {
+  return apiFetch(`/follow/${token}`);
+}
+
+export function acceptFollowInvite(token: string): Promise<{ allergenProfileId: string }> {
+  return apiFetch(`/follow/${token}/accept`, { method: "POST" });
+}
+
+export function getCoManagerInvite(
+  token: string,
+): Promise<{ profileLabel: string; status: "pending" | "accepted" | "revoked" }> {
+  return apiFetch(`/co-manager/${token}`);
+}
+
+export function acceptCoManagerInvite(token: string): Promise<{ allergenProfileId: string }> {
+  return apiFetch(`/co-manager/${token}/accept`, { method: "POST" });
+}

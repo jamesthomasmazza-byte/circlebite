@@ -4,6 +4,8 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import { AuthProvider } from "./lib/AuthContext";
 import { RequireAuth } from "./RequireAuth";
+import { AcceptCoManager } from "./routes/AcceptCoManager";
+import { AcceptFollow } from "./routes/AcceptFollow";
 import { Dashboard } from "./routes/Dashboard";
 import { Login } from "./routes/Login";
 import { ProfileDetail } from "./routes/ProfileDetail";
@@ -17,6 +19,10 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          {/* Public: viewing an invite doesn't require being logged in, only accepting it does
+              (handled inside the pages themselves, via returnTo) — not behind RequireAuth. */}
+          <Route path="/follow/:token" element={<AcceptFollow />} />
+          <Route path="/co-manager/:token" element={<AcceptCoManager />} />
           <Route element={<RequireAuth />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profiles" element={<Profiles />} />
