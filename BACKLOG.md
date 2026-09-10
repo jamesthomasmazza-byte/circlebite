@@ -39,17 +39,23 @@ often isn't the person whose allergies are at stake.
 
 ## Weeks 2–3 — Sept 22 – Oct 5 · Profiles, schema, and the circle
 
-- [ ] Migrations: users, allergen_profiles, allergens (name, severity, treat_traces_as_unsafe), scans
-- [ ] Migrations: profile_managers, follow_relationships (status, share_level), manager_invites
-- [ ] Create, edit, delete an allergen profile
-- [ ] Severity levels: mild / moderate / severe; per-allergen trace handling
-- [ ] **Invite someone into a profile's circle** — single-use token link, accept flow, revoke
-- [ ] Share levels: full profile vs. severe allergens only
+- [x] Migrations: allergen_profiles, allergens (name, severity, treat_traces_as_unsafe)
+      *(`scans` deliberately left out of this migration set — weeks 4–5, no scan flow exists yet
+      to attach it to)*
+- [x] Migrations: profile_managers, follow_relationships (status, share_level), manager_invites
+- [x] Create, edit, delete an allergen profile
+- [x] Severity levels: mild / moderate / severe; per-allergen trace handling
+- [x] **Invite someone into a profile's circle** — single-use token link, accept flow, revoke
+- [x] Share levels: full profile vs. severe allergens only
 - [ ] Profile picker: a user in multiple circles chooses whose profile they're scanning for
-- [ ] **Deletion design, decided here not in week 9** — account deletion cascades profiles, scans,
-      corrections and follow relationships; real deletion, not a soft-delete flag, for health data;
-      if scan volume is needed for analytics, keep an anonymized counter row with no profile linkage
-      *(`docs/coppa.md` §2.6)*
+      *(the scan flow itself doesn't exist yet — weeks 4–5)*
+- [ ] **Deletion design, decided here not in week 9** — FK cascade shape decided and implemented
+      for everything that exists so far (`allergen_profiles`, `allergens`, `profile_managers`,
+      `follow_relationships`, `manager_invites` — see those migrations' comments for the
+      CASCADE-vs-SET-NULL reasoning, verified empirically against real Postgres). Still open:
+      `scans`/`corrections` don't exist yet, so their cascade can't be finished until weeks 4+;
+      no `DELETE /account` endpoint yet — not a Week 2–3 backlog item, same reasoning as Week 1's
+      auth session (`docs/coppa.md` §2.6)
 - [ ] Retention: scan history older than 24 months purged automatically, and the job actually runs
       *(`docs/coppa.md` §2.7 — an unenforced stated policy is worse than none)*
 - [ ] Seed script: invented families, profiles, and circle members for the judge account *(R9)*

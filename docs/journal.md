@@ -370,3 +370,60 @@ about this project going forward, ask whether anything has actually run that exa
 **Next:** Weeks 2–3 per `BACKLOG.md`, same as last entry. The judge account and seed data (`R9`) will
 need to go through this same deploy path eventually — worth remembering the DB is production-empty
 right now, not seeded, so nothing here is ready to demo yet.
+
+---
+
+## 2026-09-10 — Allergen profiles and the full circle invite flow, plus a real Express bug
+
+**Did:** Built the rest of the Week 2–3 spine on top of auth: `allergen_profiles`/`allergens` with a
+data-integrity constraint not in the legacy spec (case-insensitive unique allergen names per
+profile), `profile_managers`/`follow_relationships`/`manager_invites`, and the FK cascade shape for
+all of it — decided and verified empirically in one rolled-back transaction, not just reasoned about,
+that deleting a third-party inviter's account leaves an existing co-manager's and an existing
+follower's grants completely intact while deleting the grant-holder's own account or the profile
+owner's account cascades exactly as intended. `getProfileAccess` is the one place that decides "what
+can this user do with this profile," reused by both the authorization gate and the response-shaping
+code so the two can't independently drift. Full CRUD for profiles and allergens, then the circle
+itself: follow invites and co-manager invites, both per-profile single-use tokens with the share
+level fixed at creation rather than the legacy spec's ambiguous "personal link, pick the profile
+after someone clicks" model. Owner-only deletion and manager-removal, deliberately stricter than the
+general co-manager edit rights. Client side: profile list/create/detail, the circle management
+section, and the two public accept pages, wired through a new `returnTo` mechanism so someone who
+clicks an invite link logged out ends up back on it after logging in or registering.
+
+**Hit a wall on:** Building `GET /follow/:token` — meant to be public, no login required — surfaced a
+real Express routing bug in the `/api` namespacing from two sessions ago. `profilesRouter` has a
+router-level `.use(requireAuth)` (middleware with no path, so it matches everything entering the
+router), and it was mounted at bare `/api`. Express runs a router's `.use()` middleware before it
+even checks whether any of that router's own routes match — so mounting `profilesRouter` at `/api`
+made its blanket `requireAuth` intercept *every* `/api/*` request, including `circleRouter`'s
+deliberately-public route, before `circleRouter` ever got a chance. First symptom was a plain 401 on
+a route with no `requireAuth` anywhere near it, which looked impossible until I actually traced how
+Express's router mounting works instead of assuming the bug was in the route I'd just written. Fixed
+by mounting `profilesRouter` at the narrower `/api/profiles` instead — the client's URLs didn't
+change at all, only the internal scoping did.
+
+**Decided:** Follow stays one table for both the invite and the grant (matching the legacy design's
+own `pending → accepted → revoked` lifecycle), while co-manager keeps the legacy spec's two-table
+split (`manager_invites` + `profile_managers`) — preserving that existing asymmetry rather than
+"fixing" it to be more consistent, since collapsing them into one polymorphic invites table would
+blur the follow-vs-co-manager distinction at the schema level and make it easier to accidentally
+grant edit rights through a query that forgot to filter by kind. Someone who already has *any* access
+to a profile is rejected from accepting a *different* invite type for it (e.g. an existing follower
+can't also accept a co-manager invite to "upgrade") — a documented simplification, not an oversight;
+upgrading isn't built yet.
+
+**Learned:** the same lesson as the migrations-in-`dist` bug from the deploy session, in a different
+shape — Express's `router.use()` running before route matching is exactly the kind of framework
+behavior that's easy to get backwards by intuition (I assumed mounting order only mattered for which
+router's *routes* got checked first, not that a blanket middleware would run regardless of whether
+any route matched). Both bugs were caught by building the next real feature and watching it fail in
+an unexpected way, not by auditing the earlier code for problems — worth remembering that the
+circle/scan work ahead will keep surfacing this class of thing, and treating an unexpected error as
+"trace it, don't assume" rather than "patch the symptom" is what caught this one before it shipped.
+
+**Next:** Weeks 4–5 per `BACKLOG.md` — barcode scanning, the Open Food Facts lookup, the deterministic
+allergen matcher, and the verdict card. The profile picker item from this week's backlog is really
+part of the scan flow (choosing which profile you're scanning for), so it lands there rather than
+here. Also still open from this week: the judge-account seed script and the 24-month retention job,
+both deferred on purpose since `scans` doesn't exist yet for either to act on.
