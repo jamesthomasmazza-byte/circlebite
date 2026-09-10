@@ -8,6 +8,7 @@ import { authRouter } from "./auth/routes.js";
 import { env } from "./env.js";
 import { HttpError } from "./lib/httpError.js";
 import { meRouter } from "./routes/me.js";
+import { profilesRouter } from "./routes/profiles.js";
 
 // server/dist/app.js -> ../../client/dist (release layout: <release>/server, <release>/client).
 const clientDist = path.join(
@@ -30,6 +31,7 @@ export function createApp(): Express {
 
   app.use("/auth", authRouter);
   app.use(meRouter);
+  app.use(profilesRouter);
 
   if (env.isProduction) {
     // In dev, Vite serves the client on :5173 and proxies API calls here. In production, nginx
