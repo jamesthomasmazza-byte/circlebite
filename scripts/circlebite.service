@@ -1,0 +1,25 @@
+# Reference copy — the source of truth for what's installed on the box. systemd doesn't read
+# from a git checkout, so this file doesn't do anything by existing here; it's copied manually to
+# /etc/systemd/system/circlebite.service (see docs/server-setup.md) and kept in sync by hand
+# whenever it changes.
+#
+# WorkingDirectory points at the ~/circlebite/current symlink, not a specific release directory,
+# so a `systemctl restart` after scripts/release.sh repoints that symlink picks up the new
+# release automatically, and a manual revert (repoint the symlink, restart) needs no unit changes.
+
+[Unit]
+Description=CircleBite Node server
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/circlebite/current/server
+EnvironmentFile=/home/ubuntu/circlebite/.env
+ExecStart=/usr/bin/node dist/index.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
