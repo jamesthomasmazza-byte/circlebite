@@ -4,6 +4,15 @@ import { normalizeEmail } from "./email.js";
 const SIGNUP_BLOCK_HOURS = 24;
 const MINIMUM_ADULT_AGE = 18;
 
+// The DOB is a plain calendar date with no timezone (whatever <input type="date"> submitted),
+// but "today" is timezone-dependent. Comparing it against the server's UTC "today" would let a
+// user behind UTC appear to have had this year's birthday up to ~12h before they actually did
+// locally — i.e. could admit a still-17-year-old as an adult. Shifting the reference clock back
+// by 12h (UTC-12, the furthest-behind real-world offset) guarantees the computed "today" is
+// never later than the true local date anywhere on Earth, so this can only ever delay a real
+// adult by a few hours — never admit a minor early.
+const SAFE_CLOCK_OFFSET_MS = 12 * 60 * 60 * 1000;
+
 export type AgeGateResult = { valid: true; isAdult: boolean; age: number } | { valid: false };
 
 /** Parses a "YYYY-MM-DD" date of birth and evaluates the 18+ gate. Never returns or logs the DOB. */
@@ -22,10 +31,11 @@ export function evaluateAgeGate(dob: string, asOf: Date = new Date()): AgeGateRe
     parsed.getUTCDate() === day;
   if (!isRealDate || asUtc > asOf.getTime()) return { valid: false };
 
-  let age = asOf.getUTCFullYear() - year;
+  const safeAsOf = new Date(asOf.getTime() - SAFE_CLOCK_OFFSET_MS);
+  let age = safeAsOf.getUTCFullYear() - year;
   const hadBirthdayThisYear =
-    asOf.getUTCMonth() > month - 1 ||
-    (asOf.getUTCMonth() === month - 1 && asOf.getUTCDate() >= day);
+    safeAsOf.getUTCMonth() > month - 1 ||
+    (safeAsOf.getUTCMonth() === month - 1 && safeAsOf.getUTCDate() >= day);
   if (!hadBirthdayThisYear) age -= 1;
 
   return { valid: true, isAdult: age >= MINIMUM_ADULT_AGE, age };
