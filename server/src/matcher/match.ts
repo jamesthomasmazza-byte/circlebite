@@ -19,7 +19,11 @@ export type AllergenMatchResult = {
   source: MatchSource | null;
 };
 
-export type AllergenVerdictDetail = AllergenMatchResult & { classification: Classification };
+// Carries severity through into the stored snapshot, not just matched/source/classification —
+// needed so a severe_only follower's scan *history* view (server/src/routes/scans.ts) can filter
+// to severe allergens without a join back to the live allergens table, whose severities could
+// have changed since the scan was actually performed.
+export type AllergenVerdictDetail = AllergenMatchResult & { severity: Severity; classification: Classification };
 
 export type Verdict = "safe" | "contains_allergen" | "may_contain_caution" | "unable_to_confirm";
 
@@ -87,11 +91,12 @@ export function computeVerdict(
 
   const details: AllergenVerdictDetail[] = allergens.map((allergen) => {
     const result = matchAllergen(allergen.name, product);
-    if (!result.matched) return { ...result, classification: "clear" };
+    const base = { ...result, severity: allergen.severity };
+    if (!result.matched) return { ...base, classification: "clear" };
     if (result.source === "trace" && !allergen.treatTracesAsUnsafe) {
-      return { ...result, classification: "caution" };
+      return { ...base, classification: "caution" };
     }
-    return { ...result, classification: "contains" };
+    return { ...base, classification: "contains" };
   });
 
   const verdict: Verdict = details.some((d) => d.classification === "contains")

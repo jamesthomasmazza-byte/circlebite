@@ -10,6 +10,7 @@ import { HttpError } from "./lib/httpError.js";
 import { circleRouter } from "./routes/circle.js";
 import { meRouter } from "./routes/me.js";
 import { profilesRouter } from "./routes/profiles.js";
+import { scansRouter } from "./routes/scans.js";
 
 // server/dist/app.js -> ../../client/dist (release layout: <release>/server, <release>/client).
 const clientDist = path.join(
@@ -43,6 +44,7 @@ export function createApp(): Express {
   // Express even checks whether any of profilesRouter's own routes match.
   app.use("/api/profiles", profilesRouter);
   app.use("/api", circleRouter);
+  app.use("/api", scansRouter);
 
   if (env.isProduction) {
     // In dev, Vite serves the client on :5173 and proxies API calls here. In production, nginx
