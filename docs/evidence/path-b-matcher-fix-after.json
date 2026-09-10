@@ -1,0 +1,23 @@
+{
+    "id": "ee3a1d49-9785-4548-9b0b-209dd2edbb52",
+    "barcode": "0050000328420",
+    "product_name": "French Vanilla Coffee Mate",
+    "product_brand": "Nestl\u00e9",
+    "ingredients_text": "water, sugar, vegetable oil, (high oleic soybean and/or high oleic canola), and less than 2% of sodium caseinate, mono-and diglycerides, dipotassium phosphate, natural and artificial flavors, cellulose gel, cellulose gum, carrageenan",
+    "product_last_updated": "2026-07-07T20:22:12.000Z",
+    "result": "contains_allergen",
+    "matched_allergens": [
+        {
+            "source": "ingredients",
+            "matched": true,
+            "severity": "severe",
+            "aiEscalated": false,
+            "allergenName": "milk",
+            "classification": "contains"
+        }
+    ],
+    "source": "barcode",
+    "confidence": "medium",
+    "created_at": "2026-09-10T16:43:25.962Z",
+    "explanation": "Contains milk."
+}
