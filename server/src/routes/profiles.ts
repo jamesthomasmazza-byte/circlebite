@@ -10,6 +10,14 @@ import { pool } from "../db/pool.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { HttpError } from "../lib/httpError.js";
 
+// Mounted at /api/profiles (see app.ts) — every route below is relative to that, and every path
+// here is deliberately WITHOUT a leading "/profiles" segment. requireAuth below is router-level
+// (.use with no path, so it matches everything that enters this router); mounting narrowly at
+// /api/profiles instead of bare /api is what keeps that blanket middleware from also intercepting
+// unrelated routes like circleRouter's public GET /follow/:token, which happens to also live
+// under /api. Express runs a router's .use() middleware before it even checks whether any of the
+// router's own routes match, so scoping the mount prefix correctly is what does the actual work —
+// not where the requireAuth call appears in this file.
 export const profilesRouter = Router();
 profilesRouter.use(requireAuth);
 
@@ -39,7 +47,7 @@ function isUniqueViolation(err: unknown): boolean {
 // ---- Profiles ----
 
 profilesRouter.post(
-  "/profiles",
+  "/",
   asyncHandler(async (req, res) => {
     const { label, isSelf, notes, allergens } = req.body ?? {};
 
@@ -105,7 +113,7 @@ profilesRouter.post(
 );
 
 profilesRouter.get(
-  "/profiles",
+  "/",
   asyncHandler(async (req, res) => {
     const userId = req.user!.id;
 
@@ -133,7 +141,7 @@ profilesRouter.get(
 );
 
 profilesRouter.get(
-  "/profiles/:id",
+  "/:id",
   asyncHandler(async (req, res) => {
     const profileId = req.params.id;
     const access = await assertCanReadProfile(req.user!.id, profileId);
@@ -158,7 +166,7 @@ profilesRouter.get(
 );
 
 profilesRouter.patch(
-  "/profiles/:id",
+  "/:id",
   asyncHandler(async (req, res) => {
     const profileId = req.params.id;
     await assertCanManageProfile(req.user!.id, profileId);
@@ -195,7 +203,7 @@ profilesRouter.patch(
 );
 
 profilesRouter.delete(
-  "/profiles/:id",
+  "/:id",
   asyncHandler(async (req, res) => {
     const profileId = req.params.id;
     await assertIsProfileOwner(req.user!.id, profileId);
@@ -207,7 +215,7 @@ profilesRouter.delete(
 // ---- Allergens (sub-resource) ----
 
 profilesRouter.post(
-  "/profiles/:id/allergens",
+  "/:id/allergens",
   asyncHandler(async (req, res) => {
     const profileId = req.params.id;
     await assertCanManageProfile(req.user!.id, profileId);
@@ -237,7 +245,7 @@ profilesRouter.post(
 );
 
 profilesRouter.patch(
-  "/profiles/:id/allergens/:allergenId",
+  "/:id/allergens/:allergenId",
   asyncHandler(async (req, res) => {
     const profileId = req.params.id;
     const allergenId = req.params.allergenId;
@@ -289,7 +297,7 @@ profilesRouter.patch(
 );
 
 profilesRouter.delete(
-  "/profiles/:id/allergens/:allergenId",
+  "/:id/allergens/:allergenId",
   asyncHandler(async (req, res) => {
     const profileId = req.params.id;
     const allergenId = req.params.allergenId;

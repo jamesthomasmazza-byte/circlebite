@@ -7,6 +7,7 @@ import express, { type Express, type NextFunction, type Request, type Response }
 import { authRouter } from "./auth/routes.js";
 import { env } from "./env.js";
 import { HttpError } from "./lib/httpError.js";
+import { circleRouter } from "./routes/circle.js";
 import { meRouter } from "./routes/me.js";
 import { profilesRouter } from "./routes/profiles.js";
 
@@ -36,7 +37,12 @@ export function createApp(): Express {
   // of the app shell.
   app.use("/api/auth", authRouter);
   app.use("/api", meRouter);
-  app.use("/api", profilesRouter);
+  // Mounted narrowly, not at bare /api: profilesRouter has a router-level requireAuth (.use with
+  // no path, matching everything that enters the router) — mounting it at /api would make that
+  // middleware intercept every /api/* request, including circleRouter's public routes, before
+  // Express even checks whether any of profilesRouter's own routes match.
+  app.use("/api/profiles", profilesRouter);
+  app.use("/api", circleRouter);
 
   if (env.isProduction) {
     // In dev, Vite serves the client on :5173 and proxies API calls here. In production, nginx
