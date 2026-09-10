@@ -82,16 +82,26 @@ often isn't the person whose allergies are at stake.
 
 Full spec in `docs/verdict-engine.md`. Give this two full weeks.
 
-- [ ] `reasonVerdict()` — structured output: per-allergen finding, cited span, confidence, unresolved terms
-- [ ] Span validator — discard any finding whose cited text isn't in the source *(hallucination guard)*
-- [ ] `mergeVerdict()` — deterministic merge; model may escalate only, never clear a matched allergen
-- [ ] Fail closed on error, timeout, bad parse, or low confidence
-- [ ] `extractLabel()` — photograph the ingredients panel, OCR, then the same reasoning path
-- [ ] `explainVerdict()` — plain-language explanation naming the triggering ingredient
-- [ ] Confidence bands derived from evidence source, not model self-assessment
-- [ ] `verdict_explanations` table — model, prompt version, input, output, cost, latency
-- [ ] Prompts carry allergen names and severities only — no names, labels, or ages *(§3)*
-- [ ] Sandbox API key with a hard spend cap
+- [x] `reasonVerdict()` — structured output: per-allergen finding, cited span, confidence, unresolved
+      terms *(Path B only — barcode found, free ingredient text, no structured tags. Paths A/C/D
+      not attempted yet; see `docs/journal.md` 2026-09-10)*
+- [x] Span validator — discard any finding whose cited text isn't in the source *(hallucination guard)*
+- [x] `mergeVerdict()` — deterministic merge; model may escalate only, never clear a matched allergen
+- [x] Fail closed on error, timeout, bad parse, or missing key — verified against the real route
+      with no `AI_API_KEY` configured; the one thing NOT yet verified with a real key is the
+      opposite path (a real model response that actually finds something) — that's the pending
+      live-key smoke test, not "done"
+- [ ] `extractLabel()` — photograph the ingredients panel, OCR, then the same reasoning path *(Path
+      C, not started — Path B was the smallest useful slice and comes first per spec)*
+- [x] `explainVerdict()` — plain-language explanation naming the triggering ingredient
+- [x] Confidence bands derived from evidence source, not model self-assessment *(Path B only ever
+      produces medium/low — "high" requires structured tags, i.e. Path A, not attempted yet)*
+- [x] `verdict_explanations` table — model, prompt version, input, output, cost, latency
+- [x] Prompts carry allergen names and severities only — no names, labels, or ages *(§3, asserted by
+      a test that fails if profile identity ever leaks into the prompt)*
+- [x] Sandbox API key with a hard spend cap — in-app daily cap enforced in code
+      (`AI_DAILY_SPEND_CAP_CENTS`); the console-side cap on the actual sandbox key is JT's own
+      account setup, still to be done before the live smoke test
 
 ## Week 8 — Nov 3–9 · The overrule loop *[bonus 5%]*
 

@@ -534,3 +534,63 @@ asking, next time a feature has a stated verification gap, whether that gap is c
 asking the person to try it on their own device before considering the feature shipped.
 
 **Next:** same as above — Weeks 6–7. Ending the session here for the night; nothing else in flight.
+
+---
+
+## 2026-09-10 — Verdict engine, Path B slice: reasonVerdict, span validator, mergeVerdict, wired in
+
+**Did:** Built the first real slice of `docs/verdict-engine.md` — Path B (barcode found, only free
+`ingredients_text`, no structured allergen tags at all), chosen because it's the smallest slice that
+proves the whole pipeline: model call → span validation → safety-rule merge → stored, reproducible
+explanation. Paths A/C/D stay out of scope for this slice.
+
+**Decided, before writing code:** AI provider is Anthropic Claude (`@anthropic-ai/sdk`, Claude Haiku
+4.5) — confirmed current pricing against platform.claude.com ($1/$5 per MTok in/out) rather than
+guessing. `reasonVerdict()` uses tool-use with a strict JSON schema so the response never needs
+prose-parsing. A missing `AI_API_KEY` is treated as just another call failure, not a special case —
+keeps the fail-closed path singular and means local dev without a key never breaks other scan types.
+
+**Built, in order:** `verdict_explanations` migration, `scans.source`/`confidence` columns, AI env
+config (optional key, model, daily spend cap), `spanValidator.ts` (verbatim case-insensitive
+substring check — the cheapest hallucination guard the spec names), `prompt.ts` (allergen name +
+severity + trace-handling only, never profile identity — asserted by test), `aiClient.ts` (Anthropic
+wrapper, never throws, single discriminated result), `spendGuard.ts` (in-app daily cap on top of the
+console-side cap on the sandbox key), `reasonVerdict.ts` (orchestrates cap check → call → span
+validation, dependency-injectable for tests), `mergeVerdict.ts` (escalate-only merge — a deterministic
+`contains` can never be touched by AI input; `unknown` or an unverifiable span becomes `unresolved`,
+never silently `clear`; an AI failure downgrades an otherwise-safe verdict to `unable_to_confirm` but
+changes nothing once something's already unsafe), `explainVerdict.ts` (fixed template, not a second
+model call), then wired the whole thing into `POST /scans` behind the Path B trigger condition.
+
+**Redesigned mid-build:** `mergeVerdict`'s first cut used a coarse `source: "deterministic"|"ai"` on
+each allergen — discovered while wiring the client that this would have thrown away the existing
+tag/ingredients/trace distinction the verdict card already renders for every non-Path-B scan, not
+just Path B ones. Fixed to carry the deterministic `source`/`matched` fields through unchanged and
+add a separate `aiEscalated` boolean instead. Worth remembering: a merge type's shape should be
+checked against what actually renders it before writing the tests for it, not after.
+
+**Verified for real, not just `tsc`:** 40 `node:test` cases (span validator, prompt builder, fake-
+client-injected `reasonVerdict`, `mergeVerdict`'s full classification × finding-outcome matrix,
+`explainVerdict`) — first test infra in this repo, `node --test` built into Node 22, no new
+dependency. Then real-system checks: migrations applied against local Postgres and schema inspected;
+`callAi()` confirmed at runtime to fail closed without a network call when no key is configured;
+`underDailySpendCap()` confirmed against real inserted rows (true under cap, false once exceeded,
+cleaned up after); the whole route hit with curl against real Open Food Facts data — a real Path B
+product (Diet Coke, no structured allergen tags) with a test "Aspartame" allergen stayed
+`contains_allergen` even though the AI call failed closed (rule 4), the same product against a
+Milk-only profile correctly became `unable_to_confirm` rather than `safe` (rule 1), and a Path A
+product (Nutella, has structured tags) confirmed byte-for-byte unchanged behavior — no Path B trigger,
+no `verdict_explanations` row written. Then the client changes were checked in an actual browser
+against the actual running app: registered a user, built both profiles, scanned Diet Coke both ways,
+watched "Contains an allergen — Contains Aspartame." and "Unable to confirm — No listed allergens...
+were found" render correctly on the real verdict card. All test data cleaned up after each pass.
+
+**Known gap, stated rather than hidden:** no `AI_API_KEY` exists in this environment, so every check
+above exercises the fail-closed path — the actual "model finds something the keyword matcher
+missed" path (an AI call that returns real findings, gets span-validated, and escalates a `clear`
+allergen) is structurally unverified so far. This is the one remaining gate before Path B is done,
+not an optional follow-up: a real scan against the deployed server with a real sandbox key, looked at
+together, next session.
+
+**Next:** the live-key smoke test above, then Week 8's overrule loop once Path B is confirmed for
+real. The label-photo path (C) and cross-reference reconciliation (D) stay out of scope until then.
