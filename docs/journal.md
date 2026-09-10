@@ -308,3 +308,65 @@ not just at review time.
 `follow_relationships`, the circle invite flow. Carry the "what's the actual boundary versus what's
 best-effort" question into that work explicitly, since the circle's follow/revoke mechanics are
 exactly the shape where this kind of gap tends to hide.
+
+---
+
+## 2026-09-10 — Deployed. Live at circlebite.app for real, not just the placeholder.
+
+**Did:** Switched nginx from serving the static placeholder to reverse-proxying a real, running Node
+app. Built atomic, symlink-swap deploy scripts (`scripts/deploy.sh` clones fresh and hands off to
+`scripts/release.sh`, which only swaps `~/circlebite/current` and restarts if install/build/migrate
+all succeed), a systemd unit, and the nginx edit — then actually ran the whole thing against the
+production box: bootstrapped `~/circlebite`, generated `SESSION_SECRET` on the box, ran the first
+deploy (all three migrations applied fresh against the real production database), and switched
+nginx over. Verified against the live domain, not localhost: registering with an under-18 DOB
+returns `age_gate_blocked` on `circlebite.app` itself, the session cookie on a real register/login
+carries `HttpOnly; Secure; SameSite=Lax`, `/dashboard` redirects to `/login` when logged out, and a
+full register → dashboard → logout round trip works end to end in an actual browser on the real
+domain. Cleaned the synthetic test account and its leftover `signup_blocks` row out of production
+afterward — the database is empty again, exactly as it should be before real seed data goes in.
+
+**Hit a wall on:** SSH to the box timed out at the start of this session — a stale "My IP" rule in
+the security group, exactly what `server-setup.md` §1 already warned would happen. I have no AWS
+console or CLI access, so this one was a genuine stop: asked to have the security group updated,
+then picked back up once it was. Once SSH did connect, it failed a second time with "Host key
+verification failed" — not a real problem, just that `known_hosts` had entries for the box's IP from
+an earlier session but none for the `circlebite.app` hostname itself, and `BatchMode` won't prompt to
+add one. Fixed correctly with `-o StrictHostKeyChecking=accept-new` (trusts a genuinely new host,
+would still fail loudly on an actual mismatch) rather than reaching for
+`StrictHostKeyChecking=no`, which would have accepted anything.
+
+The more consequential wall: a local test harness for the deploy scripts (a fake `$HOME/circlebite`,
+cloning from the local repo, systemd's restart simulated with a background node process) caught a
+real bug before it ever reached the box — `tsc` never copied the migration `.sql` files into `dist/`,
+so the compiled migration runner (`node dist/db/migrate.js`, what production actually uses) would
+have failed outright with `ENOENT`. Every local test of migrations up to that point had run
+`migrate.ts` through `tsx` against the source directly, so `dist/db/migrations` was never in the
+picture and this never surfaced. Fixed by having the build script copy the migrations directory into
+`dist/` after `tsc` runs.
+
+**Decided:** Build on the box, not locally with an artifact copied up — the swap file was already
+provisioned specifically for this, the repo is public so a box that can `git pull && build && migrate
+&& restart` from nothing is more reproducible than trusting whatever a laptop produced, and there's
+no native-dependency risk to avoid in the first place (scrypt over bcrypt, deliberately). The full
+reasoning is in the plan file from this session, worth rereading if this decision ever needs
+revisiting.
+
+Two separate rollback layers, not one, because they cover different failures: an app-level symlink
+revert for a release that built fine but misbehaves at runtime, and an nginx-level fallback to the
+static placeholder for when Node is down for a reason no amount of re-pointing a symlink fixes
+(crash loop, the database itself unreachable). Tested both for real before trusting either — actually
+broke a build on a throwaway branch to confirm the atomic deploy leaves the running app untouched,
+and actually reverted nginx mid-session to confirm the placeholder really comes back.
+
+**Learned:** an untested deploy path and an untested rollback are the same kind of mistake — both are
+claims about what happens during an incident, and neither should be trusted until something has
+actually gone wrong on purpose and been watched recover. The migrations-in-`dist` bug is the sharper
+version of the same lesson as the `blockSignup` finding two sessions ago: code that's never actually
+exercised through its real production path (the compiled runner, not the dev shortcut) gets to hide
+bugs indefinitely. Worth generalizing: before trusting any "this is what happens in production" claim
+about this project going forward, ask whether anything has actually run that exact path yet.
+
+**Next:** Weeks 2–3 per `BACKLOG.md`, same as last entry. The judge account and seed data (`R9`) will
+need to go through this same deploy path eventually — worth remembering the DB is production-empty
+right now, not seeded, so nothing here is ready to demo yet.
