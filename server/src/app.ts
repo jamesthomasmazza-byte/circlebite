@@ -6,6 +6,7 @@ import express, { type Express, type NextFunction, type Request, type Response }
 
 import { authRouter } from "./auth/routes.js";
 import { env } from "./env.js";
+import { HttpError } from "./lib/httpError.js";
 import { meRouter } from "./routes/me.js";
 
 // server/dist/app.js -> ../../client/dist (release layout: <release>/server, <release>/client).
@@ -42,6 +43,10 @@ export function createApp(): Express {
   }
 
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+    if (err instanceof HttpError) {
+      res.status(err.status).json({ error: err.code });
+      return;
+    }
     console.error(err);
     res.status(500).json({ error: "internal_error" });
   });
