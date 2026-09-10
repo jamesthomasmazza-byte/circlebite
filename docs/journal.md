@@ -20,7 +20,10 @@ confirmed against the real deployed app with a real key — a genuine AI escalat
 path, and a real defect in the deterministic matcher's word-boundary matching that the AI surfaced
 and got fixed (see the three 2026-09-10 entries below). Still open from earlier weeks, not yet
 started: the 24-month scan-history retention job, the judge-account seed script, a `DELETE /account`
-endpoint, password reset, and rate limiting on login. Week 8 — the overrule loop — is next.
+endpoint, password reset, and rate limiting on login. Week 8 — the overrule loop — has its recording
+path and (as of the evening of 2026-09-10) corroborated additions reaching other profiles, behind a
+kill switch that is still off in production. Next: browser-check and turn it on, then the AI
+accuracy page.
 
 ---
 
@@ -866,3 +869,49 @@ not by re-reading the comment more carefully. Worth an explicit pass at some poi
 box, right now, today — not what the comment claims.
 
 **Next:** same as the previous entry — Week 8 part 2.
+
+---
+
+## 2026-09-10 (evening) — Week 8 part 2: community corrections reach other profiles
+
+**Did:** Corroborated "this allergen is in here" reports now change what *other* families see when
+they scan the same barcode — the half of the overrule loop that makes it a community loop rather
+than a private note. `applyCommunityCorrections()` is pure and escalate-only by construction (it can
+only ever set "contains"); `loadCommunityAdditions()` reads corroborated additions in one query per
+history page; both scan routes layer the result on top of the engine's verdict. Built from a Cowork
+session editing this repo directly, not Claude Code — same rules, same commit discipline.
+
+**Decided:** *Additions only.* JT's call when asked what a corroborated removal should do to
+everyone else: it keeps changing only the reporter's own view. Signup is open to any adult, so the
+3-report threshold is three throwaway accounts away from clearing a peanut warning for every family
+in the app. Removals wait for a review queue. Added to the precedent table in `docs/principles.md`.
+
+Also decided, all for principle 4 (reversible before it ships): `scans.result` is never overwritten —
+the community layer is applied on read, so the `COMMUNITY_CORRECTIONS` kill switch reverts every
+view with no data change, and the AI accuracy report still measures the engine. It ships **off**.
+One bad report can be undone by marking it `rejected`. Each scan records which reports it applied
+(`community_corrections_applied`). Runbook in `docs/server-setup.md` §11. History reads reports
+fresh rather than from that snapshot, because a warning reported after someone bought a product is
+exactly what they need to see when they look back at it.
+
+Profile allergen names are free text, so "Peanuts" on one profile has to reach "peanut" on another.
+Rather than a new normalizer, the matching reuses the deterministic matcher in both directions,
+which gets the tree-nut umbrella right both ways and inherits its word boundaries ("Fish" never
+reaches "Shellfish").
+
+**Found along the way:** a fail-open in the reporter's own view. `applyUserCorrections()` recomputed
+the verdict from the per-allergen list alone, so on a product the lookup never found (empty list) or
+after an AI failure (all "clear"), a single "this isn't in here" report flipped the reporter's view
+from unable-to-confirm to **safe**. Fixed first, in its own commit, with tests for both sources.
+
+**Verified:** full server suite (111 tests) against a real Postgres 16 with all 16 migrations, plus
+an end-to-end script against the compiled server: a report on one family's scan escalated a second
+family's differently spelled allergen while the stored engine result stayed "safe"; a severe_only
+follower saw neither the moderate allergen nor its name in the note; three corroborated removals did
+not clear wheat for a fourth family; rejecting the report and turning the switch off each reverted
+new scans and history at once; `COMMUNITY_CORRECTIONS=true` refused to boot. **Not yet checked in a
+browser, not deployed.**
+
+**Next:** run it locally in a browser, deploy, set `COMMUNITY_CORRECTIONS=on` on the box
+(`docs/server-setup.md` §11). Then the AI accuracy page. The review queue is the prerequisite for
+ever letting removals propagate.

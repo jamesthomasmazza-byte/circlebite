@@ -124,9 +124,18 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
       `docs/legacy-spec.md` §6, with "the warning survives" conflict handling; verified against real
       Postgres, not just unit-level. **Not built yet:** an actual browsable review queue page — the
       threshold mechanism and status field exist and work, but there's no UI listing pending
-      corrections across the app. Also not yet built: a corroborated correction changing what a
-      *different* profile sees on a future scan of the same barcode — right now corroboration only
-      changes `status`, nothing yet reads that status to affect anyone but the original reporter.
+      corrections across the app.
+- [x] **Corroborated additions reach other profiles** — a corroborated "this allergen is in here"
+      report escalates that allergen to "contains" on any profile that has it (spelling and synonym
+      differences handled by the matcher), labeled as a shopper report, never as label data. Behind
+      the `COMMUNITY_CORRECTIONS` kill switch (off by default), with a per-report undo and a
+      per-scan audit column — `docs/server-setup.md` §11. Verified end to end against the compiled
+      server and real Postgres. **Removals deliberately don't propagate** — JT's call, precedent in
+      `docs/principles.md`: signup is open, so three throwaway accounts could otherwise clear a
+      warning for everyone.
+- [ ] Review queue page — browse corrections and reject one from the UI instead of SQL. Prerequisite
+      for ever letting corroborated removals reach other profiles, along with fixing the reverse
+      "warning survives" gap noted in `recordCorrection.ts`.
 - [ ] AI accuracy page — overrule rate overall and by allergen. Not started — the recording path
       (this week's actual priority) is what needed to go live first, since the accuracy number needs
       months of real scans to mean anything regardless of when the page itself ships.
