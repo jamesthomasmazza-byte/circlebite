@@ -6,7 +6,10 @@ import { pool } from "../db/pool.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { HttpError } from "../lib/httpError.js";
 import { getProduct } from "../lib/productLookup.js";
-import { computeVerdict, type AllergenVerdictDetail, type ProfileAllergen, type Severity } from "../matcher/match.js";
+import { computeVerdict, type ProfileAllergen, type Severity } from "../matcher/match.js";
+import { explainVerdict } from "../verdict/explainVerdict.js";
+import { mergeVerdict } from "../verdict/mergeVerdict.js";
+import { reasonVerdict } from "../verdict/reasonVerdict.js";
 
 // No router-level .use(requireAuth) here on purpose: this router's two routes ("/scans" and
 // "/profiles/:id/scans") don't share a mountable common prefix the way profilesRouter's do, so a
@@ -50,15 +53,47 @@ scansRouter.post(
     }));
 
     const product = await getProduct(barcode);
-    const { verdict, matchedAllergens } = computeVerdict(allergens, product);
+    const { verdict: deterministicVerdict, matchedAllergens: deterministicAllergens } = computeVerdict(
+      allergens,
+      product,
+    );
+
+    // Path B (docs/verdict-engine.md): a barcode found on a product with only free ingredient
+    // text and no structured allergen data at all. Everything else (structured tags present, or
+    // no product data to reason over) is untouched — the deterministic verdict stands exactly as
+    // it does today.
+    const isPathB =
+      product.found &&
+      Boolean(product.ingredientsText) &&
+      product.allergensTags.length === 0 &&
+      product.tracesTags.length === 0;
+
+    let verdict = deterministicVerdict;
+    let confidence: "high" | "medium" | "low" | null = null;
+    let matchedAllergens: unknown = deterministicAllergens;
+    let explanation: string | null = null;
+    let aiResult: Awaited<ReturnType<typeof reasonVerdict>> | null = null;
+
+    if (isPathB) {
+      aiResult = await reasonVerdict({
+        allergens,
+        ingredientsText: product.ingredientsText!,
+        deterministicHits: deterministicAllergens,
+      });
+      const merged = mergeVerdict(deterministicAllergens, aiResult, allergens);
+      verdict = merged.verdict;
+      confidence = merged.confidence;
+      matchedAllergens = merged.matchedAllergens;
+      explanation = explainVerdict(merged);
+    }
 
     const { rows } = await pool.query(
       `INSERT INTO scans
          (scanner_id, allergen_profile_id, barcode, product_name, product_brand, ingredients_text,
-          product_data, product_last_updated, result, matched_allergens)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          product_data, product_last_updated, result, matched_allergens, source, confidence)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'barcode', $11)
        RETURNING id, barcode, product_name, product_brand, ingredients_text, product_last_updated,
-                 result, matched_allergens, created_at`,
+                 result, matched_allergens, source, confidence, created_at`,
       [
         req.user!.id,
         allergenProfileId,
@@ -70,12 +105,38 @@ scansRouter.post(
         product.lastUpdated,
         verdict,
         JSON.stringify(matchedAllergens),
+        confidence,
       ],
     );
 
+    // Recorded whether the AI call succeeded or failed — rule 8 (every verdict reproducible)
+    // applies to fail-closed outcomes too, and the week-8 accuracy report needs failed attempts
+    // visible, not just successful ones.
+    if (aiResult) {
+      await pool.query(
+        `INSERT INTO verdict_explanations
+           (scan_id, model, prompt_version, verdict, confidence, findings, unresolved_terms,
+            latency_ms, tokens_in, tokens_out, cost_cents)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        [
+          rows[0].id,
+          aiResult.model,
+          aiResult.promptVersion,
+          verdict,
+          confidence,
+          JSON.stringify(aiResult.findings),
+          JSON.stringify(aiResult.unresolvedTerms),
+          aiResult.latencyMs,
+          aiResult.tokensIn,
+          aiResult.tokensOut,
+          aiResult.costCents,
+        ],
+      );
+    }
+
     // Full detail, unfiltered — this is the live, active-decision response, not history. See the
     // GET handler below for why history gets the opposite treatment.
-    res.status(201).json(rows[0]);
+    res.status(201).json({ ...rows[0], explanation });
   }),
 );
 
@@ -102,7 +163,9 @@ scansRouter.get(
     const history = severeOnly
       ? rows.map((row) => ({
           ...row,
-          matched_allergens: (row.matched_allergens as AllergenVerdictDetail[]).filter(
+          // Structurally compatible whether this scan's matched_allergens came from the plain
+          // deterministic matcher or the Path B merge — both always carry `severity`.
+          matched_allergens: (row.matched_allergens as { severity: Severity }[]).filter(
             (m) => m.severity === "severe",
           ),
         }))
