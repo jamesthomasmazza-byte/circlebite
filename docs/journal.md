@@ -252,3 +252,59 @@ and verified locally.
 `follow_relationships`, the circle invite flow, and the deletion-cascade FKs decided in this
 session's auth plan. Decide password reset and login throttling's place in that window rather than
 letting them slide to week 9.
+
+---
+
+## 2026-09-09 — Ultrareview on the auth layer: 10 findings, one of them a safety feature that had become an abuse vector
+
+**Did:** Ran ultrareview against the auth code from the session above. It came back with 10
+findings across `ageGate.ts`, `routes.ts`, `AuthContext.tsx`, and `migrate.ts` — two high severity,
+the rest normal or low. Fixed all ten, each its own commit, verified against real reproductions
+(a real Postgres instance, a real forced-failure trigger, a real race condition reproduced with an
+artificial server-side delay and confirmed to actually happen without the fix) rather than
+reasoning about the code and assuming.
+
+**The one worth remembering most:** the signup-block retry-prevention mechanism — built earlier
+this session specifically to satisfy `docs/coppa.md` §2.1 — turned out to be exploitable as a
+denial-of-service against a third party's email address. `blockSignup`'s `ON CONFLICT DO UPDATE`
+refreshed the block's 24h clock on every call, and since the register handler only ever reaches
+`blockSignup` when no block is *currently* active, an unauthenticated attacker could keep an
+arbitrary victim's email permanently blocked from registering — no ownership proof, no
+authentication, just one request roughly every 24 hours, forever.
+
+This wasn't a corner cut under time pressure. It was a feature built correctly to spec, reviewed,
+tested, and committed in the same session, and it still took a second pass — ultrareview looking at
+the same code from an attacker's seat instead of a user's — to see it. The fix (`ON CONFLICT DO
+NOTHING`: a block fires once and only ever expires, never renews) works cleanly because
+`signup_blocks` was never the actual safety boundary in the first place — `evaluateAgeGate`
+re-derives the real 18+ answer from the submitted DOB on *every* request, independent of this
+table entirely. Tracing that distinction — which pieces of the auth layer are the actual guarantee
+versus which are best-effort deterrents layered on top of it — is what made the fix obvious once
+found. It's going to matter again in weeks 2–3: `acting_profile_id` in the session is deliberately
+the same shape (a UX hint, never trusted for authorization), and the circle/invite system will add
+more mechanisms like it.
+
+**Also found and fixed, same session:** the age gate compared a timezone-less DOB against the
+server's raw UTC clock, which could admit a still-17-year-old as an adult up to ~12 hours early
+depending on the requester's timezone — fixed by anchoring the comparison to UTC-12 instead, so it
+can only ever delay a real adult, never admit a minor early (same asymmetric-caution logic
+`docs/principles.md` already applies to allergen verdicts, applied here to the 18+ boundary). Plus:
+a fail-open path where a transient DB error while writing the block could skip refusing the request
+entirely; a migration runner that would hang instead of exiting cleanly on failure; a client-side
+race where a slow, stale identity check could clobber a just-completed login back to logged-out; a
+transient `/me` hiccup that could show a false "something went wrong" right after a real
+registration actually succeeded; a failed logout that left the UI stuck showing a stale logged-in
+state; a first-request timing leak in the login anti-enumeration mechanism; register hashing the
+password before checking whether the email was already taken; and a redundant network round-trip
+after login/register.
+
+**Learned:** the automated review earned its keep specifically by not sharing my assumptions about
+what the code was for. I traced `blockSignup`'s reachability correctly when writing it, but only in
+terms of "does this correctly implement retry prevention" — never "what can someone who isn't the
+account owner do with this endpoint." Worth asking of any unauthenticated write path from now on,
+not just at review time.
+
+**Next:** Weeks 2–3 per `BACKLOG.md` — `allergen_profiles`, `profile_managers`,
+`follow_relationships`, the circle invite flow. Carry the "what's the actual boundary versus what's
+best-effort" question into that work explicitly, since the circle's follow/revoke mechanics are
+exactly the shape where this kind of gap tends to hide.
