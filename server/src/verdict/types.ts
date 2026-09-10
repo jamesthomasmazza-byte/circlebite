@@ -11,6 +11,19 @@ export type AiFinding = {
   confidence: "high" | "medium" | "low";
 };
 
+/** Discriminated result from a single call to the AI provider — see aiClient.ts. */
+export type AiClientResult =
+  | {
+      ok: true;
+      findings: AiFinding[];
+      unresolvedTerms: string[];
+      latencyMs: number;
+      tokensIn: number;
+      tokensOut: number;
+      costCents: number;
+    }
+  | { ok: false; reason: string };
+
 export type ReasonVerdictResult = {
   findings: AiFinding[];
   unresolvedTerms: string[];
