@@ -1,11 +1,13 @@
 import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../lib/AuthContext";
+import { safeReturnTo } from "../lib/returnTo";
 
 export function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,7 +20,7 @@ export function Login() {
     setSubmitting(true);
     try {
       await login(email, password);
-      navigate("/dashboard");
+      navigate(safeReturnTo(searchParams.get("returnTo")));
     } catch {
       setError("That email or password doesn't match an account.");
     } finally {
@@ -56,7 +58,10 @@ export function Login() {
         </button>
       </form>
       <p>
-        Need an account? <Link to="/register">Register</Link>
+        Need an account?{" "}
+        <Link to={`/register${searchParams.get("returnTo") ? `?returnTo=${encodeURIComponent(searchParams.get("returnTo")!)}` : ""}`}>
+          Register
+        </Link>
       </p>
     </main>
   );

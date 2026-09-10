@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { ApiRequestError } from "../lib/api";
 import { useAuth } from "../lib/AuthContext";
+import { safeReturnTo } from "../lib/returnTo";
 
 const ERROR_COPY: Record<string, string> = {
   invalid_request: "Check that every field is filled in, and that your password is at least 8 characters.",
@@ -13,6 +14,7 @@ const ERROR_COPY: Record<string, string> = {
 export function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -37,7 +39,7 @@ export function Register() {
     setSubmitting(true);
     try {
       await register({ email, password, displayName, dob });
-      navigate("/dashboard");
+      navigate(safeReturnTo(searchParams.get("returnTo")));
     } catch (err) {
       if (err instanceof ApiRequestError && err.message === "age_gate_blocked") {
         setBlocked(true);
@@ -117,7 +119,10 @@ export function Register() {
         </button>
       </form>
       <p>
-        Already have an account? <Link to="/login">Log in</Link>
+        Already have an account?{" "}
+        <Link to={`/login${searchParams.get("returnTo") ? `?returnTo=${encodeURIComponent(searchParams.get("returnTo")!)}` : ""}`}>
+          Log in
+        </Link>
       </p>
     </main>
   );
