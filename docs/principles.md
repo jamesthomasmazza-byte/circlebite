@@ -122,6 +122,7 @@ If a decision needs one of these to lose, that's fine — but write down which o
 | Community additions survive removals | 1 | Clean conflict resolution |
 | Non-photographic avatars proposed (N23) | 5 | Faster recognition of a child's profile |
 | Corrections stored standalone, not as patches (N17) | 6 | Storage efficiency |
+| Community additions reach other profiles; removals stay reporter-only until a review queue exists (Sept 10, 2026) | 1, 4 | Symmetric propagation, and fast cleanup of a wrong warning — three throwaway accounts must not be able to clear a peanut warning for everyone |
 
 ---
 

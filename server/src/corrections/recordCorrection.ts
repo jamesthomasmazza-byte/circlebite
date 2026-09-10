@@ -60,12 +60,14 @@ type ScanRow = {
  * target — "the AI got this wrong" and "the database is wrong about this" are the same community
  * claim about the same allergen once you're counting how many people agree.
  *
- * Known scope limit, safe today because nothing yet reads corroboration status to affect other
- * profiles' verdicts (that's a later pass): a remove_caution bucket won't auto-corroborate while a
- * corroborated add_caution already exists for the same (barcode, allergen) — legacy-spec §6's "the
- * warning survives" rule — but the reverse isn't handled yet. An add_caution arriving *after* a
- * remove_caution has already corroborated does not retroactively revert it. Needs revisiting once a
- * corroborated status actually changes what someone sees.
+ * Known scope limit: a remove_caution bucket won't auto-corroborate while a corroborated
+ * add_caution already exists for the same (barcode, allergen) — legacy-spec §6's "the warning
+ * survives" rule — but the reverse isn't handled. An add_caution arriving *after* a remove_caution
+ * has already corroborated does not retroactively revert it. Still safe as of Week 8 part 2:
+ * corroborated add_caution status now changes what other profiles see
+ * (applyCommunityCorrections.ts), but corroborated remove_caution status still doesn't — removals
+ * only ever change the reporter's own view. This must be fixed before removals are allowed to
+ * propagate.
  */
 export async function recordCorrection(input: RecordCorrectionInput): Promise<RecordCorrectionResult> {
   const { scanId, reportedBy, correctionType, allergen, note, photoPath } = input;
