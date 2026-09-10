@@ -80,9 +80,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(async () => {
-    await apiLogout();
-    setUser(null);
-    setActingProfileId(null);
+    try {
+      await apiLogout();
+    } finally {
+      // Always clear local state, even if the server call failed (network error, 5xx) — the
+      // user must not be stuck looking logged-in with no way back to /login short of a reload.
+      setUser(null);
+      setActingProfileId(null);
+    }
   }, []);
 
   return (

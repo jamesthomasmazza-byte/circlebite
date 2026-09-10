@@ -7,8 +7,15 @@ export function Dashboard() {
   const navigate = useNavigate();
 
   async function handleLogout() {
-    await logout();
-    navigate("/login");
+    try {
+      await logout();
+    } catch (err) {
+      // Local auth state is already cleared either way (see AuthContext.logout) — this is only
+      // logged, not surfaced, so a failed server-side revoke doesn't block navigating away.
+      console.error("logout request failed", err);
+    } finally {
+      navigate("/login");
+    }
   }
 
   return (
