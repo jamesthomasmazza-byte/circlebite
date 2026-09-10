@@ -29,9 +29,14 @@ export function createApp(): Express {
     res.json({ ok: true });
   });
 
-  app.use("/auth", authRouter);
-  app.use(meRouter);
-  app.use(profilesRouter);
+  // Everything API-shaped lives under /api — client page routes and API routes both tend to be
+  // named after the resource they concern (a "/profiles" page showing what "/profiles" returns),
+  // and without this prefix the two collide: Express would match the API route first, so a direct
+  // browser load of a client route with the same name as an API path would get raw JSON instead
+  // of the app shell.
+  app.use("/api/auth", authRouter);
+  app.use("/api", meRouter);
+  app.use("/api", profilesRouter);
 
   if (env.isProduction) {
     // In dev, Vite serves the client on :5173 and proxies API calls here. In production, nginx
