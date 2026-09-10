@@ -227,3 +227,55 @@ reapplied the working config and confirmed the real app came back.
 - No managed AWS services in the application path: no RDS, no ElastiCache, no Cognito (R6).
 - If it ever needs rebuilding, rebuild it from this file rather than clicking through the console
   from memory.
+
+## 11. Community corrections — kill switch and undo
+
+Corroborated community reports that an allergen **is** in a product change what *other* profiles
+see when they scan that barcode (`server/src/corrections/applyCommunityCorrections.ts`). Additions
+only — a report that an allergen *isn't* there changes only the reporter's own view. Per
+`docs/principles.md` principle 4, the off switch and the undo exist before the feature is turned on.
+
+**Turn it on** (off by default — it ships dark):
+
+```bash
+# replaces an existing line rather than appending a second one that might not be the one read
+grep -q '^COMMUNITY_CORRECTIONS=' ~/circlebite/.env \
+  && sed -i 's/^COMMUNITY_CORRECTIONS=.*/COMMUNITY_CORRECTIONS=on/' ~/circlebite/.env \
+  || echo "COMMUNITY_CORRECTIONS=on" >> ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
+**Turn it off** — reverts every other profile's view at once. No data changes: `scans.result` always
+holds the engine's own verdict, and the community layer is applied on read. A reporter's own
+corrections keep applying to their own view.
+
+```bash
+sed -i 's/^COMMUNITY_CORRECTIONS=.*/COMMUNITY_CORRECTIONS=off/' ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
+Any value other than `on`/`off` refuses to boot, on purpose — a typo'd kill switch must not resolve
+to a guess.
+
+**Undo one bad report** without turning the whole thing off. Only `status = 'corroborated'` rows are
+read, so marking a row `rejected` removes it from every profile's view on the next request:
+
+```bash
+DB="$(grep DATABASE_URL ~/circlebite/.env | cut -d= -f2-)"
+
+# recent corroborated additions, newest first
+psql "$DB" -c "SELECT id, barcode, allergen, created_at, note FROM product_corrections
+               WHERE direction = 'add_caution' AND status = 'corroborated'
+               ORDER BY created_at DESC LIMIT 20;"
+
+psql "$DB" -c "UPDATE product_corrections SET status = 'rejected' WHERE id = '<correction-id>';"
+```
+
+**Audit what a report changed.** Every scan records which corroborated additions it applied at scan
+time in `scans.community_corrections_applied` (`null` = switch was off, `[]` = checked, nothing
+matched):
+
+```bash
+psql "$DB" -c "SELECT id, barcode, created_at FROM scans
+               WHERE community_corrections_applied @> '[{\"correctionIds\": [\"<correction-id>\"]}]';"
+```

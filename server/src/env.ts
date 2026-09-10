@@ -23,6 +23,20 @@ export function parseOptionalCents(raw: string | undefined, fallback: number): n
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+/**
+ * An on/off switch read from the environment. Blank or unset falls back (same blank-string trap as
+ * parseOptionalCents above); anything other than "on"/"off" throws at startup rather than guessing —
+ * a typo'd kill switch that silently resolved to the wrong state is exactly the failure a kill
+ * switch exists to prevent.
+ */
+export function parseSwitch(name: string, raw: string | undefined, fallback: boolean): boolean {
+  if (raw === undefined || raw.trim() === "") return fallback;
+  const value = raw.trim().toLowerCase();
+  if (value === "on") return true;
+  if (value === "off") return false;
+  throw new Error(`${name} must be "on" or "off", got "${raw}"`);
+}
+
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   isProduction: process.env.NODE_ENV === "production",
@@ -49,4 +63,11 @@ export const env = {
   // current/ — see docs/server-setup.md §8); local dev needs its own explicit value too now, same
   // as every other required() var below.
   uploadDir: required("UPLOAD_DIR"),
+  // Kill switch for community corrections reaching profiles other than the reporter's
+  // (corrections/applyCommunityCorrections.ts). docs/principles.md principle 4: anything that can
+  // change what a person is told must be undoable before it ships. Off by default so it ships dark
+  // and gets turned on deliberately; flipping it off and restarting reverts every other profile's
+  // view at once, with no data changes — scans.result always holds the engine's own verdict. A
+  // reporter's own corrections (CONTEST_RULES.md §3) apply either way.
+  communityCorrections: parseSwitch("COMMUNITY_CORRECTIONS", process.env.COMMUNITY_CORRECTIONS, false),
 };
