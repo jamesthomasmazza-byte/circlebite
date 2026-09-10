@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import {
   fetchMe,
@@ -24,9 +32,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [actingProfileId, setActingProfileId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // refresh() runs both at mount (before any session cookie exists) and after login/register
+  // (after one is set). Without a guard, a slow mount-time response arriving AFTER a later
+  // refresh() call could overwrite that later call's result — e.g. clobbering a just-completed
+  // login back to logged-out. requestIdRef makes only the most recently started call allowed to
+  // commit state; a stale response that resolves late is discarded instead.
+  const requestIdRef = useRef(0);
+
   const refresh = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
     try {
       const me = await fetchMe();
+      if (requestIdRef.current !== requestId) return;
       setUser(me.user);
       setActingProfileId(me.actingProfileId);
     } catch {
@@ -34,10 +51,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // we don't currently know who's logged in. Never rethrow: login()/register() call this
       // right after their own request already succeeded, and a hiccup here must not surface as
       // a false "something went wrong" on a registration or login that actually went through.
+      if (requestIdRef.current !== requestId) return;
       setUser(null);
       setActingProfileId(null);
     } finally {
-      setLoading(false);
+      if (requestIdRef.current === requestId) setLoading(false);
     }
   }, []);
 
