@@ -1,4 +1,5 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { createScan, listProfiles, type ProfileSummary, type ScanResult } from "../lib/api";
@@ -32,6 +33,11 @@ export function Scan() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ScanResult | null>(null);
 
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const controlsRef = useRef<IScannerControls | null>(null);
+
   useEffect(() => {
     listProfiles()
       .then((res) => {
@@ -43,23 +49,23 @@ export function Scan() {
       .finally(() => setLoadingProfiles(false));
   }, []);
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
+  // Manual entry and the camera both end up here — same validation, same request, same rendering.
+  async function runScan(rawBarcode: string, targetProfileId: string) {
     setError(null);
     setResult(null);
 
-    if (!profileId) {
+    if (!targetProfileId) {
       setError("Pick who you're scanning for.");
       return;
     }
-    if (!/^\d{6,14}$/.test(barcode.trim())) {
+    if (!/^\d{6,14}$/.test(rawBarcode.trim())) {
       setError("That doesn't look like a barcode — digits only, 6 to 14 of them.");
       return;
     }
 
     setSubmitting(true);
     try {
-      const scan = await createScan(profileId, barcode.trim());
+      const scan = await createScan(targetProfileId, rawBarcode.trim());
       setResult(scan);
     } catch {
       setError("Couldn't complete that scan. Try again.");
@@ -67,6 +73,41 @@ export function Scan() {
       setSubmitting(false);
     }
   }
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    await runScan(barcode, profileId);
+  }
+
+  function stopCamera() {
+    controlsRef.current?.stop();
+    controlsRef.current = null;
+    setCameraActive(false);
+  }
+
+  async function startCamera() {
+    setCameraError(null);
+    setCameraActive(true);
+    try {
+      const reader = new BrowserMultiFormatReader();
+      const controls = await reader.decodeFromVideoDevice(undefined, videoRef.current!, (detected) => {
+        if (!detected) return;
+        const text = detected.getText();
+        setBarcode(text);
+        stopCamera();
+        void runScan(text, profileId);
+      });
+      controlsRef.current = controls;
+    } catch {
+      // No camera device, permission denied, or an insecure context — manual entry stays
+      // available either way, so this is a soft failure, not a page-level error.
+      setCameraError("Couldn't access the camera. You can still enter the barcode by hand below.");
+      setCameraActive(false);
+    }
+  }
+
+  // Stop the camera on unmount so it doesn't keep the device open after navigating away.
+  useEffect(() => () => controlsRef.current?.stop(), []);
 
   if (loadingProfiles) return <p>Loading…</p>;
 
@@ -82,7 +123,7 @@ export function Scan() {
           You don't have any profiles to scan for yet. <Link to="/profiles">Create one</Link> first.
         </p>
       ) : (
-        <form onSubmit={handleSubmit}>
+        <>
           <label>
             Scanning for
             <select value={profileId} onChange={(e) => setProfileId(e.target.value)}>
@@ -93,21 +134,44 @@ export function Scan() {
               ))}
             </select>
           </label>
-          <label>
-            Barcode
-            <input
-              inputMode="numeric"
-              placeholder="e.g. 3017620422003"
-              value={barcode}
-              onChange={(e) => setBarcode(e.target.value)}
-              required
-            />
-          </label>
-          {error && <p role="alert">{error}</p>}
-          <button type="submit" disabled={submitting}>
-            {submitting ? "Checking…" : "Check this product"}
-          </button>
-        </form>
+
+          <section>
+            {cameraActive ? (
+              <>
+                <video ref={videoRef} style={{ width: "100%", maxWidth: 400 }} />
+                <p>
+                  <button type="button" onClick={stopCamera}>
+                    Stop camera
+                  </button>
+                </p>
+              </>
+            ) : (
+              <p>
+                <button type="button" onClick={startCamera}>
+                  Scan with camera
+                </button>
+              </p>
+            )}
+            {cameraError && <p role="alert">{cameraError}</p>}
+          </section>
+
+          <form onSubmit={handleSubmit}>
+            <label>
+              Barcode
+              <input
+                inputMode="numeric"
+                placeholder="e.g. 3017620422003"
+                value={barcode}
+                onChange={(e) => setBarcode(e.target.value)}
+                required
+              />
+            </label>
+            {error && <p role="alert">{error}</p>}
+            <button type="submit" disabled={submitting}>
+              {submitting ? "Checking…" : "Check this product"}
+            </button>
+          </form>
+        </>
       )}
 
       {result && (
