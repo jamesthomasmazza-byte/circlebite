@@ -62,11 +62,18 @@ often isn't the person whose allergies are at stake.
 
 ## Weeks 4–5 — Oct 6–19 · Scan to verdict, end to end
 
-- [ ] Barcode scanning in the browser
-- [ ] Open Food Facts lookup, with a local `products` cache table
-- [ ] Port the deterministic allergen matcher — synonym clusters, tags, trace handling
-- [ ] Verdict card: safe / contains / unable to confirm, **with the disclaimer on the card** *(§3)*
-- [ ] Scan history per profile
+- [x] Barcode scanning in the browser — manual entry (fully verified) plus camera scanning via
+      `@zxing/browser` layered on top (code-level check only; no physical camera available in the
+      sandboxed test environment this session, see `docs/journal.md`)
+- [x] Open Food Facts lookup, with a local `products` cache table (24h TTL, caches confirmed
+      not-found too)
+- [x] Port the deterministic allergen matcher — synonym clusters, tags, trace handling
+- [x] Verdict card: **the full four-state taxonomy from `docs/legacy-spec.md` §4** (safe / contains
+      / may-contain-caution / unable-to-confirm), not the abbreviated three states above — this
+      line was written before `treat_traces_as_unsafe` existed; building only three states now
+      would throw that field away. **Disclaimer on the card** *(§3)*, exact wording from
+      `docs/verdict-engine.md`, rendered unconditionally
+- [x] Scan history per profile — capped, share-level filtered same as the profile page
 
 **Oct 14, 2:10 PM — sponsor lecture, Maloney 207. Attend.**
 

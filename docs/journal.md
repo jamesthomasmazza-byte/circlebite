@@ -427,3 +427,69 @@ allergen matcher, and the verdict card. The profile picker item from this week's
 part of the scan flow (choosing which profile you're scanning for), so it lands there rather than
 here. Also still open from this week: the judge-account seed script and the 24-month retention job,
 both deferred on purpose since `scans` doesn't exist yet for either to act on.
+
+---
+
+## 2026-09-09 — Scan to verdict, end to end
+
+**Did:** Built the whole Weeks 4–5 spine: `products` (a 24h-TTL cache, caching a confirmed
+*not-found* too so a bad barcode doesn't hit Open Food Facts on every repeat) and `scans` migrations;
+the deterministic matcher (`synonyms.ts` + `match.ts`) transcribed from `docs/legacy-spec.md` §3 —
+tree-nut umbrella plus eight individually-narrow nuts, peanut kept strictly separate, the full
+four-state taxonomy (`safe` / `contains_allergen` / `may_contain_caution` / `unable_to_confirm`) that
+fails closed on missing data; the Open Food Facts client, which collapses every failure mode — bad
+network, timeout, non-2xx, malformed body, genuine not-found — into the same single "not found"
+result, never an exception a caller could forget to handle safely; `POST /api/scans` and
+`GET /api/profiles/:id/scans`; and the client — `Scan.tsx` (profile picker, manual entry, then camera
+scanning via `@zxing/browser` layered on top of it), `ScanHistory.tsx`.
+
+**Two share-level judgment calls, made deliberately and proven against real data, not just reasoned
+about:** the verdict computation always runs against a profile's *complete* allergen list, regardless
+of what the scanner themselves is allowed to see — filtering the safety check itself by the scanner's
+own `share_level` could mean a `severe_only` follower's scan misses a real (if mild) allergen during
+an actual purchase decision, which is exactly the false-safety direction `docs/principles.md` rules
+out. And the live scan result shows full matched-allergen detail regardless of share level, while
+*history* filters it the same way the profile page already does. Proved both halves with one real
+scan: registered an owner and a `severe_only` follower against a profile with Peanut (severe) and
+Milk (mild), scanned the real Nutella barcode as the follower and confirmed the live response showed
+the mild Milk match in full — then pulled up that *same* scan through the history endpoint and
+confirmed it was filtered down to bare-verdict-only (Milk isn't severe, so nothing qualified),
+checked in the actual rendered page for both the owner and the follower, not just via curl.
+
+**Hit the same routing hazard again, this time before it shipped:** `scansRouter` has two routes
+(`/scans`, `/profiles/:id/scans`) that don't share a mountable prefix — the exact shape that made a
+router-level `.use(requireAuth)` dangerous for `profilesRouter` two sessions ago (a blanket
+no-path middleware runs on every request entering the router, before Express even checks whether any
+of that router's own routes match, so mounting it at a broad prefix silently intercepts unrelated
+routes mounted alongside it). Recognized the shape from memory this time and applied `requireAuth`
+per-route from the start, matching `circleRouter`'s already-proven pattern — confirmed with a curl
+check that the public `GET /api/follow/:token` route still worked correctly once `scansRouter` was
+mounted alongside it. Three sessions in a row now this exact bug class has come up; it's fully
+internalized as "any router with a blanket auth middleware must be mounted at a prefix matching all
+its own routes, or the middleware goes per-route instead," documented in code comments in all three
+files it's touched (`profiles.ts`, `circle.ts`, `scans.ts`).
+
+**Decided:** `AllergenVerdictDetail` carries each match's `severity` in the stored JSON snapshot,
+discovered mid-build to be necessary for the history endpoint's share-level filter. Rejected joining
+back to the live `allergens` table at read time instead — a profile's allergen severities can change
+after a scan was performed, and the history view is supposed to show what the *scan* found, not what
+the profile currently says; re-deriving it from live data would make old scans silently reinterpret
+themselves.
+
+**Known gap, stated rather than hidden:** camera-based scanning (`@zxing/browser`) can't be physically
+exercised in this session — no real camera is attached to the sandboxed browser used for testing.
+What *was* verified: the client builds and type-checks with the new dependency, and a real
+click-through in a real logged-in session shows the "Scan with camera" control correctly starting the
+video element and its controls (no console errors, button flips to "Stop camera"), proving the code
+initializes and hands off into the same `runScan()` the manual-entry path already proved correct
+against real Nutella and bogus-barcode data. The actual decode-a-real-barcode path is untested, same
+honesty standard as the Chrome-tools-unavailable notes earlier this project.
+
+**Learned:** a bug class caught proactively on the third encounter is a bug class actually learned,
+not just patched — worth noticing that pattern-recognition-from-memory is doing real work here, not
+just re-reading old code before writing new code in the same area.
+
+**Next:** Weeks 6–7 per `BACKLOG.md` — the AI verdict-explanation layer (`docs/verdict-engine.md`),
+the single largest discretionary rubric block. The 24-month retention job and the judge-account seed
+script are still open from Weeks 2–3, now genuinely actionable since `scans` finally exists for the
+retention job to act on.
