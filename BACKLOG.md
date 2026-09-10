@@ -27,13 +27,15 @@ often isn't the person whose allergies are at stake.
 - [x] Domain pointed at the instance; Let's Encrypt certificate issued
 - [x] `.gitignore` and `.env.example` committed; real `.env` lives only on the server *(R8)*
 - [x] Hello World page deployed, reachable at the public URL
-- [ ] Registration, login, logout, session handling — written from scratch, no managed auth *(R6, R7)*
-- [ ] **Neutral date-of-birth age gate at signup**, enforced server-side; store `age_attested_adult`
+- [x] Registration, login, logout, session handling — written from scratch, no managed auth *(R6, R7)*
+- [x] **Neutral date-of-birth age gate at signup**, enforced server-side; store `age_attested_adult`
       and `age_attested_at` only, never the raw DOB *(`docs/coppa.md` §2.1)*
-- [ ] Retry prevention on a failed age gate; under-18 failure screen with no "try again"
-- [ ] Adult-manager terminology throughout — "a profile you manage", never "your allergies"
+- [x] Retry prevention on a failed age gate; under-18 failure screen with no "try again"
+- [x] Adult-manager terminology throughout — "a profile you manage", never "your allergies"
 - [ ] Authorization checks in application code on every query — no RLS layer exists here
-- [ ] Route guard: every protected route redirects unauthenticated users
+      *(convention documented in `server/src/authorization/README.md`; no resource-scoped route
+      exists yet to apply it to — real work starts in weeks 2–3 with allergen_profiles)*
+- [x] Route guard: every protected route redirects unauthenticated users
 
 ## Weeks 2–3 — Sept 22 – Oct 5 · Profiles, schema, and the circle
 

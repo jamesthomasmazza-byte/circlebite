@@ -199,3 +199,56 @@ in my head, and the cross-reference idea — barcode plus label, database as a c
 — only landed as the headline once I had to fit it in three sentences.
 
 **Next:** Auth, with the age gate and the circle in scope from the start.
+
+---
+
+## 2026-09-09 — Auth layer built and verified in a real browser
+
+**Did:** Built the Week 1 spine end to end: npm-workspace TypeScript project (React/Vite client,
+Node/Express server), plain-SQL migrations with a small hand-rolled runner, `users` with
+`age_attested_adult`/`age_attested_at` and no raw DOB anywhere, scrypt password hashing, the
+neutral date-of-birth gate with a 24h retry-prevention block, DB-backed sessions (HMAC'd token,
+`acting_profile_id` riding along as a non-authoritative UX hint for the multi-profile future),
+`requireAuth` middleware plus `GET /me` as the first protected route, and the
+`authorization/README.md` convention for the resource-scoped checks weeks 2–3 will need. Installed
+a local Postgres 16 via Homebrew — same major version as the production box — specifically so this
+could be verified against real data instead of stopping at a type-check.
+
+**Hit a wall on:** Clicking through the register form in an actual browser (once Chrome tools were
+on) surfaced something the curl-based testing hadn't: register handed off to a separate login
+screen instead of landing on the dashboard. Not a bug — it's what the plan said it would do — but
+seeing it happen live made it obviously wrong for a single-adult-account product, and led to the
+auto-login change below. Separately, one browser click landed on the date field instead of the
+submit button (stale coordinates after the DOM shifted) and looked exactly like a validation
+failure — no error, no request sent — until I clicked the actual button position and got the real
+result. Worth remembering: a silent no-op in a browser check is worth confirming the click landed
+where intended before assuming the code is broken.
+
+**Decided:** Register now creates a session and lands directly on the dashboard, matching what
+login does — no more register→login handoff. Auto-login removes the one point where retyping a
+password at a separate screen would have caught a typo, and password reset doesn't exist yet, so
+added a confirm-password field, checked client-side before the request goes out. Left "authorization
+checks in application code on every query" unchecked on the Week 1 backlog rather than marking it
+done — `requireAuth` only proves identity; there's no profile-scoped resource yet for the
+`authorization/` convention to actually guard, so the real test of that pattern starts in weeks 2–3
+with `allergen_profiles`.
+
+**Learned:** Curl-level verification and browser verification catch different classes of problems.
+The full register→login→dashboard round-trip passed every status-code check I wrote against it, and
+still shipped a UX decision I wouldn't have made looking at it as a user would. "Returns the right
+status codes" and "is the right flow" are different claims — the second one needed a browser, not a
+terminal.
+
+**Still open, honestly:** No password reset exists at all. Combined with auto-login on register,
+a mistyped-but-self-consistent password (confirm field matches the typo) or a typo'd email now
+locks someone out of that account with no recovery path — worth deciding in weeks 2–3 whether reset
+lands there or gets deferred with the risk written down, not just implied. No login rate limiting or
+brute-force throttling exists on `/auth/login` — not unverified in the sense of "built but not
+tested," genuinely not built at all; nothing currently slows down repeated password guesses against
+a known email. Neither of these has shipped to the EC2 box yet — everything this session was run
+and verified locally.
+
+**Next:** Weeks 2–3 per `BACKLOG.md`: `allergen_profiles`, `profile_managers`,
+`follow_relationships`, the circle invite flow, and the deletion-cascade FKs decided in this
+session's auth plan. Decide password reset and login throttling's place in that window rather than
+letting them slide to week 9.
