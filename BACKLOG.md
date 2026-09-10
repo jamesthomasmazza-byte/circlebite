@@ -112,11 +112,24 @@ against production, not just unit tests. Paths A (AI-authored explanation only)/
 
 Prof. Yoest called this out by name. It is the cheapest bonus available.
 
-- [ ] Correction flow targets the AI verdict as well as the product data
-- [ ] Overrule stores the verdict, model, prompt version, and source text it disagreed with
-- [ ] User's overrule applies immediately to their own profile
-- [ ] Review queue with a corroboration threshold
-- [ ] AI accuracy page — overrule rate overall and by allergen
+- [x] Correction flow targets the AI verdict as well as the product data — `target`/
+      `verdict_explanation_id` derived automatically from whether the disputed allergen was
+      `aiEscalated` on that scan, not trusted from the client
+- [x] Overrule stores the verdict, model, prompt version, and source text it disagreed with —
+      denormalized at write time (`docs/principles.md`'s N17 precedent), not left to a join
+- [x] User's overrule applies immediately to their own profile — verified in a real browser:
+      report a correction, scan history immediately shows the corrected verdict as the headline
+      with a transparency callout naming the original and why it changed, never silent
+- [x] Corroboration threshold — 1 report to add a caution, 3 to remove one, asymmetric per
+      `docs/legacy-spec.md` §6, with "the warning survives" conflict handling; verified against real
+      Postgres, not just unit-level. **Not built yet:** an actual browsable review queue page — the
+      threshold mechanism and status field exist and work, but there's no UI listing pending
+      corrections across the app. Also not yet built: a corroborated correction changing what a
+      *different* profile sees on a future scan of the same barcode — right now corroboration only
+      changes `status`, nothing yet reads that status to affect anyone but the original reporter.
+- [ ] AI accuracy page — overrule rate overall and by allergen. Not started — the recording path
+      (this week's actual priority) is what needed to go live first, since the accuracy number needs
+      months of real scans to mean anything regardless of when the page itself ships.
 
 ## Week 9 — Nov 10–16 · Polish and hardening *[10% UX, 15% code quality]*
 

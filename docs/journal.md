@@ -759,3 +759,64 @@ is what makes the demo worth anything.
 
 **Next:** Week 8's overrule loop. The `milkfat` gap and the missing-vocabulary items above are noted
 for a future pass, not blocking.
+
+---
+
+## 2026-09-10 (still later) — Week 8, part 1: the overrule loop's recording path
+
+**Did:** Planned before writing anything (`docs/legacy-spec.md` §6 already had the design —
+asymmetric corroboration thresholds, a required photo, three correction types — the rebuild's job
+was extending it so a correction can target the AI verdict specifically, per
+`docs/verdict-engine.md` and `CONTEST_RULES.md` §3). Confirmed scope with JT before building:
+"applies to their profile immediately" gets a real read-side hook this pass, not deferred, but must
+never silently change a verdict — the original and the effective, corrected result ship together,
+always.
+
+**Built:** `product_corrections` table; `recordCorrection()` (direction from correction type,
+`target`/`verdict_explanation_id` derived from whether the disputed allergen was `aiEscalated` on
+that scan — never trusted from the caller — verdict/model/prompt version/source text denormalized
+at write time per `docs/principles.md`'s N17 precedent); photo storage with real content-type
+validation (file signature, not the client's Content-Type header or filename) and a size cap — the
+first endpoint in the app that accepts a file from a user, and a required photo field is the first
+place someone can fill the disk, so both got hardened rather than just wired up; the POST/GET
+routes; a read-side hook in scan history computing an effective result from the requester's own
+corrections; and the client — a report affordance on the live verdict card, a transparency callout
+on scan history.
+
+**Caught mid-build, before it shipped:** the corroboration anti-inflation protection almost had the
+same class of bug the empty-string spend cap did a few hours earlier — a single `UNIQUE(barcode,
+allergen, direction, reported_by)` constraint looks right but doesn't actually protect
+`wrong_product` reports, because `allergen` is always NULL for that type and standard SQL treats
+NULL as distinct from itself in a unique constraint. Caught this by working through what the
+constraint would actually enforce before applying the migration, not after — split into two partial
+unique indexes instead (one for `allergen IS NOT NULL`, one for `allergen IS NULL`), and then proved
+it with real inserts: a second `wrong_product` report from the same user on the same barcode
+correctly rejected, a different allergen or a different user correctly allowed.
+
+**Verified for real, every layer:** the migration's constraints tested with real conflicting
+inserts, not just applied; `recordCorrection`'s corroboration math tested against real Postgres (the
+asymmetric threshold, the "warning survives" conflict rule, independent buckets per allergen);
+photo storage tested with real file I/O (real magic bytes written, read back, byte-compared); the
+routes tested end to end against a real running server — a real multipart upload, the file
+byte-identical on disk and on download, every rejection path for real (oversized, spoofed
+content-type declared `.jpg` on a text file, missing photo, malformed `wrong_product`+allergen
+combo), a second uninvited user correctly getting 404 (not 403) on both read and write. Then the
+whole loop in a real browser: reported a real correction through the real UI with a real uploaded
+photo, watched "Reported — thanks. This is now in the review queue." render, then watched scan
+history show "Safe" as the headline with "Originally **Contains an allergen** — changed because of
+your report" and the specific claim underneath — the exact transparency `legacy-spec.md` §6 requires,
+not just a number that quietly changed.
+
+**Decided against, on purpose:** an admin-moderation UI for the review queue, `product_confirmations`
+(the positive signal), corroboration changing what a *different* profile sees on a future scan of
+the same barcode, and the AI accuracy page. All real Week 8 items, all deliberately staged for a
+later pass — the recording path was this week's actual priority, since the accuracy number the
+whole bonus is graded on needs months of real scans to mean anything regardless of when the display
+side ships. Documented as an explicit, known scope limit in `recordCorrection.ts` rather than
+pretending the loop is closed: a remove_caution bucket won't corroborate while a corroborated
+add_caution already exists for the same allergen ("the warning survives"), but the reverse isn't
+handled yet, and it's safe only because nothing yet reads corroboration status to affect anyone but
+the original reporter.
+
+**Next:** part 2 — corroboration propagating to other profiles' future scans, then the accuracy
+page (`aiAccuracyReport()`, overrule rate overall and by prompt version).
