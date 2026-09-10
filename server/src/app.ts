@@ -8,6 +8,7 @@ import { authRouter } from "./auth/routes.js";
 import { env } from "./env.js";
 import { HttpError } from "./lib/httpError.js";
 import { circleRouter } from "./routes/circle.js";
+import { correctionsRouter } from "./routes/corrections.js";
 import { meRouter } from "./routes/me.js";
 import { profilesRouter } from "./routes/profiles.js";
 import { scansRouter } from "./routes/scans.js";
@@ -45,6 +46,9 @@ export function createApp(): Express {
   app.use("/api/profiles", profilesRouter);
   app.use("/api", circleRouter);
   app.use("/api", scansRouter);
+  // Per-route requireAuth, same reasoning as scansRouter/circleRouter above — safe to mount at
+  // bare /api.
+  app.use("/api", correctionsRouter);
 
   if (env.isProduction) {
     // In dev, Vite serves the client on :5173 and proxies API calls here. In production, nginx
