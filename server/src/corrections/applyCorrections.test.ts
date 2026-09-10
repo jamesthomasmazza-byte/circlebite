@@ -107,3 +107,45 @@ test("the last correction in report order wins if the same user somehow has both
   ]);
   assert.equal(effective?.matchedAllergens[0].classification, "clear");
 });
+
+test("a flag_wrong on a product the lookup never found doesn't lift unable_to_confirm to safe", () => {
+  // Product not found → the matcher returns unable_to_confirm with an empty list. The correction
+  // pushes a "clear" entry for the allergen, and a naive recompute read that as safe.
+  const s = scan("unable_to_confirm", []);
+  const effective = applyUserCorrections(s, [
+    correction({ correctionType: "flag_wrong", direction: "remove_caution", allergen: "Milk" }),
+  ]);
+  assert.equal(effective?.result, "unable_to_confirm");
+});
+
+test("a flag_wrong after an AI failure doesn't lift the fail-closed unable_to_confirm to safe", () => {
+  // mergeVerdict's ai.failed override: every allergen "clear", overall unable_to_confirm because
+  // the AI step never ran successfully. Clearing one allergen says nothing about the rest.
+  const s = scan("unable_to_confirm", [
+    { allergenName: "Milk", severity: "severe", classification: "clear" },
+    { allergenName: "Egg", severity: "moderate", classification: "clear" },
+  ]);
+  const effective = applyUserCorrections(s, [
+    correction({ correctionType: "flag_wrong", direction: "remove_caution", allergen: "Egg" }),
+  ]);
+  assert.equal(effective?.result, "unable_to_confirm");
+});
+
+test("a flag_missing on a fail-closed scan still escalates to contains_allergen", () => {
+  const s = scan("unable_to_confirm", []);
+  const effective = applyUserCorrections(s, [
+    correction({ correctionType: "flag_missing", direction: "add_caution", allergen: "Sesame" }),
+  ]);
+  assert.equal(effective?.result, "contains_allergen");
+});
+
+test("clearing the one 'unresolved' allergen that caused unable_to_confirm is still allowed on the user's own view", () => {
+  const s = scan("unable_to_confirm", [
+    { allergenName: "Milk", severity: "severe", classification: "unresolved" },
+    { allergenName: "Egg", severity: "moderate", classification: "clear" },
+  ]);
+  const effective = applyUserCorrections(s, [
+    correction({ correctionType: "flag_wrong", direction: "remove_caution", allergen: "Milk" }),
+  ]);
+  assert.equal(effective?.result, "safe");
+});

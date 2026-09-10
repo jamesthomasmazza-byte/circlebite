@@ -80,5 +80,19 @@ export function applyUserCorrections(
     }
   }
 
-  return { result: rollupResult(matchedAllergens), matchedAllergens };
+  // A fail-closed unable_to_confirm that no single allergen caused — the product wasn't found, had
+  // no usable data, or the AI step failed (mergeVerdict.ts's ai.failed override) — can't be lifted
+  // by a correction about one allergen. Recomputing from the per-allergen list alone would read
+  // "everything clear" as safe, when the list was never the reason for the verdict: before this, a
+  // user flagging one allergen as wrong on a product the lookup never found saw their own view flip
+  // to "safe" (docs/principles.md principle 2 — no data is never "probably fine"). An escalation
+  // to contains_allergen still goes through; only the move toward safe is blocked. When the
+  // original did carry an "unresolved" entry, that entry was the reason, and resolving it is
+  // exactly what a user's own correction is allowed to do on their own view.
+  const recomputed = rollupResult(matchedAllergens);
+  const failClosedWithoutAllergenCause =
+    scan.result === "unable_to_confirm" && !scan.matchedAllergens.some((m) => m.classification === "unresolved");
+  const result = failClosedWithoutAllergenCause && recomputed !== "contains_allergen" ? "unable_to_confirm" : recomputed;
+
+  return { result, matchedAllergens };
 }
