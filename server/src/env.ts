@@ -8,6 +8,21 @@ function required(name: string): string {
   return value;
 }
 
+/**
+ * `raw ?? fallback` looks equivalent to this but isn't: `??` only falls back on null/undefined,
+ * not on an empty string — and an env var present in the file but left blank (exactly what
+ * .env.example ships as its template for an optional numeric var) comes through as `""`, not
+ * undefined. `Number("")` is 0, not NaN, so a blank AI_DAILY_SPEND_CAP_CENTS silently became a
+ * real $0.00 cap that refused every AI call, not "no cap configured, use the default." Also falls
+ * back on non-numeric garbage rather than propagating NaN, which would have the same silent-zero
+ * failure mode (NaN comparisons are always false).
+ */
+export function parseOptionalCents(raw: string | undefined, fallback: number): number {
+  if (raw === undefined || raw.trim() === "") return fallback;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   isProduction: process.env.NODE_ENV === "production",
@@ -21,5 +36,5 @@ export const env = {
   aiApiKey: process.env.AI_API_KEY,
   aiModel: process.env.AI_MODEL ?? "claude-haiku-4-5-20251001",
   // In-app spend rail, on top of (not instead of) the console-side cap on the sandbox key itself.
-  aiDailySpendCapCents: Number(process.env.AI_DAILY_SPEND_CAP_CENTS ?? 200),
+  aiDailySpendCapCents: parseOptionalCents(process.env.AI_DAILY_SPEND_CAP_CENTS, 200),
 };
