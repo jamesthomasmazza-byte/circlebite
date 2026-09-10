@@ -71,6 +71,18 @@ authRouter.post(
       return;
     }
 
+    // Cheap fast-reject before paying for scrypt: unlike login, there's no timing leak to design
+    // around here — the email_taken response below already discloses the answer directly in its
+    // body. With no rate limiting yet on /auth/register, skipping the hash on the common "already
+    // taken" case avoids handing out free scrypt cycles to anyone probing known emails.
+    const { rows: existing } = await pool.query("SELECT 1 FROM users WHERE email = $1", [
+      normalizedEmail,
+    ]);
+    if (existing.length > 0) {
+      res.status(409).json({ error: "email_taken" });
+      return;
+    }
+
     const passwordHash = await hashPassword(password);
 
     try {
