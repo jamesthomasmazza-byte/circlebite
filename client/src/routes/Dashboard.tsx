@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../lib/AuthContext";
 
@@ -24,7 +24,10 @@ export function Dashboard() {
       <p>
         Signed in as {user?.displayName} ({user?.email}).
       </p>
-      <p>Profiles you manage, profiles you follow, and recent scans will live here.</p>
+      <p>
+        <Link to="/profiles">Profiles you manage and follow</Link> — recent scans will live here
+        once scanning exists.
+      </p>
       <button onClick={handleLogout}>Log out</button>
     </main>
   );

@@ -6,6 +6,8 @@ import { AuthProvider } from "./lib/AuthContext";
 import { RequireAuth } from "./RequireAuth";
 import { Dashboard } from "./routes/Dashboard";
 import { Login } from "./routes/Login";
+import { ProfileDetail } from "./routes/ProfileDetail";
+import { Profiles } from "./routes/Profiles";
 import { Register } from "./routes/Register";
 
 function App() {
@@ -17,6 +19,8 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route element={<RequireAuth />}>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/profiles" element={<Profiles />} />
+            <Route path="/profiles/:id" element={<ProfileDetail />} />
           </Route>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Routes>
