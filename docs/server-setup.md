@@ -116,9 +116,16 @@ nothing about this database should be reachable from the internet.
 `~/circlebite/.env` on the server, mode 600, owned by `ubuntu`. Nowhere else. It is never committed —
 `.gitignore` blocks it and `scripts/check-secrets.sh` refuses the commit if it is ever staged.
 
-Four keys live there now: `DATABASE_URL` (set when the database was created, §5),
+Five keys live there now: `DATABASE_URL` (set when the database was created, §5),
 `SESSION_SECRET` (generated on the box with `openssl rand -hex 32`, appended when the app was first
-deployed, §7 below), and `NODE_ENV=production` / `PORT=3000`.
+deployed, §7 below), `NODE_ENV=production` / `PORT=3000`, and `OFF_USER_AGENT` (appended when the
+scan feature deployed — Open Food Facts requires a descriptive user agent on every request).
+
+`release.sh` loads this file with a plain bash `source`, not a key=value parser — a value with
+spaces or special characters (like `OFF_USER_AGENT`'s `CircleBite-Prod/1.0 (email)` form) **must be
+double-quoted** or the deploy fails at the sourcing step with a shell syntax error. The atomic deploy
+design caught this the first time: the build ran fine, sourcing failed, and the currently running
+release was left untouched — exactly what it's for.
 
 To read it back: `cat ~/circlebite/.env`.
 
