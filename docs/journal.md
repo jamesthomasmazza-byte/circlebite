@@ -21,9 +21,8 @@ path, and a real defect in the deterministic matcher's word-boundary matching th
 and got fixed (see the three 2026-09-10 entries below). Still open from earlier weeks, not yet
 started: the 24-month scan-history retention job, the judge-account seed script, a `DELETE /account`
 endpoint, password reset, and rate limiting on login. Week 8 — the overrule loop — has its recording
-path and (as of the evening of 2026-09-10) corroborated additions reaching other profiles, behind a
-kill switch that is still off in production. Next: browser-check and turn it on, then the AI
-accuracy page.
+path and (as of the evening of 2026-09-10) corroborated additions reaching other profiles —
+browser-checked, deployed, and switched on in production. Next: the AI accuracy page.
 
 ---
 
@@ -909,9 +908,19 @@ an end-to-end script against the compiled server: a report on one family's scan 
 family's differently spelled allergen while the stored engine result stayed "safe"; a severe_only
 follower saw neither the moderate allergen nor its name in the note; three corroborated removals did
 not clear wheat for a fourth family; rejecting the report and turning the switch off each reverted
-new scans and history at once; `COMMUNITY_CORRECTIONS=true` refused to boot. **Not yet checked in a
-browser, not deployed.**
+new scans and history at once; `COMMUNITY_CORRECTIONS=true` refused to boot.
 
-**Next:** run it locally in a browser, deploy, set `COMMUNITY_CORRECTIONS=on` on the box
-(`docs/server-setup.md` §11). Then the AI accuracy page. The review queue is the prerequisite for
-ever letting removals propagate.
+Then checked in a real browser against the local dev server, with invented families: the second
+family's card and history both showed the escalation, the shopper-sourced label, and the original
+verdict alongside. That check caught two wording bugs no test would have — "other shoppers
+reported" for one shopper, and "sesame seeds is in this product" on a plural name — fixed before
+deploying.
+
+**Deployed** (release `20260911002055`, migration 0016 applied, `/health` green) and switched on in
+production per `docs/server-setup.md` §11. The first deploy attempt couldn't even connect: SSH timed
+out because the security group only allows port 22 from the IP it was set up from, and that had
+changed. Updating the rule to the current IP fixed it — worth remembering the next time a deploy
+"hangs" from a new network.
+
+**Next:** the AI accuracy page. The review queue is the prerequisite for ever letting removals
+propagate.
