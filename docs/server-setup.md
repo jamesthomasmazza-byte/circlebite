@@ -279,3 +279,20 @@ matched):
 psql "$DB" -c "SELECT id, barcode, created_at FROM scans
                WHERE community_corrections_applied @> '[{\"correctionIds\": [\"<correction-id>\"]}]';"
 ```
+
+## 12. Admin access — the AI accuracy page
+
+`users.is_admin` gates internal aggregate pages (the AI accuracy page today, the review queue
+later). There's no UI for it — flipped by hand via SQL, same pattern as undoing a corroborated
+report above:
+
+```bash
+DB="$(grep DATABASE_URL ~/circlebite/.env | cut -d= -f2-)"
+psql "$DB" -c "UPDATE users SET is_admin = true WHERE email = '<jt-account-email>';"
+```
+
+**Deliberately not granted to the judge account.** With a small user base, the by-allergen
+breakdown on the accuracy page can effectively identify a specific person's allergy — see
+`docs/principles.md`'s precedent table. The judge account stays a normal account.
+
+To revoke: `UPDATE users SET is_admin = false WHERE email = '<email>';`
