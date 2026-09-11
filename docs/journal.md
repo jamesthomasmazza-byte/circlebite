@@ -20,10 +20,11 @@ confirmed against the real deployed app with a real key — a genuine AI escalat
 path, and a real defect in the deterministic matcher's word-boundary matching that the AI surfaced
 and got fixed (see the three 2026-09-10 entries below). Still open from earlier weeks, not yet
 started: the 24-month scan-history retention job, the judge-account seed script, a `DELETE /account`
-endpoint, password reset, and rate limiting on login. Week 8 — the overrule loop — has its recording
-path and (as of the evening of 2026-09-10) corroborated additions reaching other profiles —
-browser-checked, deployed, and switched on in production, plus the AI accuracy page itself
-(planned with JT, then built the same day — see the entry below). Next: the review queue.
+endpoint, and password reset. Week 8 — the overrule loop — has its recording path and (as of the
+evening of 2026-09-10) corroborated additions reaching other profiles — browser-checked, deployed,
+and switched on in production, plus the AI accuracy page itself (planned with JT, then built the
+same day — see the entry below). Login/register rate limiting, open since Week 1, is now built too
+(2026-09-11 entry below) — not yet deployed. Next: the review queue.
 
 ---
 
@@ -971,3 +972,57 @@ present only for the admin account.
 
 **Next:** the review queue — browsing corrections and rejecting one from the UI instead of SQL, and
 the prerequisite for ever letting corroborated removals propagate.
+
+---
+
+## 2026-09-11 — Login/register rate limiting, open since Week 1
+
+**Did:** Planned with JT first, in detail — the numbers were the whole point of the planning pass,
+not an afterthought. Login gets three independent tiers rather than one: `ip_and_email` (5
+failures/15min — one attacker guessing one account), `ip` (20/15min — one source spraying many
+emails), and `email` alone (50/60min, deliberately wide and long). JT caught the actual bug in my
+first draft before any code existed: a lone tight per-email threshold would let anyone lock out any
+account — including the judge account — with a cheap loop of wrong passwords from rotating IPs. The
+`email`-alone tier exists specifically to need a real distributed attempt, not a five-request
+prank. Register has no secret to guess, so every well-formed submission counts regardless of
+outcome, toward its own `ip` (10/60min) and `email` (5/60min) tiers.
+
+Built in small commits: the `auth_attempts` table, `rateLimit.ts` (tested against real Postgres,
+including the specific scenario the three-tier design exists for — 50 failures against one email
+from 50 different IPs trips the per-email tier even though no single IP or IP+email pair ever
+reaches its own threshold), `app.set("trust proxy", "loopback")`, then wiring into `/auth/login`
+and `/auth/register` separately, then the client message.
+
+**Decided:** Store HMAC-SHA256 hashes of IP and email in `auth_attempts`, not the raw values
+(`docs/principles.md` principle 5) — the limiter only ever needs equality against the same value
+again. Reused `SESSION_SECRET` rather than adding a second secret purely for this, domain-separated
+by an `"ip:"`/`"email:"` prefix, same pattern `auth/session.ts` already uses for session tokens.
+Also decided the sliding-window design accepts a known, named tradeoff rather than hiding it: a
+persistent low-rate attacker can keep a specific email's window "hot" indefinitely (a real category,
+"account-lockout DoS") — the standard fix is a CAPTCHA/step-up challenge, which usually means a
+hosted service and is more scope than "slow down brute force" calls for here.
+
+**Hit a wall on:** My own first draft of the verification plan for `trust proxy` was wrong, and JT
+caught it before I wrote a line of code — I'd proposed sending a spoofed `X-Forwarded-For` directly
+to the local dev server and confirming it got rejected. That would have proven nothing: Node only
+ever accepts connections from `127.0.0.1` on this box, so a local request's socket peer genuinely
+*is* loopback, and `trust proxy: "loopback"` trusts it *by design* in that case. The real check has
+to go through the live nginx — sending a forged header to `https://circlebite.app` and confirming
+the IP nginx's own `$proxy_add_x_forwarded_for` appended is what got recorded, not the forged one.
+Documented as its own check in `docs/server-setup.md` §13, computing the spoofed value's hash on the
+box rather than reading a value back (the table only ever stores hashes).
+
+**Verified:** 133 server tests passing (9 new, all against real Postgres). Then the local dev server
+end to end: the 6th wrong password in a row against a fresh account returns 429, and so does the 6th
+attempt with the *correct* password while that window is still tripped — the accepted cost of
+throttling brute force at all is a brief self-lockout risk for the real owner. Register's per-IP
+tier tripped identically at the 10th well-formed attempt regardless of outcome. Both pages
+browser-checked for the client message: tripped each limiter for real through the actual fetch path
+and confirmed "Too many attempts. Try again in 15 minutes." renders on the real 429, not a mocked
+one.
+
+**Not yet deployed** — everything this session was run and verified locally, same as the auth layer
+originally shipped in Week 1. The `trust proxy`/nginx verification in server-setup.md §13 can only
+run against the live site once this reaches it.
+
+**Next:** the review queue.
