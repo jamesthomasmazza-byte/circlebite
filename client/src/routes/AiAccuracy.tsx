@@ -14,7 +14,7 @@ function BucketSummary({ label, bucket, threshold }: { label: string; bucket: Ac
   if (bucket.escalations === 0) {
     return (
       <p>
-        <strong>{label}:</strong> no AI-reviewed scans yet.
+        <strong>{label}:</strong> none yet.
       </p>
     );
   }
