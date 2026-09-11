@@ -5,6 +5,7 @@ import { asyncHandler } from "../lib/asyncHandler.js";
 import { blockSignup, evaluateAgeGate, isSignupBlocked } from "./ageGate.js";
 import { normalizeEmail } from "./email.js";
 import { hashPassword, verifyPassword } from "./password.js";
+import { isRateLimited, recordAttempt } from "./rateLimit.js";
 import { createSession, revokeSession, SESSION_COOKIE_NAME, sessionCookieOptions } from "./session.js";
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -122,6 +123,20 @@ authRouter.post(
       return;
     }
 
+    const normalizedEmail = normalizeEmail(email);
+    // req.ip is undefined only if the socket's already gone (e.g. the client disconnected mid-
+    // request) — vanishingly rare, and a shared fallback bucket for that sliver is fine.
+    const ip = req.ip ?? "unknown";
+
+    // Checked before any DB/hash work, so a rate-limited request doesn't pay for either — and
+    // checked regardless of whether this email has an account, so the limiter itself can never
+    // become a second way to learn which emails are registered (the whole reason dummyHash exists
+    // below).
+    if (await isRateLimited("login", ip, normalizedEmail)) {
+      res.status(429).json({ error: "too_many_attempts" });
+      return;
+    }
+
     const { rows } = await pool.query<{
       id: string;
       email: string;
@@ -129,18 +144,20 @@ authRouter.post(
       password_hash: string;
       is_admin: boolean;
     }>("SELECT id, email, display_name, password_hash, is_admin FROM users WHERE email = $1", [
-      normalizeEmail(email),
+      normalizedEmail,
     ]);
     const user = rows[0];
 
     if (!user) {
       await verifyPassword(password, await dummyHash);
+      await recordAttempt("login", ip, normalizedEmail);
       res.status(401).json({ error: "invalid_credentials" });
       return;
     }
 
     const passwordOk = await verifyPassword(password, user.password_hash);
     if (!passwordOk) {
+      await recordAttempt("login", ip, normalizedEmail);
       res.status(401).json({ error: "invalid_credentials" });
       return;
     }
