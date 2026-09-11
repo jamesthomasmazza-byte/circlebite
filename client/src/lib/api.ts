@@ -317,3 +317,22 @@ export async function createCorrection(
 
   return body as CorrectionResult;
 }
+
+export type AccuracyBucket = { escalations: number; overruled: number; rate: number | null };
+export type AccuracyCategoryBuckets = { escalation: AccuracyBucket; unresolved: AccuracyBucket };
+export type AccuracyAllergenRow = AccuracyCategoryBuckets & { allergen: string };
+export type AccuracyModelRow = AccuracyCategoryBuckets & { model: string; promptVersion: string };
+
+export type AiAccuracyReport = {
+  threshold: number;
+  generatedAt: string;
+  overall: AccuracyCategoryBuckets;
+  byAllergen: AccuracyAllergenRow[];
+  byModelPromptVersion: AccuracyModelRow[];
+  misses: { reportedMisses: number; aiReviewedScans: number };
+  failures: { totalAttempts: number; totalFailures: number; rate: number | null; byReason: { reason: string; count: number }[] };
+};
+
+export function getAiAccuracyReport(): Promise<AiAccuracyReport> {
+  return apiFetch("/admin/ai-accuracy");
+}
