@@ -6,6 +6,7 @@ import { AuthProvider } from "./lib/AuthContext";
 import { RequireAuth } from "./RequireAuth";
 import { AcceptCoManager } from "./routes/AcceptCoManager";
 import { AcceptFollow } from "./routes/AcceptFollow";
+import { AiAccuracy } from "./routes/AiAccuracy";
 import { Dashboard } from "./routes/Dashboard";
 import { Login } from "./routes/Login";
 import { ProfileDetail } from "./routes/ProfileDetail";
@@ -31,6 +32,9 @@ function App() {
             <Route path="/profiles/:id" element={<ProfileDetail />} />
             <Route path="/scan" element={<Scan />} />
             <Route path="/profiles/:id/history" element={<ScanHistory />} />
+            {/* Real gate is server-side (assertIsAdmin, a 404 for anyone else) — this route exists
+                for admins to navigate to, not as the access control itself. */}
+            <Route path="/admin/ai-accuracy" element={<AiAccuracy />} />
           </Route>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Routes>

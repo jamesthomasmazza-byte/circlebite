@@ -30,6 +30,11 @@ export function Dashboard() {
       <p>
         <Link to="/scan">Scan a product</Link>
       </p>
+      {user?.isAdmin && (
+        <p>
+          <Link to="/admin/ai-accuracy">AI accuracy</Link>
+        </p>
+      )}
       <button onClick={handleLogout}>Log out</button>
     </main>
   );
