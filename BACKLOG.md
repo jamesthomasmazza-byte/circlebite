@@ -136,9 +136,13 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
 - [ ] Review queue page — browse corrections and reject one from the UI instead of SQL. Prerequisite
       for ever letting corroborated removals reach other profiles, along with fixing the reverse
       "warning survives" gap noted in `recordCorrection.ts`.
-- [ ] AI accuracy page — overrule rate overall and by allergen. Not started — the recording path
-      (this week's actual priority) is what needed to go live first, since the accuracy number needs
-      months of real scans to mean anything regardless of when the page itself ships.
+- [x] AI accuracy page — overrule rate overall, by allergen, and by model/prompt version, scoped to
+      `target = 'ai_verdict' AND direction = 'remove_caution'` (the false-alarm sense of "overrule"),
+      with unresolved escalations counted separately from contains/caution ones. Reported misses and
+      AI call failures get their own counts rather than being folded into the rate — the page states
+      outright that the overrule rate can't see misses. Rates are withheld (raw counts always shown)
+      below 20 escalations/attempts. Gated behind a new `users.is_admin` flag, not the judge account
+      (`docs/principles.md`) — no UI sets it, flipped by hand per `docs/server-setup.md` §12.
 
 ## Week 9 — Nov 10–16 · Polish and hardening *[10% UX, 15% code quality]*
 
