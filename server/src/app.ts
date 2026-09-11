@@ -26,6 +26,13 @@ const clientDist = path.join(
 export function createApp(): Express {
   const app = express();
 
+  // Node only ever accepts connections from nginx on 127.0.0.1 (scripts/nginx-circlebite.conf
+  // already sets X-Real-IP/X-Forwarded-For there) — "loopback" trusts exactly that hop, not an
+  // arbitrary forwarded-for chain a client could forge by sending the header straight to Node if
+  // this ever ran with a different topology. Without this, req.ip is always nginx's own address
+  // (127.0.0.1), which is what auth/rateLimit.ts needs to be the real client IP, not the proxy's.
+  app.set("trust proxy", "loopback");
+
   app.use(express.json());
   app.use(cookieParser());
 
