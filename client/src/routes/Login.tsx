@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
+import { ApiRequestError } from "../lib/api";
 import { useAuth } from "../lib/AuthContext";
 import { safeReturnTo } from "../lib/returnTo";
 
@@ -21,8 +22,12 @@ export function Login() {
     try {
       await login(email, password);
       navigate(safeReturnTo(searchParams.get("returnTo")));
-    } catch {
-      setError("That email or password doesn't match an account.");
+    } catch (err) {
+      if (err instanceof ApiRequestError && err.message === "too_many_attempts") {
+        setError("Too many attempts. Try again in 15 minutes.");
+      } else {
+        setError("That email or password doesn't match an account.");
+      }
     } finally {
       setSubmitting(false);
     }

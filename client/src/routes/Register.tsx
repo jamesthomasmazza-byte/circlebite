@@ -9,6 +9,7 @@ const ERROR_COPY: Record<string, string> = {
   invalid_request: "Check that every field is filled in, and that your password is at least 8 characters.",
   invalid_dob: "That doesn't look like a valid date.",
   email_taken: "An account with that email already exists.",
+  too_many_attempts: "Too many attempts. Try again in 15 minutes.",
 };
 
 export function Register() {
