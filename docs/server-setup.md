@@ -296,3 +296,45 @@ breakdown on the accuracy page can effectively identify a specific person's alle
 `docs/principles.md`'s precedent table. The judge account stays a normal account.
 
 To revoke: `UPDATE users SET is_admin = false WHERE email = '<email>';`
+
+## 13. Login/register rate limiting
+
+`auth_attempts` (server/src/auth/rateLimit.ts). Login gets three tiers — `ip_and_email` (5
+failures/15min, one attacker guessing one account), `ip` (20 failures/15min, one source spraying
+many emails), and `email` alone (50 failures/60min, deliberately wide and long: a lone tight
+per-email threshold would let anyone lock out any account — including the judge account — with a
+cheap loop of wrong passwords from rotating IPs). Register has no secret to guess, so every
+well-formed submission counts, regardless of outcome, toward its own `ip` (10/60min) and `email`
+(5/60min) tiers. `ip_hash`/`email_hash` are HMAC-SHA256 (reusing `SESSION_SECRET`, the same key
+`auth/session.ts` hashes session tokens with) — the raw IP or email is never stored
+(`docs/principles.md` principle 5).
+
+**Verify the real client IP survives, through nginx, not locally.** `app.set("trust proxy",
+"loopback")` in `app.ts` only does the right thing if nginx is actually the one setting
+`X-Forwarded-For`/`X-Real-IP` — confirm against the live site, not a local request (a local
+request's own socket peer genuinely *is* loopback, so it would trust a spoofed header there by
+design and prove nothing):
+
+```bash
+# 1. From your own machine — NOT the box — send a request with a forged header:
+curl -s -X POST https://circlebite.app/api/auth/login \
+  -H "Content-Type: application/json" \
+  -H "X-Forwarded-For: 1.2.3.4" \
+  -d '{"email":"trust-proxy-check@example.com","password":"wrong"}'
+
+# 2. On the box, compute what "1.2.3.4" would hash to under the running SESSION_SECRET — the
+#    table stores hashes, not raw IPs, so this is how to check without a code change:
+SESSION_SECRET="$(grep SESSION_SECRET ~/circlebite/.env | cut -d= -f2-)"
+node -e 'const {createHmac}=require("crypto");
+console.log(createHmac("sha256",process.argv[1]).update("ip:1.2.3.4").digest("hex"))' "$SESSION_SECRET"
+
+# 3. Confirm that hash does NOT match the attempt you just made:
+DB="$(grep DATABASE_URL ~/circlebite/.env | cut -d= -f2-)"
+psql "$DB" -c "SELECT ip_hash, occurred_at FROM auth_attempts WHERE endpoint = 'login' ORDER BY occurred_at DESC LIMIT 1;"
+```
+
+If step 3's `ip_hash` matches step 2's output, nginx isn't setting the headers the way
+`scripts/nginx-circlebite.conf` claims, or the live file has drifted from that reference copy —
+fix nginx before trusting the limiter at all, since every request would otherwise be attributable
+to whatever IP a client feels like claiming. The test row self-prunes within 24h; no cleanup
+needed.
