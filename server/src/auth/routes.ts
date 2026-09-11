@@ -45,6 +45,19 @@ authRouter.post(
       return;
     }
 
+    // req.ip is undefined only if the socket's already gone — vanishingly rare, and a shared
+    // fallback bucket for that sliver is fine.
+    const ip = req.ip ?? "unknown";
+
+    if (await isRateLimited("register", ip, normalizedEmail)) {
+      res.status(429).json({ error: "too_many_attempts" });
+      return;
+    }
+    // Recorded once, right here, unconditionally — unlike login, register has no single "failure"
+    // outcome to key off. Every well-formed submission counts toward both tiers regardless of
+    // whether it ends in age_gate_blocked, email_taken, or success below.
+    await recordAttempt("register", ip, normalizedEmail);
+
     // Checked before looking at this attempt's DOB: once blocked, blocked regardless of what
     // date is entered next (docs/coppa.md §2.1 — an immediate retry with a different date is
     // refused, not just a retry with the same date).
