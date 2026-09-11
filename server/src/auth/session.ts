@@ -37,7 +37,7 @@ export async function createSession(userId: string): Promise<{ token: string; ex
 export type ValidatedSession = {
   sessionId: string;
   actingProfileId: string | null;
-  user: { id: string; email: string; displayName: string };
+  user: { id: string; email: string; displayName: string; isAdmin: boolean };
 };
 
 export async function validateSession(token: string): Promise<ValidatedSession | null> {
@@ -47,8 +47,9 @@ export async function validateSession(token: string): Promise<ValidatedSession |
     acting_profile_id: string | null;
     email: string;
     display_name: string;
+    is_admin: boolean;
   }>(
-    `SELECT s.id AS session_id, s.user_id, s.acting_profile_id, u.email, u.display_name
+    `SELECT s.id AS session_id, s.user_id, s.acting_profile_id, u.email, u.display_name, u.is_admin
      FROM sessions s
      JOIN users u ON u.id = s.user_id
      WHERE s.token_hash = $1 AND s.revoked_at IS NULL AND s.expires_at > now()`,
@@ -61,7 +62,7 @@ export async function validateSession(token: string): Promise<ValidatedSession |
   return {
     sessionId: row.session_id,
     actingProfileId: row.acting_profile_id,
-    user: { id: row.user_id, email: row.email, displayName: row.display_name },
+    user: { id: row.user_id, email: row.email, displayName: row.display_name, isAdmin: row.is_admin },
   };
 }
 

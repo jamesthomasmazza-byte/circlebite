@@ -4,7 +4,7 @@ import { SESSION_COOKIE_NAME, validateSession } from "./session.js";
 declare global {
   namespace Express {
     interface Request {
-      user?: { id: string; email: string; displayName: string };
+      user?: { id: string; email: string; displayName: string; isAdmin: boolean };
       session?: { id: string; actingProfileId: string | null };
     }
   }

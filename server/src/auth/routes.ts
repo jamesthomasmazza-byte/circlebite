@@ -86,10 +86,10 @@ authRouter.post(
     const passwordHash = await hashPassword(password);
 
     try {
-      const { rows } = await pool.query<{ id: string; email: string; display_name: string }>(
+      const { rows } = await pool.query<{ id: string; email: string; display_name: string; is_admin: boolean }>(
         `INSERT INTO users (email, password_hash, display_name, age_attested_adult, age_attested_at)
          VALUES ($1, $2, $3, true, now())
-         RETURNING id, email, display_name`,
+         RETURNING id, email, display_name, is_admin`,
         [normalizedEmail, passwordHash, trimmedDisplayName],
       );
       const user = rows[0]!;
@@ -99,6 +99,7 @@ authRouter.post(
         id: user.id,
         email: user.email,
         displayName: user.display_name,
+        isAdmin: user.is_admin,
         expiresAt,
       });
     } catch (err) {
@@ -126,7 +127,8 @@ authRouter.post(
       email: string;
       display_name: string;
       password_hash: string;
-    }>("SELECT id, email, display_name, password_hash FROM users WHERE email = $1", [
+      is_admin: boolean;
+    }>("SELECT id, email, display_name, password_hash, is_admin FROM users WHERE email = $1", [
       normalizeEmail(email),
     ]);
     const user = rows[0];
@@ -149,6 +151,7 @@ authRouter.post(
       id: user.id,
       email: user.email,
       displayName: user.display_name,
+      isAdmin: user.is_admin,
       expiresAt,
     });
   }),
