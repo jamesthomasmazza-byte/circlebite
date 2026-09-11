@@ -123,6 +123,7 @@ If a decision needs one of these to lose, that's fine — but write down which o
 | Non-photographic avatars proposed (N23) | 5 | Faster recognition of a child's profile |
 | Corrections stored standalone, not as patches (N17) | 6 | Storage efficiency |
 | Community additions reach other profiles; removals stay reporter-only until a review queue exists (Sept 10, 2026) | 1, 4 | Symmetric propagation, and fast cleanup of a wrong warning — three throwaway accounts must not be able to clear a peanut warning for everyone |
+| AI accuracy page gated behind `is_admin`, not open to every signed-in user; judge account deliberately not granted it (Sept 11, 2026) | 5 | Signup is open to any adult, and with a small user base the by-allergen breakdown can effectively identify a specific person's allergy — the same fact that already justified not letting community removals propagate |
 
 ---
 
