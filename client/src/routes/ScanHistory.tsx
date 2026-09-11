@@ -95,8 +95,8 @@ export function ScanHistory() {
                           the point: a warning about something already in the pantry. */}
                       {scan.community_reports.map((r) => (
                         <li key={`community-${r.allergenName}`}>
-                          {shopperCount(r.reporterCount)} reported {r.allergenName} is in this product, with a photo
-                          of the label
+                          {r.allergenName} — reported present by {shopperCount(r.reporterCount)}, with a photo of the
+                          label
                         </li>
                       ))}
                       {/* A severe_only follower can have a verdict changed by a report about an

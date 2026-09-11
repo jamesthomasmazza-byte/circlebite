@@ -302,13 +302,13 @@ export function Scan() {
           {result.effective && (
             <div role="note">
               <p>
-                The product data alone says <strong>{VERDICT_LABEL[result.result]}</strong>. Changed because other
-                shoppers reported, each with a photo of the label:
+                The product data alone says <strong>{VERDICT_LABEL[result.result]}</strong>. Changed by shopper reports,
+                each with a photo of the label:
               </p>
               <ul>
                 {result.community_reports.map((r) => (
                   <li key={r.allergenName}>
-                    {r.allergenName} is in this product — {shopperCount(r.reporterCount)}
+                    {r.allergenName} — reported present by {shopperCount(r.reporterCount)}
                   </li>
                 ))}
               </ul>
