@@ -22,7 +22,8 @@ and got fixed (see the three 2026-09-10 entries below). Still open from earlier 
 started: the 24-month scan-history retention job, the judge-account seed script, a `DELETE /account`
 endpoint, password reset, and rate limiting on login. Week 8 — the overrule loop — has its recording
 path and (as of the evening of 2026-09-10) corroborated additions reaching other profiles —
-browser-checked, deployed, and switched on in production. Next: the AI accuracy page.
+browser-checked, deployed, and switched on in production, plus the AI accuracy page itself
+(planned with JT, then built the same day — see the entry below). Next: the review queue.
 
 ---
 
@@ -924,3 +925,49 @@ changed. Updating the rule to the current IP fixed it — worth remembering the 
 
 **Next:** the AI accuracy page. The review queue is the prerequisite for ever letting removals
 propagate.
+
+---
+
+## 2026-09-10 (later still) — Week 8: the AI accuracy page
+
+**Did:** Planned the page with JT first — what "overrule rate" means precisely, what breakdowns it
+needs, who can see it, and how it stays honest on a handful of real scans — then built it in small
+commits. The rate is scoped to `(scan, allergen)` pairs where `aiEscalated` is true (the same flag
+`recordCorrection.ts` already uses to route a dispute to `target: "ai_verdict"`), narrowed further
+to `direction = 'remove_caution'` — someone saying the AI wrongly added a caution or contains
+finding, the false-alarm sense of "overrule." "Unresolved" escalations (uncertainty the AI raised
+but couldn't resolve) are counted separately from positive contains/caution ones throughout.
+
+Two things the rate structurally can't see got their own counts instead of being folded in:
+reported misses (a `flag_missing` report on an AI-reviewed scan, for an allergen the AI never
+escalated — no rate, since there's no way to know how many real misses went unreported) and AI call
+failures by `failure_reason`. The page states outright, in its own copy, that the overrule rate
+can't see misses.
+
+Small-sample honesty: raw counts always render; a percentage only renders once its denominator
+reaches 20 (arbitrary, documented, not a statistical claim) — below that it's "X of Y overruled —
+too few for a meaningful rate yet," never a bare, over-precise percentage on n=2.
+
+Added `users.is_admin` — a single boolean, not a role table — to gate the page, since nothing today
+needs more than that distinction. No UI sets it; flipped by hand via SQL, same pattern as
+`product_corrections.status`, documented in `docs/server-setup.md` §12. `assertIsAdmin` follows the
+existing `authorization/` convention (throw, called in the handler) and returns 404 rather than
+403, matching `assertCanReadProfile`'s reasoning that a gated route should look like it doesn't
+exist.
+
+**Decided:** Not granting `is_admin` to the judge account. With a small user base, the by-allergen
+breakdown can effectively identify a specific person's allergy — the same signup-is-open reasoning
+that already kept community removals from propagating. Added to `docs/principles.md`'s precedent
+table. Also decided `isAdmin` belongs on the user object everywhere identity is returned (register,
+login, and `/me`), not only `/me` — `AuthContext` sets user state directly from login/register's own
+response on the fast path, skipping a redundant `GET /me`, so a narrower change would have left an
+admin's own nav item stale/missing until the next page load.
+
+**Verified:** the new `aiAccuracyReport()`/`assertIsAdmin` logic against real Postgres (124 server
+tests passing), then the whole path against the local dev server and a real browser with two fresh
+accounts — a non-admin gets a plain 404 from the API and a generic "Couldn't load this page" from
+the client, an admin (flipped by hand) sees the real report, and the "AI accuracy" nav link is
+present only for the admin account.
+
+**Next:** the review queue — browsing corrections and rejecting one from the UI instead of SQL, and
+the prerequisite for ever letting corroborated removals propagate.
