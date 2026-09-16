@@ -336,3 +336,20 @@ export type AiAccuracyReport = {
 export function getAiAccuracyReport(): Promise<AiAccuracyReport> {
   return apiFetch("/admin/ai-accuracy");
 }
+
+export type DeletionImpactProfile = {
+  id: string;
+  label: string;
+  scanCount: number;
+  outcome:
+    | { type: "transfer"; newOwner: { displayName: string; email: string } }
+    | { type: "destroy"; followerCount: number };
+};
+
+export function getDeletionImpact(): Promise<{ profiles: DeletionImpactProfile[] }> {
+  return apiFetch("/account/deletion-impact");
+}
+
+export function deleteAccount(): Promise<void> {
+  return apiFetch("/account", { method: "DELETE" });
+}
