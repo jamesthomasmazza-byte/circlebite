@@ -58,7 +58,11 @@ often isn't the person whose allergies are at stake.
       auth session (`docs/coppa.md` §2.6)
 - [ ] Retention: scan history older than 24 months purged automatically, and the job actually runs
       *(`docs/coppa.md` §2.7 — an unenforced stated policy is worse than none)*
-- [ ] Seed script: invented families, profiles, and circle members for the judge account *(R9)*
+- [ ] Seed script: invented families, profiles, and circle members for the judge account *(R9)*.
+      **Rerunnable** — wiping and re-seeding the judge data must be one command. The judge account
+      can delete itself from the Settings page (Week 9), and re-creating demo data by hand during
+      judging week is not a position to be in. Give at least one seeded profile a co-manager, so
+      that profile transfers to them instead of being destroyed if the account is ever deleted.
 
 ## Weeks 4–5 — Oct 6–19 · Scan to verdict, end to end
 
@@ -156,12 +160,17 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
       rotation for the judge account: there's no change-password flow yet, so the old session
       stayed live after the password changed, which defeats the point of a rotation.
 - [ ] Account deletion: removes profiles, scans, corrections, follow relationships
-- [ ] Judge account seeded and tested end to end from a fresh browser
+- [ ] Judge account seeded and tested end to end from a fresh browser, including re-running the
+      seed script over an already-seeded database — that rerun is the recovery path if a judge
+      deletes the account mid-week
 
 ## Weeks 10–11 — Nov 17–25 · Submission prep *[10% presentation]*
 
 - [ ] One-page summary: problem, solution, how AI does the work, what was learned
-- [ ] Demo script following the five-beat sequence in `docs/verdict-engine.md`
+- [ ] Demo script following the five-beat sequence in `docs/verdict-engine.md`. Keep account
+      deletion out of the demo path: it's real and permanent on the live site. Deleting requires
+      typing the account's own email, so it can't happen by a stray click, but a judge testing the
+      flow deliberately would take the seeded demo data with it (see the seed-script item above)
 - [ ] Dry run timed at 5–10 minutes
 - [ ] Judge credentials sent by **one-time secret link, never plain email**
 - [ ] Confirm to Prof. Yoest that the instance stays running through judging *(R10)*
