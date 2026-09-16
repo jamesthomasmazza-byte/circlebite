@@ -23,8 +23,9 @@ started: the 24-month scan-history retention job, the judge-account seed script,
 endpoint, and password reset. Week 8 — the overrule loop — has its recording path and (as of the
 evening of 2026-09-10) corroborated additions reaching other profiles — browser-checked, deployed,
 and switched on in production, plus the AI accuracy page itself (planned with JT, then built the
-same day — see the entry below). Login/register rate limiting, open since Week 1, is now built too
-(2026-09-11 entry below) — not yet deployed. Next: the review queue.
+same day — see the entry below). Login/register rate limiting, open since Week 1, is now built and
+deployed too (2026-09-11 entry below) — release 20260911220220, with the §13 real-IP check and a
+production 429 both confirmed live. Next: the review queue.
 
 ---
 
@@ -1021,8 +1022,10 @@ browser-checked for the client message: tripped each limiter for real through th
 and confirmed "Too many attempts. Try again in 15 minutes." renders on the real 429, not a mocked
 one.
 
-**Not yet deployed** — everything this session was run and verified locally, same as the auth layer
-originally shipped in Week 1. The `trust proxy`/nginx verification in server-setup.md §13 can only
-run against the live site once this reaches it.
+**Deployed** as release 20260911220220 on 2026-09-11. The server-setup.md §13 real-IP check then
+ran against live nginx: a forged `X-Forwarded-For` sent to `https://circlebite.app` was rejected,
+confirming nginx's own `$proxy_add_x_forwarded_for` value is what gets recorded, not the spoofed
+one. In production, 5 wrong logins in a row against a real account then returned 429, confirming
+the limiter is live and not just passing locally.
 
 **Next:** the review queue.
