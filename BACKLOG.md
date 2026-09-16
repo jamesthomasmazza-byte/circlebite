@@ -49,15 +49,20 @@ often isn't the person whose allergies are at stake.
 - [x] Share levels: full profile vs. severe allergens only
 - [ ] Profile picker: a user in multiple circles chooses whose profile they're scanning for
       *(the scan flow itself doesn't exist yet — weeks 4–5)*
-- [ ] **Deletion design, decided here not in week 9** — FK cascade shape decided and implemented
+- [x] **Deletion design, decided here not in week 9** — FK cascade shape decided and implemented
       for everything that exists so far (`allergen_profiles`, `allergens`, `profile_managers`,
       `follow_relationships`, `manager_invites` — see those migrations' comments for the
-      CASCADE-vs-SET-NULL reasoning, verified empirically against real Postgres). Still open:
-      `scans`/`corrections` don't exist yet, so their cascade can't be finished until weeks 4+;
-      no `DELETE /account` endpoint yet — not a Week 2–3 backlog item, same reasoning as Week 1's
-      auth session (`docs/coppa.md` §2.6)
-- [ ] Retention: scan history older than 24 months purged automatically, and the job actually runs
-      *(`docs/coppa.md` §2.7 — an unenforced stated policy is worse than none)*
+      CASCADE-vs-SET-NULL reasoning, verified empirically against real Postgres). `scans` and
+      `product_corrections` finished their own cascade decisions as each table was built (weeks
+      4–5 and 8, see those migrations); `product_corrections.scan_id` later changed from CASCADE
+      to SET NULL (Week 9) so the corrections corpus survives the retention job. `DELETE /account`
+      itself shipped in Week 9, with one addition beyond this design: a co-managed profile
+      transfers to its longest-standing co-manager instead of being destroyed (`docs/coppa.md`
+      §2.6)
+- [x] Retention: scan history older than 24 months purged automatically, and the job actually runs
+      *(`docs/coppa.md` §2.7 — an unenforced stated policy is worse than none)*. Runs in-process
+      (no cron/systemd timer on this box) with a `retention_runs` audit row per run, success or
+      failure, so "did it run" is a `psql` query, not a guess
 - [ ] Seed script: invented families, profiles, and circle members for the judge account *(R9)*.
       **Rerunnable** — wiping and re-seeding the judge data must be one command. The judge account
       can delete itself from the Settings page (Week 9), and re-creating demo data by hand during
@@ -159,7 +164,9 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
       `revoked_at` on every session row except the new one). Found doing a manual password
       rotation for the judge account: there's no change-password flow yet, so the old session
       stayed live after the password changed, which defeats the point of a rotation.
-- [ ] Account deletion: removes profiles, scans, corrections, follow relationships
+- [x] Account deletion: removes solo-owned profiles, their scans, and follow relationships;
+      transfers a co-managed profile to its longest-standing co-manager instead of destroying it;
+      corrections are deliberately excluded (`docs/coppa.md` §2.7)
 - [ ] Judge account seeded and tested end to end from a fresh browser, including re-running the
       seed script over an already-seeded database — that rerun is the recovery path if a judge
       deletes the account mid-week
@@ -188,3 +195,5 @@ Out of scope per `CONTEST_RULES.md` §7 — do not start these before November 2
 - Admin analytics beyond the AI accuracy page
 - Scan history beyond the last handful per profile
 - Migrating real alpha tester data
+- Decide a retention rule for corrections and their photos — currently unbounded on purpose
+  (`docs/coppa.md` §2.7). Needs its own number and rationale, not invented mid-build.

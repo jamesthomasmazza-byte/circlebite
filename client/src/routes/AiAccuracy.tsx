@@ -77,7 +77,10 @@ export function AiAccuracy() {
       <p>
         This measures overrules: someone reporting that the AI wrongly added a caution or a
         contains finding. It <strong>cannot see misses</strong> — an allergen the AI silently
-        failed to catch, since nothing prompts a report for the absence of a warning.
+        failed to catch, since nothing prompts a report for the absence of a warning. It's also
+        scoped to currently-retained scan history: the 24-month retention job purges old scans, so
+        older escalations and the corrections disputing them drop out of these numbers over time —
+        a shrinking count here reflects retention, not a change in the AI's own accuracy.
       </p>
 
       <h2>Overall</h2>

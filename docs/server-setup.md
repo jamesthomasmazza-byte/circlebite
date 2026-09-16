@@ -338,3 +338,27 @@ If step 3's `ip_hash` matches step 2's output, nginx isn't setting the headers t
 fix nginx before trusting the limiter at all, since every request would otherwise be attributable
 to whatever IP a client feels like claiming. The test row self-prunes within 24h; no cleanup
 needed.
+
+## 14. 24-month scan retention
+
+No cron, no systemd timer on this box — `server/src/jobs/scanRetention.ts` runs in-process
+instead, once on startup and once a day after that (`server/src/index.ts`), riding the same
+`Restart=always` guarantee `circlebite.service` already depends on for everything else. Every run
+writes a row to `retention_runs`, success or failure, so "did it actually run" is a query, not a
+guess:
+
+```bash
+DB="$(grep DATABASE_URL ~/circlebite/.env | cut -d= -f2-)"
+psql "$DB" -c "SELECT started_at, finished_at, rows_deleted, status, error_message FROM retention_runs
+               ORDER BY started_at DESC LIMIT 10;"
+```
+
+A gap in this table (no row for a day the box was clearly up) means something killed the process
+before it could even record a failure — check `journalctl -u circlebite` for a crash loop. A row
+with `status = 'error'` means the job ran and the delete itself failed (check
+`error_message`) — the process stayed up, only that day's purge didn't happen, and it retries on
+its own next tick.
+
+`product_corrections` is untouched by this purge on purpose (`docs/coppa.md` §2.7) —
+`product_corrections.scan_id` is `ON DELETE SET NULL`, not `CASCADE`, so a correction outlives the
+scan it was filed against.

@@ -105,12 +105,22 @@ Rationale: if the dataset is ever breached, subpoenaed, or used in a B2B pitch, 
 Two reasons to do this now: Apple requires in-app account deletion (App Review Guideline 5.1.1(v)) and you will need a deletion mechanism for MHMD anyway.
 
 - Settings → "Delete my account" — deletes the account, all profiles it manages, scan history, and follow relationships. Confirmed with a typed confirmation, not just a button.
+- **Exception, decided during implementation:** a profile with a co-manager transfers to the longest-standing one instead of being destroyed — a second adult's ongoing access to a profile they help manage was never actually acceptable collateral damage from someone else deleting their own account. Only a solo-owned profile (no co-manager) is destroyed as described above.
 - Per-profile delete, already likely present — verify it cascades to scan history tied to that profile.
 - Deletion should be real deletion, not a soft-delete flag, for the health data. If you need scan volume for analytics, retain an anonymized counter row with no profile linkage.
 
 ### 2.7 Retention
 
 Add a stated retention policy and enforce it: scan history older than **24 months** is purged automatically. Pick a number, state it in the privacy policy, and actually run the job — an unenforced stated policy is worse than no stated policy.
+
+**Corrections and their photos are deliberately out of scope for this purge.** A correction is
+evidence about a product, not about the scan that surfaced it — it survives the scan, the profile,
+and the reporter's account being deleted (`reported_by` is already nulled, not removed). This makes
+the correction photo and its free-text note the only user-supplied content in the app with **no**
+stated retention limit at all — see the corresponding `BACKLOG.md` item under "Deferred until after
+judging." One consequence worth naming: once a correction's scan is purged, its photo is no longer
+reachable through the app (the photo route matches on the scan), even though the row and the file
+on disk both still exist and remain reachable at the SQL level.
 
 ---
 
@@ -139,7 +149,7 @@ Also: your marketing site and App Store description must not read as directed to
 - [ ] Direct API account creation bypassing the UI → rejected server-side
 - [ ] Existing accounts backfilled, still able to log in
 - [ ] Admin CSV export contains no profile names or allergen notes
-- [ ] Account deletion removes profiles, scans, corrections, and follow relationships
+- [x] Account deletion removes profiles, scans, and follow relationships (transferring a co-managed profile instead where one exists); corrections are deliberately out of scope (§2.7)
 - [ ] Terms and Privacy Policy updated and linked from signup, settings, and the App Store listing
 - [ ] App Store Connect: Kids Category = No, privacy labels set, review notes written
 
