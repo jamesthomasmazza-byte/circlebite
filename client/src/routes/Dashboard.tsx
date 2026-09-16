@@ -30,6 +30,9 @@ export function Dashboard() {
       <p>
         <Link to="/scan">Scan a product</Link>
       </p>
+      <p>
+        <Link to="/settings">Settings</Link>
+      </p>
       {user?.isAdmin && (
         <p>
           <Link to="/admin/ai-accuracy">AI accuracy</Link>
