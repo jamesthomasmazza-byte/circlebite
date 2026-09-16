@@ -1,4 +1,5 @@
 import { pool } from "../db/pool.js";
+import { findLongestStandingCoManager } from "./transferCandidate.js";
 
 /**
  * DELETE /account (docs/coppa.md §2.6), with one deliberate departure from a plain cascade: a
@@ -28,11 +29,7 @@ export async function deleteAccount(userId: string): Promise<void> {
     );
 
     for (const { id: profileId } of ownedProfiles) {
-      const { rows: candidates } = await client.query<{ user_id: string }>(
-        "SELECT user_id FROM profile_managers WHERE allergen_profile_id = $1 ORDER BY added_at ASC LIMIT 1",
-        [profileId],
-      );
-      const newOwnerId = candidates[0]?.user_id;
+      const newOwnerId = await findLongestStandingCoManager(client, profileId);
       if (!newOwnerId) continue; // no co-manager — the later DELETE FROM users cascade destroys it
 
       await client.query("UPDATE allergen_profiles SET manager_id = $1 WHERE id = $2", [newOwnerId, profileId]);
