@@ -50,6 +50,14 @@ before(async () => {
 });
 
 after(async () => {
+  // product_corrections.scan_id is ON DELETE SET NULL, not CASCADE (migration 0020) — corrections
+  // no longer disappear when their scan does, so cleaning up the scans first (via the users
+  // cascade) would leave every correction this file created behind, orphaned, breaking the fixed
+  // barcodes on the next run. Delete them explicitly, before the cascade removes the scans they key
+  // off of.
+  await pool.query("DELETE FROM product_corrections WHERE scan_id IN (SELECT id FROM scans WHERE allergen_profile_id = $1)", [
+    PROFILE_ID,
+  ]);
   await pool.query("DELETE FROM users WHERE id = ANY($1)", [[USER_A, USER_B, USER_C]]);
   await pool.end();
 });

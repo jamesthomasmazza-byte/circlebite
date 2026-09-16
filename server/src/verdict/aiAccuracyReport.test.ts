@@ -119,6 +119,12 @@ before(async () => {
 });
 
 after(async () => {
+  // product_corrections.scan_id is ON DELETE SET NULL, not CASCADE (migration 0020) — clean these
+  // up explicitly before the users cascade removes the scans they key off of, or they'd be left
+  // behind, orphaned, on every run.
+  await pool.query("DELETE FROM product_corrections WHERE scan_id IN (SELECT id FROM scans WHERE allergen_profile_id = $1)", [
+    PROFILE_ID,
+  ]);
   await pool.query("DELETE FROM users WHERE id = ANY($1)", [[USER_A]]);
   await pool.end();
 });
