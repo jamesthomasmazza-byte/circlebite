@@ -39,6 +39,39 @@ behind a login. The physical guidance (target size, type size, contrast, aspect 
 directly. The platform-specific parts — iOS controls, @2x/@3x asset pipelines, navigation bars —
 don't, and shouldn't be imitated in a browser.
 
+## Apple — Human Interface Guidelines: Design principles
+
+<https://developer.apple.com/design/human-interface-guidelines/design-principles>
+
+Eight named principles — Purpose, Agency, Responsibility, Familiarity, Flexibility, Simplicity,
+Craft, Delight. Where the dos-and-don'ts page settles pixel questions, this one settles argument
+questions: it's what to reach for when two reasonable layouts both work and something has to break
+the tie. Several of them restate, in interface terms, decisions `docs/principles.md` already made
+on the product side.
+
+The four that carry real weight here:
+
+- **Responsibility — act in people's best interest; be transparent; collect only what's needed.**
+  This is `principles.md` §5 and §7 in Apple's words, and it's the one a judge scoring the ethical-AI
+  bonus is effectively grading. The disclaimer on the verdict card, "reported by 2 shoppers" being
+  visually distinct from "the label says," and the accuracy page admitting it can't see misses all
+  belong to this principle. The UI pass must not quietly flatten those distinctions for tidiness.
+- **Agency — help people recover from mistakes.** The overrule loop *is* this principle: a user
+  who thinks the verdict is wrong can say so and have it change. Account deletion's typed-email
+  confirmation is the same idea from the other direction. Where the UI can't offer a way back —
+  deletion, a spent reset link — it has to say so plainly before the click, not after.
+- **Simplicity — establish hierarchy; be concise; include just what's necessary.** The verdict card
+  is the whole product in one screen and currently reads as a flat list. Verdict, then the allergen
+  that caused it, then why, then the disclaimer — in that order, at that priority.
+- **Flexibility — design for everyone, accessibility as a priority from the start, and support
+  varied input.** Directly the Week 9 accessibility item. Also a reminder that the scanner has to
+  work by hand as well as by camera, which it already does — keep manual barcode entry equal in
+  the redesign, not demoted to a fallback.
+
+Purpose, Familiarity, Craft and Delight matter less for a contest build on a deadline, with one
+exception worth keeping: *don't mistake delight for decoration*. A safety tool earns nothing from
+whimsy, and a judge reading an anaphylaxis verdict wrapped in flourish will trust it less.
+
 ## Others
 
 Add references here as they come up, each with the same treatment: the link, what it's good for, and
