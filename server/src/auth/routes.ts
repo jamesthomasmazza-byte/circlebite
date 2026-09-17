@@ -3,9 +3,11 @@ import { Router } from "express";
 import { pool } from "../db/pool.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { blockSignup, evaluateAgeGate, isSignupBlocked } from "./ageGate.js";
+import { changePassword } from "./changePassword.js";
 import { normalizeEmail } from "./email.js";
 import { hashPassword, verifyPassword } from "./password.js";
 import { isRateLimited, recordAttempt } from "./rateLimit.js";
+import { requireAuth } from "./requireAuth.js";
 import { createSession, revokeSession, SESSION_COOKIE_NAME, sessionCookieOptions } from "./session.js";
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -195,6 +197,43 @@ authRouter.post(
       await revokeSession(token);
     }
     res.clearCookie(SESSION_COOKIE_NAME, { path: "/" });
+    res.status(200).json({ ok: true });
+  }),
+);
+
+authRouter.post(
+  "/change-password",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const { currentPassword, newPassword } = req.body ?? {};
+
+    if (typeof currentPassword !== "string" || typeof newPassword !== "string") {
+      res.status(400).json({ error: "invalid_request" });
+      return;
+    }
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      res.status(400).json({ error: "invalid_request" });
+      return;
+    }
+
+    const ip = req.ip ?? "unknown";
+    const email = req.user!.email;
+
+    // Checked before any DB/hash work, same discipline as login.
+    if (await isRateLimited("change_password", ip, email)) {
+      res.status(429).json({ error: "too_many_attempts" });
+      return;
+    }
+
+    const result = await changePassword(req.user!.id, req.session!.id, currentPassword, newPassword);
+    if (!result.ok) {
+      // A wrong current password is a failed guess and must count, same as a login failure — or
+      // this endpoint becomes a password oracle that skips the login limiter entirely.
+      await recordAttempt("change_password", ip, email);
+      res.status(401).json({ error: "invalid_current_password" });
+      return;
+    }
+
     res.status(200).json({ ok: true });
   }),
 );
