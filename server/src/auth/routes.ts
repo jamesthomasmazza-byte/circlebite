@@ -6,6 +6,7 @@ import { blockSignup, evaluateAgeGate, isSignupBlocked } from "./ageGate.js";
 import { changePassword } from "./changePassword.js";
 import { normalizeEmail } from "./email.js";
 import { hashPassword, verifyPassword } from "./password.js";
+import { consumePasswordResetToken } from "./passwordReset.js";
 import { isRateLimited, recordAttempt } from "./rateLimit.js";
 import { requireAuth } from "./requireAuth.js";
 import { createSession, revokeSession, SESSION_COOKIE_NAME, sessionCookieOptions } from "./session.js";
@@ -231,6 +232,45 @@ authRouter.post(
       // this endpoint becomes a password oracle that skips the login limiter entirely.
       await recordAttempt("change_password", ip, email);
       res.status(401).json({ error: "invalid_current_password" });
+      return;
+    }
+
+    res.status(200).json({ ok: true });
+  }),
+);
+
+// Public: no requireAuth — the whole point is recovering an account with no live session at all.
+// The token itself (docs/server-setup.md §15) is the only credential; there is no email/account
+// field in the body to key on.
+authRouter.post(
+  "/password-reset/:token",
+  asyncHandler(async (req, res) => {
+    const { newPassword } = req.body ?? {};
+
+    if (typeof newPassword !== "string" || newPassword.length < MIN_PASSWORD_LENGTH) {
+      res.status(400).json({ error: "invalid_request" });
+      return;
+    }
+
+    const ip = req.ip ?? "unknown";
+
+    // ip-only tier — there's no email to key on here (see rateLimit.ts). The empty-string email
+    // argument is unused by this endpoint's "ip" scope.
+    if (await isRateLimited("password_reset", ip, "")) {
+      res.status(429).json({ error: "too_many_attempts" });
+      return;
+    }
+
+    // Recorded unconditionally, like register — there's no single "failure" outcome to key off
+    // (an expired/used/never-issued/deleted-account token are all the same generic response), so
+    // every well-formed request counts toward the ip tier regardless of what it turns out to be.
+    await recordAttempt("password_reset", ip, "");
+
+    const result = await consumePasswordResetToken(req.params.token, newPassword);
+    if (!result.ok) {
+      // One generic code for every failure: expired, already used, never existed, or an account
+      // since deleted — never split apart, so this can't become an oracle either way.
+      res.status(400).json({ error: "invalid_or_expired_token" });
       return;
     }
 
