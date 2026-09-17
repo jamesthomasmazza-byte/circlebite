@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 
 import { pool } from "../db/pool.js";
-import { isRateLimited, recordAttempt } from "./rateLimit.js";
+import { clearLoginAttempts, isRateLimited, recordAttempt } from "./rateLimit.js";
 
 // A fresh, single-purpose table with no FK dependents — safe to wipe at the start and end of this
 // file's run, same discipline as recordCorrection.test.ts's real-Postgres cleanup.
@@ -149,4 +149,52 @@ test("password_reset attempts are counted in a separate namespace from login, re
   assert.equal(await isRateLimited("login", ip, "someone@example.com"), false);
   assert.equal(await isRateLimited("register", ip, "someone@example.com"), false);
   assert.equal(await isRateLimited("change_password", ip, "someone@example.com"), false);
+});
+
+test("clearLoginAttempts clears a tripped login lockout for that email", async () => {
+  const ip = "10.0.4.1";
+  const email = "clear-1@example.com";
+  for (let i = 0; i < 5; i++) {
+    await recordAttempt("login", ip, email);
+  }
+  assert.equal(await isRateLimited("login", ip, email), true);
+
+  await clearLoginAttempts(email);
+
+  assert.equal(await isRateLimited("login", ip, email), false);
+});
+
+test("clearLoginAttempts is scoped to endpoint = 'login' only — a register lockout for the same email survives", async () => {
+  const email = "clear-2@example.com";
+  const ip = "10.0.4.10";
+  for (let i = 0; i < 5; i++) {
+    await recordAttempt("login", ip, email);
+  }
+  for (let i = 0; i < 5; i++) {
+    await recordAttempt("register", ip, email);
+  }
+  assert.equal(await isRateLimited("register", ip, email), true);
+
+  await clearLoginAttempts(email);
+
+  assert.equal(await isRateLimited("login", ip, email), false);
+  assert.equal(await isRateLimited("register", ip, email), true, "register's own lockout is untouched");
+});
+
+test("clearLoginAttempts is scoped to that one email — a login lockout for a different email survives", async () => {
+  const ip = "10.0.4.20";
+  const clearedEmail = "clear-3@example.com";
+  const otherEmail = "clear-3-other@example.com";
+  for (let i = 0; i < 5; i++) {
+    await recordAttempt("login", ip, clearedEmail);
+  }
+  for (let i = 0; i < 5; i++) {
+    await recordAttempt("login", ip, otherEmail);
+  }
+  assert.equal(await isRateLimited("login", ip, otherEmail), true);
+
+  await clearLoginAttempts(clearedEmail);
+
+  assert.equal(await isRateLimited("login", ip, clearedEmail), false);
+  assert.equal(await isRateLimited("login", ip, otherEmail), true, "a different email's lockout is untouched");
 });

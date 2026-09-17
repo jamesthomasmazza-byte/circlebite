@@ -119,3 +119,19 @@ export async function recordAttempt(
     PRUNE_AFTER_HOURS,
   ]);
 }
+
+/**
+ * Called on a successful password change or reset. Without this, someone locked out by the
+ * *login* rate limiter (e.g. they tripped the ip_and_email tier by repeatedly mistyping their
+ * forgotten password) could fix their password and still be unable to log in for up to 15
+ * minutes — exactly the person a reset exists to help. Scoped to endpoint = 'login' only: that's
+ * the lockout a password fix should clear; a register or change_password/password_reset lockout
+ * (if one existed) isn't what the person is trying to fix here. Keyed by email_hash alone, not
+ * ip_and_email, so it also clears the wider per-email tier — the point is "this account can log
+ * in again now," not "this one IP can."
+ */
+export async function clearLoginAttempts(email: string): Promise<void> {
+  await pool.query(`DELETE FROM auth_attempts WHERE endpoint = 'login' AND email_hash = $1`, [
+    hash("email", normalizeEmail(email)),
+  ]);
+}
