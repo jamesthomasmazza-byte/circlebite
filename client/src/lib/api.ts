@@ -39,6 +39,20 @@ export function logout(): Promise<{ ok: true }> {
   return apiFetch("/auth/logout", { method: "POST" });
 }
 
+export function changePassword(currentPassword: string, newPassword: string): Promise<{ ok: true }> {
+  return apiFetch("/auth/change-password", {
+    method: "POST",
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+}
+
+export function resetPassword(token: string, newPassword: string): Promise<{ ok: true }> {
+  return apiFetch(`/auth/password-reset/${token}`, {
+    method: "POST",
+    body: JSON.stringify({ newPassword }),
+  });
+}
+
 export function register(input: {
   email: string;
   password: string;
