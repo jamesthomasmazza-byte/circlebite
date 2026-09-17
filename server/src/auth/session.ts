@@ -71,3 +71,20 @@ export async function revokeSession(token: string): Promise<void> {
     hashToken(token),
   ]);
 }
+
+// Used by change-password: keeps the session that made the request alive, revokes every other
+// one for that user — the whole point of changing a password is to sign out any other device.
+export async function revokeOtherSessions(userId: string, exceptSessionId: string): Promise<void> {
+  await pool.query(
+    `UPDATE sessions SET revoked_at = now() WHERE user_id = $1 AND id != $2 AND revoked_at IS NULL`,
+    [userId, exceptSessionId],
+  );
+}
+
+// Used by password-reset token consumption: there's no "current" session to preserve, since the
+// whole flow exists for someone who's locked out with no live session at all.
+export async function revokeAllSessions(userId: string): Promise<void> {
+  await pool.query(`UPDATE sessions SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL`, [
+    userId,
+  ]);
+}
