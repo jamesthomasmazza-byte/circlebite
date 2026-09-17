@@ -179,7 +179,13 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
       typing the account's own email, so it can't happen by a stray click, but a judge testing the
       flow deliberately would take the seeded demo data with it (see the seed-script item above)
 - [ ] Dry run timed at 5–10 minutes
-- [ ] Judge credentials sent by **one-time secret link, never plain email**
+- [ ] Judge credentials sent by **one-time secret link, never plain email**. Send alongside them a
+      one-line invitation to register their own account too, if they want to see signup and the 18+
+      age gate first-hand — that's a graded feature (`docs/coppa.md`) a judge would otherwise never
+      exercise, and it costs nothing. The seeded account stays the main path regardless: a
+      self-registered judge lands in an empty app, and the circle in particular can't be seen from
+      one account, since it takes a second person to accept an invite and scan on a profile's
+      behalf
 - [ ] Confirm to Prof. Yoest that the instance stays running through judging *(R10)*
 - [ ] Freeze the code
 
