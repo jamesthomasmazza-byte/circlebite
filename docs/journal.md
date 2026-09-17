@@ -19,9 +19,10 @@ scan-to-verdict works end to end, deterministic matcher plus the Path B AI verdi
 confirmed against the real deployed app with a real key — a genuine AI escalation, the fail-closed
 path, and a real defect in the deterministic matcher's word-boundary matching that the AI surfaced
 and got fixed (see the three 2026-09-10 entries below). Still open from earlier weeks, not yet
-started: the judge-account seed script. Password reset, also open since Week 1, is now built
-locally (2026-09-17 entry below) — change-password in Settings plus an admin-issued reset token for
-a locked-out account — but not yet deployed. Week 8 — the overrule loop — has its
+started: the judge-account seed script. Password reset, also open since Week 1, is now built and
+deployed too (2026-09-17 entry below) — change-password in Settings plus an admin-issued reset
+token for a locked-out account, release 20260917151614, with session revocation and reset-token
+reuse both confirmed live. Week 8 — the overrule loop — has its
 recording path and (as of the evening of 2026-09-10) corroborated additions reaching other profiles
 — browser-checked, deployed, and switched on in production, plus the AI accuracy page itself
 (planned with JT, then built the same day — see the entry below). Login/register rate limiting,
@@ -1139,7 +1140,18 @@ next request, and login worked with the new password; a hand-generated reset tok
 exact `node -e` snippet now in server-setup.md §15) set a new password, reusing the same link
 afterward showed one generic "invalid or expired" message, and login worked with the new password.
 
-**Next:** deploy to the EC2 box, then repeat the browser checks against the live site per
-server-setup.md's existing deploy/verify discipline (same as §13's real-IP check) — `BACKLOG.md`'s
-checked off already, but this hasn't shipped anywhere but locally yet. After that, the
-judge-account seed script and the review queue.
+**Deployed** as release 20260917151614. In production: changed a password and confirmed a second
+session for the same account was logged out on its next request while the changing session stayed
+live, and login worked with the new password; generated a reset token on the box per
+server-setup.md §15, used it once (new password worked, all sessions revoked), and reusing the
+same link was refused — "This link is invalid or has expired" in the browser, confirmed at the DB
+level too with `used_at` stamped on the token row.
+
+**Known gap:** the reset-password page renders its form even for a dead link — expired, already
+used, or fabricated — with no check of the token's validity before submit. Deliberate, not an
+oversight: a validity-check endpoint would just be the GET-preview oracle ruled out above in a
+different shape, since it would answer "is this token still good" without even needing a submit.
+The cost is UX, not safety — someone following a stale link only learns it's dead after typing a
+new password and submitting. Flagged for the Week 9 error-states pass rather than fixed now.
+
+**Next:** the judge-account seed script and the review queue.
