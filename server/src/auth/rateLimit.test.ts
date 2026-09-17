@@ -106,3 +106,47 @@ test("login and register attempts are counted in separate namespaces", async () 
   assert.equal(await isRateLimited("login", ip, email), true);
   assert.equal(await isRateLimited("register", ip, email), false);
 });
+
+test("change_password: 5 failures from the same IP+email trips its own ip_and_email tier", async () => {
+  const ip = "10.0.2.1";
+  const email = "change-pw-1@example.com";
+  for (let i = 0; i < 4; i++) {
+    await recordAttempt("change_password", ip, email);
+  }
+  assert.equal(await isRateLimited("change_password", ip, email), false);
+
+  await recordAttempt("change_password", ip, email);
+  assert.equal(await isRateLimited("change_password", ip, email), true);
+});
+
+test("change_password and login attempts are counted in separate namespaces — a flood of wrong-current-password guesses can't inflate or be bypassed via the login limiter", async () => {
+  const ip = "10.0.2.2";
+  const email = "change-pw-2@example.com";
+  for (let i = 0; i < 5; i++) {
+    await recordAttempt("change_password", ip, email);
+  }
+  assert.equal(await isRateLimited("change_password", ip, email), true);
+  assert.equal(await isRateLimited("login", ip, email), false);
+});
+
+test("password_reset: 10 attempts from one IP trips its own ip tier, regardless of the (unused) email argument", async () => {
+  const ip = "10.0.3.1";
+  for (let i = 0; i < 9; i++) {
+    await recordAttempt("password_reset", ip, "");
+  }
+  assert.equal(await isRateLimited("password_reset", ip, ""), false);
+
+  await recordAttempt("password_reset", ip, "");
+  assert.equal(await isRateLimited("password_reset", ip, ""), true);
+});
+
+test("password_reset attempts are counted in a separate namespace from login, register, and change_password", async () => {
+  const ip = "10.0.3.2";
+  for (let i = 0; i < 10; i++) {
+    await recordAttempt("password_reset", ip, "");
+  }
+  assert.equal(await isRateLimited("password_reset", ip, ""), true);
+  assert.equal(await isRateLimited("login", ip, "someone@example.com"), false);
+  assert.equal(await isRateLimited("register", ip, "someone@example.com"), false);
+  assert.equal(await isRateLimited("change_password", ip, "someone@example.com"), false);
+});

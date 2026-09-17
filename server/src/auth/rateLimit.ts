@@ -4,7 +4,7 @@ import { pool } from "../db/pool.js";
 import { env } from "../env.js";
 import { normalizeEmail } from "./email.js";
 
-export type AuthEndpoint = "login" | "register";
+export type AuthEndpoint = "login" | "register" | "change_password" | "password_reset";
 
 type Scope = "ip" | "email" | "ip_and_email";
 
@@ -21,6 +21,17 @@ type RateLimitRule = { scope: Scope; windowMinutes: number; threshold: number };
  * register: there's no secret to guess, so every well-formed submission counts (success,
  * email_taken, or an age-gate rejection) — the concern is spam/abuse volume and probing a specific
  * email, not a specific failure mode.
+ *
+ * change_password: requireAuth-gated, so an anonymous prober can never reach it at all — reusing
+ * login's tightest tier (ip_and_email, 5/15min) is enough. The wider ip/email-alone tiers exist in
+ * login to catch one source spraying many *different* accounts, which doesn't apply here: whoever
+ * calls this already holds a live session for one specific account.
+ *
+ * password_reset: public, and the caller never names an account (the body is just a new
+ * password) — there's no email to key on, so this is the one endpoint with an ip-only tier and no
+ * ip_and_email/email tier at all. Not a brute-force defense (the token is 2^256 bits of entropy,
+ * computationally infeasible regardless of request rate) — a coarse throttle against hammering the
+ * endpoint, same shape as register's ip tier.
  */
 const RULES: Record<AuthEndpoint, RateLimitRule[]> = {
   login: [
@@ -32,6 +43,8 @@ const RULES: Record<AuthEndpoint, RateLimitRule[]> = {
     { scope: "ip", windowMinutes: 60, threshold: 10 },
     { scope: "email", windowMinutes: 60, threshold: 5 },
   ],
+  change_password: [{ scope: "ip_and_email", windowMinutes: 15, threshold: 5 }],
+  password_reset: [{ scope: "ip", windowMinutes: 15, threshold: 10 }],
 };
 
 // Comfortably past the longest window any rule above uses (60 minutes) — this is table hygiene,
