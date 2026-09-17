@@ -1,8 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-import { deleteAccount, getDeletionImpact, type DeletionImpactProfile } from "../lib/api";
+import { ApiRequestError, changePassword, deleteAccount, getDeletionImpact, type DeletionImpactProfile } from "../lib/api";
 import { useAuth } from "../lib/AuthContext";
+
+const CHANGE_PASSWORD_ERROR_COPY: Record<string, string> = {
+  too_many_attempts: "Too many attempts. Try again in 15 minutes.",
+  invalid_current_password: "That's not your current password.",
+  invalid_request: "Check that your new password is at least 8 characters.",
+};
 
 // docs/coppa.md §2.6: "Confirmed with a typed confirmation, not just a button." Every other
 // irreversible action in this app is a bare window.confirm() (ProfileDetail.tsx) — deleting the
@@ -31,6 +37,41 @@ export function Settings() {
     void refresh();
   }, [refresh]);
 
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+
+  async function handleChangePassword(event: FormEvent) {
+    event.preventDefault();
+    setPasswordError(null);
+    setPasswordSuccess(false);
+
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError("New passwords don't match.");
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      await changePassword(currentPassword, newPassword);
+      setPasswordSuccess(true);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+    } catch (err) {
+      if (err instanceof ApiRequestError) {
+        setPasswordError(CHANGE_PASSWORD_ERROR_COPY[err.message] ?? "Something went wrong. Try again.");
+      } else {
+        setPasswordError("Something went wrong. Try again.");
+      }
+    } finally {
+      setChangingPassword(false);
+    }
+  }
+
   const canConfirm = confirmText.trim().toLowerCase() === user?.email.toLowerCase();
 
   async function handleDeleteAccount() {
@@ -53,6 +94,49 @@ export function Settings() {
         <Link to="/dashboard">← Dashboard</Link>
       </p>
       <h1>Settings</h1>
+
+      <section>
+        <h2>Change your password</h2>
+        <form onSubmit={handleChangePassword}>
+          <label>
+            Current password
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              autoComplete="current-password"
+              required
+            />
+          </label>
+          <label>
+            New password
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              autoComplete="new-password"
+              minLength={8}
+              required
+            />
+          </label>
+          <label>
+            Confirm new password
+            <input
+              type="password"
+              value={confirmNewPassword}
+              onChange={(e) => setConfirmNewPassword(e.target.value)}
+              autoComplete="new-password"
+              minLength={8}
+              required
+            />
+          </label>
+          {passwordError && <p role="alert">{passwordError}</p>}
+          {passwordSuccess && <p>Password changed. Your other signed-in devices have been logged out.</p>}
+          <button type="submit" disabled={changingPassword}>
+            {changingPassword ? "Changing…" : "Change password"}
+          </button>
+        </form>
+      </section>
 
       <section>
         <h2>Delete your account</h2>
