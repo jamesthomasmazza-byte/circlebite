@@ -30,8 +30,9 @@ export function Register() {
     setError(null);
 
     // Checked client-side, before the request: auto-login means there's no second chance to
-    // catch a typo at a login screen, and password reset doesn't exist yet, so a mistyped
-    // password here would lock the account out with no way back in.
+    // catch a typo at a login screen. Recovery exists now (Settings' change-password form, plus
+    // an admin-issued reset link for a locked-out account, docs/server-setup.md §15) but it's
+    // still admin-mediated, not instant — better to catch a typo here than lean on that.
     if (password !== confirmPassword) {
       setError("Passwords don't match.");
       return;
