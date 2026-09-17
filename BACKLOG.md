@@ -155,8 +155,10 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
 
 ## Week 9 — Nov 10–16 · Polish and hardening *[10% UX, 15% code quality]*
 
-- [ ] Error and empty states throughout
-- [ ] Accessibility pass — keyboard navigation, contrast, labels, screen reader on the verdict card *[bonus]*
+- [ ] Error and empty states throughout. Design references for this whole pass live in
+      `docs/design-references.md` — read it before styling anything
+- [ ] Accessibility pass — keyboard navigation, contrast, labels, screen reader on the verdict card *[bonus]*.
+      Touch-target and text-size minimums are in `docs/design-references.md`
 - [ ] Mobile layout verified on a real phone
 - [ ] Run the full compliance check in `CONTEST_RULES.md` §9
 - [ ] Run the age-gate verification checklist in `docs/coppa.md` §4
