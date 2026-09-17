@@ -19,7 +19,9 @@ scan-to-verdict works end to end, deterministic matcher plus the Path B AI verdi
 confirmed against the real deployed app with a real key — a genuine AI escalation, the fail-closed
 path, and a real defect in the deterministic matcher's word-boundary matching that the AI surfaced
 and got fixed (see the three 2026-09-10 entries below). Still open from earlier weeks, not yet
-started: the judge-account seed script and password reset. Week 8 — the overrule loop — has its
+started: the judge-account seed script. Password reset, also open since Week 1, is now built
+locally (2026-09-17 entry below) — change-password in Settings plus an admin-issued reset token for
+a locked-out account — but not yet deployed. Week 8 — the overrule loop — has its
 recording path and (as of the evening of 2026-09-10) corroborated additions reaching other profiles
 — browser-checked, deployed, and switched on in production, plus the AI accuracy page itself
 (planned with JT, then built the same day — see the entry below). Login/register rate limiting,
@@ -1089,3 +1091,55 @@ owner whose profile had no co-manager destroyed it as designed.
 is no email sending anywhere in this app. It's silent on their end until they next open the profile.
 
 **Next:** the review queue.
+
+## 2026-09-17 — Change password + admin-issued reset for locked-out accounts
+
+**Did:** Built the Week 9 password-reset item — open since Week 1, and the reason a manual
+password rotation for the judge account left an old session live (no change-password flow existed
+to revoke it). Two flows, in small commits: `POST /auth/change-password` (`requireAuth`, verifies
+the current password, revokes every *other* session for that user, keeps the caller's own session
+alive) and a `password_reset_tokens` table plus `POST /auth/password-reset/:token` (public,
+single-use, 60-minute expiry, revokes *all* sessions since there's no current one to preserve).
+Reused the manager/follow invite token pattern (`lib/inviteToken.ts`) for the reset token rather
+than inventing a new one. This app sends no email and that's not changing, so there's no
+self-service "forgot password" trigger — a new server-setup.md §15 documents generating a token by
+hand on the box and handing it over out of band, same as judge credentials.
+
+**Decided:** Reused the existing `auth_attempts` table for both new endpoints rather than adding a
+second one (`docs/principles.md` principle 5). `change-password` only needed login's tightest
+`ip_and_email` tier, since the endpoint is `requireAuth`-gated — an anonymous prober can't reach it
+at all. `password-reset/:token` is IP-only, since the caller never names an account. JT caught a
+gap before it shipped: a successful password fix did nothing about an existing *login* lockout, so
+someone who got rate-limited out of login while fumbling a forgotten password could fix it and
+still be locked out for up to 15 minutes — exactly the person a reset exists to help. Added
+`clearLoginAttempts(email)`, called on a successful change or reset, scoped to `endpoint = 'login'`
+and that one account's email only. JT also asked for the reset endpoint to be rate-limited at all
+(it was the one public endpoint in this feature with none) — added, IP-only, not as a brute-force
+defense (the token has 256 bits of entropy) but as a coarse throttle against hammering it.
+Deliberately skipped a GET preview step for the reset link, unlike the invite flows: there's
+nothing meaningful to preview before submitting a new password, and a preview would only ever
+answer "is this token still valid" — a second, purely reconnaissance-oriented existence oracle.
+`ON DELETE CASCADE` on the token table's `user_id` means a token for a since-deleted account and a
+token that never existed produce the identical generic failure, for free, with no special-case code.
+
+**Hit a wall on:** a first draft of the new rate-limit tests recorded attempts from scattered IPs
+against one email and asserted the `ip_and_email` tier tripped at 5 — it doesn't, since that tier
+counts one *specific* IP+email pair, and five different IPs each only contribute one to their own
+pair's count. Fixed by using one consistent IP per test, matching the pattern the existing login
+tests already used; a reminder to read the tier definition being tested, not just copy the attempt
+count from a neighboring test.
+
+**Verified:** 163 server tests passing against real Postgres (21 new, all against real Postgres,
+none mocked) — covering the four required scenarios (expired token, already-used token, a token
+for a since-deleted account, and a change that revokes other sessions but keeps the current one
+alive) plus the rate-limiter-can't-become-an-oracle case and the login-lockout-clearing case JT
+asked for. Browser-checked both flows end to end locally: changing a password in Settings kept the
+tab that changed it signed in while a second session for the same account was logged out on its
+next request, and login worked with the new password; a hand-generated reset token (using the
+exact `node -e` snippet now in server-setup.md §15) set a new password, reusing the same link
+afterward showed one generic "invalid or expired" message, and login worked with the new password.
+
+**Next:** deploy to the EC2 box, then repeat the browser checks against the live site per
+server-setup.md's existing deploy/verify discipline (same as §13's real-IP check) — `BACKLOG.md`'s
+checked off already, but this hasn't shipped anywhere but locally yet. After that, the
+judge-account seed script and the review queue.
