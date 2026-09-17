@@ -362,3 +362,48 @@ its own next tick.
 `product_corrections` is untouched by this purge on purpose (`docs/coppa.md` §2.7) —
 `product_corrections.scan_id` is `ON DELETE SET NULL`, not `CASCADE`, so a correction outlives the
 scan it was filed against.
+
+## 15. Generate a password reset token
+
+No "forgot password" flow exists and none is planned (R6 — no email anywhere in this app).
+Recovery for a locked-out account is administered by hand: JT generates a one-time token on the
+box and hands it to the account holder out of band (never plain email — same discipline as judge
+credentials), who uses it once at `https://circlebite.app/reset-password/<token>`.
+
+Same shape as the manager/follow invite tokens (`server/src/lib/inviteToken.ts`): 32 random bytes,
+hex-encoded, SHA-256'd before it ever touches the database — only the hash is stored, so a leaked
+`password_reset_tokens` row alone grants nothing. Single-use (`used_at`) and expires in 60 minutes
+(`RESET_TOKEN_TTL_MINUTES` in `server/src/auth/passwordReset.ts`).
+
+**Generate one.** The token and its hash are printed together so the hash pasted into the INSERT
+below is guaranteed to match the raw token handed over:
+
+```bash
+node -e '
+const { randomBytes, createHash } = require("crypto");
+const token = randomBytes(32).toString("hex");
+console.log("token:", token);
+console.log("hash: ", createHash("sha256").update(token).digest("hex"));
+'
+```
+
+```bash
+DB="$(grep DATABASE_URL ~/circlebite/.env | cut -d= -f2-)"
+psql "$DB" -c "INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
+               SELECT id, '<hash-from-above>', now() + interval '60 minutes'
+               FROM users WHERE email = '<account-email>';"
+```
+
+**Shown once, never retrievable again** — same discipline as `POST /profiles/:id/manager-invites`'s
+response. Compose the full link yourself (`https://circlebite.app/reset-password/<token>`) and
+hand it over out of band. If the INSERT's `SELECT` matches zero rows (no such email), it silently
+inserts nothing — check psql's reported row count, not the app, since there's no route that would
+ever confirm or deny that email exists either.
+
+**Revoke an unused token** (leaked to the wrong channel, or handed out by mistake):
+
+```bash
+psql "$DB" -c "UPDATE password_reset_tokens SET used_at = now()
+               WHERE user_id = (SELECT id FROM users WHERE email = '<account-email>')
+               AND used_at IS NULL;"
+```
