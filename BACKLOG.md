@@ -160,10 +160,12 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
 - [ ] Mobile layout verified on a real phone
 - [ ] Run the full compliance check in `CONTEST_RULES.md` §9
 - [ ] Run the age-gate verification checklist in `docs/coppa.md` §4
-- [ ] Password reset flow — must revoke all other sessions for that user on success (set
-      `revoked_at` on every session row except the new one). Found doing a manual password
-      rotation for the judge account: there's no change-password flow yet, so the old session
-      stayed live after the password changed, which defeats the point of a rotation.
+- [x] Password change (Settings) + admin-issued reset flow for locked-out accounts — change
+      revokes every *other* session for that user, keeping the caller's own session alive; reset-
+      token consumption revokes *all* sessions, since there's no current one to preserve. No
+      email anywhere — reset tokens are generated on the box by JT and handed over out of band
+      (`docs/server-setup.md` §15). Built after a manual password rotation for the judge account
+      left its old session live, defeating the point of the rotation.
 - [x] Account deletion: removes solo-owned profiles, their scans, and follow relationships;
       transfers a co-managed profile to its longest-standing co-manager instead of destroying it;
       corrections are deliberately excluded (`docs/coppa.md` §2.7)
