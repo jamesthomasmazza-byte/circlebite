@@ -19,13 +19,15 @@ scan-to-verdict works end to end, deterministic matcher plus the Path B AI verdi
 confirmed against the real deployed app with a real key — a genuine AI escalation, the fail-closed
 path, and a real defect in the deterministic matcher's word-boundary matching that the AI surfaced
 and got fixed (see the three 2026-09-10 entries below). Still open from earlier weeks, not yet
-started: the 24-month scan-history retention job, the judge-account seed script, a `DELETE /account`
-endpoint, and password reset. Week 8 — the overrule loop — has its recording path and (as of the
-evening of 2026-09-10) corroborated additions reaching other profiles — browser-checked, deployed,
-and switched on in production, plus the AI accuracy page itself (planned with JT, then built the
-same day — see the entry below). Login/register rate limiting, open since Week 1, is now built and
-deployed too (2026-09-11 entry below) — release 20260911220220, with the §13 real-IP check and a
-production 429 both confirmed live. Next: the review queue.
+started: the judge-account seed script and password reset. Week 8 — the overrule loop — has its
+recording path and (as of the evening of 2026-09-10) corroborated additions reaching other profiles
+— browser-checked, deployed, and switched on in production, plus the AI accuracy page itself
+(planned with JT, then built the same day — see the entry below). Login/register rate limiting,
+open since Week 1, is built and deployed (2026-09-11 entry below) — release 20260911220220, with the
+§13 real-IP check and a production 429 both confirmed live. Account deletion and the 24-month
+scan-retention job, open since Week 2-3, are now built and deployed too (2026-09-16 entry below) —
+release 20260916143727, with the transfer-vs-destroy behavior and the retention job's audit trail
+both confirmed live. Next: the review queue.
 
 ---
 
@@ -1027,5 +1029,63 @@ ran against live nginx: a forged `X-Forwarded-For` sent to `https://circlebite.a
 confirming nginx's own `$proxy_add_x_forwarded_for` value is what gets recorded, not the spoofed
 one. In production, 5 wrong logins in a row against a real account then returned 429, confirming
 the limiter is live and not just passing locally.
+
+**Next:** the review queue.
+
+## 2026-09-16 — Account deletion and the 24-month scan-retention job
+
+**Did:** Planned `DELETE /account`, the retention job, and the remaining Week 2-3 deletion-design
+item in detail before writing any code. That review turned up a fact worth having up front: the FK
+cascade shape for `scans`/`verdict_explanations`/`auth_attempts` was already fully decided, table by
+table, as each was built in earlier weeks — nothing there was actually still open. The real gap was
+entirely at the application layer. Built in small commits: a `retention_runs` audit table;
+`product_corrections.scan_id` changed from CASCADE to SET NULL so a correction survives both the
+retention job and account deletion (verified directly, not assumed —
+`loadCommunityAdditions`/`applyCommunityCorrections`/`recordCorrection`'s corroboration queries
+already keyed off barcode, never `scan_id`); the retention job itself
+(`runScanRetentionPurge`), run in-process on startup and once a day via `setInterval` since this box
+has no cron or systemd timer; `deleteAccount()`; `GET /account/deletion-impact`; `DELETE /account`;
+and a new Settings page with a typed-email confirmation, since §2.6 asks for more than a bare button
+and every other delete in this app is still a `window.confirm()`.
+
+**Decided:** A plain CASCADE would destroy a profile the instant its owner's account is deleted,
+even with a co-manager actively relying on it — added ownership transfer to the longest-standing
+co-manager as a real behavior change beyond the original design, and extracted the selection logic
+into its own module (`transferCandidate.ts`) so the deletion-impact preview and the actual delete can
+never disagree about who a profile transfers to. Corrections and their photos are explicitly out of
+scope for the retention job, on JT's instruction, after tracing every delete path in the app and
+finding the SET NULL migration had made the originally-planned "collect `photo_path`, then unlink"
+code permanently unreachable — nothing in the app deletes a `product_corrections` row anymore, so
+building that code would have shipped dead code. Documented the actual consequence instead
+(`docs/coppa.md` §2.7, `BACKLOG.md`) and added a deferred item to decide a real retention rule for
+corrections/photos later, with its own number and rationale rather than inventing one mid-build.
+
+**Hit a wall on:** the SET NULL migration broke three existing tests' teardown, silently. They
+relied on the old CASCADE to remove their own `product_corrections` rows as a side effect of
+`DELETE FROM users`, and after the migration those rows just stayed behind, orphaned, with a null
+`scan_id`. First sign was a test asserting exactly 3 rows for a fixed barcode getting 6 back on a
+second run. Fixed by deleting corrections explicitly, by scan, before the users cascade in all three
+files' `after()` hooks — and confirmed every corrections-adjacent test in this repo needs the same
+going forward, since `scans` no longer takes `product_corrections` down with it.
+
+**Verified:** 142 server tests passing against real Postgres (7 new). Full account-deletion flow
+browser-checked end to end with three real accounts and two profiles (one co-managed and followed,
+one solo and followed): the Settings page's impact list correctly named the transfer/destroy outcome
+for each, the delete button stayed disabled on a wrong email and enabled on the right one, and after
+deleting, logging in as the promoted co-manager showed them as owner with the profile's allergens
+and scan history intact. Confirmed at the DB level too: the deleted owner's row gone, the profile's
+`manager_id` now the co-manager, the follower's grant untouched, and the solo profile fully
+destroyed.
+
+**Deployed** as release 20260916143727. In production: `retention_runs` has one row from the startup
+run — `status: ok`, `rows_deleted: 0`, ~47ms — nothing in the live data is 24 months old yet, so the
+row's existence is itself the proof the job ran, not a claim about volume. Repeated the
+transfer/destroy check against the live site with two throwaway accounts
+(`test-owner@example.com`/`test-comanager@example.com`, both cleaned up afterward): deleting the
+owner transferred their profile to the co-manager, who saw it with its allergens intact; deleting an
+owner whose profile had no co-manager destroyed it as designed.
+
+**Known gap:** a promoted co-manager gets no notification that they became a profile's owner — there
+is no email sending anywhere in this app. It's silent on their end until they next open the profile.
 
 **Next:** the review queue.
