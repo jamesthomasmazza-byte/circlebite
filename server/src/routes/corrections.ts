@@ -3,7 +3,7 @@ import multer from "multer";
 
 import { assertCanReadProfile } from "../authorization/profiles.js";
 import { requireAuth } from "../auth/requireAuth.js";
-import { MAX_PHOTO_BYTES, resolvePhotoPath, savePhotoBuffer, sniffImageType } from "../corrections/photoStorage.js";
+import { EXTENSION_TO_MIME, MAX_PHOTO_BYTES, resolvePhotoPath, savePhotoBuffer, sniffImageType } from "../corrections/photoStorage.js";
 import { recordCorrection, type CorrectionType } from "../corrections/recordCorrection.js";
 import { pool } from "../db/pool.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
@@ -18,12 +18,6 @@ const CORRECTION_TYPES = ["flag_wrong", "flag_missing", "wrong_product"] as cons
 function isCorrectionType(value: unknown): value is CorrectionType {
   return typeof value === "string" && (CORRECTION_TYPES as readonly string[]).includes(value);
 }
-
-const EXTENSION_TO_MIME: Record<string, string> = {
-  jpg: "image/jpeg",
-  png: "image/png",
-  webp: "image/webp",
-};
 
 // memoryStorage, not diskStorage: the content-type validation (sniffImageType) has to run on the
 // actual bytes before anything is written to disk, so the whole (size-capped) file needs to be in

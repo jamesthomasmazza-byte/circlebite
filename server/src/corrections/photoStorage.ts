@@ -12,6 +12,16 @@ export const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
 
 export type SniffedImageType = { mimeType: "image/jpeg" | "image/png" | "image/webp"; extension: "jpg" | "png" | "webp" };
 
+// The inverse of sniffImageType's extension, for routes that serve an already-stored photo back
+// out and only have its file extension (from photo_path) to go on — shared by both
+// /scans/:scanId/corrections/:id/photo and the admin review-queue's own photo route, rather than
+// duplicating this map in each.
+export const EXTENSION_TO_MIME: Record<string, string> = {
+  jpg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+};
+
 /**
  * Real content-type validation by file signature (magic bytes), not the client-supplied
  * Content-Type header or the filename's extension — both are trivially spoofed (a multipart
