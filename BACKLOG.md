@@ -142,9 +142,22 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
       server and real Postgres. **Removals deliberately don't propagate** — JT's call, precedent in
       `docs/principles.md`: signup is open, so three throwaway accounts could otherwise clear a
       warning for everyone.
-- [ ] Review queue page — browse corrections and reject one from the UI instead of SQL. Prerequisite
-      for ever letting corroborated removals reach other profiles, along with fixing the reverse
-      "warning survives" gap noted in `recordCorrection.ts`.
+- [x] Review queue page — browse corrections and reject one from the UI instead of SQL
+      (`docs/server-setup.md` §11), admin-gated the same way as the AI accuracy page
+      (`assertIsAdmin`, 404 not 403). Claims grouped by (barcode, allergen, direction)
+      case-sensitively, matching `recordCorrection.ts`'s own corroboration bucket rather than
+      `communityAdditions.ts`'s case-insensitive display grouping. Rejecting a corroborated
+      `add_caution` report requires a reason and immediately stops it showing on other families'
+      scans — including scans already in their history, not just new ones; rejecting
+      `remove_caution` doesn't require one, since that direction still doesn't propagate at all.
+      `rejected_by`/`rejected_at`/`rejection_reason` added as the audit trail the psql runbook
+      never had. Reporter identity is hidden from the UI (stable per-claim pseudonyms, plus a
+      same-circle warning when two live reporters share a profile) for the same identifiability
+      reason the AI accuracy page is admin-only; rejector identity is shown in full, since that's
+      admin accountability rather than a user's health data — new precedent row in
+      `docs/principles.md`. Still open, not done here: the reverse "warning survives" gap in
+      `recordCorrection.ts` and letting corroborated removals actually reach other profiles — see
+      `docs/journal.md`.
 - [x] AI accuracy page — overrule rate overall, by allergen, and by model/prompt version, scoped to
       `target = 'ai_verdict' AND direction = 'remove_caution'` (the false-alarm sense of "overrule"),
       with unresolved escalations counted separately from contains/caution ones. Reported misses and

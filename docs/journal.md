@@ -30,7 +30,13 @@ open since Week 1, is built and deployed (2026-09-11 entry below) — release 20
 §13 real-IP check and a production 429 both confirmed live. Account deletion and the 24-month
 scan-retention job, open since Week 2-3, are now built and deployed too (2026-09-16 entry below) —
 release 20260916143727, with the transfer-vs-destroy behavior and the retention job's audit trail
-both confirmed live. Next: the review queue.
+both confirmed live. The review queue (BACKLOG.md line 145) is now built too (2026-09-20 entry
+below) — an admin-gated page to browse and reject corrections instead of running SQL, with
+`rejected_by`/`rejected_at`/`rejection_reason` as the audit trail that runbook never had, and two
+real bugs caught during verification rather than left for production. 185 server tests passing,
+browser-checked locally, **not yet deployed**. Still open: the reverse "warning survives" gap in
+`recordCorrection.ts` and letting corroborated removals actually reach other profiles, the
+judge-account seed script, and Week 9's polish/hardening pass.
 
 ---
 
@@ -1155,3 +1161,63 @@ The cost is UX, not safety — someone following a stale link only learns it's d
 new password and submitting. Flagged for the Week 9 error-states pass rather than fixed now.
 
 **Next:** the judge-account seed script and the review queue.
+
+## 2026-09-20 — The review queue
+
+**Did:** Built BACKLOG.md line 145 — an admin-gated page to browse corrections and reject one from
+the UI instead of the psql runbook in `docs/server-setup.md` §11. Planned with JT first (three
+rounds of plan review — see the plan file's own history): 404-not-403 for non-admins (reusing
+`assertIsAdmin` unmodified, even though the task brief said 403, because that would have broken the
+already-tested "look identical to a route that doesn't exist" contract), reporter identity hidden
+behind stable per-claim pseudonyms with a same-circle warning, rejector identity shown in full,
+and a required rejection reason for `add_caution` only (the direction that actually removes a live
+warning from other families' scans, including scans already in their history — confirmed by reading
+`scans.ts`'s history handler, which reads community corrections fresh on every request rather than
+from the write-time snapshot). New `rejected_by`/`rejected_at`/`rejection_reason` columns
+(migration 0023) are the audit trail that runbook never had. Claims are grouped by (barcode,
+allergen, direction) case-sensitively — a real, pre-existing mismatch in this codebase is that
+`recordCorrection.ts`'s own corroboration bucket is case-sensitive (`allergen = $2`, no `lower()`
+in the migration 0015 unique index either) while `communityAdditions.ts`'s display query groups by
+`lower(allergen)`; the queue has to match the write-side bucket, not the display one, or it would
+silently merge two claims the engine itself tracks independently.
+
+**Decided:** Logged as a new `docs/principles.md` precedent row (reporter identity hidden the same
+way the AI accuracy page is admin-gated; rejector identity kept because it's admin accountability,
+not a user's health data).
+
+**Hit a wall on:** two real bugs, both caught in verification rather than left for production.
+(1) `fetchCircleMemberships` only queried `profile_managers` (co-managers) and accepted
+`follow_relationships` — missing `allergen_profiles.manager_id`, the profile *owner*, who is not a
+row in `profile_managers` at all (migration 0004/0006 split them on purpose: `manager_id` is the
+owner, `profile_managers` is co-managers only). The most common reporter — the owner themselves —
+would silently never trigger the same-circle warning. **Worth remembering: anything that walks
+circle membership by querying `profile_managers` has to also check `allergen_profiles.manager_id`,
+or it misses the owner every time.** Fixed, and covered by a dedicated end-to-end test
+(co-manager/accepted-follower/pending-follower/stranger, all four cases). (2) The reject route's
+body validation (`typeof reason !== "string"`) rejected an explicit JSON `null` with 400 — but
+`null` is exactly what the client sends on every `remove_caution` reject, which never requires a
+reason. `reviewQueue.test.ts`'s own tests didn't catch this because they call `rejectCorrection`
+directly, bypassing the route's JSON parsing entirely — this codebase has no HTTP-layer test
+harness (matching every other test file here), so a route-level bug like this only surfaces by
+actually driving the route. Found by hand-curling the endpoint during manual verification, not by
+the automated suite. Fixed by accepting `null` alongside `undefined`/`string`.
+
+**Verified:** 22 new tests (pure `groupIntoClaims` fixtures plus DB-backed tests against real
+Postgres — corroboration-stopping-propagation, one-of-several-reports-leaves-the-claim-applied,
+reason-required-for-add_caution-only, re-reject-409, `ON DELETE SET NULL` survival, and the
+orphaned-photo trap from migration 0020's `scan_id` nullability), 185 total passing, stable across
+three consecutive full-suite runs. Browser-checked locally, logged in as a throwaway admin account:
+empty state, all three sections rendering in the right order (corroborated-first, since `add_caution`
+corroborates at threshold 1 and can never actually be pending), the reason field correctly gating
+the reject button, the admin photo route serving a correction's photo directly. Did not click an
+actual reject in the browser (would have triggered a live `window.confirm()` dialog); that path is
+covered by the curl-driven manual pass and the automated tests instead.
+
+**Not deployed.** Built and verified locally only — `docs/server-setup.md` has no new section for
+this yet, since there's nothing to run by hand beyond the normal deploy + migrate steps once it
+ships.
+
+**Next:** deploy this. Then the reverse "warning survives" gap in `recordCorrection.ts` and
+actually letting corroborated removals reach other profiles — this item was the explicit
+prerequisite for that, per `docs/principles.md`'s precedent table, and is still not done. The
+judge-account seed script and Week 9's polish/hardening pass are also still open.
