@@ -351,6 +351,57 @@ export function getAiAccuracyReport(): Promise<AiAccuracyReport> {
   return apiFetch("/admin/ai-accuracy");
 }
 
+// Mirrors server/src/corrections/reviewQueue.ts's ReviewQueueReport/ReviewQueueClaim exactly.
+// Deliberately no email field anywhere here — reporter identity never leaves the server (see that
+// module's docs and docs/principles.md's precedent row); only rejector identity does, since that's
+// admin accountability rather than a user's health data.
+export type ReviewQueueReport = {
+  id: string;
+  correctionType: CorrectionType;
+  target: "off_data" | "ai_verdict";
+  note: string | null;
+  status: CorrectionStatus;
+  createdAt: string;
+  reporterLabel: string;
+  rejectedBy: { email: string } | null;
+  rejectedAt: string | null;
+  rejectionReason: string | null;
+};
+
+export type ReviewQueueClaim = {
+  barcode: string;
+  allergen: string | null;
+  direction: "add_caution" | "remove_caution";
+  status: CorrectionStatus;
+  liveReporterCount: number;
+  deletedAccountReportCount: number;
+  sameCircleWarning: boolean;
+  reports: ReviewQueueReport[];
+};
+
+export function getReviewQueue(): Promise<ReviewQueueClaim[]> {
+  return apiFetch("/admin/review-queue");
+}
+
+// Return shape matches ReviewQueueReport.rejectedBy's { email: string } exactly (non-nullable here
+// — this is always the acting admin's own row) so the caller can patch this response straight into
+// one report's rejectedBy field in local state without reshaping it.
+export function rejectCorrection(
+  correctionId: string,
+  reason: string | null,
+): Promise<{ id: string; status: "rejected"; rejectedBy: { email: string }; rejectedAt: string; rejectionReason: string | null }> {
+  return apiFetch(`/admin/review-queue/corrections/${correctionId}/reject`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}
+
+// Photo is a plain <img>/<a> pointing at GET /api/admin/review-queue/corrections/:id/photo — no
+// fetch helper needed, same as every other served-file link in the app.
+export function reviewQueuePhotoUrl(correctionId: string): string {
+  return `/api/admin/review-queue/corrections/${correctionId}/photo`;
+}
+
 export type DeletionImpactProfile = {
   id: string;
   label: string;

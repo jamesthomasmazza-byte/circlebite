@@ -13,6 +13,7 @@ import { ProfileDetail } from "./routes/ProfileDetail";
 import { Profiles } from "./routes/Profiles";
 import { Register } from "./routes/Register";
 import { ResetPassword } from "./routes/ResetPassword";
+import { ReviewQueue } from "./routes/ReviewQueue";
 import { Scan } from "./routes/Scan";
 import { ScanHistory } from "./routes/ScanHistory";
 import { Settings } from "./routes/Settings";
@@ -42,6 +43,7 @@ function App() {
             {/* Real gate is server-side (assertIsAdmin, a 404 for anyone else) — this route exists
                 for admins to navigate to, not as the access control itself. */}
             <Route path="/admin/ai-accuracy" element={<AiAccuracy />} />
+            <Route path="/admin/review-queue" element={<ReviewQueue />} />
           </Route>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Routes>
