@@ -124,6 +124,7 @@ If a decision needs one of these to lose, that's fine — but write down which o
 | Corrections stored standalone, not as patches (N17) | 6 | Storage efficiency |
 | Community additions reach other profiles; removals stay reporter-only until a review queue exists (Sept 10, 2026) | 1, 4 | Symmetric propagation, and fast cleanup of a wrong warning — three throwaway accounts must not be able to clear a peanut warning for everyone |
 | AI accuracy page gated behind `is_admin`, not open to every signed-in user; judge account deliberately not granted it (Sept 11, 2026) | 5 | Signup is open to any adult, and with a small user base the by-allergen breakdown can effectively identify a specific person's allergy — the same fact that already justified not letting community removals propagate |
+| Review queue shows reporter pseudonyms, not identity, and flags same-circle reporters; admin rejector identity shown in full (Sept 19, 2026) | 5 | Seeing exactly who reported an allergen — the same identifiability risk already used to withhold the AI accuracy page from the judge account. Rejector identity is kept because it's accountability for an admin action, not a user's health data |
 
 ---
 
