@@ -158,6 +158,19 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
       `docs/principles.md`. Still open, not done here: the reverse "warning survives" gap in
       `recordCorrection.ts` and letting corroborated removals actually reach other profiles — see
       `docs/journal.md`.
+- [ ] Fix the case-sensitivity mismatch between the corroboration bucket and the family-facing
+      display: `communityAdditions.ts:31` groups by `lower(allergen)`, but `recordCorrection.ts`'s
+      threshold query (`allergen = $2`) and migration 0015's unique index are both exact-match. Two
+      reports spelled "Sesame" and "sesame" are the same claim to families reading the count, but
+      two independent corroboration buckets to the engine deciding whether either one has actually
+      corroborated. Fail-safe in both directions today, so this is a consistency bug, not a safety
+      one — `add_caution` corroborates at a threshold of 1 regardless of which bucket a given report
+      lands in, and a `remove_caution` split across two spellings never reaches 3 in either bucket,
+      so the warning survives either way. If this is ever reconciled, the write-side (exact-match)
+      bucket should win, not the display-side one — it's what actually decides `status`, and
+      loosening it to match the display query would let two differently-spelled reports corroborate
+      an allergen removal that neither reporter alone had cleared the threshold for. Found while
+      building the review queue (2026-09-20 journal entry); not blocking anything, not fixed there.
 - [x] AI accuracy page — overrule rate overall, by allergen, and by model/prompt version, scoped to
       `target = 'ai_verdict' AND direction = 'remove_caution'` (the false-alarm sense of "overrule"),
       with unresolved escalations counted separately from contains/caution ones. Reported misses and
