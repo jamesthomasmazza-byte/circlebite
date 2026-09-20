@@ -181,6 +181,11 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
 
 ## Week 9 — Nov 10–16 · Polish and hardening *[10% UX, 15% code quality]*
 
+- [ ] A correction can only be reported from the live scan result — scan history is read-only and
+      there's no per-scan route, so there is no path back to a past scan. The realistic moment
+      someone notices a verdict was wrong is later, with the package in hand, which means reports
+      are lost at the point the community layer depends on them most. Consider a per-scan detail
+      route carrying the report form.
 - [ ] Error and empty states throughout. Design references for this whole pass live in
       `docs/design-references.md` — read it before styling anything
 - [ ] Accessibility pass — keyboard navigation, contrast, labels, screen reader on the verdict card *[bonus]*.

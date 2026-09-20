@@ -34,7 +34,14 @@ both confirmed live. The review queue (BACKLOG.md line 145) is now built too (20
 below) — an admin-gated page to browse and reject corrections instead of running SQL, with
 `rejected_by`/`rejected_at`/`rejection_reason` as the audit trail that runbook never had, and two
 real bugs caught during verification rather than left for production. 185 server tests passing,
-browser-checked locally, **not yet deployed**. Still open: the reverse "warning survives" gap in
+and deployed — release 20260920173010, migration 0023 applied. Verified live: the page renders, the
+admin gate holds, and the empty state is accurate (production has no corrections at all right now).
+**Still unverified in a browser: the reject flow itself** — the confirm copy, the `add_caution`
+reason requirement, and the retroactive removal from another family's history. To verify, report a
+missing allergen from a live scan (the report form exists only on the scan result screen, see the
+new BACKLOG item) and work that claim through the queue. Note `COMMUNITY_CORRECTIONS=on` in
+production, so a test report becomes a live warning for anyone scanning that barcode until it's
+rejected. Still open: the reverse "warning survives" gap in
 `recordCorrection.ts` and letting corroborated removals actually reach other profiles, the
 judge-account seed script, and Week 9's polish/hardening pass.
 
