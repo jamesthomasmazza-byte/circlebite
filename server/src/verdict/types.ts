@@ -24,6 +24,38 @@ export type AiClientResult =
     }
   | { ok: false; reason: string };
 
+/** What one successful extraction call reports about a photographed label — Path C's analogue of
+ *  AiFinding[], but transcription rather than allergen reasoning; see prompt.ts's LABEL_SYSTEM_PROMPT
+ *  for the legible/complete distinction. */
+export type LabelExtraction = {
+  ingredientsText: string;
+  productName: string | null;
+  contains: string[];
+  mayContain: string[];
+  legible: boolean;
+  complete: boolean;
+  incompleteReason: string | null;
+  language: string | null;
+};
+
+/** Discriminated result from a single call to the AI provider's vision endpoint — aiClient.ts's
+ *  callAiVision(), the extraction-call analogue of AiClientResult above. */
+export type AiVisionClientResult =
+  | ({ ok: true; latencyMs: number; tokensIn: number; tokensOut: number; costCents: number } & LabelExtraction)
+  | { ok: false; reason: string };
+
+export type ExtractLabelResult =
+  | ({
+      ok: true;
+      model: string;
+      promptVersion: string;
+      latencyMs: number;
+      tokensIn: number;
+      tokensOut: number;
+      costCents: number;
+    } & LabelExtraction)
+  | { ok: false; failureReason: string; model: string; promptVersion: string };
+
 export type ReasonVerdictResult = {
   findings: AiFinding[];
   unresolvedTerms: string[];

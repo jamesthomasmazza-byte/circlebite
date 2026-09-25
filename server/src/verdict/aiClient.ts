@@ -1,12 +1,13 @@
 import Anthropic, { APIError } from "@anthropic-ai/sdk";
 
 import { env } from "../env.js";
-import { buildUserPrompt, SYSTEM_PROMPT, type PromptInput } from "./prompt.js";
-import type { AiClientResult, AiFinding } from "./types.js";
+import { buildLabelPrompt, buildUserPrompt, LABEL_SYSTEM_PROMPT, SYSTEM_PROMPT, type PromptInput } from "./prompt.js";
+import type { AiClientResult, AiFinding, AiVisionClientResult, LabelExtraction } from "./types.js";
 
 const REQUEST_TIMEOUT_MS = 12_000;
 const MAX_OUTPUT_TOKENS = 1024;
 const TOOL_NAME = "report_allergen_findings";
+const EXTRACT_TOOL_NAME = "report_label_extraction";
 
 // Claude Haiku 4.5 pricing, confirmed against platform.claude.com/docs/en/about-claude/pricing on
 // 2026-09-10: $1/MTok input, $5/MTok output. In cents-per-token so cost_cents stays a small,
@@ -53,6 +54,38 @@ export const FINDINGS_TOOL: Anthropic.Tool = {
   },
 };
 
+// Path C's extraction tool — same strict/additionalProperties:false discipline as FINDINGS_TOOL
+// above, for the same reason (see the comment on that one): the API rejects the whole request
+// (400, before inference) if even one object node in the schema is missing
+// additionalProperties: false, and aiClient.test.ts's schema walker checks this generically for
+// both tools now, not just this one.
+export const EXTRACT_LABEL_TOOL: Anthropic.Tool = {
+  name: EXTRACT_TOOL_NAME,
+  description: "Report a structured transcription of a photographed ingredients label.",
+  strict: true,
+  input_schema: {
+    type: "object",
+    properties: {
+      ingredientsText: {
+        type: "string",
+        description: "The ingredients list transcribed verbatim, exactly as printed. Empty string if illegible.",
+      },
+      productName: { type: ["string", "null"], description: "The product's own printed name, if visible. Null if not in frame." },
+      contains: { type: "array", items: { type: "string" }, description: "Items from an explicit 'Contains:' line only." },
+      mayContain: { type: "array", items: { type: "string" }, description: "Items from an explicit 'may contain' warning only." },
+      legible: { type: "boolean", description: "False only if none of the photo's ingredients text could be read with confidence." },
+      complete: {
+        type: "boolean",
+        description: "False if any part of the ingredients statement is cut off, obscured, or out of frame, even if what IS visible is legible.",
+      },
+      incompleteReason: { type: ["string", "null"], description: "Why complete is false. Null when complete is true." },
+      language: { type: ["string", "null"], description: "The language the label is printed in, if identifiable. Null otherwise." },
+    },
+    required: ["ingredientsText", "productName", "contains", "mayContain", "legible", "complete", "incompleteReason", "language"],
+    additionalProperties: false,
+  },
+};
+
 function isFinding(value: unknown): value is AiFinding {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
@@ -71,6 +104,37 @@ function parseToolInput(input: unknown): { findings: AiFinding[]; unresolvedTerm
   if (!Array.isArray(v.findings) || !v.findings.every(isFinding)) return null;
   if (!Array.isArray(v.unresolvedTerms) || !v.unresolvedTerms.every((t) => typeof t === "string")) return null;
   return { findings: v.findings, unresolvedTerms: v.unresolvedTerms };
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((v) => typeof v === "string");
+}
+
+function parseExtractionToolInput(input: unknown): LabelExtraction | null {
+  if (typeof input !== "object" || input === null) return null;
+  const v = input as Record<string, unknown>;
+  if (
+    typeof v.ingredientsText !== "string" ||
+    (typeof v.productName !== "string" && v.productName !== null) ||
+    !isStringArray(v.contains) ||
+    !isStringArray(v.mayContain) ||
+    typeof v.legible !== "boolean" ||
+    typeof v.complete !== "boolean" ||
+    (typeof v.incompleteReason !== "string" && v.incompleteReason !== null) ||
+    (typeof v.language !== "string" && v.language !== null)
+  ) {
+    return null;
+  }
+  return {
+    ingredientsText: v.ingredientsText,
+    productName: v.productName,
+    contains: v.contains,
+    mayContain: v.mayContain,
+    legible: v.legible,
+    complete: v.complete,
+    incompleteReason: v.incompleteReason,
+    language: v.language,
+  };
 }
 
 /**
@@ -128,6 +192,81 @@ export async function callAi(input: PromptInput): Promise<AiClientResult> {
       // here is what makes "the key works when I curl it myself" vs. "the app's call fails"
       // actually diagnosable from this process's own logs, instead of indistinguishable from
       // every other failure mode.
+      console.error("[verdict] Anthropic API call failed", {
+        status: err.status,
+        type: err.type,
+        body: err.error,
+      });
+      return { ok: false, reason: `api_error_${err.status ?? "unknown"}` };
+    }
+    console.error("[verdict] Anthropic API call failed", err);
+    return { ok: false, reason: "request_failed" };
+  }
+}
+
+// A verbatim ingredients transcription runs longer than Path B's structured findings — enough
+// headroom for a dense multi-paragraph ingredients panel without being unbounded.
+const EXTRACT_MAX_OUTPUT_TOKENS = 2048;
+
+/**
+ * The vision analogue of callAi() above — same "never throws, every failure mode collapses to
+ * `{ ok: false }`" discipline, so extractLabel.ts has exactly one failure branch to fail closed on,
+ * same as reasonVerdict.ts does with this function's sibling. imageBuffer is expected to already be
+ * downscaled (client-side, per docs/verdict-engine.md/the Path C plan) — this function does not
+ * resize anything itself, it just sends whatever bytes it's given as the image content block.
+ */
+export async function callAiVision(
+  imageBuffer: Buffer,
+  mimeType: "image/jpeg" | "image/png" | "image/webp",
+): Promise<AiVisionClientResult> {
+  if (!env.aiApiKey) return { ok: false, reason: "no_api_key" };
+
+  const client = new Anthropic({ apiKey: env.aiApiKey, timeout: REQUEST_TIMEOUT_MS });
+  const startedAt = Date.now();
+
+  try {
+    const response = await client.messages.create({
+      model: env.aiModel,
+      max_tokens: EXTRACT_MAX_OUTPUT_TOKENS,
+      system: LABEL_SYSTEM_PROMPT,
+      tools: [EXTRACT_LABEL_TOOL],
+      tool_choice: { type: "tool", name: EXTRACT_TOOL_NAME },
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: mimeType, data: imageBuffer.toString("base64") } },
+            { type: "text", text: buildLabelPrompt() },
+          ],
+        },
+      ],
+    });
+
+    const toolUse = response.content.find(
+      (block): block is Anthropic.ToolUseBlock => block.type === "tool_use" && block.name === EXTRACT_TOOL_NAME,
+    );
+    const parsed = toolUse ? parseExtractionToolInput(toolUse.input) : null;
+    if (!parsed) {
+      console.error("[verdict] Anthropic label-extraction response failed schema validation", {
+        stopReason: response.stop_reason,
+        content: response.content,
+      });
+      return { ok: false, reason: "unparseable_response" };
+    }
+
+    const tokensIn = response.usage.input_tokens;
+    const tokensOut = response.usage.output_tokens;
+
+    return {
+      ok: true,
+      ...parsed,
+      latencyMs: Date.now() - startedAt,
+      tokensIn,
+      tokensOut,
+      costCents: tokensIn * INPUT_CENTS_PER_TOKEN + tokensOut * OUTPUT_CENTS_PER_TOKEN,
+    };
+  } catch (err) {
+    if (err instanceof APIError) {
       console.error("[verdict] Anthropic API call failed", {
         status: err.status,
         type: err.type,
