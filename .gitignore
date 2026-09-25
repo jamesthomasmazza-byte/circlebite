@@ -30,3 +30,6 @@ logs/
 !.vscode/extensions.json
 .idea/
 *.swp
+
+# Local Claude Code session/config state — not project source
+.claude/
