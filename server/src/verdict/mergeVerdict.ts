@@ -83,10 +83,19 @@ function rollupVerdict(details: MergedAllergenDetail[]): Verdict {
   return "safe";
 }
 
+export type MergeVerdictOptions = {
+  /** True for a Path C scan (docs/verdict-engine.md) — text read from a photographed label rather
+   *  than Open Food Facts. Must be passed explicitly from scans.source, never inferred from
+   *  whether a barcode is present or absent (a barcode-known Path C scan still has a barcode) or
+   *  from the shape of the ingredient text itself. */
+  photoSourced?: boolean;
+};
+
 export function mergeVerdict(
   deterministic: AllergenVerdictDetail[],
   ai: ReasonVerdictResult,
   allergens: ProfileAllergen[],
+  options: MergeVerdictOptions = {},
 ): MergeResult {
   const treatTracesAsUnsafeByName = new Map(allergens.map((a) => [a.name.toLowerCase(), a.treatTracesAsUnsafe]));
   const aiByName = new Map(ai.findings.map((f) => [f.allergen.toLowerCase(), f]));
@@ -107,9 +116,19 @@ export function mergeVerdict(
   // from).
   if (ai.failed && verdict === "safe") verdict = "unable_to_confirm";
 
-  // This slice (Path B) only ever reasons over free ingredient text — never structured tags
-  // (that's Path A) or OCR (Path C/D) — so "high" and the OCR-flavored parts of "low" in the
-  // confidence-band table don't apply here. unable_to_confirm reports low; everything else medium.
+  // Path C safety rule (docs/verdict-engine.md's confidence-band table: OCR evidence never renders
+  // "safe" plainly): structurally identical to the ai.failed override directly above — same
+  // "otherwise-safe flips to unable_to_confirm" shape, different trigger. A photo-sourced read that
+  // found nothing is not the same claim as a barcode-backed record that found nothing; this is what
+  // keeps that distinction from collapsing. Never suppresses a real finding — it only ever fires on
+  // a would-be "safe" rollup, so contains_allergen/may_contain_caution/unresolved are untouched.
+  if (options.photoSourced && verdict === "safe") verdict = "unable_to_confirm";
+
+  // Path B/C both only ever reason over free text (ingredient text or extracted label text) — never
+  // structured tags (that's Path A) — so "high" in the confidence-band table doesn't apply here.
+  // unable_to_confirm reports low (which also correctly covers the photoSourced override just
+  // above — an OCR-sourced "nothing found" is exactly the "low" band's own OCR case); everything
+  // else medium.
   const confidence: Confidence = verdict === "unable_to_confirm" ? "low" : "medium";
 
   return { verdict, confidence, matchedAllergens };
