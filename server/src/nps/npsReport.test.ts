@@ -22,21 +22,22 @@ test("classify: boundaries land in the right bucket", () => {
 
 test("aggregateNpsResponses: below the threshold, npsScore is null but counts are exact", () => {
   const rows = [
-    { score: 10, reason: null },
-    { score: 3, reason: null },
+    { score: 10, reason: null, source: "user" as const },
+    { score: 3, reason: null, source: "user" as const },
   ];
   const result = aggregateNpsResponses(rows);
   assert.equal(result.n, 2);
   assert.equal(result.promoters, 1);
   assert.equal(result.detractors, 1);
   assert.equal(result.npsScore, null);
+  assert.equal(result.seedCarriedScore, false);
 });
 
 test("aggregateNpsResponses: npsScore appears once responses reach the threshold", () => {
   // 15 promoters, 5 detractors, n = 20 -> (15 - 5) / 20 * 100 = 50
   const rows = [
-    ...Array.from({ length: 15 }, () => ({ score: 10, reason: null })),
-    ...Array.from({ length: 5 }, () => ({ score: 0, reason: null })),
+    ...Array.from({ length: 15 }, () => ({ score: 10, reason: null, source: "user" as const })),
+    ...Array.from({ length: 5 }, () => ({ score: 0, reason: null, source: "user" as const })),
   ];
   assert.equal(rows.length, NPS_SMALL_SAMPLE_THRESHOLD);
 
@@ -49,8 +50,8 @@ test("aggregateNpsResponses: npsScore appears once responses reach the threshold
 
 test("aggregateNpsResponses: passives don't affect npsScore, only n", () => {
   const rows = [
-    ...Array.from({ length: 10 }, () => ({ score: 10, reason: null })),
-    ...Array.from({ length: 10 }, () => ({ score: 8, reason: null })), // passives
+    ...Array.from({ length: 10 }, () => ({ score: 10, reason: null, source: "user" as const })),
+    ...Array.from({ length: 10 }, () => ({ score: 8, reason: null, source: "user" as const })), // passives
   ];
   const result = aggregateNpsResponses(rows);
   assert.equal(result.n, 20);
@@ -62,14 +63,59 @@ test("aggregateNpsResponses: passives don't affect npsScore, only n", () => {
 
 test("aggregateNpsResponses: reasons are trimmed, verbatim, and exclude empty/whitespace-only values", () => {
   const rows = [
-    { score: 9, reason: "  Love the disclaimer  " },
-    { score: 2, reason: "" },
-    { score: 7, reason: "   " },
-    { score: 10, reason: null },
-    { score: 1, reason: "Too slow" },
+    { score: 9, reason: "  Love the disclaimer  ", source: "user" as const },
+    { score: 2, reason: "", source: "user" as const },
+    { score: 7, reason: "   ", source: "user" as const },
+    { score: 10, reason: null, source: "user" as const },
+    { score: 1, reason: "Too slow", source: "user" as const },
   ];
   const result = aggregateNpsResponses(rows);
   assert.deepEqual(result.reasons, ["Love the disclaimer", "Too slow"]);
+});
+
+test("aggregateNpsResponses: composition counts split real from seeded rows", () => {
+  const rows = [
+    { score: 10, reason: null, source: "user" as const },
+    { score: 10, reason: null, source: "user" as const },
+    { score: 10, reason: null, source: "seed" as const },
+  ];
+  const result = aggregateNpsResponses(rows);
+  assert.equal(result.n, 3);
+  assert.equal(result.realCount, 2);
+  assert.equal(result.seededCount, 1);
+});
+
+test("aggregateNpsResponses: seedCarriedScore is true when real responses alone are below threshold but seeded rows push n over it", () => {
+  const rows = [
+    ...Array.from({ length: 5 }, () => ({ score: 10, reason: null, source: "user" as const })),
+    ...Array.from({ length: 15 }, () => ({ score: 10, reason: null, source: "seed" as const })),
+  ];
+  const result = aggregateNpsResponses(rows);
+  assert.equal(result.n, 20);
+  assert.equal(result.realCount, 5);
+  assert.equal(result.seededCount, 15);
+  assert.notEqual(result.npsScore, null);
+  assert.equal(result.seedCarriedScore, true);
+});
+
+test("aggregateNpsResponses: seedCarriedScore is false once real responses alone reach the threshold, even with seeded rows present", () => {
+  const rows = [
+    ...Array.from({ length: 20 }, () => ({ score: 10, reason: null, source: "user" as const })),
+    ...Array.from({ length: 5 }, () => ({ score: 10, reason: null, source: "seed" as const })),
+  ];
+  const result = aggregateNpsResponses(rows);
+  assert.equal(result.realCount, 20);
+  assert.equal(result.seedCarriedScore, false);
+});
+
+test("aggregateNpsResponses: seedCarriedScore is false below threshold even if seeded rows are present (npsScore is already null)", () => {
+  const rows = [
+    { score: 10, reason: null, source: "user" as const },
+    { score: 10, reason: null, source: "seed" as const },
+  ];
+  const result = aggregateNpsResponses(rows);
+  assert.equal(result.npsScore, null);
+  assert.equal(result.seedCarriedScore, false);
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -109,11 +155,15 @@ after(async () => {
 test("npsReport: includes seeded rows by default", async () => {
   const report = await npsReport();
   assert.ok(report.n >= 2);
+  assert.ok(report.realCount >= 1);
+  assert.ok(report.seededCount >= 1);
+  assert.equal(report.realCount + report.seededCount, report.n);
 });
 
 test("npsReport: includeSeeded false excludes source='seed' rows", async () => {
   const report = await npsReport(false);
   assert.ok(!report.reasons.includes("seeded response"));
+  assert.equal(report.seededCount, 0);
 });
 
 test("assertIsAdmin: non-admin is blocked with 404, not 403 — same contract as /admin/ai-accuracy and /admin/review-queue", async () => {

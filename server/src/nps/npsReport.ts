@@ -9,6 +9,7 @@ import { pool } from "../db/pool.js";
 export const NPS_SMALL_SAMPLE_THRESHOLD = 20;
 
 export type NpsCategory = "promoter" | "passive" | "detractor";
+export type NpsSource = "user" | "seed";
 
 export type NpsReport = {
   threshold: number;
@@ -23,9 +24,19 @@ export type NpsReport = {
    */
   npsScore: number | null;
   reasons: string[];
+  /** How many of `n` are real (source = 'user') vs the judge seed script's invented rows. */
+  realCount: number;
+  seededCount: number;
+  /**
+   * True when npsScore is non-null only because seeded rows pushed n over the threshold — i.e.
+   * realCount alone is still below NPS_SMALL_SAMPLE_THRESHOLD. A score that looks like real user
+   * sentiment but is mostly seed data is exactly what the threshold exists to prevent, so this is
+   * surfaced explicitly rather than left for someone to notice from the composition counts alone.
+   */
+  seedCarriedScore: boolean;
 };
 
-type NpsResponseFields = { score: number; reason: string | null };
+type NpsResponseFields = { score: number; reason: string | null; source: NpsSource };
 
 export function classify(score: number): NpsCategory {
   if (score >= 9) return "promoter";
@@ -44,6 +55,8 @@ export function aggregateNpsResponses(
   let promoters = 0;
   let passives = 0;
   let detractors = 0;
+  let realCount = 0;
+  let seededCount = 0;
   const reasons: string[] = [];
 
   for (const row of rows) {
@@ -52,6 +65,9 @@ export function aggregateNpsResponses(
     else if (category === "passive") passives += 1;
     else detractors += 1;
 
+    if (row.source === "seed") seededCount += 1;
+    else realCount += 1;
+
     const trimmed = row.reason?.trim();
     if (trimmed) reasons.push(trimmed);
   }
@@ -59,8 +75,9 @@ export function aggregateNpsResponses(
   const n = rows.length;
   const npsScore =
     n < NPS_SMALL_SAMPLE_THRESHOLD ? null : Math.round(((promoters - detractors) / n) * 100);
+  const seedCarriedScore = npsScore !== null && realCount < NPS_SMALL_SAMPLE_THRESHOLD;
 
-  return { n, promoters, passives, detractors, npsScore, reasons };
+  return { n, promoters, passives, detractors, npsScore, reasons, realCount, seededCount, seedCarriedScore };
 }
 
 /**
@@ -71,8 +88,8 @@ export function aggregateNpsResponses(
 export async function fetchNpsRows(includeSeeded = true): Promise<NpsResponseFields[]> {
   const { rows } = await pool.query<NpsResponseFields>(
     includeSeeded
-      ? "SELECT score, reason FROM nps_responses ORDER BY created_at DESC"
-      : "SELECT score, reason FROM nps_responses WHERE source = 'user' ORDER BY created_at DESC",
+      ? "SELECT score, reason, source FROM nps_responses ORDER BY created_at DESC"
+      : "SELECT score, reason, source FROM nps_responses WHERE source = 'user' ORDER BY created_at DESC",
   );
   return rows;
 }

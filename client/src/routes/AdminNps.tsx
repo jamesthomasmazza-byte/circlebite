@@ -34,18 +34,34 @@ export function AdminNps() {
 
       {report.n === 0 ? (
         <p>No responses yet.</p>
-      ) : report.npsScore === null ? (
-        <p>
-          {report.promoters} promoter{report.promoters === 1 ? "" : "s"}, {report.passives} passive
-          {report.passives === 1 ? "" : "s"}, {report.detractors} detractor{report.detractors === 1 ? "" : "s"} (
-          {report.n} total) — too few (need {report.threshold}) for a meaningful score yet.
-        </p>
       ) : (
-        <p>
-          <strong>{report.npsScore}</strong> ({report.promoters} promoter{report.promoters === 1 ? "" : "s"},{" "}
-          {report.passives} passive{report.passives === 1 ? "" : "s"}, {report.detractors} detractor
-          {report.detractors === 1 ? "" : "s"}, {report.n} total).
-        </p>
+        <>
+          <p>
+            {report.n} response{report.n === 1 ? "" : "s"} ({report.realCount} real, {report.seededCount} seeded).
+          </p>
+
+          {report.npsScore === null ? (
+            <p>
+              {report.promoters} promoter{report.promoters === 1 ? "" : "s"}, {report.passives} passive
+              {report.passives === 1 ? "" : "s"}, {report.detractors} detractor{report.detractors === 1 ? "" : "s"} (
+              {report.n} total) — too few (need {report.threshold}) for a meaningful score yet.
+            </p>
+          ) : (
+            <p>
+              <strong>{report.npsScore}</strong> ({report.promoters} promoter{report.promoters === 1 ? "" : "s"},{" "}
+              {report.passives} passive{report.passives === 1 ? "" : "s"}, {report.detractors} detractor
+              {report.detractors === 1 ? "" : "s"}, {report.n} total).
+            </p>
+          )}
+
+          {report.seedCarriedScore && (
+            <p role="alert">
+              Real responses alone ({report.realCount}) are still below the threshold (
+              {report.threshold}) — this score only appears because seeded rows pushed the total
+              over it, not because real user sentiment has reached a meaningful sample yet.
+            </p>
+          )}
+        </>
       )}
 
       <h2>Reasons</h2>

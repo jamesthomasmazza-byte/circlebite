@@ -372,6 +372,10 @@ export type NpsReport = {
   detractors: number;
   npsScore: number | null;
   reasons: string[];
+  realCount: number;
+  seededCount: number;
+  /** True when npsScore is non-null only because seeded rows pushed n over the threshold. */
+  seedCarriedScore: boolean;
 };
 
 export function getNpsReport(): Promise<NpsReport> {
