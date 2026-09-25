@@ -1266,10 +1266,15 @@ flipped admin back off and confirmed the page 404s the same way `/admin/ai-accur
 `npm run seed:nps` twice and confirmed the row count stayed at 24. Test account and its response
 deleted afterward.
 
-**Not deployed.** Built and verified locally only, same as the review queue before it — nothing to
-run by hand on the box beyond the normal deploy + migrate steps once it ships, plus `npm run
-seed:nps` once on the contest deployment before judging.
+**Deployed.** Live as release `20260925172537`, migration 0024 applied on the box. Verified in a
+real browser against production: both `/settings`'s Feedback section and `/admin/nps` render, the
+recommend-a-friend question wording is correct, and the empty states are honest — production has no
+real responses yet, so `/admin/nps` correctly shows "No responses yet" rather than anything seeded
+or fabricated. **Not yet verified in production:** the read-only view a response swaps to after
+submitting, and the composition/seed-carried-score line on `/admin/nps` — neither is reachable with
+zero responses in the live DB.
 
-**Next:** deploy this. `seedJudgeNps.ts` is explicitly a placeholder — fold it into the real
-judge-account seed script (still open, `BACKLOG.md`) once that's built, rather than maintaining two
-separate seeding paths.
+**Next:** run `npm run seed:nps` on the box (or submit a real response) so the read-only swap and
+the composition/seed-carried-score line can actually be exercised in production, not just locally.
+`seedJudgeNps.ts` is explicitly a placeholder — fold it into the real judge-account seed script
+(still open, `BACKLOG.md`) once that's built, rather than maintaining two separate seeding paths.
