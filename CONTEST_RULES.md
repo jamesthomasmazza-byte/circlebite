@@ -90,6 +90,12 @@ behalf are core to the product, not an extra. The problem is that the person eat
 isn't the person reading the label — a single-user scanner does not address it. Scoping the circle
 out would leave a commodity barcode app and forfeit most of the 20% for problem identification.
 
+**Approved exception (Sept 25, 2026):** a minimal NPS admin aggregate — the score, the
+promoter/passive/detractor counts, and the verbatim reasons, nothing more (no charts, segmentation,
+trends, or date-range filters) — is approved outside the "admin analytics beyond the AI accuracy
+report" freeze above. NPS is a requirement of a separate course using this same project. Gated
+identically to `/admin/ai-accuracy` (`assertIsAdmin`, 404 not 403).
+
 ## 8. Getting unstuck
 
 Email **yoest@cua.edu**. Per the FAQ, silence costs points; being stuck does not. An email in week

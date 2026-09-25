@@ -178,6 +178,15 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
       outright that the overrule rate can't see misses. Rates are withheld (raw counts always shown)
       below 20 escalations/attempts. Gated behind a new `users.is_admin` flag, not the judge account
       (`docs/principles.md`) — no UI sets it, flipped by hand per `docs/server-setup.md` §12.
+- [x] Self-initiated NPS feedback in Settings — never a modal, since the scan path is a safety flow.
+      `nps_responses` migration, one response per user per 90 days (409 on a repeat, checked in
+      application code), promoter/passive/detractor derived at read time. `/admin/nps` mirrors
+      `/admin/ai-accuracy` exactly (`assertIsAdmin`, same small-n suppression), kept deliberately
+      minimal — score, counts, and verbatim reasons only — as the approved, narrow exception to
+      §7's "admin analytics beyond the AI accuracy report" freeze (`CONTEST_RULES.md` §7, dated
+      Sept 25, 2026). A standalone, rerunnable seed script (`server/src/db/seedJudgeNps.ts`) seeds
+      invented responses so the page isn't empty during judging — scoped only to this table, since
+      the real judge seed script below doesn't exist yet; fold it in once that's built.
 
 ## Week 9 — Nov 10–16 · Polish and hardening *[10% UX, 15% code quality]*
 
