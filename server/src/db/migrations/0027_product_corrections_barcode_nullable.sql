@@ -1,0 +1,28 @@
+-- Companion to migration 0026: a correction filed against a barcode-less Path C scan has no
+-- barcode to record either (recordCorrection.ts denormalizes scan.barcode onto the correction row
+-- at write time, same as every other field it denormalizes). Decision made with JT during planning:
+-- a null-barcode correction still overrides the reporter's own view immediately (CONTEST_RULES.md
+-- §3) and still appears in the admin review queue for oversight, but is deliberately excluded from
+-- cross-profile corroboration counting (recordCorrection.ts) and reviewQueue.ts's claim-bucketing —
+-- there is no reliable cross-user product identity to key that off for a photo of, say, a torn bag
+-- of loose produce. A barcode-known-but-not-in-OFF correction is unaffected and corroborates exactly
+-- as it does today.
+--
+-- Known, accepted gap this reopens — NOT fixed here, documented so it isn't rediscovered as a
+-- surprise: migration 0015's two partial unique indexes
+-- (product_corrections_no_dup_allergen_report_idx and
+-- product_corrections_no_dup_wrong_product_report_idx) are the anti-inflation protection against one
+-- user filing the same claim repeatedly, and that migration's own comment explains they're split
+-- into two partial indexes specifically because standard SQL UNIQUE treats NULL as distinct from
+-- itself (a single UNIQUE(...) constraint would let every NULL-allergen row bypass it). A nullable
+-- barcode reopens the identical hole for barcode-less rows: neither existing index constrains two
+-- rows that share the same (allergen, direction, reported_by) but both have barcode = NULL — nothing
+-- stops one user from filing the same scan-scoped correction against the same photo-only scan
+-- multiple times. This is harmless today ONLY because null-barcode rows are excluded from
+-- corroboration counting entirely, so duplicate rows can't inflate anyone else's corroboration
+-- count — a coincidence of the current design, not a fix. If null-barcode corrections are ever
+-- allowed to corroborate against each other, this gap needs a real constraint (e.g. unique on
+-- scan_id + allergen + direction + reported_by, which barcode-based rows don't need since barcode
+-- already scopes them to the product rather than one scan) before that ships.
+
+ALTER TABLE product_corrections ALTER COLUMN barcode DROP NOT NULL;
