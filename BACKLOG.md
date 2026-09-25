@@ -212,6 +212,11 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
       Touch-target and text-size minimums are in `docs/design-references.md`
 - [ ] Mobile layout verified on a real phone
 - [ ] Run the full compliance check in `CONTEST_RULES.md` §9
+- [ ] Verify every kill-switched feature in its **off** state too, not just its on state — the
+      `LABEL_SCAN` gating bug (`docs/journal.md` 2026-09-25) shipped past 236 passing tests and a
+      full local pass because the switch was `on` in local `.env` the whole time Path C was built
+      and tested, so nothing ever exercised the disabled path. A well-tested enabled state doesn't
+      prove the disabled one was ever checked
 - [ ] Run the age-gate verification checklist in `docs/coppa.md` §4
 - [x] Password change (Settings) + admin-issued reset flow for locked-out accounts — change
       revokes every *other* session for that user, keeping the caller's own session alive; reset-
@@ -241,6 +246,12 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
       self-registered judge lands in an empty app, and the circle in particular can't be seen from
       one account, since it takes a second person to accept an invite and scan on a profile's
       behalf
+- [ ] `AI_DAILY_SPEND_CAP_CENTS` defaults to 200 ($2.00/day) — sized when a scan meant exactly one
+      Anthropic call (Path B's `reasonVerdict`). Path C makes it two (extraction, then reasoning),
+      and a failed extraction still spends one call before it can even fail. Tripping the cap fails
+      closed to `unable_to_confirm` (correct behavior, but it reads as a broken app if it happens
+      mid-demo). Decide the judging-week value deliberately, not by leaving the default in place
+      and hoping — before `LABEL_SCAN` gets flipped on for judging, not after
 - [ ] Confirm to Prof. Yoest that the instance stays running through judging *(R10)*
 - [ ] Freeze the code
 
