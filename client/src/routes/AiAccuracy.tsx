@@ -142,6 +142,23 @@ export function AiAccuracy() {
           </section>
         ))
       )}
+
+      <h2>By scan source</h2>
+      <p>
+        Barcode scans (Path A/B) vs. photographed labels (Path C). Path C's reasoning step reuses
+        Path B's prompt version exactly, so the breakdown above can't tell them apart — this one
+        does.
+      </p>
+      {report.bySource.length === 0 ? (
+        <p>No AI escalations yet.</p>
+      ) : (
+        report.bySource.map((row) => (
+          <section key={row.source}>
+            <h3>{row.source === "label_photo" ? "Photographed label" : row.source}</h3>
+            <CategoryBucketsSummary buckets={row} threshold={report.threshold} />
+          </section>
+        ))
+      )}
     </main>
   );
 }

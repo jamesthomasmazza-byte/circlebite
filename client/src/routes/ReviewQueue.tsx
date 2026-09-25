@@ -12,7 +12,7 @@ import {
 function claimTitle(claim: ReviewQueueClaim): string {
   const what = claim.allergen ?? "product identity (wrong_product)";
   const directionLabel = claim.direction === "add_caution" ? "reported as present" : "reported as not present";
-  return `${claim.barcode} — ${what} — ${directionLabel}`;
+  return `${claim.barcode ?? "no barcode"} — ${what} — ${directionLabel}`;
 }
 
 function ReportCount({ claim }: { claim: ReviewQueueClaim }) {
@@ -211,11 +211,18 @@ export function ReviewQueue() {
     );
   }
 
-  const corroborated = claims.filter((c) => c.status === "corroborated");
+  // Barcode-less Path C claims (docs/verdict-engine.md) are always singleton — one report each,
+  // never corroborated (recordCorrection.ts skips that entirely for them) — so they get their own
+  // section rather than being mixed into the corroborated/pending/resolved buckets below, which
+  // would otherwise imply they could aggregate the way barcode-keyed claims do.
+  const noBarcode = claims.filter((c) => c.barcode === null);
+  const barcoded = claims.filter((c) => c.barcode !== null);
+
+  const corroborated = barcoded.filter((c) => c.status === "corroborated");
   const addCautionCorroborated = corroborated.filter((c) => c.direction === "add_caution");
   const removeCautionCorroborated = corroborated.filter((c) => c.direction === "remove_caution");
-  const pending = claims.filter((c) => c.status === "pending");
-  const resolved = claims.filter((c) => c.status === "rejected");
+  const pending = barcoded.filter((c) => c.status === "pending");
+  const resolved = barcoded.filter((c) => c.status === "rejected");
 
   const claimSectionProps = { rejectingId, rejectErrors, reasonDrafts, onReasonChange: handleReasonChange, onReject: handleReject };
 
@@ -223,6 +230,20 @@ export function ReviewQueue() {
     <main>
       <h1>Review queue</h1>
       <p>Browse and reject reported corrections instead of running SQL (docs/server-setup.md §11).</p>
+
+      <h2>Photo reports (no barcode)</h2>
+      <p>
+        Reports against a scan photographed with no barcode at all — there's no reliable way to tell
+        two users' photos are of the same product, so these never corroborate across users and each
+        one is shown on its own, for oversight only.
+      </p>
+      {noBarcode.length === 0 ? (
+        <p>None yet.</p>
+      ) : (
+        noBarcode.map((claim) => (
+          <ClaimSection key={claim.reports[0]?.id ?? claimTitle(claim)} claim={claim} {...claimSectionProps} />
+        ))
+      )}
 
       <h2>Currently applied</h2>
       {addCautionCorroborated.length === 0 && removeCautionCorroborated.length === 0 ? (
