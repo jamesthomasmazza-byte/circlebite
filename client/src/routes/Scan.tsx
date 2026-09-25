@@ -1,11 +1,13 @@
 import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import {
   ApiRequestError,
   createCorrection,
+  createLabelScan,
   createScan,
+  downscaleLabelPhoto,
   listProfiles,
   type CorrectionType,
   type ProfileSummary,
@@ -82,6 +84,16 @@ export function Scan() {
   const [reportError, setReportError] = useState<string | null>(null);
   const [reportOutcome, setReportOutcome] = useState<string | null>(null);
 
+  // Path C (docs/verdict-engine.md) — photograph the ingredients label instead of/after a barcode.
+  // photoCarryBarcode is set only by the reactive entry point (a barcode scan came back
+  // unable_to_confirm); the standalone "no barcode" entry point leaves it null. Either way the
+  // server re-validates it — this is just what the UI remembers to offer back.
+  const [photoCaptureOpen, setPhotoCaptureOpen] = useState(false);
+  const [photoCarryBarcode, setPhotoCarryBarcode] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoReading, setPhotoReading] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+
   useEffect(() => {
     listProfiles()
       .then((res) => {
@@ -93,8 +105,9 @@ export function Scan() {
       .finally(() => setLoadingProfiles(false));
   }, []);
 
-  // Manual entry and the camera both end up here — same validation, same request, same rendering.
-  async function runScan(rawBarcode: string, targetProfileId: string) {
+  // Shared between the barcode flow and the photo flow — clears whatever the other one left behind
+  // so switching between them never shows stale state.
+  function resetForNewScan() {
     setError(null);
     setResult(null);
     setReportOpen(false);
@@ -103,6 +116,14 @@ export function Scan() {
     setReportPhoto(null);
     setReportError(null);
     setReportOutcome(null);
+    setPhotoCaptureOpen(false);
+    setPhotoFile(null);
+    setPhotoError(null);
+  }
+
+  // Manual entry and the camera both end up here — same validation, same request, same rendering.
+  async function runScan(rawBarcode: string, targetProfileId: string) {
+    resetForNewScan();
 
     if (!targetProfileId) {
       setError("Pick who you're scanning for.");
@@ -127,6 +148,53 @@ export function Scan() {
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     await runScan(barcode, profileId);
+  }
+
+  // Standalone entry point ("No barcode? Photograph the label") or the reactive one (offered after
+  // an unable_to_confirm barcode scan) both open the same capture UI — carryBarcode is null for the
+  // former, the searched barcode for the latter. The server re-validates it either way.
+  function openPhotoCapture(carryBarcode: string | null) {
+    resetForNewScan();
+    setPhotoCarryBarcode(carryBarcode);
+    setPhotoCaptureOpen(true);
+  }
+
+  function handlePhotoFileChange(event: ChangeEvent<HTMLInputElement>) {
+    setPhotoError(null);
+    setPhotoFile(event.target.files?.[0] ?? null);
+  }
+
+  async function handlePhotoSubmit(event: FormEvent) {
+    event.preventDefault();
+    setPhotoError(null);
+
+    if (!profileId) {
+      setPhotoError("Pick who you're scanning for.");
+      return;
+    }
+    if (!photoFile) {
+      setPhotoError("Choose a photo of the ingredients panel first.");
+      return;
+    }
+
+    setPhotoReading(true);
+    try {
+      const downscaled = await downscaleLabelPhoto(photoFile);
+      const scan = await createLabelScan(profileId, downscaled, photoCarryBarcode ?? undefined);
+      setPhotoCaptureOpen(false);
+      setPhotoFile(null);
+      setResult(scan);
+    } catch (err) {
+      if (err instanceof ApiRequestError && err.status === 400 && err.message === "photo_too_large") {
+        setPhotoError("That photo is too large — try a smaller image.");
+      } else if (err instanceof ApiRequestError && err.status === 400 && err.message === "invalid_file_type") {
+        setPhotoError("That doesn't look like a photo — please choose a JPEG, PNG, or WebP image.");
+      } else {
+        setPhotoError("Couldn't read that photo. Try again.");
+      }
+    } finally {
+      setPhotoReading(false);
+    }
   }
 
   async function handleReportSubmit(event: FormEvent) {
@@ -154,7 +222,10 @@ export function Scan() {
       setReportOutcome(
         outcome.corroborated
           ? "Reported — enough other reports agreed that this is now corroborated."
-          : "Reported — thanks. This is now in the review queue.",
+          : result.barcode === null
+            ? "Reported — thanks. This is recorded against your own view; without a barcode we can't check it " +
+              "against anyone else's report of the same product."
+            : "Reported — thanks. This is now in the review queue.",
       );
       setReportOpen(false);
     } catch (err) {
@@ -274,18 +345,86 @@ export function Scan() {
               {submitting ? "Checking…" : "Check this product"}
             </button>
           </form>
+
+          {!photoCaptureOpen && (
+            <p>
+              <button type="button" onClick={() => openPhotoCapture(null)}>
+                No barcode? Photograph the label
+              </button>
+            </p>
+          )}
+
+          {photoCaptureOpen && (
+            <form onSubmit={handlePhotoSubmit}>
+              <h2>Photograph the ingredients label</h2>
+              {photoCarryBarcode && (
+                <p>
+                  We couldn't find enough data for barcode {photoCarryBarcode} — a photo of the ingredients panel can
+                  still tell us what's in it.
+                </p>
+              )}
+              <label>
+                Photo of the ingredients panel
+                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handlePhotoFileChange} required />
+              </label>
+              {photoError && <p role="alert">{photoError}</p>}
+              <button type="submit" disabled={photoReading}>
+                {photoReading ? "Reading the label…" : "Read this label"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPhotoCaptureOpen(false);
+                  setPhotoFile(null);
+                  setPhotoError(null);
+                }}
+              >
+                Cancel
+              </button>
+            </form>
+          )}
         </>
       )}
 
-      {result && shown && (
+      {result && shown && result.source === "label_photo" && (result.extraction_legible === false || result.extraction_complete === false) && (
+        // Couldn't-read state (docs/verdict-engine.md Path C plan §5): covers an unreadable photo,
+        // an extraction call failure, and an incomplete read (the ingredients statement was cut
+        // off) uniformly — the server already picked the right distinct copy for whichever of
+        // those happened; this just offers a retake rather than rendering a verdict card that has
+        // nothing real to show.
+        <section>
+          <h2>Couldn't read that label</h2>
+          <p role="alert">{result.explanation}</p>
+          <button type="button" onClick={() => openPhotoCapture(result.barcode)}>
+            Try again
+          </button>
+        </section>
+      )}
+
+      {result &&
+        shown &&
+        !(result.source === "label_photo" && (result.extraction_legible === false || result.extraction_complete === false)) && (
         <section>
           <h2>{VERDICT_LABEL[shown.result]}</h2>
+          {result.source === "label_photo" && (
+            <p role="note">
+              <strong>From a photographed label</strong> — read by AI, not confirmed against the manufacturer's own
+              data.
+            </p>
+          )}
           <p>
             {result.product_name ?? "Unknown product"}
             {result.product_brand && ` — ${result.product_brand}`}
           </p>
 
           {result.explanation && <p>{result.explanation}</p>}
+
+          {result.source === "label_photo" && result.extracted_text && (
+            <details open>
+              <summary>What we read from your photo — check it against the package</summary>
+              <p>{result.extracted_text}</p>
+            </details>
+          )}
 
           {shown.matched_allergens.length > 0 && (
             <ul>
@@ -316,6 +455,17 @@ export function Scan() {
           )}
 
           <p role="note">{DISCLAIMER}</p>
+
+          {shown.result === "unable_to_confirm" && result.source === "barcode" && (
+            // Reactive entry point (docs/verdict-engine.md Path C plan §1): offered only for a
+            // barcode scan that came back unable_to_confirm, not on a scan that already came from a
+            // photo — a photo-sourced unable_to_confirm gets its own couldn't-read state instead.
+            <p>
+              <button type="button" onClick={() => openPhotoCapture(result.barcode)}>
+                Photograph the ingredients label instead
+              </button>
+            </p>
+          )}
 
           {reportOutcome && <p role="status">{reportOutcome}</p>}
 

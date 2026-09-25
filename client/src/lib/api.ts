@@ -244,7 +244,10 @@ export type CommunityReport = { allergenName: string; reporterCount: number };
 
 export type ScanResult = {
   id: string;
-  barcode: string;
+  // Null for a Path C scan with no barcode at all (docs/verdict-engine.md) — the standalone
+  // "no barcode? photograph the label" entry point. A Path C scan reached from a failed barcode
+  // scan (the reactive entry point) may still carry a real barcode here.
+  barcode: string | null;
   product_name: string | null;
   product_brand: string | null;
   ingredients_text: string | null;
@@ -260,6 +263,12 @@ export type ScanResult = {
   // still shows the engine's verdict alongside it, never silently replacing it.
   effective: { result: Verdict; matched_allergens: MatchedAllergen[] } | null;
   community_reports: CommunityReport[];
+  // Path C only (source === "label_photo") — present so the user can check the read against the
+  // physical package themselves (docs/verdict-engine.md Path C plan §5). Absent/null on a barcode
+  // scan.
+  extracted_text?: string | null;
+  extraction_legible?: boolean;
+  extraction_complete?: boolean;
 };
 
 export type CorrectionType = "flag_wrong" | "flag_missing" | "wrong_product";
@@ -277,7 +286,7 @@ export type ScanCorrection = {
 
 export type ScanHistoryEntry = {
   id: string;
-  barcode: string;
+  barcode: string | null;
   product_name: string | null;
   product_brand: string | null;
   created_at: string;
@@ -294,6 +303,71 @@ export type ScanHistoryEntry = {
 
 export function createScan(allergenProfileId: string, barcode: string): Promise<ScanResult> {
   return apiFetch("/scans", { method: "POST", body: JSON.stringify({ allergenProfileId, barcode }) });
+}
+
+// Anthropic's own resize threshold for Claude's vision input — images are downsized to roughly
+// this before tiling into tokens, so sending a larger longest edge spends upload time (a real cost
+// on a phone in a grocery aisle) without adding OCR fidelity server-side never re-downscales this;
+// MAX_PHOTO_BYTES and sniffImageType there are the actual guards regardless of what a client sends.
+const LABEL_PHOTO_MAX_DIMENSION = 1568;
+const LABEL_PHOTO_JPEG_QUALITY = 0.85;
+
+/**
+ * Downscales a captured photo client-side via canvas before upload — a 4MB phone photo over
+ * cellular vs. a few hundred KB. Never upscales a smaller image. Canvas resampling is lower
+ * quality than a server-side Lanczos filter would be; if label reads measurably degrade because of
+ * that specifically (not lighting/framing), revisit server-side downscaling — see the Path C plan.
+ */
+export async function downscaleLabelPhoto(file: File): Promise<File> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, LABEL_PHOTO_MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));
+  const width = Math.round(bitmap.width * scale);
+  const height = Math.round(bitmap.height * scale);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return file; // No canvas support — let the original file through; the server still validates it.
+  ctx.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", LABEL_PHOTO_JPEG_QUALITY));
+  if (!blob) return file;
+  return new File([blob], "label.jpg", { type: "image/jpeg" });
+}
+
+export type LabelScanResult = ScanResult & {
+  extracted_text: string | null;
+  extraction_legible: boolean;
+  extraction_complete: boolean;
+};
+
+/**
+ * multipart/form-data, same reasoning as createCorrection below — a File can't go through the
+ * JSON apiFetch() helper. barcode is the carried-forward value from a failed barcode scan (the
+ * reactive entry point) or omitted entirely for the standalone "no barcode" entry point; the
+ * server re-validates it against Open Food Facts rather than trusting it as-is.
+ */
+export async function createLabelScan(
+  allergenProfileId: string,
+  photo: File,
+  barcode?: string,
+): Promise<LabelScanResult> {
+  const form = new FormData();
+  form.set("allergenProfileId", allergenProfileId);
+  if (barcode) form.set("barcode", barcode);
+  form.set("photo", photo);
+
+  const res = await fetch("/api/scans/label", { method: "POST", credentials: "include", body: form });
+  const body = await res.json().catch(() => undefined);
+
+  if (!res.ok) {
+    const code = (body as { error?: string } | undefined)?.error ?? `request_failed_${res.status}`;
+    throw new ApiRequestError(code, res.status);
+  }
+
+  return body as LabelScanResult;
 }
 
 export function getScanHistory(profileId: string): Promise<ScanHistoryEntry[]> {
@@ -337,12 +411,17 @@ export type AccuracyCategoryBuckets = { escalation: AccuracyBucket; unresolved: 
 export type AccuracyAllergenRow = AccuracyCategoryBuckets & { allergen: string };
 export type AccuracyModelRow = AccuracyCategoryBuckets & { model: string; promptVersion: string };
 
+export type AccuracySourceRow = AccuracyCategoryBuckets & { source: string };
+
 export type AiAccuracyReport = {
   threshold: number;
   generatedAt: string;
   overall: AccuracyCategoryBuckets;
   byAllergen: AccuracyAllergenRow[];
   byModelPromptVersion: AccuracyModelRow[];
+  // Path C's reasoning call reuses Path B's prompt_version byte-for-byte, so byModelPromptVersion
+  // alone can't separate their overrule rates — this is the breakdown that does.
+  bySource: AccuracySourceRow[];
   misses: { reportedMisses: number; aiReviewedScans: number };
   failures: { totalAttempts: number; totalFailures: number; rate: number | null; byReason: { reason: string; count: number }[] };
 };
@@ -400,7 +479,9 @@ export type ReviewQueueReport = {
 };
 
 export type ReviewQueueClaim = {
-  barcode: string;
+  // Null for a claim built from a barcode-less Path C scan's correction — always a singleton (see
+  // reviewQueue.ts's groupIntoClaims), shown in its own non-corroborating section.
+  barcode: string | null;
   allergen: string | null;
   direction: "add_caution" | "remove_caution";
   status: CorrectionStatus;
