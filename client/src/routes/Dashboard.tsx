@@ -38,6 +38,11 @@ export function Dashboard() {
           <Link to="/admin/ai-accuracy">AI accuracy</Link>
         </p>
       )}
+      {user?.isAdmin && (
+        <p>
+          <Link to="/admin/nps">NPS</Link>
+        </p>
+      )}
       <button onClick={handleLogout}>Log out</button>
     </main>
   );
