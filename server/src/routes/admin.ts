@@ -6,6 +6,7 @@ import { EXTENSION_TO_MIME, resolvePhotoPath } from "../corrections/photoStorage
 import { getCorrectionPhotoPath, loadReviewQueue, rejectCorrection } from "../corrections/reviewQueue.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { HttpError } from "../lib/httpError.js";
+import { npsReport } from "../nps/npsReport.js";
 import { aiAccuracyReport } from "../verdict/aiAccuracyReport.js";
 
 export const adminRouter = Router();
@@ -16,6 +17,18 @@ adminRouter.get(
   asyncHandler(async (req, res) => {
     await assertIsAdmin(req.user!.id);
     res.json(await aiAccuracyReport());
+  }),
+);
+
+// CONTEST_RULES.md §7 exception (dated 2026-09-25): a narrow NPS admin aggregate — score, counts,
+// verbatim reasons only — approved outside the normal "admin analytics beyond AI accuracy" freeze,
+// gated identically to /admin/ai-accuracy.
+adminRouter.get(
+  "/admin/nps",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    await assertIsAdmin(req.user!.id);
+    res.json(await npsReport());
   }),
 );
 
