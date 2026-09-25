@@ -195,6 +195,48 @@ export function Settings() {
       </section>
 
       <section>
+        <h2>Feedback</h2>
+
+        {npsResponse === undefined && !npsError && <p>Loading…</p>}
+
+        {npsError && <p role="alert">{npsError}</p>}
+
+        {npsResponse ? (
+          <p>
+            You told us a {npsResponse.score} out of 10 on{" "}
+            {new Date(npsResponse.createdAt).toLocaleDateString()}. Thanks — we'll ask again later.
+          </p>
+        ) : (
+          npsResponse === null && (
+            <form onSubmit={handleSubmitNps}>
+              <label>
+                How likely is it that you would recommend CircleBite to a friend or colleague?
+                <br />
+                <select value={npsScore} onChange={(e) => setNpsScore(e.target.value)} required>
+                  <option value="" disabled>
+                    Choose a score
+                  </option>
+                  {Array.from({ length: 11 }, (_, score) => (
+                    <option key={score} value={score}>
+                      {score}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                What's the primary reason for your score? (optional)
+                <br />
+                <textarea value={npsReason} onChange={(e) => setNpsReason(e.target.value)} rows={3} />
+              </label>
+              <button type="submit" disabled={submittingNps}>
+                {submittingNps ? "Sending…" : "Send feedback"}
+              </button>
+            </form>
+          )
+        )}
+      </section>
+
+      <section>
         <h2>Delete your account</h2>
         <p>This permanently deletes your account. It cannot be undone.</p>
 
@@ -247,48 +289,6 @@ export function Settings() {
         <button type="button" disabled={!canConfirm || deleting} onClick={handleDeleteAccount}>
           {deleting ? "Deleting…" : "Permanently delete my account"}
         </button>
-      </section>
-
-      <section>
-        <h2>Feedback</h2>
-
-        {npsResponse === undefined && !npsError && <p>Loading…</p>}
-
-        {npsError && <p role="alert">{npsError}</p>}
-
-        {npsResponse ? (
-          <p>
-            You told us a {npsResponse.score} out of 10 on{" "}
-            {new Date(npsResponse.createdAt).toLocaleDateString()}. Thanks — we'll ask again later.
-          </p>
-        ) : (
-          npsResponse === null && (
-            <form onSubmit={handleSubmitNps}>
-              <label>
-                How likely is it that you would recommend CircleBite to a friend or colleague?
-                <br />
-                <select value={npsScore} onChange={(e) => setNpsScore(e.target.value)} required>
-                  <option value="" disabled>
-                    Choose a score
-                  </option>
-                  {Array.from({ length: 11 }, (_, score) => (
-                    <option key={score} value={score}>
-                      {score}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                What's the primary reason for your score? (optional)
-                <br />
-                <textarea value={npsReason} onChange={(e) => setNpsReason(e.target.value)} rows={3} />
-              </label>
-              <button type="submit" disabled={submittingNps}>
-                {submittingNps ? "Sending…" : "Send feedback"}
-              </button>
-            </form>
-          )
-        )}
       </section>
     </main>
   );
