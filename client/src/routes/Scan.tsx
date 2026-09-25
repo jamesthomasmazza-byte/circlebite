@@ -2,6 +2,7 @@ import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser"
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
+import { useAuth } from "../lib/AuthContext";
 import {
   ApiRequestError,
   createCorrection,
@@ -61,6 +62,7 @@ function sourceLabel(m: ScanResult["matched_allergens"][number]): string {
 }
 
 export function Scan() {
+  const { labelScanEnabled } = useAuth();
   const [searchParams] = useSearchParams();
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
   const [loadingProfiles, setLoadingProfiles] = useState(true);
@@ -346,7 +348,7 @@ export function Scan() {
             </button>
           </form>
 
-          {!photoCaptureOpen && (
+          {labelScanEnabled && !photoCaptureOpen && (
             <p>
               <button type="button" onClick={() => openPhotoCapture(null)}>
                 No barcode? Photograph the label
@@ -456,10 +458,12 @@ export function Scan() {
 
           <p role="note">{DISCLAIMER}</p>
 
-          {shown.result === "unable_to_confirm" && result.source === "barcode" && (
+          {labelScanEnabled && shown.result === "unable_to_confirm" && result.source === "barcode" && (
             // Reactive entry point (docs/verdict-engine.md Path C plan §1): offered only for a
             // barcode scan that came back unable_to_confirm, not on a scan that already came from a
             // photo — a photo-sourced unable_to_confirm gets its own couldn't-read state instead.
+            // Gated by labelScanEnabled (server env.labelScan, carried on /me) so this is never
+            // offered when the server would just 404 the resulting request.
             <p>
               <button type="button" onClick={() => openPhotoCapture(result.barcode)}>
                 Photograph the ingredients label instead

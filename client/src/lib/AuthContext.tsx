@@ -19,6 +19,12 @@ import {
 type AuthState = {
   user: CurrentUser | null;
   actingProfileId: string | null;
+  // Path C's kill switch (server env.labelScan), carried on the same /me response the app already
+  // fetches at mount — not a second round trip. Defaults to false (fail closed, same as every
+  // other kill switch in this app) until the first successful refresh() resolves, and again on any
+  // refresh() failure — an unauthenticated or errored state must not offer a feature whose gate we
+  // couldn't actually confirm.
+  labelScanEnabled: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (input: { email: string; password: string; displayName: string; dob: string }) => Promise<void>;
@@ -30,6 +36,7 @@ const AuthContext = createContext<AuthState | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [actingProfileId, setActingProfileId] = useState<string | null>(null);
+  const [labelScanEnabled, setLabelScanEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // refresh() runs both at mount (before any session cookie exists) and after login/register
@@ -46,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (requestIdRef.current !== requestId) return;
       setUser(me.user);
       setActingProfileId(me.actingProfileId);
+      setLabelScanEnabled(me.labelScanEnabled);
     } catch {
       // Any failure to confirm identity — 401 or a transient network/server error — just means
       // we don't currently know who's logged in. Never rethrow: login()/register() call this
@@ -54,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (requestIdRef.current !== requestId) return;
       setUser(null);
       setActingProfileId(null);
+      setLabelScanEnabled(false);
     } finally {
       if (requestIdRef.current === requestId) setLoading(false);
     }
@@ -63,16 +72,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void refresh();
   }, [refresh]);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const authUser = await apiLogin(email, password);
-    // A brand new session from a fresh login always starts with no acting profile selected, so
-    // there's no need to fetch it — bump the generation counter (invalidating any in-flight
-    // refresh(), e.g. a slow mount-time check) and set state directly from this response instead
-    // of paying for a redundant GET /me.
-    requestIdRef.current += 1;
-    setUser(authUser);
-    setActingProfileId(null);
-  }, []);
+  const login = useCallback(
+    async (email: string, password: string) => {
+      const authUser = await apiLogin(email, password);
+      // A brand new session from a fresh login always starts with no acting profile selected, so
+      // that's known without a fetch — set it and the user directly for instant feedback. But
+      // labelScanEnabled genuinely isn't known from the login response, so refresh() still runs
+      // right after to pick it up (and to reconcile everything else from the server, redundantly
+      // but harmlessly) — this is the "login()/register() call this right after their own request
+      // already succeeded" refresh() itself already anticipated in its own comment above.
+      requestIdRef.current += 1;
+      setUser(authUser);
+      setActingProfileId(null);
+      await refresh();
+    },
+    [refresh],
+  );
 
   const register = useCallback(
     async (input: { email: string; password: string; displayName: string; dob: string }) => {
@@ -80,8 +95,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requestIdRef.current += 1;
       setUser(authUser);
       setActingProfileId(null);
+      await refresh();
     },
-    [],
+    [refresh],
   );
 
   const logout = useCallback(async () => {
@@ -92,11 +108,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // user must not be stuck looking logged-in with no way back to /login short of a reload.
       setUser(null);
       setActingProfileId(null);
+      setLabelScanEnabled(false);
     }
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, actingProfileId, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, actingProfileId, labelScanEnabled, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

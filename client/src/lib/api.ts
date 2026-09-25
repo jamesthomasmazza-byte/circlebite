@@ -27,7 +27,7 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 
 export type CurrentUser = { id: string; email: string; displayName: string; isAdmin: boolean };
 
-export function fetchMe(): Promise<{ user: CurrentUser; actingProfileId: string | null }> {
+export function fetchMe(): Promise<{ user: CurrentUser; actingProfileId: string | null; labelScanEnabled: boolean }> {
   return apiFetch("/me");
 }
 
