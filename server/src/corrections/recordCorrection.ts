@@ -38,7 +38,9 @@ export type RecordCorrectionResult = {
 };
 
 type ScanRow = {
-  barcode: string;
+  // Null for a barcode-less Path C scan (docs/verdict-engine.md) — see the corroboration-skip
+  // branch below for what that changes.
+  barcode: string | null;
   result: string;
   ingredients_text: string | null;
   matched_allergens: { allergenName: string; aiEscalated?: boolean }[];
@@ -58,7 +60,9 @@ type ScanRow = {
  *
  * Corroboration is counted per (barcode, allergen, direction) across every reporter, regardless of
  * target — "the AI got this wrong" and "the database is wrong about this" are the same community
- * claim about the same allergen once you're counting how many people agree.
+ * claim about the same allergen once you're counting how many people agree. Except: a correction
+ * against a barcode-less Path C scan (scan.barcode IS NULL) never corroborates at all — see the
+ * comment at the corroboration block below for why.
  *
  * Known scope limit: a remove_caution bucket won't auto-corroborate while a corroborated
  * add_caution already exists for the same (barcode, allergen) — legacy-spec §6's "the warning
@@ -138,39 +142,51 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
     );
     const inserted = insertRows[0];
 
-    const { rows: countRows } = await client.query<{ count: string }>(
-      allergen
-        ? `SELECT count(DISTINCT reported_by) FROM product_corrections WHERE barcode = $1 AND allergen = $2 AND direction = $3`
-        : `SELECT count(DISTINCT reported_by) FROM product_corrections WHERE barcode = $1 AND allergen IS NULL AND direction = $2`,
-      allergen ? [scan.barcode, allergen, direction] : [scan.barcode, direction],
-    );
-    const reporterCount = Number(countRows[0]?.count ?? 0);
-    const threshold = CORROBORATION_THRESHOLD[direction];
-
+    // Barcode-less Path C scan (docs/verdict-engine.md, decision made with JT during planning):
+    // there is no reliable cross-user product identity to corroborate a photo-only report against
+    // — two different users' "no barcode" corrections on the same allergen/direction could easily
+    // be about two entirely different products. So this whole corroboration step is skipped
+    // outright rather than run against `barcode = NULL`, which SQL would treat as matching nothing
+    // anyway (NULL never equals NULL) but would be the wrong signal to rely on structurally — the
+    // skip is explicit here, not incidental. The correction row itself still exists and still
+    // overrides the reporter's own view immediately (CONTEST_RULES.md §3); it just never reaches
+    // 'corroborated' status, and the admin review queue (reviewQueue.ts) shows it as its own
+    // singleton, non-aggregating report rather than folding it into a barcode-keyed claim.
     let corroborated = false;
-    if (reporterCount >= threshold) {
-      if (direction === "remove_caution" && allergen) {
-        const { rows: conflictRows } = await client.query(
-          `SELECT 1 FROM product_corrections
-           WHERE barcode = $1 AND allergen = $2 AND direction = 'add_caution' AND status = 'corroborated'
-           LIMIT 1`,
-          [scan.barcode, allergen],
-        );
-        corroborated = conflictRows.length === 0;
-      } else {
-        corroborated = true;
-      }
-    }
-
-    if (corroborated) {
-      await client.query(
+    if (scan.barcode !== null) {
+      const { rows: countRows } = await client.query<{ count: string }>(
         allergen
-          ? `UPDATE product_corrections SET status = 'corroborated'
-             WHERE barcode = $1 AND allergen = $2 AND direction = $3 AND status = 'pending'`
-          : `UPDATE product_corrections SET status = 'corroborated'
-             WHERE barcode = $1 AND allergen IS NULL AND direction = $2 AND status = 'pending'`,
+          ? `SELECT count(DISTINCT reported_by) FROM product_corrections WHERE barcode = $1 AND allergen = $2 AND direction = $3`
+          : `SELECT count(DISTINCT reported_by) FROM product_corrections WHERE barcode = $1 AND allergen IS NULL AND direction = $2`,
         allergen ? [scan.barcode, allergen, direction] : [scan.barcode, direction],
       );
+      const reporterCount = Number(countRows[0]?.count ?? 0);
+      const threshold = CORROBORATION_THRESHOLD[direction];
+
+      if (reporterCount >= threshold) {
+        if (direction === "remove_caution" && allergen) {
+          const { rows: conflictRows } = await client.query(
+            `SELECT 1 FROM product_corrections
+             WHERE barcode = $1 AND allergen = $2 AND direction = 'add_caution' AND status = 'corroborated'
+             LIMIT 1`,
+            [scan.barcode, allergen],
+          );
+          corroborated = conflictRows.length === 0;
+        } else {
+          corroborated = true;
+        }
+      }
+
+      if (corroborated) {
+        await client.query(
+          allergen
+            ? `UPDATE product_corrections SET status = 'corroborated'
+               WHERE barcode = $1 AND allergen = $2 AND direction = $3 AND status = 'pending'`
+            : `UPDATE product_corrections SET status = 'corroborated'
+               WHERE barcode = $1 AND allergen IS NULL AND direction = $2 AND status = 'pending'`,
+          allergen ? [scan.barcode, allergen, direction] : [scan.barcode, direction],
+        );
+      }
     }
 
     await client.query("COMMIT");

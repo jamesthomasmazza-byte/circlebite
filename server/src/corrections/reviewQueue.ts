@@ -21,7 +21,9 @@ export type ReviewQueueReport = {
 };
 
 export type ReviewQueueClaim = {
-  barcode: string;
+  // Null for a claim built from a barcode-less Path C scan's correction (docs/verdict-engine.md) —
+  // see groupIntoClaims below for why every such row is always its own singleton claim.
+  barcode: string | null;
   allergen: string | null; // null only for wrong_product
   direction: Direction;
   status: ClaimStatus;
@@ -48,7 +50,7 @@ export type ReviewQueueClaim = {
 
 type CorrectionRow = {
   id: string;
-  barcode: string;
+  barcode: string | null;
   allergen: string | null;
   direction: Direction;
   correction_type: CorrectionType;
@@ -159,6 +161,15 @@ function hasSharedProfile(reporterIds: string[], memberships: Map<string, Set<st
  * 'corroborated' — grouping by lower(allergen) here would silently merge two claims the engine
  * itself tracks and corroborates independently.
  *
+ * Exception: a row with barcode === null (a barcode-less Path C scan's correction) is always its
+ * own singleton claim, keyed by its own row id rather than [barcode, direction, allergen] — falling
+ * through to the normal key would bucket every null-barcode row on the same allergen/direction
+ * together as if they were reports about the same product, when there's no shared identity behind
+ * them at all (recordCorrection.ts already never corroborates these for the same reason; this is
+ * the display-side half of that same decision). Each shows up in the queue as its own report that
+ * explicitly cannot aggregate with any other — never silently dropped, since an admin still needs
+ * to be able to see it.
+ *
  * Claim status precedence: any row 'corroborated' -> "corroborated"; else any row 'pending' ->
  * "pending"; else (all rejected) -> "rejected". A "corroborated" remove_caution claim here is real
  * but inert for cross-profile effect — loadCommunityAdditions only ever reads add_caution — the UI
@@ -174,11 +185,13 @@ export function groupIntoClaims(
 ): ReviewQueueClaim[] {
   const buckets = new Map<
     string,
-    { barcode: string; allergen: string | null; direction: Direction; rows: CorrectionRow[] }
+    { barcode: string | null; allergen: string | null; direction: Direction; rows: CorrectionRow[] }
   >();
 
   for (const row of rows) {
-    const key = JSON.stringify([row.barcode, row.direction, row.allergen]);
+    // row.id makes this key unique per row, so a null-barcode row can never land in the same
+    // bucket as another one — see the doc comment above.
+    const key = row.barcode === null ? JSON.stringify(["no-barcode", row.id]) : JSON.stringify([row.barcode, row.direction, row.allergen]);
     const bucket = buckets.get(key);
     if (bucket) bucket.rows.push(row);
     else buckets.set(key, { barcode: row.barcode, allergen: row.allergen, direction: row.direction, rows: [row] });
