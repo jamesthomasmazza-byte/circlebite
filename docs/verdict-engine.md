@@ -9,7 +9,7 @@ Governed by `../CONTEST_RULES.md` §3. Safety rules in this document are require
 |------|-----------|-------|----------------|
 | A | Barcode found, structured allergen tags present | Works | Unchanged; AI only writes the explanation |
 | B | Barcode found, only a messy `ingredients_text` string | `unable_to_confirm` | Model parses and resolves it |
-| C | No barcode, or product absent entirely | Impossible | Photograph the panel, OCR, then Path B |
+| C | No barcode, or product absent entirely | Implemented | Photograph the panel, extract text via the Anthropic API, then Path B's own reasoning pipeline |
 | D | Barcode found **and** the label photographed | Not attempted | Reconcile the two — the database is a claim, the package is ground truth |
 
 Paths B, C and D are the reason there is an AI in the product. **Path D is the strongest of them.**
@@ -49,14 +49,32 @@ abandoned in a grocery aisle.
 ```ts
 fetchProduct(barcode: string): Promise<ProductRecord>
 
-extractLabel(image: Blob): Promise<{
+extractLabel(imageBuffer: Buffer, mimeType): Promise<{
   ingredientsText: string
-  productName?: string
-  contains?: string[]        // "Contains: milk, soy"
-  mayContain?: string[]      // "May contain traces of..."
+  productName: string | null
+  contains: string[]         // "Contains: milk, soy" — explicit label line only
+  mayContain: string[]       // "May contain traces of..." — explicit label line only
   legible: boolean           // false -> prompt a retake, never guess
-  language?: string
+  complete: boolean          // false -> the full ingredients statement wasn't in frame (may
+                              // contain/contains line cut off, wrapped, obscured) — a SEPARATE
+                              // judgment from legible: text can transcribe perfectly cleanly and
+                              // still be incomplete, which is the dangerous case (a dropped
+                              // allergen line leaves no trace downstream). legible: true,
+                              // complete: false routes identically to legible: false — straight to
+                              // unable_to_confirm, reasonVerdict never runs.
+  incompleteReason: string | null
+  language: string | null
 }>
+
+// No hosted OCR service (R6) — this call goes to the Anthropic API through the same aiClient.ts
+// Path B already uses (callAiVision, alongside callAi), never a third-party OCR provider. The
+// photo is downscaled client-side (Scan.tsx, canvas, max 1568px longest edge — Anthropic's own
+// vision resize threshold) before upload; the server never stores or re-downscales it, and never
+// writes it to disk at all — only the extracted text and the call's own metadata persist
+// (label_extractions below). Implementation: server/src/verdict/extractLabel.ts,
+// server/src/verdict/labelScan.ts (orchestration), server/src/routes/scans.ts (POST /scans/label).
+// Kill switch: LABEL_SCAN (env.ts, off by default, same parseSwitch pattern as
+// COMMUNITY_CORRECTIONS).
 
 crossReference(profile: ProfileAllergen[], product): MatchedAllergen[]   // deterministic
 
@@ -143,13 +161,23 @@ Derived from where the evidence came from, never from asking the model how sure 
 **`verdict_explanations`** — id, scan_id, model, prompt_version, verdict, confidence, findings (json),
 unresolved_terms (json), latency_ms, tokens, cost_cents, created_at
 
-**`label_captures`** — id, scan_id, image_path, ocr_text, language, legible, created_at
-*(images stored outside the repo, served only through signed access)*
+**`label_extractions`** — id, scan_id, model, prompt_version, ingredients_text, product_name,
+contains, may_contain, legible, complete, incomplete_reason, language, failure_reason, latency_ms,
+tokens_in, tokens_out, cost_cents, created_at. **No image_path** — the photo itself is never
+stored (process and discard, per the plan above); this table is the extraction call's own
+reproducibility record, the Path C analogue of `verdict_explanations` for the transcription step
+rather than the reasoning step. *(Renamed from an earlier `label_captures` sketch that assumed the
+photo would be retained — corrected once "process and discard the photo" was decided.)*
 
 **`products`** (cache) — barcode (pk), name, brand, ingredients_text, allergens_tags, traces_tags, fetched_at
 
 **Changes to existing tables** — `scans`: add `source` (barcode | label_photo | manual) and
-`confidence`. `product_corrections`: add `target` (off_data | ai_verdict) and `verdict_explanation_id`.
+`confidence`; `barcode` is nullable (a barcode-less Path C scan has none at all).
+`product_corrections`: add `target` (off_data | ai_verdict) and `verdict_explanation_id`; `barcode`
+is nullable too, for a correction against a barcode-less scan — such a correction still overrides
+the reporter's own view immediately, but is excluded from cross-profile corroboration and
+`communityAdditions` entirely (no reliable cross-user product identity to key that off), and shows
+in the admin review queue as its own non-aggregating report rather than a barcode-keyed claim.
 
 Write each as a separate, named migration commit.
 

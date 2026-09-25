@@ -100,8 +100,19 @@ Full spec in `docs/verdict-engine.md`. Give this two full weeks.
       with no `AI_API_KEY` configured, and both directions now confirmed live: a real deployed
       call escalating a real finding, and the deterministic matcher independently confirmed
       unaffected either way *(`docs/journal.md` 2026-09-10, evidence in `docs/evidence/`)*
-- [ ] `extractLabel()` — photograph the ingredients panel, OCR, then the same reasoning path *(Path
-      C, not started — Path B was the smallest useful slice and comes first per spec)*
+- [x] `extractLabel()` — photograph the ingredients panel, extract text via the Anthropic API (no
+      hosted OCR service — R6), then the same reasoning path *(Path C. Downscaled client-side before
+      upload, max 1568px longest edge; photo processed and discarded, never stored — only the
+      extracted text and the call's own metadata persist, in a new `label_extractions` table. A
+      photo-sourced read can never claim "safe": `mergeVerdict()` downgrades a would-be-safe verdict
+      to `unable_to_confirm` when photo-sourced, same pattern as its existing AI-failure override;
+      `complete`, separate from `legible`, catches the dangerous case — text that transcribes
+      cleanly but was cut off before the "may contain" line. Kill switch `LABEL_SCAN`, off by
+      default, same pattern as `COMMUNITY_CORRECTIONS`. `scans.barcode`/`product_corrections.barcode`
+      are now nullable for the fully barcode-less entry point; such a correction still overrides the
+      reporter's own view but never corroborates cross-profile. AI accuracy page gets a `bySource`
+      breakdown so Path C's overrule rate can't silently mix with Path B's, since they share one
+      prompt_version)*
 - [x] `explainVerdict()` — plain-language explanation naming the triggering ingredient
 - [x] Confidence bands derived from evidence source, not model self-assessment *(Path B only ever
       produces medium/low — "high" requires structured tags, i.e. Path A, not attempted yet)*
