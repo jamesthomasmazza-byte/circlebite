@@ -351,6 +351,33 @@ export function getAiAccuracyReport(): Promise<AiAccuracyReport> {
   return apiFetch("/admin/ai-accuracy");
 }
 
+// Mirrors server/src/nps/recordNpsResponse.ts's NpsResponse exactly.
+export type NpsResponse = { id: string; score: number; reason: string | null; createdAt: string };
+
+export function getCurrentNpsResponse(): Promise<{ response: NpsResponse | null }> {
+  return apiFetch("/nps/current");
+}
+
+export function submitNpsResponse(score: number, reason: string | null): Promise<NpsResponse> {
+  return apiFetch("/nps", { method: "POST", body: JSON.stringify({ score, reason }) });
+}
+
+// Mirrors server/src/nps/npsReport.ts's NpsReport exactly. npsScore, not score, on purpose — a
+// 0-10 individual rating (NpsResponse.score above) and a -100..+100 index are different units.
+export type NpsReport = {
+  threshold: number;
+  n: number;
+  promoters: number;
+  passives: number;
+  detractors: number;
+  npsScore: number | null;
+  reasons: string[];
+};
+
+export function getNpsReport(): Promise<NpsReport> {
+  return apiFetch("/admin/nps");
+}
+
 // Mirrors server/src/corrections/reviewQueue.ts's ReviewQueueReport/ReviewQueueClaim exactly.
 // Deliberately no email field anywhere here — reporter identity never leaves the server (see that
 // module's docs and docs/principles.md's precedent row); only rejector identity does, since that's
