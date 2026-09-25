@@ -1228,3 +1228,48 @@ ships.
 actually letting corroborated removals reach other profiles — this item was the explicit
 prerequisite for that, per `docs/principles.md`'s precedent table, and is still not done. The
 judge-account seed script and Week 9's polish/hardening pass are also still open.
+
+## 2026-09-25 — NPS feedback
+
+**Did:** Self-initiated NPS in Settings — never a modal, since the scan path is a safety flow and
+must not be interrupted by a survey. `nps_responses` migration (`id`, `user_id` SET NULL on the
+same precedent as `product_corrections.reported_by`, `score` CHECK 0–10, `reason`, `source`
+CHECK `user`/`seed`, `created_at`). One response per user per 90 days, enforced in application code
+(`recordNpsResponse.ts`) rather than a DB constraint — a rolling window isn't a static CHECK.
+Promoter/passive/detractor derived at read time (`npsReport.ts`), never stored. `/admin/nps` mirrors
+`/admin/ai-accuracy` exactly: `assertIsAdmin`, 404 not 403, and the same small-n suppression
+(raw counts below `NPS_SMALL_SAMPLE_THRESHOLD = 20`, the percentage withheld). A standalone,
+rerunnable seed script (`server/src/db/seedJudgeNps.ts`) plants 24 invented rows so the page isn't
+empty during judging — `source = 'seed'`, `user_id = NULL`.
+
+**Decided:** the NPS admin page is new admin analytics beyond the AI accuracy page, which
+`CONTEST_RULES.md` §7 lists as out of scope until after judging. Raised with JT before building
+anything; approved as a narrow, dated exception (score, counts, and verbatim reasons only — no
+charts, segmentation, trends, or date-range filters), documented in `CONTEST_RULES.md` §7 and
+`BACKLOG.md` rather than left to read as scope creep. Also decided against `user_id = NULL` alone as
+the "this is seed data" marker — a real response whose account is later deleted already ends up with
+`user_id = NULL`, so it can't distinguish "real, now-anonymous" from "never real." Added `source`
+instead, and gave `npsReport()`/`fetchNpsRows()` an `includeSeeded` flag so the real number can be
+seen alone once real responses exist. Renamed the aggregate's `-100..+100` field to `npsScore`
+(both server and client) rather than `score`, to keep it unambiguous next to `NpsResponse.score`
+(the 0–10 individual rating) in the same API.
+
+**Verified:** 14 new tests against real Postgres — the DB `CHECK` and the app-level range validation
+both covered, the 90-day window at 91/10 days, `aggregateNpsResponses`'s classification boundaries
+and threshold math, `includeSeeded` excluding `source = 'seed'` rows, and the shared `assertIsAdmin`
+404-not-403 contract reused rather than forked. 199 total passing. Full manual pass in a real
+browser: registered a throwaway account, submitted a score and reason from Settings, confirmed it
+swapped to the read-only view immediately and stayed read-only after a reload; flipped the account
+to admin by hand and confirmed `/admin/nps` showed the correct combined score (real response plus
+the 24 seeded rows: 16 promoters/5 passives/4 detractors/25 total → 48) with all reasons listed;
+flipped admin back off and confirmed the page 404s the same way `/admin/ai-accuracy` does. Ran
+`npm run seed:nps` twice and confirmed the row count stayed at 24. Test account and its response
+deleted afterward.
+
+**Not deployed.** Built and verified locally only, same as the review queue before it — nothing to
+run by hand on the box beyond the normal deploy + migrate steps once it ships, plus `npm run
+seed:nps` once on the contest deployment before judging.
+
+**Next:** deploy this. `seedJudgeNps.ts` is explicitly a placeholder — fold it into the real
+judge-account seed script (still open, `BACKLOG.md`) once that's built, rather than maintaining two
+separate seeding paths.
