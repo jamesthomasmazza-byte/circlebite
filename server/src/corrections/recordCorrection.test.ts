@@ -14,7 +14,7 @@ const USER_C = "aaaaaaaa-0000-0000-0000-000000000003";
 const PROFILE_ID = "bbbbbbbb-0000-0000-0000-000000000001";
 
 async function makeScan(
-  barcode: string,
+  barcode: string | null,
   result: string,
   matchedAllergens: { allergenName: string; severity: string; classification: string; aiEscalated?: boolean }[],
   ingredientsText = "test ingredients",
@@ -197,6 +197,38 @@ test("a remove_caution bucket never corroborates while a corroborated add_cautio
     [barcode],
   );
   assert.ok(rows.every((r) => r.status === "pending"));
+});
+
+test("a barcode-less (Path C) scan's correction never corroborates, even past the add_caution threshold of 1", async () => {
+  const scanId = await makeScan(null, "safe", [{ allergenName: "Egg", severity: "moderate", classification: "clear" }]);
+  const result = await recordCorrection({ scanId, reportedBy: USER_A, correctionType: "flag_missing", allergen: "Egg", note: null, photoPath: "/fake.jpg" });
+
+  // add_caution normally corroborates on the very first report (see the threshold-of-1 test
+  // above) — proving it does NOT here is the actual assertion that the corroboration step is
+  // skipped for a null barcode, not just coincidentally under some other threshold.
+  assert.equal(result.corroborated, false);
+  assert.equal(result.status, "pending");
+
+  const { rows } = await pool.query("SELECT barcode, status FROM product_corrections WHERE id = $1", [result.id]);
+  assert.equal(rows[0].barcode, null);
+  assert.equal(rows[0].status, "pending");
+});
+
+test("two different barcode-less corrections on the same allergen/direction don't corroborate against each other", async () => {
+  // The bug this guards against: without the barcode !== null check, count(DISTINCT reported_by)
+  // WHERE barcode = NULL would return 0 rows (NULL never equals NULL in SQL), which happens to be
+  // safe by accident — but reviewQueue.ts's own bucketing (JSON.stringify([barcode, ...])) would
+  // still merge these two unrelated scans' reports into one claim if it used the naive key. This
+  // test only proves recordCorrection's own side: two independent users' null-barcode reports on
+  // "Peanut"/add_caution must not corroborate together the way two real-barcode reports would.
+  const scanA = await makeScan(null, "safe", [{ allergenName: "Peanut", severity: "severe", classification: "clear" }]);
+  const scanB = await makeScan(null, "safe", [{ allergenName: "Peanut", severity: "severe", classification: "clear" }]);
+
+  const first = await recordCorrection({ scanId: scanA, reportedBy: USER_A, correctionType: "flag_missing", allergen: "Peanut", note: null, photoPath: "/fake.jpg" });
+  const second = await recordCorrection({ scanId: scanB, reportedBy: USER_B, correctionType: "flag_missing", allergen: "Peanut", note: null, photoPath: "/fake.jpg" });
+
+  assert.equal(first.corroborated, false);
+  assert.equal(second.corroborated, false);
 });
 
 test("a different allergen on the same barcode gets its own independent corroboration count", async () => {

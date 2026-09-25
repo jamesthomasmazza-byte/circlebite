@@ -7,8 +7,8 @@ import { aggregateEscalations, aiAccuracyReport, SMALL_SAMPLE_THRESHOLD } from "
 // Pure aggregation math — no DB needed, fast, exercises the threshold/grouping logic directly.
 test("aggregateEscalations: below the threshold the rate is null but counts are exact", () => {
   const rows = [
-    { scan_id: "s1", allergen: "Milk", classification: "contains" as const, model: "m", prompt_version: "v1", overruled: true },
-    { scan_id: "s2", allergen: "Milk", classification: "contains" as const, model: "m", prompt_version: "v1", overruled: false },
+    { scan_id: "s1", allergen: "Milk", classification: "contains" as const, model: "m", prompt_version: "v1", source: "barcode", overruled: true },
+    { scan_id: "s2", allergen: "Milk", classification: "contains" as const, model: "m", prompt_version: "v1", source: "barcode", overruled: false },
   ];
   const { overall } = aggregateEscalations(rows);
   assert.equal(overall.escalation.escalations, 2);
@@ -23,6 +23,7 @@ test("aggregateEscalations: rate appears once escalations reach the threshold", 
     classification: "contains" as const,
     model: "m",
     prompt_version: "v1",
+    source: "barcode",
     overruled: i < 5,
   }));
   const { overall } = aggregateEscalations(rows);
@@ -33,8 +34,8 @@ test("aggregateEscalations: rate appears once escalations reach the threshold", 
 
 test("aggregateEscalations: unresolved findings are counted separately from contains/caution", () => {
   const rows = [
-    { scan_id: "s1", allergen: "Milk", classification: "contains" as const, model: "m", prompt_version: "v1", overruled: false },
-    { scan_id: "s2", allergen: "Milk", classification: "unresolved" as const, model: "m", prompt_version: "v1", overruled: true },
+    { scan_id: "s1", allergen: "Milk", classification: "contains" as const, model: "m", prompt_version: "v1", source: "barcode", overruled: false },
+    { scan_id: "s2", allergen: "Milk", classification: "unresolved" as const, model: "m", prompt_version: "v1", source: "barcode", overruled: true },
   ];
   const { overall } = aggregateEscalations(rows);
   assert.equal(overall.escalation.escalations, 1);
@@ -44,8 +45,8 @@ test("aggregateEscalations: unresolved findings are counted separately from cont
 
 test("aggregateEscalations: groups by allergen case-insensitively", () => {
   const rows = [
-    { scan_id: "s1", allergen: "Milk", classification: "contains" as const, model: "m", prompt_version: "v1", overruled: false },
-    { scan_id: "s2", allergen: "milk", classification: "contains" as const, model: "m", prompt_version: "v1", overruled: false },
+    { scan_id: "s1", allergen: "Milk", classification: "contains" as const, model: "m", prompt_version: "v1", source: "barcode", overruled: false },
+    { scan_id: "s2", allergen: "milk", classification: "contains" as const, model: "m", prompt_version: "v1", source: "barcode", overruled: false },
   ];
   const { byAllergen } = aggregateEscalations(rows);
   assert.equal(byAllergen.length, 1);
@@ -55,11 +56,34 @@ test("aggregateEscalations: groups by allergen case-insensitively", () => {
 
 test("aggregateEscalations: groups by model and prompt version jointly", () => {
   const rows = [
-    { scan_id: "s1", allergen: "Milk", classification: "contains" as const, model: "m1", prompt_version: "v1", overruled: false },
-    { scan_id: "s2", allergen: "Milk", classification: "contains" as const, model: "m1", prompt_version: "v2", overruled: false },
+    { scan_id: "s1", allergen: "Milk", classification: "contains" as const, model: "m1", prompt_version: "v1", source: "barcode", overruled: false },
+    { scan_id: "s2", allergen: "Milk", classification: "contains" as const, model: "m1", prompt_version: "v2", source: "barcode", overruled: false },
   ];
   const { byModelPromptVersion } = aggregateEscalations(rows);
   assert.equal(byModelPromptVersion.length, 2);
+});
+
+// Path C — docs/verdict-engine.md: Path B and Path C's reasoning call share one prompt_version
+// (reasonVerdict/prompt.ts is reused byte-for-byte), so byModelPromptVersion alone can't separate
+// their overrule rates. bySource is what does — grouped independently of model/prompt_version.
+test("aggregateEscalations: groups by scan source independently of model/prompt version", () => {
+  const rows = [
+    { scan_id: "s1", allergen: "Milk", classification: "contains" as const, model: "m", prompt_version: "path-b-v1", source: "barcode", overruled: true },
+    { scan_id: "s2", allergen: "Milk", classification: "contains" as const, model: "m", prompt_version: "path-b-v1", source: "label_photo", overruled: false },
+  ];
+  const { bySource, byModelPromptVersion } = aggregateEscalations(rows);
+
+  // Same prompt_version, so this WOULD collapse to one row if source weren't tracked separately —
+  // the exact mixing this breakdown exists to prevent.
+  assert.equal(byModelPromptVersion.length, 1);
+
+  assert.equal(bySource.length, 2);
+  const barcode = bySource.find((r) => r.source === "barcode")!;
+  const labelPhoto = bySource.find((r) => r.source === "label_photo")!;
+  assert.equal(barcode.escalation.escalations, 1);
+  assert.equal(barcode.escalation.overruled, 1);
+  assert.equal(labelPhoto.escalation.escalations, 1);
+  assert.equal(labelPhoto.escalation.overruled, 0);
 });
 
 // Real Postgres from here — the join between scans.matched_allergens, verdict_explanations, and
@@ -68,10 +92,10 @@ test("aggregateEscalations: groups by model and prompt version jointly", () => {
 const USER_A = "ffffffff-0000-0000-0000-000000000001";
 const PROFILE_ID = "abcdef00-0000-0000-0000-000000000001";
 
-async function makeScan(barcode: string, matchedAllergens: unknown[]): Promise<string> {
+async function makeScan(barcode: string | null, matchedAllergens: unknown[], source: "barcode" | "label_photo" = "barcode"): Promise<string> {
   const { rows } = await pool.query<{ id: string }>(
-    `INSERT INTO scans (allergen_profile_id, barcode, result, matched_allergens) VALUES ($1, $2, 'contains_allergen', $3) RETURNING id`,
-    [PROFILE_ID, barcode, JSON.stringify(matchedAllergens)],
+    `INSERT INTO scans (allergen_profile_id, barcode, result, matched_allergens, source) VALUES ($1, $2, 'contains_allergen', $3, $4) RETURNING id`,
+    [PROFILE_ID, barcode, JSON.stringify(matchedAllergens), source],
   );
   return rows[0].id;
 }
@@ -89,7 +113,7 @@ async function makeVerdictExplanation(
 
 async function makeCorrection(
   scanId: string,
-  barcode: string,
+  barcode: string | null,
   opts: {
     correctionType: "flag_wrong" | "flag_missing" | "wrong_product";
     direction: "add_caution" | "remove_caution";
@@ -210,4 +234,40 @@ test("aiAccuracyReport: failures are counted and broken down by reason", async (
   assert.ok(report.failures.totalFailures >= 1);
   const reasonRow = report.failures.byReason.find((r) => r.reason === "spend_cap_exceeded");
   assert.ok(reasonRow && reasonRow.count >= 1);
+});
+
+test("aiAccuracyReport: a label_photo (Path C) scan's escalation lands in bySource under label_photo, separate from barcode scans sharing the same prompt_version", async () => {
+  const barcodeScanId = await makeScan(
+    "9000000000006",
+    [{ allergenName: "Walnut", severity: "severe", classification: "contains", aiEscalated: true }],
+    "barcode",
+  );
+  await makeVerdictExplanation(barcodeScanId, { model: "report-test-model-6", promptVersion: "shared-prompt-v1" });
+
+  const photoScanId = await makeScan(
+    null,
+    [{ allergenName: "Walnut", severity: "severe", classification: "contains", aiEscalated: true }],
+    "label_photo",
+  );
+  await makeVerdictExplanation(photoScanId, { model: "report-test-model-6", promptVersion: "shared-prompt-v1" });
+  await makeCorrection(photoScanId, null, {
+    correctionType: "flag_wrong",
+    direction: "remove_caution",
+    allergen: "Walnut",
+    target: "ai_verdict",
+  });
+
+  const report = await aiAccuracyReport();
+  const modelRow = report.byModelPromptVersion.find((r) => r.model === "report-test-model-6");
+  // Both scans share model+prompt_version, so this row alone can't tell them apart — 2
+  // escalations, only 1 overruled (the photo one).
+  assert.equal(modelRow!.escalation.escalations, 2);
+  assert.equal(modelRow!.escalation.overruled, 1);
+
+  const barcodeSource = report.bySource.find((r) => r.source === "barcode");
+  const photoSource = report.bySource.find((r) => r.source === "label_photo");
+  assert.ok(barcodeSource && barcodeSource.escalation.escalations >= 1);
+  assert.ok(photoSource);
+  assert.equal(photoSource!.escalation.escalations, 1);
+  assert.equal(photoSource!.escalation.overruled, 1);
 });

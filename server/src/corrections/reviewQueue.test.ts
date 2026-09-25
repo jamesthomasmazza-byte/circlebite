@@ -179,6 +179,27 @@ test("groupIntoClaims: grouping is case-sensitive — 'Sesame' and 'sesame' are 
   assert.equal(claims.length, 2);
 });
 
+// Path C — docs/verdict-engine.md: a barcode-less scan's correction has no reliable cross-user
+// product identity to aggregate against, so every such row must be its own singleton claim, never
+// merged with another null-barcode row even when allergen/direction match exactly (which two real
+// reports about two different unbarcoded products plausibly would).
+test("groupIntoClaims: two null-barcode rows on the same allergen/direction never merge into one claim", () => {
+  const claims = groupIntoClaims(
+    [makeRow({ barcode: null, allergen: "Peanut", direction: "add_caution" }), makeRow({ barcode: null, allergen: "Peanut", direction: "add_caution" })],
+    new Map(),
+  );
+  assert.equal(claims.length, 2);
+  assert.ok(claims.every((c) => c.barcode === null && c.reports.length === 1));
+});
+
+test("groupIntoClaims: a null-barcode row and a real-barcode row on the same allergen/direction never merge", () => {
+  const claims = groupIntoClaims(
+    [makeRow({ barcode: null, allergen: "Peanut", direction: "add_caution" }), makeRow({ barcode: "9000000000001", allergen: "Peanut", direction: "add_caution" })],
+    new Map(),
+  );
+  assert.equal(claims.length, 2);
+});
+
 test("groupIntoClaims: liveReporterCount counts distinct live reporters; a deleted-account report is counted separately, not folded in", () => {
   const [claim] = groupIntoClaims(
     [
