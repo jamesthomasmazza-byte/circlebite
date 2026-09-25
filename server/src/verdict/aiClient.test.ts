@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { FINDINGS_TOOL } from "./aiClient.js";
+import { EXTRACT_LABEL_TOOL, FINDINGS_TOOL } from "./aiClient.js";
 
 /**
  * Walks a JSON Schema node looking for every subschema with type "object", following both
@@ -54,4 +54,31 @@ test("strict mode is still on — the fix is additionalProperties, not dropping 
   // worth more here than the two additionalProperties lines it costs. Pinned so a future "just
   // make the 400 go away" edit can't quietly remove it instead of fixing the actual schema.
   assert.equal(FINDINGS_TOOL.strict, true);
+});
+
+// Path C's own tool, same bug class — run through the identical generic walker rather than a
+// hand-written check, so this test would have caught the exact same production bug had it existed
+// on this schema instead.
+test("EXTRACT_LABEL_TOOL: every object node sets additionalProperties: false, strict stays on", () => {
+  const objectSchemas = collectObjectSchemas(EXTRACT_LABEL_TOOL.input_schema);
+  assert.ok(objectSchemas.length >= 1, `expected to find at least the root object schema, found ${objectSchemas.length}`);
+
+  for (const schema of objectSchemas) {
+    assert.equal(
+      schema.additionalProperties,
+      false,
+      `object schema missing additionalProperties: false: ${JSON.stringify(schema)}`,
+    );
+  }
+  assert.equal(EXTRACT_LABEL_TOOL.strict, true);
+});
+
+test("EXTRACT_LABEL_TOOL: legible and complete are reported as separate required fields", () => {
+  // The whole point of this schema shape (docs/verdict-engine.md Path C plan): "legible" and
+  // "complete" answer two different questions, and collapsing them back into one boolean would
+  // silently reopen the false-safe hole this design exists to close.
+  const schema = EXTRACT_LABEL_TOOL.input_schema as { required?: string[] };
+  assert.ok(schema.required?.includes("legible"));
+  assert.ok(schema.required?.includes("complete"));
+  assert.ok(schema.required?.includes("incompleteReason"));
 });

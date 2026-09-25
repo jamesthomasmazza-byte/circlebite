@@ -168,6 +168,76 @@ test("multi-allergen rollup: any contains beats any caution or unresolved", () =
   assert.equal(verdict, "contains_allergen");
 });
 
+// Path C — docs/verdict-engine.md: a photo-sourced read must never claim "safe" the way a
+// barcode-backed one does. This is the safety property the whole Path C design rests on, so it's
+// asserted directly across every classification x finding combination the fixtures above already
+// build, not implied by a couple of spot-check examples.
+test("invariant: photoSourced:true never returns verdict 'safe', for any deterministic/AI combination", () => {
+  const detOptions: AllergenVerdictDetail[] = [
+    det({ classification: "clear" }),
+    det({ classification: "caution", matched: true, source: "trace" }),
+    det({ classification: "contains", matched: true, source: "ingredients" }),
+  ];
+  const findingOptions: (AiFinding | undefined)[] = [
+    undefined,
+    { allergen: "Milk", present: "no", citedSpan: "", reason: "not mentioned", confidence: "high" },
+    { allergen: "Milk", present: "unknown", citedSpan: "", reason: "ambiguous", confidence: "low" },
+    { allergen: "Milk", present: "trace", citedSpan: "milk", reason: "may contain", confidence: "medium" },
+    { allergen: "Milk", present: "yes", citedSpan: "milk", reason: "direct ingredient", confidence: "medium" },
+  ];
+  const aiOutcomes: ReasonVerdictResult[] = [failed(), ...findingOptions.map((f) => ok(f ? [f] : []))];
+
+  for (const d of detOptions) {
+    for (const ai of aiOutcomes) {
+      const { verdict } = mergeVerdict([d], ai, ALLERGENS, { photoSourced: true });
+      assert.notEqual(
+        verdict,
+        "safe",
+        `det=${d.classification} ai=${JSON.stringify(ai.findings)} failed=${ai.failed} produced "safe"`,
+      );
+    }
+  }
+});
+
+test("photoSourced:true with nothing found downgrades what would be 'safe' to 'unable_to_confirm', confidence low", () => {
+  const { verdict, confidence } = mergeVerdict([det({ classification: "clear" })], ok([]), ALLERGENS, {
+    photoSourced: true,
+  });
+  assert.equal(verdict, "unable_to_confirm");
+  assert.equal(confidence, "low");
+});
+
+test("photoSourced:true never suppresses a real finding — contains/caution still escalate normally", () => {
+  const contains = mergeVerdict(
+    [det({ classification: "clear" })],
+    ok([{ allergen: "Milk", present: "yes", citedSpan: "whey powder", reason: "milk derivative", confidence: "medium" }]),
+    ALLERGENS,
+    { photoSourced: true },
+  );
+  assert.equal(contains.verdict, "contains_allergen");
+
+  const caution = mergeVerdict(
+    [det({ allergenName: "Soy", severity: "mild", classification: "clear" })],
+    ok([{ allergen: "Soy", present: "trace", citedSpan: "may contain soy", reason: "traces warning", confidence: "medium" }]),
+    ALLERGENS,
+    { photoSourced: true },
+  );
+  assert.equal(caution.verdict, "may_contain_caution");
+
+  const deterministicContains = mergeVerdict(
+    [det({ classification: "contains", matched: true, source: "ingredients" })],
+    ok([]),
+    ALLERGENS,
+    { photoSourced: true },
+  );
+  assert.equal(deterministicContains.verdict, "contains_allergen");
+});
+
+test("photoSourced defaults to false — Path B's existing call sites are unaffected", () => {
+  const { verdict } = mergeVerdict([det({ classification: "clear" })], ok([]), ALLERGENS);
+  assert.equal(verdict, "safe");
+});
+
 test("confidence is medium for every non-unable_to_confirm verdict in this Path B slice", () => {
   const safe = mergeVerdict([det({ classification: "clear" })], ok([]), ALLERGENS);
   assert.equal(safe.confidence, "medium");

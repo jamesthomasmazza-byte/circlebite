@@ -72,3 +72,28 @@ test("falls back to a clean 'nothing found' sentence when every allergen is clea
   const text = explainVerdict(result([allergen({ allergenName: "Milk", severity: "severe", classification: "clear", matched: false })]));
   assert.equal(text, "No listed allergens from this profile were found in the ingredient text.");
 });
+
+test("photoSourced: the 'nothing found' sentence leads with the limit, not the normal Path B copy", () => {
+  const text = explainVerdict(
+    result([allergen({ allergenName: "Milk", severity: "severe", classification: "clear", matched: false })], "unable_to_confirm"),
+    { photoSourced: true },
+  );
+  assert.match(text, /^This hasn't been confirmed safe/);
+  assert.doesNotMatch(text, /^No listed allergens/);
+});
+
+test("photoSourced with a real contains finding still uses the normal contains sentence, not the downgrade copy", () => {
+  const text = explainVerdict(
+    result([allergen({ allergenName: "Milk", severity: "severe", classification: "contains", source: "ingredients" })]),
+    { photoSourced: true },
+  );
+  assert.equal(text, "Contains Milk.");
+});
+
+test("photoSourced with an unresolved finding still uses the normal unresolved sentence", () => {
+  const text = explainVerdict(
+    result([allergen({ allergenName: "Egg", severity: "mild", classification: "unresolved", aiEscalated: true })], "unable_to_confirm"),
+    { photoSourced: true },
+  );
+  assert.match(text, /^Could not confirm Egg/);
+});

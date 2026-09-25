@@ -48,3 +48,20 @@ test("parseSwitch: anything else throws at startup instead of guessing a kill sw
   assert.throws(() => parseSwitch("COMMUNITY_CORRECTIONS", "true", false), /COMMUNITY_CORRECTIONS must be "on" or "off"/);
   assert.throws(() => parseSwitch("COMMUNITY_CORRECTIONS", "0", false));
 });
+
+// LABEL_SCAN (Path C's kill switch) reuses parseSwitch identically to COMMUNITY_CORRECTIONS — same
+// three cases, just the other switch's name, confirming env.ts wired it through the same helper
+// rather than a bespoke check.
+test("parseSwitch: LABEL_SCAN unset or blank falls back to off", () => {
+  assert.equal(parseSwitch("LABEL_SCAN", undefined, false), false);
+  assert.equal(parseSwitch("LABEL_SCAN", "", false), false);
+});
+
+test("parseSwitch: LABEL_SCAN on/off read case-insensitively", () => {
+  assert.equal(parseSwitch("LABEL_SCAN", "on", false), true);
+  assert.equal(parseSwitch("LABEL_SCAN", "OFF", true), false);
+});
+
+test("parseSwitch: LABEL_SCAN anything else throws at startup", () => {
+  assert.throws(() => parseSwitch("LABEL_SCAN", "yes", false), /LABEL_SCAN must be "on" or "off"/);
+});
