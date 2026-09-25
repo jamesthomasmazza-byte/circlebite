@@ -1,7 +1,16 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-import { ApiRequestError, changePassword, deleteAccount, getDeletionImpact, type DeletionImpactProfile } from "../lib/api";
+import {
+  ApiRequestError,
+  changePassword,
+  deleteAccount,
+  getCurrentNpsResponse,
+  getDeletionImpact,
+  submitNpsResponse,
+  type DeletionImpactProfile,
+  type NpsResponse,
+} from "../lib/api";
 import { useAuth } from "../lib/AuthContext";
 
 const CHANGE_PASSWORD_ERROR_COPY: Record<string, string> = {
@@ -69,6 +78,53 @@ export function Settings() {
       }
     } finally {
       setChangingPassword(false);
+    }
+  }
+
+  // Self-initiated, never a modal: the scan path is a safety flow and must not be interrupted by a
+  // survey. `undefined` while loading, `null` once loaded with no current response.
+  const [npsResponse, setNpsResponse] = useState<NpsResponse | null | undefined>(undefined);
+  const [npsScore, setNpsScore] = useState("");
+  const [npsReason, setNpsReason] = useState("");
+  const [npsError, setNpsError] = useState<string | null>(null);
+  const [submittingNps, setSubmittingNps] = useState(false);
+
+  const refreshNps = useCallback(async () => {
+    try {
+      const { response } = await getCurrentNpsResponse();
+      setNpsResponse(response);
+    } catch {
+      setNpsError("Couldn't load your feedback. Try reloading this page.");
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshNps();
+  }, [refreshNps]);
+
+  async function handleSubmitNps(event: FormEvent) {
+    event.preventDefault();
+    setNpsError(null);
+
+    const score = Number(npsScore);
+    if (npsScore === "" || !Number.isInteger(score) || score < 0 || score > 10) {
+      setNpsError("Pick a score from 0 to 10.");
+      return;
+    }
+
+    setSubmittingNps(true);
+    try {
+      const response = await submitNpsResponse(score, npsReason.trim() || null);
+      setNpsResponse(response);
+    } catch (err) {
+      if (err instanceof ApiRequestError && err.message === "already_responded") {
+        // Only reachable via a race (e.g. two tabs) — refresh to show the response that won.
+        await refreshNps();
+      } else {
+        setNpsError("Something went wrong. Try again.");
+      }
+    } finally {
+      setSubmittingNps(false);
     }
   }
 
@@ -191,6 +247,48 @@ export function Settings() {
         <button type="button" disabled={!canConfirm || deleting} onClick={handleDeleteAccount}>
           {deleting ? "Deleting…" : "Permanently delete my account"}
         </button>
+      </section>
+
+      <section>
+        <h2>Feedback</h2>
+
+        {npsResponse === undefined && !npsError && <p>Loading…</p>}
+
+        {npsError && <p role="alert">{npsError}</p>}
+
+        {npsResponse ? (
+          <p>
+            You told us a {npsResponse.score} out of 10 on{" "}
+            {new Date(npsResponse.createdAt).toLocaleDateString()}. Thanks — we'll ask again later.
+          </p>
+        ) : (
+          npsResponse === null && (
+            <form onSubmit={handleSubmitNps}>
+              <label>
+                How likely is it that you would recommend CircleBite to a friend or colleague?
+                <br />
+                <select value={npsScore} onChange={(e) => setNpsScore(e.target.value)} required>
+                  <option value="" disabled>
+                    Choose a score
+                  </option>
+                  {Array.from({ length: 11 }, (_, score) => (
+                    <option key={score} value={score}>
+                      {score}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                What's the primary reason for your score? (optional)
+                <br />
+                <textarea value={npsReason} onChange={(e) => setNpsReason(e.target.value)} rows={3} />
+              </label>
+              <button type="submit" disabled={submittingNps}>
+                {submittingNps ? "Sending…" : "Send feedback"}
+              </button>
+            </form>
+          )
+        )}
       </section>
     </main>
   );
