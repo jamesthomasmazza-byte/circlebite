@@ -1278,3 +1278,52 @@ zero responses in the live DB.
 the composition/seed-carried-score line can actually be exercised in production, not just locally.
 `seedJudgeNps.ts` is explicitly a placeholder — fold it into the real judge-account seed script
 (still open, `BACKLOG.md`) once that's built, rather than maintaining two separate seeding paths.
+
+## 2026-09-25 — Path C (`extractLabel`)
+
+**Did:** Built the whole Path C slice from `docs/verdict-engine.md`: `extractLabel()` — a second
+Anthropic call, `callAiVision`/`EXTRACT_LABEL_TOOL` alongside Path B's `callAi`/`FINDINGS_TOOL` —
+no hosted OCR service (R6). A `labelScan.ts` orchestration module and `POST /scans/label` on top of
+it. The model reports `legible` and `complete` as separate judgments: a label can transcribe
+cleanly and still be incomplete (the "may contain" line cut off, wrapped, obscured), which is the
+dangerous case, so `complete: false` routes exactly like `legible: false` — straight to
+`unable_to_confirm`, before `reasonVerdict` ever runs. `mergeVerdict()` got a `photoSourced`
+override, structurally identical to its existing AI-failure override, that never lets a
+photo-sourced read claim "safe"; an invariant test proves this across every classification/finding
+combination, not just spot checks. Three new migrations: `label_extractions` (extraction's own
+reproducibility record — no photo ever stored, process and discard), and nullable `barcode` on
+`scans`/`product_corrections` for the fully barcode-less entry point, with corrections against
+those scoped to the reporter's own view only — never corroborate cross-profile, since there's no
+reliable cross-user product identity to key that off. `aiAccuracyReport()` got a `bySource`
+breakdown, since Path C's reasoning call reuses Path B's `prompt_version` byte-for-byte and would
+otherwise mix their overrule rates silently. Gated by `LABEL_SCAN`, off by default, same pattern as
+`COMMUNITY_CORRECTIONS`.
+
+**The gating bug, and the lesson:** the first deploy had the server-side switch working —
+`POST /scans/label` 404s when `LABEL_SCAN` is off — but the client had no way to know the switch
+existed, so `/scan` still rendered both Path C entry points in production and a user could start a
+photo scan the server would just 404. 236 passing tests and a full local pass missed this, because
+`LABEL_SCAN` was `on` in local `.env` the whole time this was built and tested — nothing ever
+exercised the disabled state. Fixed by adding `labelScanEnabled` to `GET /me` (already fetched at
+every mount, no new round trip) and gating both entry points in `Scan.tsx` on it. The lesson
+generalizes beyond this one switch: a kill-switched feature needs its *disabled* state verified
+too, not just its enabled one — that doesn't happen for free just because the enabled path is well
+tested. Added to `BACKLOG.md`'s Week 9 polish pass, alongside the existing `CONTEST_RULES.md` §9
+compliance check.
+
+**Verified live, with the switch off:** both entry points — the standalone "No barcode? Photograph
+the label" button and the reactive "Photograph the ingredients label instead" prompt offered after
+`unable_to_confirm` — correctly absent from `/scan` in production, after the gating fix.
+
+**Not yet verified in production — everything that needs the switch on:** the extraction call
+itself, the incomplete-read short-circuit, the photo-sourced downgrade copy on the verdict card,
+and a barcode-less correction actually landing in the review queue's own non-corroborating section.
+
+**Deployed.** Live as release `20260925220111`, migrations 0025–0027 applied. `LABEL_SCAN` is off
+in production, so Path C is dark — the gating fix above is what makes that actually true end to
+end, not just at the route.
+
+**Next:** decide when to flip `LABEL_SCAN` on in production and run the switch-on verification pass
+above. `AI_DAILY_SPEND_CAP_CENTS` also needs a deliberate judging-week value before that happens —
+Path C doubles the API calls a scan can make, and the default was sized for one call per scan; see
+`BACKLOG.md`.
