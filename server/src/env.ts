@@ -70,4 +70,10 @@ export const env = {
   // view at once, with no data changes — scans.result always holds the engine's own verdict. A
   // reporter's own corrections (CONTEST_RULES.md §3) apply either way.
   communityCorrections: parseSwitch("COMMUNITY_CORRECTIONS", process.env.COMMUNITY_CORRECTIONS, false),
+  // Kill switch for Path C (docs/verdict-engine.md) — photographing a label instead of scanning a
+  // barcode. Same pattern and reasoning as COMMUNITY_CORRECTIONS above (principle 4): off by
+  // default so it ships dark, and flipping it off makes POST /scans/label 404 again with no data
+  // changes to revert — the route doesn't exist for a disabled feature, same posture as a feature
+  // that was never built.
+  labelScan: parseSwitch("LABEL_SCAN", process.env.LABEL_SCAN, false),
 };
