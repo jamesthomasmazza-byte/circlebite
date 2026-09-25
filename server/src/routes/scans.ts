@@ -1,4 +1,5 @@
 import { Router } from "express";
+import multer from "multer";
 
 import { assertCanReadProfile } from "../authorization/profiles.js";
 import { requireAuth } from "../auth/requireAuth.js";
@@ -9,6 +10,7 @@ import {
 } from "../corrections/applyCommunityCorrections.js";
 import { applyUserCorrections, type MatchedAllergenLike, type UserCorrection } from "../corrections/applyCorrections.js";
 import { loadCommunityAdditions } from "../corrections/communityAdditions.js";
+import { MAX_PHOTO_BYTES, sniffImageType } from "../corrections/photoStorage.js";
 import { pool } from "../db/pool.js";
 import { env } from "../env.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
@@ -16,6 +18,7 @@ import { HttpError } from "../lib/httpError.js";
 import { getProduct } from "../lib/productLookup.js";
 import { computeVerdict, type ProfileAllergen, type Severity } from "../matcher/match.js";
 import { explainVerdict } from "../verdict/explainVerdict.js";
+import { runLabelScan } from "../verdict/labelScan.js";
 import { mergeVerdict } from "../verdict/mergeVerdict.js";
 import { reasonVerdict } from "../verdict/reasonVerdict.js";
 
@@ -179,6 +182,65 @@ scansRouter.post(
       effective: community && { result: community.result, matched_allergens: community.matchedAllergens },
       community_reports: publicCommunityReports(community?.applied ?? []),
     });
+  }),
+);
+
+// memoryStorage, not diskStorage — same reasoning as corrections.ts's own upload: sniffImageType
+// has to run on the actual bytes before anything downstream trusts the file. Nothing is ever
+// written to disk here at all (unlike corrections.ts): this photo is never retained, only the
+// extracted text is (docs/verdict-engine.md Path C plan §3 — "process and discard the photo").
+const labelUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_PHOTO_BYTES } });
+
+scansRouter.post(
+  "/scans/label",
+  requireAuth,
+  // Kill switch (docs/verdict-engine.md Path C plan, env.ts's labelScan): 404, not 403 — a
+  // disabled feature should look identical to a route that was never built, same posture
+  // assertIsAdmin already uses elsewhere in this codebase. Checked before multer even runs, so a
+  // disabled endpoint doesn't process an upload it's about to reject anyway.
+  (req, res, next) => {
+    if (!env.labelScan) {
+      next(new HttpError(404, "not_found"));
+      return;
+    }
+    next();
+  },
+  (req, res, next) => {
+    labelUpload.single("photo")(req, res, (err: unknown) => {
+      if (err instanceof multer.MulterError) {
+        next(new HttpError(400, err.code === "LIMIT_FILE_SIZE" ? "photo_too_large" : "invalid_upload"));
+        return;
+      }
+      next(err);
+    });
+  },
+  // Everything past auth/kill-switch/upload validation lives in verdict/labelScan.ts's
+  // runLabelScan — a dependency-injectable, directly-testable orchestration function (same shape
+  // as reasonVerdict.ts/extractLabel.ts), rather than inline here the way Path B's route still is.
+  // That's what lets Path C's DB-touching logic be exercised against real Postgres with an injected
+  // fake AI layer instead of needing an HTTP test harness this codebase doesn't otherwise use.
+  asyncHandler(async (req, res) => {
+    const { allergenProfileId, barcode: rawBarcode } = req.body ?? {};
+    if (typeof allergenProfileId !== "string") throw new HttpError(400, "invalid_request");
+    if (rawBarcode !== undefined && (typeof rawBarcode !== "string" || !BARCODE_PATTERN.test(rawBarcode))) {
+      throw new HttpError(400, "invalid_request");
+    }
+
+    await assertCanReadProfile(req.user!.id, allergenProfileId);
+
+    if (!req.file) throw new HttpError(400, "photo_required");
+    const sniffed = sniffImageType(req.file.buffer);
+    if (!sniffed) throw new HttpError(400, "invalid_file_type");
+
+    const result = await runLabelScan({
+      userId: req.user!.id,
+      allergenProfileId,
+      barcode: typeof rawBarcode === "string" ? rawBarcode : null,
+      imageBuffer: req.file.buffer,
+      mimeType: sniffed.mimeType,
+    });
+
+    res.status(201).json(result);
   }),
 );
 
