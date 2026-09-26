@@ -235,6 +235,20 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
       has — span validation has to check citations against `ingredients_text` **and**
       `contains`/`may_contain` combined, not `ingredients_text` alone, or a real citation from that
       line would be wrongly discarded. Found in live testing, 2026-09-25
+- [ ] The per-allergen `Classification` string union is declared independently in at least three
+      places (`match.ts`'s deterministic-only type, `mergeVerdict.ts`'s `MergedClassification`,
+      `applyCorrections.ts`'s inline `MatchedAllergenLike.classification`) plus a fourth, separate
+      copy on the client (`api.ts`'s `Classification`) — none share a single source. Same story for
+      the logic that reads it: the rollup (contains → unresolved → caution → "safe") is duplicated
+      between `mergeVerdict.ts`'s `rollupVerdict` and `applyCorrections.ts`'s `rollupResult`, and the
+      per-allergen label map is duplicated between `Scan.tsx` and `ScanHistory.tsx`. Adding
+      "unchecked" (2026-09-26, the per-allergen photo-sourced granularity fix) needed a manual grep
+      across all of these to find every place a missed case would silently misrender or, worse, let
+      an unsafe verdict fall through to "safe" — TypeScript's exhaustiveness checking never fires
+      across independently-declared unions, so nothing here would have caught a missed copy at
+      compile time. It didn't bite this time only because the grep was thorough. Collapse to one
+      shared type and, where feasible, one shared rollup/label implementation, so the next new
+      classification value is a compile error in every consumer instead of a manual audit
 - [ ] Run the age-gate verification checklist in `docs/coppa.md` §4
 - [x] Password change (Settings) + admin-issued reset flow for locked-out accounts — change
       revokes every *other* session for that user, keeping the caller's own session alive; reset-
