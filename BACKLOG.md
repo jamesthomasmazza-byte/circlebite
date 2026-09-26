@@ -217,6 +217,24 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
       full local pass because the switch was `on` in local `.env` the whole time Path C was built
       and tested, so nothing ever exercised the disabled path. A well-tested enabled state doesn't
       prove the disabled one was ever checked
+- [ ] Path C's "What we read from your photo" panel renders only `extracted_text`
+      (`ingredients_text`) and omits the `contains`/`may_contain` statements the extraction also
+      captured — the cross-check panel shows the parent less than the app actually read, and the
+      allergen statement is exactly the part they'd most want to verify against the package. Neither
+      gap is cosmetic-only: `runLabelScan`'s response doesn't even send `contains`/`may_contain` to
+      the client today, so this needs a server-side field added as well as the panel rendering it.
+      Also checked whether span validation can silently reject a legitimate citation from that
+      statement, since `spanValidator.ts` validates every `citedSpan` against `ingredients_text`
+      alone (`reasonVerdict.ts`'s `discardUnverifiableClaims`) — it can't, but not because the gap
+      doesn't exist: `contains`/`may_contain` are never included in the text `reasonVerdict` is
+      given at all, so the model has nothing to cite from them during Path C's reasoning step; they
+      only reach a verdict via the deterministic pass's exact tag-match (same as Path A's
+      `allergensTags`/`tracesTags`), never free-text reasoning over the actual sentence. If a future
+      change ever folds that sentence into what the model reasons over — the more useful fix, since
+      tag-matching "may contain traces of tree nuts" as a single token loses information a sentence
+      has — span validation has to check citations against `ingredients_text` **and**
+      `contains`/`may_contain` combined, not `ingredients_text` alone, or a real citation from that
+      line would be wrongly discarded. Found in live testing, 2026-09-25
 - [ ] Run the age-gate verification checklist in `docs/coppa.md` §4
 - [x] Password change (Settings) + admin-issued reset flow for locked-out accounts — change
       revokes every *other* session for that user, keeping the caller's own session alive; reset-
