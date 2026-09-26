@@ -3,7 +3,9 @@ import type { CorrectionType, Direction } from "./recordCorrection.js";
 export type MatchedAllergenLike = {
   allergenName: string;
   severity: string;
-  classification: "contains" | "caution" | "clear" | "unresolved";
+  // "unchecked" (docs/verdict-engine.md Path C): a photo-sourced allergen the deterministic pass
+  // and AI both found nothing for. Deliberately not "clear" — see rollupResult below.
+  classification: "contains" | "caution" | "clear" | "unresolved" | "unchecked";
   [key: string]: unknown;
 };
 
@@ -26,7 +28,16 @@ export type EffectiveScanResult = ScanForCorrection;
 
 function rollupResult(matchedAllergens: { classification: string }[]): string {
   if (matchedAllergens.some((m) => m.classification === "contains")) return "contains_allergen";
-  if (matchedAllergens.some((m) => m.classification === "unresolved")) return "unable_to_confirm";
+  // "unchecked" forces the same outcome as "unresolved" — mirrors mergeVerdict.ts's own
+  // rollupVerdict fix (docs/principles.md, Sept 26, 2026: the "we can't see everything" override
+  // has to apply everywhere that claim is made). Found while reviewing this exact duplicated
+  // rollup logic for the same case: a Path C scan with one real "contains" and five "unchecked"
+  // allergens, where the user corrects the "contains" one to "clear" — without this, the recompute
+  // here would see no "contains", no "unresolved", and fall through to "safe", silently dropping
+  // the five allergens that were never actually checked.
+  if (matchedAllergens.some((m) => m.classification === "unresolved" || m.classification === "unchecked")) {
+    return "unable_to_confirm";
+  }
   if (matchedAllergens.some((m) => m.classification === "caution")) return "may_contain_caution";
   return "safe";
 }

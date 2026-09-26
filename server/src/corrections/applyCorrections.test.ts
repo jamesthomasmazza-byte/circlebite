@@ -139,6 +139,26 @@ test("a flag_missing on a fail-closed scan still escalates to contains_allergen"
   assert.equal(effective?.result, "contains_allergen");
 });
 
+test("clearing a real 'contains' on a Path C scan doesn't lift the rollup to safe while other allergens are still 'unchecked'", () => {
+  // The exact scenario found while auditing this duplicated rollup logic: a photo-sourced scan
+  // where Peanut genuinely matched and four other allergens were never actually checked. The user
+  // disputes Peanut as wrongly flagged; the other four were never touched by any correction and
+  // must not silently read as safe.
+  const s = scan("contains_allergen", [
+    { allergenName: "Peanut", severity: "severe", classification: "contains" },
+    { allergenName: "Almond", severity: "severe", classification: "unchecked" },
+    { allergenName: "Milk", severity: "severe", classification: "unchecked" },
+    { allergenName: "Sesame", severity: "moderate", classification: "unchecked" },
+    { allergenName: "Soy", severity: "mild", classification: "unchecked" },
+  ]);
+  const effective = applyUserCorrections(s, [
+    correction({ correctionType: "flag_wrong", direction: "remove_caution", allergen: "Peanut" }),
+  ]);
+  assert.equal(effective?.result, "unable_to_confirm");
+  const almond = effective?.matchedAllergens.find((m) => m.allergenName === "Almond");
+  assert.equal(almond?.classification, "unchecked"); // untouched by the correction, still honest
+});
+
 test("clearing the one 'unresolved' allergen that caused unable_to_confirm is still allowed on the user's own view", () => {
   const s = scan("unable_to_confirm", [
     { allergenName: "Milk", severity: "severe", classification: "unresolved" },
