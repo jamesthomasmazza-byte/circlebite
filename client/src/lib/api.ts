@@ -217,7 +217,14 @@ export type MatchSource = "tag" | "ingredients" | "trace";
 // "unresolved" only ever appears on a scan that ran the AI reasoning step (docs/verdict-engine.md
 // Path B) — the model raised real uncertainty about this allergen rather than staying silent, so
 // it's shown distinctly from "clear" rather than folded into it.
-export type Classification = "contains" | "caution" | "clear" | "unresolved";
+//
+// "unchecked" (Path C only) is a different thing from "unresolved" on purpose — deliberately not
+// named "unconfirmed", which reads as a near-synonym of "unresolved" and would get confused with it
+// in a filter someday (docs/principles.md, Sept 26, 2026). "unresolved" is the AI actively raising a
+// term it saw and couldn't settle; "unchecked" is nothing being found at all, on a photo scan where
+// that absence isn't proof of absence. Rendered as a grouped summary naming every unchecked
+// allergen at once, not one row each — see Scan.tsx/ScanHistory.tsx.
+export type Classification = "contains" | "caution" | "clear" | "unresolved" | "unchecked";
 export type Verdict = "safe" | "contains_allergen" | "may_contain_caution" | "unable_to_confirm";
 export type Confidence = "high" | "medium" | "low";
 

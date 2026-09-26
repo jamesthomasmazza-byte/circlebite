@@ -65,10 +65,11 @@ export function ScanHistory() {
               <li key={scan.id}>
                 <strong>{VERDICT_LABEL[shown.result]}</strong> — {scan.product_name ?? "Unknown product"}
                 {scan.product_brand && ` (${scan.product_brand})`} — {new Date(scan.created_at).toLocaleString()}
-                {shown.matched_allergens.filter((m) => m.classification !== "clear").length > 0 && (
+                {shown.matched_allergens.filter((m) => m.classification !== "clear" && m.classification !== "unchecked")
+                  .length > 0 && (
                   <ul>
                     {shown.matched_allergens
-                      .filter((m) => m.classification !== "clear")
+                      .filter((m) => m.classification !== "clear" && m.classification !== "unchecked")
                       .map((m) => (
                         <li key={m.allergenName}>
                           {m.allergenName} ({m.severity}) — {classificationLabel(m)}
@@ -76,6 +77,20 @@ export function ScanHistory() {
                       ))}
                   </ul>
                 )}
+                {(() => {
+                  // Grouped, not one row each — same reasoning as Scan.tsx's live result. No
+                  // profile-name possessive here (this page doesn't load the profile's own label,
+                  // only per-scan product info), unlike the live card's "Timmy's allergens" phrasing.
+                  const unchecked = shown.matched_allergens.filter((m) => m.classification === "unchecked");
+                  if (unchecked.length === 0) return null;
+                  const names = unchecked.map((m) => m.allergenName.toLowerCase()).join(", ");
+                  return (
+                    <p role="note">
+                      Couldn't check {unchecked.length} allergen{unchecked.length === 1 ? "" : "s"} against this
+                      photo: {names}. A photo isn't checked as thoroughly as a barcode — always check the package.
+                    </p>
+                  );
+                })()}
                 {scan.effective && (
                   <div role="note">
                     <p>

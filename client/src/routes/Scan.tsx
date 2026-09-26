@@ -428,10 +428,11 @@ export function Scan() {
             </details>
           )}
 
-          {shown.matched_allergens.length > 0 && (
+          {shown.matched_allergens.filter((m) => m.classification !== "clear" && m.classification !== "unchecked").length >
+            0 && (
             <ul>
               {shown.matched_allergens
-                .filter((m) => m.classification !== "clear")
+                .filter((m) => m.classification !== "clear" && m.classification !== "unchecked")
                 .map((m) => (
                   <li key={m.allergenName}>
                     <strong>{m.allergenName}</strong> ({m.severity}) — {classificationLabel(m)} — {sourceLabel(m)}
@@ -439,6 +440,24 @@ export function Scan() {
                 ))}
             </ul>
           )}
+
+          {(() => {
+            // "unchecked" allergens (Path C only) render as one grouped line, not a row each.
+            // JT's call: in-store, one-handed, on a phone — six near-identical rows bury a real
+            // finding and train people to skim. Nothing is hidden; every name is still listed, just
+            // together, with the "why" said once instead of once per row.
+            const unchecked = shown.matched_allergens.filter((m) => m.classification === "unchecked");
+            if (unchecked.length === 0) return null;
+            const profileLabel = profiles.find((p) => p.id === profileId)?.label;
+            const names = unchecked.map((m) => m.allergenName.toLowerCase()).join(", ");
+            return (
+              <p role="note">
+                We couldn't check {unchecked.length} of {profileLabel ? `${profileLabel}'s` : "your"} allergen
+                {unchecked.length === 1 ? "" : "s"} against this photo: {names}. A photo isn't checked as thoroughly
+                as a barcode — always check the package.
+              </p>
+            );
+          })()}
 
           {result.effective && (
             <div role="note">
@@ -506,9 +525,20 @@ export function Scan() {
                         </option>
                         {/* Scoped to what this card actually shows — never an allergen the viewer
                             can't see, and never a picker offering the wrong direction for the
-                            claim they're making. */}
+                            claim they're making. flag_wrong disputes an allergen the card actually
+                            claimed present (contains/caution); flag_missing is for anything that
+                            didn't claim presence at all (clear, unresolved, unchecked) — "this isn't
+                            actually in it" doesn't make sense against an allergen nothing claimed
+                            was there in the first place, which is exactly the mistake offering
+                            "unresolved" or "unchecked" on the flag_wrong side would invite. */}
                         {shown.matched_allergens
-                          .filter((m) => (reportType === "flag_wrong" ? m.classification !== "clear" : m.classification === "clear"))
+                          .filter((m) =>
+                            reportType === "flag_wrong"
+                              ? m.classification === "contains" || m.classification === "caution"
+                              : m.classification === "clear" ||
+                                m.classification === "unresolved" ||
+                                m.classification === "unchecked",
+                          )
                           .map((m) => (
                             <option key={m.allergenName} value={m.allergenName}>
                               {m.allergenName}
