@@ -21,7 +21,42 @@ export type MergedAllergenDetail = Omit<AllergenVerdictDetail, "classification">
   aiEscalated: boolean;
   citedSpan?: string;
   reason?: string;
+  // True only when classification === "contains" arrived there by escalating a "may contain"/
+  // trace-level claim via this allergen's own treatTracesAsUnsafe, rather than direct evidence.
+  // Exists so the card can say what the label actually claimed (a trace) and what the app did
+  // about it (treated it as unsafe) as two separate statements, instead of the single
+  // classification value asserting "contains" outright — which is a real claim the label itself
+  // never made. Only needed for the AI-driven path: a deterministic trace escalation (match.ts's
+  // own treatTracesAsUnsafe handling) is already detectable from `source === "trace"` on this same
+  // object, carried through from the deterministic pass unchanged; there's no equivalent field for
+  // an AI-reported trace finding, since that path's underlying `det.source` is null (det.classification
+  // was "clear" going in).
+  escalatedFromTrace?: boolean;
 };
+
+/**
+ * True when a "contains" classification is standing in for what the label actually called a
+ * trace/may-contain claim, escalated only because this profile treats traces as unsafe — never
+ * true for a genuine direct finding, and never true for a community-reported escalation (that
+ * layer runs after this one, in applyCommunityCorrections.ts, and is a different claim entirely:
+ * "shoppers told us," not "this profile flags traces"). Shared by explainVerdict.ts (the headline)
+ * and the client's own per-row copy, so the same rule decides both without drifting apart.
+ */
+export function isTraceEscalatedToContains(
+  a: Pick<MergedAllergenDetail, "classification" | "source" | "aiEscalated" | "escalatedFromTrace">,
+): boolean {
+  if (a.classification !== "contains") return false;
+  // Purely deterministic (aiEscalated: false): match.ts's own computeVerdict only ever produces
+  // "contains" with source "trace" when treatTracesAsUnsafe escalated it there — that combination
+  // is unambiguous, so `source` alone is trustworthy here.
+  if (!a.aiEscalated) return a.source === "trace";
+  // AI-driven: `source` can still read "trace" here even when the REAL reason for "contains" is an
+  // independent direct finding — e.g. a deterministic trace tag (source: "trace", classification:
+  // "caution") that a *separate* AI-reported present: "yes" then escalates to "contains". That's
+  // genuine direct evidence, not a trace claim standing in for one, so only the explicit flag
+  // (set only on the one branch that actually escalates *from* a trace finding) is trusted here.
+  return a.escalatedFromTrace === true;
+}
 
 export type MergeResult = {
   verdict: Verdict;
@@ -60,7 +95,7 @@ function classifyAllergen(
   finding: AiFinding | undefined,
   treatTracesAsUnsafe: boolean,
   photoSourced: boolean,
-): Pick<MergedAllergenDetail, "classification" | "aiEscalated" | "citedSpan" | "reason"> {
+): Pick<MergedAllergenDetail, "classification" | "aiEscalated" | "citedSpan" | "reason" | "escalatedFromTrace"> {
   if (det.classification === "contains") {
     return { classification: "contains", aiEscalated: false };
   }
@@ -85,6 +120,9 @@ function classifyAllergen(
       aiEscalated: true,
       citedSpan: finding.citedSpan,
       reason: finding.reason,
+      // Only meaningful (and only ever true) on the "contains" branch — see
+      // isTraceEscalatedToContains's own comment for why the card needs this signal.
+      escalatedFromTrace: treatTracesAsUnsafe,
     };
   }
   // finding.present === "yes"

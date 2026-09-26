@@ -1,4 +1,4 @@
-import type { MergeResult } from "./mergeVerdict.js";
+import { isTraceEscalatedToContains, type MergeResult } from "./mergeVerdict.js";
 
 function joinList(items: string[]): string {
   if (items.length === 1) return items[0];
@@ -46,9 +46,17 @@ const PHOTO_SOURCED_NOTHING_FOUND =
  * findings alone (rule 8), rather than something that has to be regenerated to be checked.
  */
 export function explainVerdict(merged: MergeResult, options: ExplainVerdictOptions = {}): string {
-  const contains = merged.matchedAllergens.filter((a) => a.classification === "contains");
+  // Excludes trace-escalated entries deliberately — "Contains X" is a claim the label itself made
+  // directly, and asserting it for an allergen the label only called "may contain" is exactly the
+  // false claim this whole distinction exists to avoid. Those get their own sentence below.
+  const contains = merged.matchedAllergens.filter((a) => a.classification === "contains" && !isTraceEscalatedToContains(a));
   if (contains.length > 0) {
     return `Contains ${joinList(namesWithSpans(contains))}.`;
+  }
+
+  const treatedAsUnsafe = merged.matchedAllergens.filter(isTraceEscalatedToContains);
+  if (treatedAsUnsafe.length > 0) {
+    return `Treat as containing ${joinList(treatedAsUnsafe.map((a) => a.allergenName))}.`;
   }
 
   const unresolved = merged.matchedAllergens.filter((a) => a.classification === "unresolved");

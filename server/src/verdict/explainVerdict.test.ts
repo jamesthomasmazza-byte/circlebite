@@ -12,6 +12,63 @@ function result(matchedAllergens: MergeResult["matchedAllergens"], verdict: Merg
   return { verdict, confidence: "medium", matchedAllergens };
 }
 
+test("a trace-escalated 'contains' (source: trace, deterministic — treatTracesAsUnsafe already resolved by match.ts) gets its own headline, not the 'Contains' sentence", () => {
+  const text = explainVerdict(
+    result([allergen({ allergenName: "Sesame", severity: "severe", classification: "contains", source: "trace" })], "contains_allergen"),
+  );
+  assert.equal(text, "Treat as containing Sesame.");
+});
+
+test("a trace-escalated 'contains' via an AI-reported trace finding (escalatedFromTrace: true) also gets the 'Treat as containing' headline", () => {
+  const text = explainVerdict(
+    result(
+      [allergen({ allergenName: "Sesame", severity: "severe", classification: "contains", aiEscalated: true, escalatedFromTrace: true, citedSpan: "may contain sesame" })],
+      "contains_allergen",
+    ),
+  );
+  assert.equal(text, "Treat as containing Sesame.");
+});
+
+test("a 'contains' from an AI direct finding that happens to share a trace-tagged allergen (source: trace, but escalatedFromTrace not set) still reads as a genuine 'Contains' claim", () => {
+  // The exact case that would be a false positive if isTraceEscalatedToContains trusted `source`
+  // alone whenever aiEscalated is true: a deterministic trace tag existed, but the AI found
+  // separate, direct evidence ("yes", not "trace") — a real "contains" claim, not a "may contain"
+  // one.
+  const text = explainVerdict(
+    result(
+      [allergen({ allergenName: "Sesame", severity: "severe", classification: "contains", source: "trace", aiEscalated: true, citedSpan: "sesame oil" })],
+      "contains_allergen",
+    ),
+  );
+  assert.equal(text, 'Contains Sesame ("sesame oil").');
+});
+
+test("a genuine 'Contains' finding takes priority over a trace-escalated one when both are present", () => {
+  const text = explainVerdict(
+    result(
+      [
+        allergen({ allergenName: "Milk", severity: "severe", classification: "contains", source: "ingredients" }),
+        allergen({ allergenName: "Sesame", severity: "severe", classification: "contains", source: "trace" }),
+      ],
+      "contains_allergen",
+    ),
+  );
+  assert.equal(text, "Contains Milk.");
+});
+
+test("multiple trace-escalated allergens join into one 'Treat as containing' sentence", () => {
+  const text = explainVerdict(
+    result(
+      [
+        allergen({ allergenName: "Sesame", severity: "severe", classification: "contains", source: "trace" }),
+        allergen({ allergenName: "Milk", severity: "severe", classification: "contains", source: "trace" }),
+      ],
+      "contains_allergen",
+    ),
+  );
+  assert.equal(text, "Treat as containing Sesame and Milk.");
+});
+
 test("names the cited span for a single contains", () => {
   const text = explainVerdict(
     result([allergen({ allergenName: "Milk", severity: "severe", classification: "contains", aiEscalated: true, citedSpan: "whey powder" })]),

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import type { AllergenVerdictDetail } from "../matcher/match.js";
-import { mergeVerdict } from "./mergeVerdict.js";
+import { isTraceEscalatedToContains, mergeVerdict } from "./mergeVerdict.js";
 import type { AiFinding, ProfileAllergen, ReasonVerdictResult } from "./types.js";
 
 const ALLERGENS: ProfileAllergen[] = [
@@ -66,6 +66,11 @@ test("a deterministic 'caution' (trace tag) escalates to 'contains' only on an A
   // The deterministic trace-tag source is preserved even though the AI escalated the outcome —
   // the client still has the original evidence available, not just the final verdict.
   assert.equal(matchedAllergens[0].source, "trace");
+  // Not a trace-escalation, even though `source` reads "trace": the AI found direct evidence
+  // ("yes", not "trace") independent of the existing trace tag — a genuine "contains" claim, not a
+  // "may contain" one dressed up. isTraceEscalatedToContains has to tell these apart correctly, or
+  // the card would wrongly soften a real direct finding into "treat as containing".
+  assert.equal(isTraceEscalatedToContains(matchedAllergens[0]), false);
 });
 
 test("a deterministic 'caution' is not disturbed by an AI finding that isn't 'yes'", () => {
@@ -97,6 +102,30 @@ test("a 'clear' allergen with treatTracesAsUnsafe escalates a 'trace' finding st
   );
   assert.equal(verdict, "contains_allergen");
   assert.equal(matchedAllergens[0].classification, "contains");
+  // The label said "may contain," not "contains" — the card must be able to tell these apart even
+  // though the classification value is the same "contains" as a genuine direct finding.
+  assert.equal(matchedAllergens[0].escalatedFromTrace, true);
+  assert.equal(isTraceEscalatedToContains(matchedAllergens[0]), true);
+});
+
+test("a deterministic trace-tag match escalated to 'contains' by treatTracesAsUnsafe (match.ts's own doing, no AI involved) is still detected as trace-escalated via source alone", () => {
+  const { matchedAllergens } = mergeVerdict(
+    [det({ classification: "contains", matched: true, source: "trace" })], // match.ts already resolved treatTracesAsUnsafe
+    ok([]),
+    ALLERGENS,
+  );
+  assert.equal(matchedAllergens[0].classification, "contains");
+  assert.equal(matchedAllergens[0].aiEscalated, false);
+  assert.equal(isTraceEscalatedToContains(matchedAllergens[0]), true);
+});
+
+test("a genuine deterministic 'contains' from a direct match (not a trace) is never flagged as trace-escalated", () => {
+  const { matchedAllergens } = mergeVerdict(
+    [det({ classification: "contains", matched: true, source: "ingredients" })],
+    ok([]),
+    ALLERGENS,
+  );
+  assert.equal(isTraceEscalatedToContains(matchedAllergens[0]), false);
 });
 
 test("a 'clear' allergen without treatTracesAsUnsafe escalates a 'trace' finding to 'caution', not 'contains'", () => {
