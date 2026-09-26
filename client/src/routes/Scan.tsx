@@ -33,7 +33,21 @@ const VERDICT_LABEL: Record<ScanResult["result"], string> = {
 const DISCLAIMER =
   "This is a screening aid, not a guarantee — always check the physical label, especially for “may contain” warnings.";
 
+// Mirrors server/src/verdict/mergeVerdict.ts's own isTraceEscalatedToContains exactly — same rule,
+// so the two never drift apart on what counts as "the label said 'may contain', the app treated it
+// as unsafe" versus a genuine direct finding. communityReported is checked ahead of this at every
+// call site below (never inside this function) — a corroborated community report is a different
+// claim from a trace escalation, and the two are the one case this rule alone can't tell apart: a
+// deterministic trace tag (source: "trace", aiEscalated: false) that a *community* report — not
+// treatTracesAsUnsafe — later escalated to "contains" would otherwise read as a false positive here.
+function isTraceEscalatedToContains(m: ScanResult["matched_allergens"][number]): boolean {
+  if (m.classification !== "contains") return false;
+  if (!m.aiEscalated) return m.source === "trace";
+  return m.escalatedFromTrace === true;
+}
+
 function classificationLabel(m: ScanResult["matched_allergens"][number]): string {
+  if (!m.communityReported && isTraceEscalatedToContains(m)) return 'label says "may contain"';
   if (m.classification === "contains") return "contains";
   if (m.classification === "unresolved") return "couldn't confirm from the label text";
   return "may contain traces";
@@ -49,6 +63,11 @@ function sourceLabel(m: ScanResult["matched_allergens"][number]): string {
   if (m.communityReported) {
     return `reported by ${shopperCount(m.communityReporterCount ?? 1)} with a label photo — not in the product data`;
   }
+  // The label's own claim (a trace) and the app's decision (treat it as unsafe, because this
+  // profile flags traces) are two separate statements — never collapse them into "contains", which
+  // is a claim the label itself never made. Checked before the AI-escalated branch below, since a
+  // trace escalation is very often AI-driven and would otherwise be caught by it first.
+  if (isTraceEscalatedToContains(m)) return "treated as unsafe because this profile flags traces";
   // AI-escalated findings carry their own citedSpan rather than the deterministic source
   // (tag/ingredients/trace) — the deterministic matcher found nothing for these, that's exactly
   // why the AI reasoning step ran.

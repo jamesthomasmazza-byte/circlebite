@@ -238,6 +238,13 @@ export type MatchedAllergen = {
   // from what the deterministic keyword matcher alone found.
   aiEscalated?: boolean;
   citedSpan?: string;
+  // True only when classification === "contains" arrived there by escalating an AI-reported
+  // "may contain"/trace claim via this allergen's own treatTracesAsUnsafe, not direct evidence.
+  // Mirrors server/src/verdict/mergeVerdict.ts's own field — see isTraceEscalatedToContains there
+  // (and its client-side twin below) for why "contains" alone isn't enough to tell this apart from
+  // a genuine direct finding: the label said "may contain," and the card has to say so, distinctly
+  // from what the app decided to do about it.
+  escalatedFromTrace?: boolean;
   // Present (and true) only when a corroborated community report — not the product data or the AI
   // — is why this allergen shows as "contains". docs/principles.md principle 7: "shoppers told
   // us" is a different claim from "the label says", and the card must say which one it is.

@@ -22,10 +22,23 @@ function shopperCount(n: number): string {
   return n === 1 ? "1 shopper" : `${n} shoppers`;
 }
 
+// Mirrors server/src/verdict/mergeVerdict.ts's own isTraceEscalatedToContains (and Scan.tsx's
+// client-side twin) exactly. See Scan.tsx's copy of this function for why communityReported has to
+// be checked ahead of this at the call site, never inside it.
+function isTraceEscalatedToContains(m: MatchedAllergen): boolean {
+  if (m.classification !== "contains") return false;
+  if (!m.aiEscalated) return m.source === "trace";
+  return m.escalatedFromTrace === true;
+}
+
 function classificationLabel(m: MatchedAllergen): string {
   const { classification } = m;
   // docs/principles.md principle 7: say when it's shoppers, not the label, saying so.
   if (m.communityReported) return `contains — reported by ${shopperCount(m.communityReporterCount ?? 1)}`;
+  // The label said "may contain," not "contains" — this page has only one label slot per row
+  // (unlike Scan.tsx's classificationLabel + sourceLabel pair), so both halves of the distinction
+  // live in this one string.
+  if (isTraceEscalatedToContains(m)) return 'label says "may contain" — treated as unsafe because this profile flags traces';
   if (classification === "contains") return "contains";
   if (classification === "unresolved") return "couldn't confirm from the label text";
   return "may contain traces";
