@@ -172,7 +172,7 @@ test("multi-allergen rollup: any contains beats any caution or unresolved", () =
 // barcode-backed one does. This is the safety property the whole Path C design rests on, so it's
 // asserted directly across every classification x finding combination the fixtures above already
 // build, not implied by a couple of spot-check examples.
-test("invariant: photoSourced:true never returns verdict 'safe', for any deterministic/AI combination", () => {
+test("invariant: photoSourced:true never returns verdict 'safe', and never classifies an allergen 'clear', for any deterministic/AI combination", () => {
   const detOptions: AllergenVerdictDetail[] = [
     det({ classification: "clear" }),
     det({ classification: "caution", matched: true, source: "trace" }),
@@ -189,22 +189,87 @@ test("invariant: photoSourced:true never returns verdict 'safe', for any determi
 
   for (const d of detOptions) {
     for (const ai of aiOutcomes) {
-      const { verdict } = mergeVerdict([d], ai, ALLERGENS, { photoSourced: true });
+      const { verdict, matchedAllergens } = mergeVerdict([d], ai, ALLERGENS, { photoSourced: true });
       assert.notEqual(
         verdict,
         "safe",
         `det=${d.classification} ai=${JSON.stringify(ai.findings)} failed=${ai.failed} produced "safe"`,
       );
+      // The rollup-level check above isn't the whole safety property — a real per-allergen "clear"
+      // is exactly what disappears from the card (docs/principles.md's Sept 26, 2026 precedent: the
+      // override has to apply everywhere the "can't see everything" claim is made, not just at the
+      // top).
+      assert.ok(
+        matchedAllergens.every((a) => a.classification !== "clear"),
+        `det=${d.classification} ai=${JSON.stringify(ai.findings)} failed=${ai.failed} produced a 'clear' allergen on a photoSourced merge`,
+      );
     }
   }
 });
 
-test("photoSourced:true with nothing found downgrades what would be 'safe' to 'unable_to_confirm', confidence low", () => {
-  const { verdict, confidence } = mergeVerdict([det({ classification: "clear" })], ok([]), ALLERGENS, {
+test("photoSourced:true with nothing found becomes 'unchecked', not 'clear' — rollup downgrades to 'unable_to_confirm', confidence low", () => {
+  const { verdict, confidence, matchedAllergens } = mergeVerdict([det({ classification: "clear" })], ok([]), ALLERGENS, {
     photoSourced: true,
   });
   assert.equal(verdict, "unable_to_confirm");
   assert.equal(confidence, "low");
+  assert.equal(matchedAllergens[0].classification, "unchecked");
+});
+
+test("photoSourced:true treats an explicit AI 'no' over ingredients_text the same as no finding at all — still 'unchecked', not 'clear'", () => {
+  // The AI's "no" is scoped to ingredients_text alone; it was never shown the label's separate
+  // contains/may-contain statement, so it carries no more trust than silence would.
+  const { matchedAllergens } = mergeVerdict(
+    [det({ classification: "clear" })],
+    ok([{ allergen: "Milk", present: "no", citedSpan: "", reason: "not mentioned in the ingredient list", confidence: "high" }]),
+    ALLERGENS,
+    { photoSourced: true },
+  );
+  assert.equal(matchedAllergens[0].classification, "unchecked");
+});
+
+test("photoSourced:true with six allergens, all unchecked: rollup is unable_to_confirm, not safe", () => {
+  const sixAllergens: ProfileAllergen[] = [
+    { name: "Milk", severity: "severe", treatTracesAsUnsafe: true },
+    { name: "Soy", severity: "mild", treatTracesAsUnsafe: false },
+    { name: "Egg", severity: "moderate", treatTracesAsUnsafe: false },
+    { name: "Peanut", severity: "severe", treatTracesAsUnsafe: true },
+    { name: "Wheat", severity: "mild", treatTracesAsUnsafe: false },
+    { name: "Sesame", severity: "moderate", treatTracesAsUnsafe: false },
+  ];
+  const sixDet = sixAllergens.map((a) => det({ allergenName: a.name, severity: a.severity, classification: "clear" }));
+  const { verdict, matchedAllergens } = mergeVerdict(sixDet, ok([]), sixAllergens, { photoSourced: true });
+  assert.equal(verdict, "unable_to_confirm");
+  assert.equal(matchedAllergens.length, 6);
+  assert.ok(matchedAllergens.every((a) => a.classification === "unchecked"));
+});
+
+test("photoSourced:true, mixed profile: a real 'contains' rolls up the verdict, but the other allergen stays 'unchecked' — never silently 'clear'", () => {
+  // The exact silent-miss this classification exists to close: before it existed, Peanut's real
+  // "contains" made the overall card correctly unsafe, but Almond — genuinely unchecked — rendered
+  // as plain "clear" and disappeared from the list, indistinguishable from "the label said nothing
+  // about it."
+  const { verdict, matchedAllergens } = mergeVerdict(
+    [
+      det({ allergenName: "Peanut", severity: "severe", classification: "contains", matched: true, source: "tag" }),
+      det({ allergenName: "Almond", severity: "severe", classification: "clear" }),
+    ],
+    ok([]),
+    [
+      { name: "Peanut", severity: "severe", treatTracesAsUnsafe: true },
+      { name: "Almond", severity: "severe", treatTracesAsUnsafe: true },
+    ],
+    { photoSourced: true },
+  );
+  assert.equal(verdict, "contains_allergen");
+  const almond = matchedAllergens.find((a) => a.allergenName === "Almond");
+  assert.equal(almond?.classification, "unchecked");
+});
+
+test("photoSourced:false (the default) — 'clear' stays 'clear', 'unchecked' never appears", () => {
+  const { verdict, matchedAllergens } = mergeVerdict([det({ classification: "clear" })], ok([]), ALLERGENS);
+  assert.equal(verdict, "safe");
+  assert.equal(matchedAllergens[0].classification, "clear");
 });
 
 test("photoSourced:true never suppresses a real finding — contains/caution still escalate normally", () => {

@@ -73,13 +73,35 @@ test("falls back to a clean 'nothing found' sentence when every allergen is clea
   assert.equal(text, "No listed allergens from this profile were found in the ingredient text.");
 });
 
-test("photoSourced: the 'nothing found' sentence leads with the limit, not the normal Path B copy", () => {
+test("photoSourced: the backstop 'nothing found' sentence (a raw 'clear' input mergeVerdict.ts no longer actually produces) still leads with the limit", () => {
   const text = explainVerdict(
     result([allergen({ allergenName: "Milk", severity: "severe", classification: "clear", matched: false })], "unable_to_confirm"),
     { photoSourced: true },
   );
   assert.match(text, /^This hasn't been confirmed safe/);
   assert.doesNotMatch(text, /^No listed allergens/);
+});
+
+test("photoSourced: an 'unchecked' allergen produces the real downgrade sentence, distinct from the 'clear' backstop", () => {
+  const text = explainVerdict(
+    result([allergen({ allergenName: "Almond", severity: "severe", classification: "unchecked", matched: false })], "unable_to_confirm"),
+    { photoSourced: true },
+  );
+  assert.match(text, /^This hasn't been confirmed safe — some of your listed allergens couldn't be checked against this photo/);
+});
+
+test("photoSourced: 'unchecked' allergens don't get a headline sentence at all when a contains/unresolved/caution finding also exists — that branch wins first", () => {
+  const text = explainVerdict(
+    result(
+      [
+        allergen({ allergenName: "Peanut", severity: "severe", classification: "contains", source: "ingredients" }),
+        allergen({ allergenName: "Almond", severity: "severe", classification: "unchecked", matched: false }),
+      ],
+      "contains_allergen",
+    ),
+    { photoSourced: true },
+  );
+  assert.equal(text, "Contains Peanut.");
 });
 
 test("photoSourced with a real contains finding still uses the normal contains sentence, not the downgrade copy", () => {
