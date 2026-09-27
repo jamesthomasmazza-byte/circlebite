@@ -20,6 +20,8 @@ const CORROBORATION_THRESHOLD: Record<Direction, number> = {
   remove_caution: 3,
 };
 
+export type CorrectionOrigin = "user_initiated" | "disagreement_prompt";
+
 export type RecordCorrectionInput = {
   scanId: string;
   reportedBy: string;
@@ -29,6 +31,13 @@ export type RecordCorrectionInput = {
   allergen: string | null;
   note: string | null;
   photoPath: string;
+  /** "disagreement_prompt" only for the one flow that pre-fills this from a label_looser row on the
+   *  verdict card (docs/principles.md, Sept 27 2026 precedent) — everywhere else, including every
+   *  correction this app has ever recorded before that flow existed, is "user_initiated". Never
+   *  inferred from correctionType/direction: this is about how the REPORT was prompted, not what
+   *  it claims, and defaulting it silently would make every future caller "user_initiated" by
+   *  accident, the opposite of the traceability this field exists for. */
+  origin: CorrectionOrigin;
 };
 
 export type RecordCorrectionResult = {
@@ -74,7 +83,7 @@ type ScanRow = {
  * propagate.
  */
 export async function recordCorrection(input: RecordCorrectionInput): Promise<RecordCorrectionResult> {
-  const { scanId, reportedBy, correctionType, allergen, note, photoPath } = input;
+  const { scanId, reportedBy, correctionType, allergen, note, photoPath, origin } = input;
 
   if (correctionType === "wrong_product" && allergen !== null) {
     throw new Error("wrong_product corrections must not specify an allergen");
@@ -120,8 +129,8 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
       `INSERT INTO product_corrections
          (scan_id, barcode, reported_by, correction_type, direction, allergen, target,
           verdict_explanation_id, verdict_at_report, model_at_report, prompt_version_at_report,
-          source_text_at_report, note, photo_path)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          source_text_at_report, note, photo_path, origin)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
        RETURNING id, status`,
       [
         scanId,
@@ -138,6 +147,7 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
         scan.ingredients_text,
         note,
         photoPath,
+        origin,
       ],
     );
     const inserted = insertRows[0];

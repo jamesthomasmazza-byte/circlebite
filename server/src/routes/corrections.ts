@@ -51,8 +51,16 @@ correctionsRouter.post(
     // itself — a follower's whole point is being able to act on a profile's behalf, not just view.
     await assertCanReadProfile(req.user!.id, profileId);
 
-    const { correctionType, allergen, note } = req.body ?? {};
+    const { correctionType, allergen, note, origin: rawOrigin } = req.body ?? {};
     if (!isCorrectionType(correctionType)) throw new HttpError(400, "invalid_request");
+    // Trusted from the client only as far as "which of two known values" — never anything else,
+    // and defaults to the value every correction before this flow existed actually was. The one
+    // caller that means to send "disagreement_prompt" (the label_looser row's report link) sends it
+    // explicitly; nothing silently becomes that value.
+    if (rawOrigin !== undefined && rawOrigin !== "user_initiated" && rawOrigin !== "disagreement_prompt") {
+      throw new HttpError(400, "invalid_request");
+    }
+    const origin = rawOrigin === "disagreement_prompt" ? "disagreement_prompt" : "user_initiated";
 
     const normalizedAllergen = typeof allergen === "string" && allergen.trim().length > 0 ? allergen.trim() : null;
     if (correctionType === "wrong_product" && normalizedAllergen !== null) {
@@ -78,6 +86,7 @@ correctionsRouter.post(
       allergen: normalizedAllergen,
       note: typeof note === "string" && note.trim().length > 0 ? note.trim() : null,
       photoPath,
+      origin,
     });
 
     res.status(201).json(result);

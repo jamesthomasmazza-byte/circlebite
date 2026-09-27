@@ -128,6 +128,7 @@ function makeRow(overrides: Partial<Row> = {}): Row {
     rejected_at: null,
     rejection_reason: null,
     rejected_by_email: null,
+    origin: "user_initiated",
     ...overrides,
   };
 }
@@ -288,8 +289,8 @@ test("sameCircleWarning end to end: true for co-managers and accepted followers 
     const scanB = await makeScan(CIRCLE_PROFILE_ID, barcode, "safe", [
       { allergenName: "Kiwi", severity: "moderate", classification: "clear" },
     ]);
-    await recordCorrection({ scanId: scanA, reportedBy: reporterA, correctionType: "flag_missing", allergen: "Kiwi", note: null, photoPath: "/fake.jpg" });
-    await recordCorrection({ scanId: scanB, reportedBy: reporterB, correctionType: "flag_missing", allergen: "Kiwi", note: null, photoPath: "/fake.jpg" });
+    await recordCorrection({ scanId: scanA, reportedBy: reporterA, correctionType: "flag_missing", allergen: "Kiwi", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
+    await recordCorrection({ scanId: scanB, reportedBy: reporterB, correctionType: "flag_missing", allergen: "Kiwi", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
     const claims = await loadReviewQueue();
     const claim = claims.find((c) => c.barcode === barcode && c.allergen === "Kiwi");
     return claim?.sameCircleWarning ?? false;
@@ -314,6 +315,7 @@ test("rejecting the sole corroborated add_caution report stops it escalating to 
     allergen: "Peanut",
     note: null,
     photoPath: "/fake.jpg",
+    origin: "user_initiated",
   });
   assert.equal(recorded.corroborated, true);
 
@@ -341,8 +343,8 @@ test("rejecting one of several corroborated add_caution reports for the same cla
   const scan1 = await makeScan(PROFILE_ID, barcode, "safe", [{ allergenName: "Egg", severity: "moderate", classification: "clear" }]);
   const scan2 = await makeScan(PROFILE_ID, barcode, "safe", [{ allergenName: "Egg", severity: "moderate", classification: "clear" }]);
 
-  const first = await recordCorrection({ scanId: scan1, reportedBy: USER_A, correctionType: "flag_missing", allergen: "Egg", note: null, photoPath: "/fake.jpg" });
-  const second = await recordCorrection({ scanId: scan2, reportedBy: USER_B, correctionType: "flag_missing", allergen: "Egg", note: null, photoPath: "/fake.jpg" });
+  const first = await recordCorrection({ scanId: scan1, reportedBy: USER_A, correctionType: "flag_missing", allergen: "Egg", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
+  const second = await recordCorrection({ scanId: scan2, reportedBy: USER_B, correctionType: "flag_missing", allergen: "Egg", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
   assert.equal(first.corroborated, true);
   assert.equal(second.corroborated, true);
 
@@ -356,7 +358,7 @@ test("rejecting one of several corroborated add_caution reports for the same cla
 test("rejectCorrection requires a reason for add_caution, not for remove_caution", async () => {
   const addBarcode = "3000000000003";
   const addScan = await makeScan(PROFILE_ID, addBarcode, "safe", [{ allergenName: "Soy", severity: "mild", classification: "clear" }]);
-  const addCorrection = await recordCorrection({ scanId: addScan, reportedBy: USER_A, correctionType: "flag_missing", allergen: "Soy", note: null, photoPath: "/fake.jpg" });
+  const addCorrection = await recordCorrection({ scanId: addScan, reportedBy: USER_A, correctionType: "flag_missing", allergen: "Soy", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
 
   await assert.rejects(
     () => rejectCorrection(addCorrection.id, ADMIN, null),
@@ -368,7 +370,7 @@ test("rejectCorrection requires a reason for add_caution, not for remove_caution
   const removeScan = await makeScan(PROFILE_ID, removeBarcode, "contains_allergen", [
     { allergenName: "Soy", severity: "mild", classification: "contains" },
   ]);
-  const removeCorrection = await recordCorrection({ scanId: removeScan, reportedBy: USER_A, correctionType: "flag_wrong", allergen: "Soy", note: null, photoPath: "/fake.jpg" });
+  const removeCorrection = await recordCorrection({ scanId: removeScan, reportedBy: USER_A, correctionType: "flag_wrong", allergen: "Soy", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
 
   await assert.doesNotReject(() => rejectCorrection(removeCorrection.id, ADMIN, null));
 });
@@ -376,7 +378,7 @@ test("rejectCorrection requires a reason for add_caution, not for remove_caution
 test("re-rejecting an already-rejected row throws 409 and does not overwrite the original audit fields", async () => {
   const barcode = "3000000000005";
   const scan = await makeScan(PROFILE_ID, barcode, "contains_allergen", [{ allergenName: "Milk", severity: "severe", classification: "contains" }]);
-  const correction = await recordCorrection({ scanId: scan, reportedBy: USER_A, correctionType: "flag_wrong", allergen: "Milk", note: null, photoPath: "/fake.jpg" });
+  const correction = await recordCorrection({ scanId: scan, reportedBy: USER_A, correctionType: "flag_wrong", allergen: "Milk", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
 
   const first = await rejectCorrection(correction.id, ADMIN, null);
 
@@ -404,7 +406,7 @@ test("rejecting a nonexistent correction id throws 404", async () => {
 test("rejected_by survives ON DELETE SET NULL when the rejecting admin's account is later deleted", async () => {
   const barcode = "3000000000006";
   const scan = await makeScan(PROFILE_ID, barcode, "contains_allergen", [{ allergenName: "Wheat", severity: "moderate", classification: "contains" }]);
-  const correction = await recordCorrection({ scanId: scan, reportedBy: USER_A, correctionType: "flag_wrong", allergen: "Wheat", note: null, photoPath: "/fake.jpg" });
+  const correction = await recordCorrection({ scanId: scan, reportedBy: USER_A, correctionType: "flag_wrong", allergen: "Wheat", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
 
   const TEMP_ADMIN = "77777777-0000-0000-0000-000000000099";
   await pool.query(
@@ -435,6 +437,7 @@ test("getCorrectionPhotoPath resolves a correction's photo even after its scan_i
     allergen: "Fish",
     note: null,
     photoPath: "corrections/orphan-test.jpg",
+    origin: "user_initiated",
   });
 
   // Simulate the 24-month retention job / account deletion purging the scan — migration 0020's

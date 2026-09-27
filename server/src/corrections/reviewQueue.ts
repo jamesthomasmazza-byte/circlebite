@@ -1,6 +1,6 @@
 import { HttpError } from "../lib/httpError.js";
 import { pool } from "../db/pool.js";
-import type { CorrectionStatus, CorrectionType, Direction, Target } from "./recordCorrection.js";
+import type { CorrectionOrigin, CorrectionStatus, CorrectionType, Direction, Target } from "./recordCorrection.js";
 
 export type ReviewQueueReportStatus = CorrectionStatus;
 export type ClaimStatus = CorrectionStatus;
@@ -18,6 +18,11 @@ export type ReviewQueueReport = {
   rejectedBy: { email: string } | null; // admin accountability, shown in full — not user health data
   rejectedAt: string | null;
   rejectionReason: string | null;
+  // "disagreement_prompt" for a report filed from the verdict card's label_looser row (the app
+  // asked; the reporter attested to reading the package) versus "user_initiated" for everything
+  // else. A cluster of disagreement_prompt reports on one claim reads differently to an admin than
+  // a cluster of spontaneous ones — see docs/principles.md's Sept 27 2026 precedent.
+  origin: CorrectionOrigin;
 };
 
 export type ReviewQueueClaim = {
@@ -63,6 +68,7 @@ type CorrectionRow = {
   rejected_at: string | null;
   rejection_reason: string | null;
   rejected_by_email: string | null;
+  origin: CorrectionOrigin;
 };
 
 /**
@@ -77,7 +83,7 @@ async function fetchCorrectionRows(): Promise<CorrectionRow[]> {
     `SELECT
        pc.id, pc.barcode, pc.allergen, pc.direction, pc.correction_type, pc.target, pc.note,
        pc.status, pc.created_at, pc.reported_by, pc.rejected_by, pc.rejected_at,
-       pc.rejection_reason, rejector.email AS rejected_by_email
+       pc.rejection_reason, pc.origin, rejector.email AS rejected_by_email
      FROM product_corrections pc
      LEFT JOIN users rejector ON rejector.id = pc.rejected_by
      ORDER BY pc.created_at ASC`,
@@ -213,6 +219,7 @@ export function groupIntoClaims(
         rejectedBy: row.rejected_by !== null ? { email: row.rejected_by_email! } : null,
         rejectedAt: row.rejected_at,
         rejectionReason: row.rejection_reason,
+        origin: row.origin,
       };
     });
 
