@@ -17,8 +17,10 @@ import { env } from "../env.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { HttpError } from "../lib/httpError.js";
 import { getProduct } from "../lib/productLookup.js";
+import { getExtractionAllergenProfileId, getScanAllergenProfileId } from "../lib/scanAccess.js";
 import { computeVerdict, type Severity } from "../matcher/match.js";
 import { loadProfileAllergens } from "../matcher/profileAllergens.js";
+import { combineLabelScan, confirmProductIdentity } from "../verdict/combineScan.js";
 import { explainVerdict } from "../verdict/explainVerdict.js";
 import { runLabelScan } from "../verdict/labelScan.js";
 import { mergeVerdict } from "../verdict/mergeVerdict.js";
@@ -185,20 +187,25 @@ scansRouter.post(
 // extracted text is (docs/verdict-engine.md Path C plan §3 — "process and discard the photo").
 const labelUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_PHOTO_BYTES } });
 
+// Kill switch (docs/verdict-engine.md Path C plan, env.ts's labelScan): 404, not 403 — a disabled
+// feature should look identical to a route that was never built, same posture assertIsAdmin already
+// uses elsewhere in this codebase. Named and shared (rather than a second inline copy) so the
+// adaptive flow's confirm endpoint below is gated identically to /scans/label itself — a disabled
+// LABEL_SCAN has to hide both halves of the feature, not just the first request.
+function requireLabelScanEnabled(req: unknown, res: unknown, next: (err?: unknown) => void) {
+  if (!env.labelScan) {
+    next(new HttpError(404, "not_found"));
+    return;
+  }
+  next();
+}
+
 scansRouter.post(
   "/scans/label",
   requireAuth,
-  // Kill switch (docs/verdict-engine.md Path C plan, env.ts's labelScan): 404, not 403 — a
-  // disabled feature should look identical to a route that was never built, same posture
-  // assertIsAdmin already uses elsewhere in this codebase. Checked before multer even runs, so a
-  // disabled endpoint doesn't process an upload it's about to reject anyway.
-  (req, res, next) => {
-    if (!env.labelScan) {
-      next(new HttpError(404, "not_found"));
-      return;
-    }
-    next();
-  },
+  // Checked before multer even runs, so a disabled endpoint doesn't process an upload it's about to
+  // reject anyway.
+  requireLabelScanEnabled,
   (req, res, next) => {
     labelUpload.single("photo")(req, res, (err: unknown) => {
       if (err instanceof multer.MulterError) {
@@ -209,22 +216,40 @@ scansRouter.post(
     });
   },
   // Everything past auth/kill-switch/upload validation lives in verdict/labelScan.ts's
-  // runLabelScan — a dependency-injectable, directly-testable orchestration function (same shape
-  // as reasonVerdict.ts/extractLabel.ts), rather than inline here the way Path B's route still is.
-  // That's what lets Path C's DB-touching logic be exercised against real Postgres with an injected
-  // fake AI layer instead of needing an HTTP test harness this codebase doesn't otherwise use.
+  // runLabelScan (standalone Path C) or verdict/combineScan.ts's combineLabelScan (the adaptive
+  // flow's combine step) — both dependency-injectable, directly-testable orchestration functions
+  // (same shape as reasonVerdict.ts/extractLabel.ts), rather than inline here the way Path B's route
+  // still is. That's what lets their DB-touching logic be exercised against real Postgres with an
+  // injected fake AI layer instead of needing an HTTP test harness this codebase doesn't otherwise
+  // use.
   asyncHandler(async (req, res) => {
-    const { allergenProfileId, barcode: rawBarcode } = req.body ?? {};
+    const { allergenProfileId, barcode: rawBarcode, scanId } = req.body ?? {};
+
+    if (!req.file) throw new HttpError(400, "photo_required");
+    const sniffed = sniffImageType(req.file.buffer);
+    if (!sniffed) throw new HttpError(400, "invalid_file_type");
+
+    // Combine mode: a photo taken against an EXISTING barcode scan. allergenProfileId/barcode in
+    // the body are ignored here on purpose — the profile and (if any) barcode both come from the
+    // scan itself, never re-trusted from the client, same reasoning runLabelScan already applies to
+    // a carried-forward barcode.
+    if (scanId !== undefined) {
+      if (typeof scanId !== "string") throw new HttpError(400, "invalid_request");
+      const profileId = await getScanAllergenProfileId(scanId);
+      if (!profileId) throw new HttpError(404, "not_found");
+      await assertCanReadProfile(req.user!.id, profileId);
+
+      const outcome = await combineLabelScan({ scanId, imageBuffer: req.file.buffer, mimeType: sniffed.mimeType });
+      res.status(200).json(outcome);
+      return;
+    }
+
     if (typeof allergenProfileId !== "string") throw new HttpError(400, "invalid_request");
     if (rawBarcode !== undefined && (typeof rawBarcode !== "string" || !BARCODE_PATTERN.test(rawBarcode))) {
       throw new HttpError(400, "invalid_request");
     }
 
     await assertCanReadProfile(req.user!.id, allergenProfileId);
-
-    if (!req.file) throw new HttpError(400, "photo_required");
-    const sniffed = sniffImageType(req.file.buffer);
-    if (!sniffed) throw new HttpError(400, "invalid_file_type");
 
     const result = await runLabelScan({
       userId: req.user!.id,
@@ -235,6 +260,28 @@ scansRouter.post(
     });
 
     res.status(201).json(result);
+  }),
+);
+
+// Resolves a mismatch combineLabelScan reported: no photo re-upload, no re-running the vision call
+// — the extraction was already processed once and is read back from label_extractions by id.
+scansRouter.post(
+  "/scans/label/confirm",
+  requireAuth,
+  requireLabelScanEnabled,
+  asyncHandler(async (req, res) => {
+    const { extractionId, decision } = req.body ?? {};
+    if (typeof extractionId !== "string") throw new HttpError(400, "invalid_request");
+    if (decision !== "same_product" && decision !== "different_product") {
+      throw new HttpError(400, "invalid_request");
+    }
+
+    const profileId = await getExtractionAllergenProfileId(extractionId);
+    if (!profileId) throw new HttpError(404, "not_found");
+    await assertCanReadProfile(req.user!.id, profileId);
+
+    const outcome = await confirmProductIdentity({ userId: req.user!.id, extractionId, decision });
+    res.status(200).json(outcome);
   }),
 );
 
