@@ -250,11 +250,33 @@ export type MatchedAllergen = {
   // us" is a different claim from "the label says", and the card must say which one it is.
   communityReported?: boolean;
   communityReporterCount?: number;
+  // Combined scans only (docs/verdict-engine.md Path D). Mirrors
+  // server/src/verdict/reconcileEvidence.ts's ReconciledAllergenDetail exactly.
+  //
+  // "label_stricter": the photographed label found this allergen and the product database didn't —
+  // classification already reflects the label's (more severe) finding.
+  // "label_looser": the product database found this allergen and the label reading didn't show it
+  // — classification is UNCHANGED from what the database alone established; a photo's silence
+  // can escalate a database's clear allergen but can never weaken a database's positive finding
+  // (the same escalate-only rule the AI layer already follows, applied across sources instead of
+  // within one). otherSource is only ever present alongside disagreement — the losing side's own
+  // finding, so the card can show both claims instead of only the one that won.
+  disagreement?: "label_stricter" | "label_looser";
+  otherSource?: MatchedAllergen;
+  evidenceSource?: "barcode" | "label";
 };
 
 // Which of this profile's allergens a corroborated community report changed, and how many people
 // reported it. Never the reporters themselves or how their own profiles spelled the allergen.
 export type CommunityReport = { allergenName: string; reporterCount: number };
+
+// The adaptive scan flow's barcode-first decision (server/src/verdict/scanPlan.ts, mirrored
+// exactly): whether a label photo is the mandatory next step, an offered second opinion, or
+// unneeded. Present on a barcode scan's response only when LABEL_SCAN is enabled server-side.
+export type EvidenceDecision =
+  | { photo: "required"; reason: "missing_data" | "thin_data" }
+  | { photo: "prompted"; reason: "severe_allergen" }
+  | { photo: "none" };
 
 export type ScanResult = {
   id: string;
@@ -268,7 +290,9 @@ export type ScanResult = {
   product_last_updated: string | null;
   result: Verdict;
   matched_allergens: MatchedAllergen[];
-  source: "barcode" | "label_photo" | "manual";
+  // "combined" (docs/verdict-engine.md Path D): barcode data kept even though a label photo was
+  // also read, so corrections against it still corroborate cross-profile like any barcode scan.
+  source: "barcode" | "label_photo" | "manual" | "combined";
   confidence: Confidence | null;
   explanation: string | null;
   created_at: string;
@@ -277,12 +301,16 @@ export type ScanResult = {
   // still shows the engine's verdict alongside it, never silently replacing it.
   effective: { result: Verdict; matched_allergens: MatchedAllergen[] } | null;
   community_reports: CommunityReport[];
-  // Path C only (source === "label_photo") — present so the user can check the read against the
-  // physical package themselves (docs/verdict-engine.md Path C plan §5). Absent/null on a barcode
-  // scan.
+  // Path C only (source === "label_photo" or "combined") — present so the user can check the read
+  // against the physical package themselves (docs/verdict-engine.md Path C plan §5). Absent/null on
+  // a plain barcode scan.
   extracted_text?: string | null;
   extraction_legible?: boolean;
   extraction_complete?: boolean;
+  // Only ever set on a barcode scan's own response (never on a label_photo/combined result, which
+  // is already the answer to the question this field poses), and absent entirely when LABEL_SCAN is
+  // off server-side.
+  evidence_decision?: EvidenceDecision | null;
 };
 
 export type CorrectionType = "flag_wrong" | "flag_missing" | "wrong_product";
@@ -384,6 +412,79 @@ export async function createLabelScan(
   return body as LabelScanResult;
 }
 
+// The adaptive scan flow's combine step (docs/verdict-engine.md Path D, server/src/verdict/
+// combineScan.ts's CombineOutcome — field names mirrored exactly, snake_case like every other
+// response in this API).
+export type CombineOutcome =
+  | { status: "unreadable"; scan_id: string; explanation: string }
+  | {
+      status: "mismatch";
+      scan_id: string;
+      extraction_id: string;
+      off_product_name: string | null;
+      extracted_product_name: string | null;
+      extracted_text: string;
+      mismatch_note: string;
+    }
+  | {
+      status: "combined";
+      scan_id: string;
+      barcode: string | null;
+      result: Verdict;
+      confidence: Confidence;
+      matched_allergens: MatchedAllergen[];
+      explanation: string;
+      extracted_text: string;
+      effective: { result: Verdict; matched_allergens: MatchedAllergen[] } | null;
+      community_reports: CommunityReport[];
+    }
+  | {
+      status: "standalone";
+      original_scan_id: string;
+      scan_id: string;
+      result: Verdict;
+      confidence: Confidence;
+      matched_allergens: MatchedAllergen[];
+      explanation: string;
+      extracted_text: string;
+      effective: { result: Verdict; matched_allergens: MatchedAllergen[] } | null;
+      community_reports: CommunityReport[];
+    };
+
+/**
+ * A label photo taken against an EXISTING barcode scan, rather than the standalone entry point —
+ * same endpoint as createLabelScan, distinguished server-side by carrying scanId instead of
+ * allergenProfileId/barcode. Kept as its own function rather than overloading createLabelScan's
+ * signature: the two request shapes don't share any required field, and conflating them invites
+ * sending both by accident.
+ */
+export async function combineLabelScan(scanId: string, photo: File): Promise<CombineOutcome> {
+  const form = new FormData();
+  form.set("scanId", scanId);
+  form.set("photo", photo);
+
+  const res = await fetch("/api/scans/label", { method: "POST", credentials: "include", body: form });
+  const body = await res.json().catch(() => undefined);
+
+  if (!res.ok) {
+    const code = (body as { error?: string } | undefined)?.error ?? `request_failed_${res.status}`;
+    throw new ApiRequestError(code, res.status);
+  }
+
+  return body as CombineOutcome;
+}
+
+/**
+ * Resolves a mismatch combineLabelScan reported — no photo re-upload, the extraction is read back
+ * server-side by id.
+ */
+export function confirmProductIdentity(
+  extractionId: string,
+  decision: "same_product" | "different_product",
+): Promise<CombineOutcome> {
+  return apiFetch("/scans/label/confirm", { method: "POST", body: JSON.stringify({ extractionId, decision }) });
+}
+
 export function getScanHistory(profileId: string): Promise<ScanHistoryEntry[]> {
   return apiFetch(`/profiles/${profileId}/scans`);
 }
@@ -397,12 +498,22 @@ export type CorrectionResult = { id: string; status: CorrectionStatus; corrobora
  */
 export async function createCorrection(
   scanId: string,
-  input: { correctionType: CorrectionType; allergen: string | null; note: string | null; photo: File },
+  input: {
+    correctionType: CorrectionType;
+    allergen: string | null;
+    note: string | null;
+    photo: File;
+    // Omit for every ordinary report; pass "disagreement_prompt" only from the verdict card's
+    // label_looser report link (docs/principles.md, Sept 27 2026) — the server defaults an absent
+    // value to "user_initiated" itself, so this is never silently mis-set from here either.
+    origin?: CorrectionOrigin;
+  },
 ): Promise<CorrectionResult> {
   const form = new FormData();
   form.set("correctionType", input.correctionType);
   if (input.allergen) form.set("allergen", input.allergen);
   if (input.note) form.set("note", input.note);
+  if (input.origin) form.set("origin", input.origin);
   form.set("photo", input.photo);
 
   const res = await fetch(`/api/scans/${scanId}/corrections`, {
