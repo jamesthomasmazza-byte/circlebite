@@ -63,6 +63,10 @@ export type CombineOutcome =
       status: "standalone";
       original_scan_id: string;
       scan_id: string;
+      // Absent from "combined" above on purpose: that branch updates a scan the client already has
+      // full ScanResult context for. This branch is a brand-new scan the client has never seen, so
+      // it needs enough to render without a fresh fetch.
+      product_name: string | null;
       result: Verdict;
       confidence: Confidence;
       matched_allergens: MergedAllergenDetail[];
@@ -478,6 +482,7 @@ export async function confirmProductIdentity(input: ConfirmProductIdentityInput,
     status: "standalone",
     original_scan_id: pending.scan_id,
     scan_id: newScanId,
+    product_name: pending.product_name,
     result: labelSide.verdict,
     confidence: labelSide.confidence,
     matched_allergens: labelSide.matchedAllergens,

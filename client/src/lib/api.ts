@@ -442,6 +442,7 @@ export type CombineOutcome =
       status: "standalone";
       original_scan_id: string;
       scan_id: string;
+      product_name: string | null;
       result: Verdict;
       confidence: Confidence;
       matched_allergens: MatchedAllergen[];
