@@ -37,37 +37,37 @@ export type ConfirmProductIdentityInput = {
 // `any` and silently suppresses the check. This file builds its return objects explicitly, so the
 // annotation has to match what the value actually is.
 export type CombineOutcome =
-  | { status: "unreadable"; scanId: string; explanation: string }
+  | { status: "unreadable"; scan_id: string; explanation: string }
   | {
       status: "mismatch";
-      scanId: string;
-      extractionId: string;
-      offProductName: string | null;
-      extractedProductName: string | null;
-      extractedText: string;
-      mismatchNote: string;
+      scan_id: string;
+      extraction_id: string;
+      off_product_name: string | null;
+      extracted_product_name: string | null;
+      extracted_text: string;
+      mismatch_note: string;
     }
   | {
       status: "combined";
-      scanId: string;
+      scan_id: string;
       barcode: string | null;
       result: Verdict;
       confidence: Confidence;
-      matchedAllergens: ReconciledAllergenDetail[];
+      matched_allergens: ReconciledAllergenDetail[];
       explanation: string;
-      extractedText: string;
+      extracted_text: string;
       effective: { result: string; matched_allergens: unknown } | null;
       community_reports: { allergenName: string; reporterCount: number }[];
     }
   | {
       status: "standalone";
-      originalScanId: string;
-      scanId: string;
+      original_scan_id: string;
+      scan_id: string;
       result: Verdict;
       confidence: Confidence;
-      matchedAllergens: MergedAllergenDetail[];
+      matched_allergens: MergedAllergenDetail[];
       explanation: string;
-      extractedText: string;
+      extracted_text: string;
       effective: { result: string; matched_allergens: unknown } | null;
       community_reports: { allergenName: string; reporterCount: number }[];
     };
@@ -211,7 +211,7 @@ export async function combineLabelScan(input: CombineScanInput, deps: CombineSca
           'list, including any "contains" or "may contain" line, is in frame.';
 
     // Nothing above touched `scans` — the original barcode scan stands exactly as it was.
-    return { status: "unreadable", scanId: scan.id, explanation };
+    return { status: "unreadable", scan_id: scan.id, explanation };
   }
 
   const identity = compareProductIdentity(scan.product_name, extraction.productName);
@@ -249,12 +249,12 @@ export async function combineLabelScan(input: CombineScanInput, deps: CombineSca
     // Nothing above touched `scans` either — this is the dry-run branch the guarantee is about.
     return {
       status: "mismatch",
-      scanId: scan.id,
-      extractionId: rows[0].id,
-      offProductName: scan.product_name,
-      extractedProductName: extraction.productName,
-      extractedText: extraction.ingredientsText,
-      mismatchNote: identity.note,
+      scan_id: scan.id,
+      extraction_id: rows[0].id,
+      off_product_name: scan.product_name,
+      extracted_product_name: extraction.productName,
+      extracted_text: extraction.ingredientsText,
+      mismatch_note: identity.note,
     };
   }
 
@@ -322,13 +322,13 @@ export async function combineLabelScan(input: CombineScanInput, deps: CombineSca
 
   return {
     status: "combined",
-    scanId: scan.id,
+    scan_id: scan.id,
     barcode: scan.barcode,
     result: reconciled.verdict,
     confidence: reconciled.confidence,
-    matchedAllergens: reconciled.matchedAllergens,
+    matched_allergens: reconciled.matchedAllergens,
     explanation,
-    extractedText: extraction.ingredientsText,
+    extracted_text: extraction.ingredientsText,
     effective: community && { result: community.result, matched_allergens: community.matchedAllergens },
     community_reports: publicCommunityReports(community?.applied ?? []),
   };
@@ -416,13 +416,13 @@ export async function confirmProductIdentity(input: ConfirmProductIdentityInput,
 
     return {
       status: "combined",
-      scanId: pending.scan_id,
+      scan_id: pending.scan_id,
       barcode: pending.barcode,
       result: reconciled.verdict,
       confidence: reconciled.confidence,
-      matchedAllergens: reconciled.matchedAllergens,
+      matched_allergens: reconciled.matchedAllergens,
       explanation,
-      extractedText: pending.ingredients_text,
+      extracted_text: pending.ingredients_text,
       effective: community && { result: community.result, matched_allergens: community.matchedAllergens },
       community_reports: publicCommunityReports(community?.applied ?? []),
     };
@@ -476,13 +476,13 @@ export async function confirmProductIdentity(input: ConfirmProductIdentityInput,
 
   return {
     status: "standalone",
-    originalScanId: pending.scan_id,
-    scanId: newScanId,
+    original_scan_id: pending.scan_id,
+    scan_id: newScanId,
     result: labelSide.verdict,
     confidence: labelSide.confidence,
-    matchedAllergens: labelSide.matchedAllergens,
+    matched_allergens: labelSide.matchedAllergens,
     explanation,
-    extractedText: pending.ingredients_text,
+    extracted_text: pending.ingredients_text,
     effective: community && { result: community.result, matched_allergens: community.matchedAllergens },
     community_reports: publicCommunityReports(community?.applied ?? []),
   };

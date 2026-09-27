@@ -177,7 +177,7 @@ test("matching identity: the scan is updated to source 'combined', label_stricte
   assert.equal(outcome.status, "combined");
   if (outcome.status === "combined") {
     assert.equal(outcome.result, "contains_allergen");
-    const milk = outcome.matchedAllergens.find((m) => m.allergenName === "Milk");
+    const milk = outcome.matched_allergens.find((m) => m.allergenName === "Milk");
     assert.ok(milk);
     assert.equal(milk!.classification, "contains");
     assert.equal(milk!.disagreement, "label_stricter");
@@ -208,20 +208,20 @@ test("confirming 'same_product' after a mismatch finalizes the combine against t
   if (mismatch.status !== "mismatch") throw new Error("unreachable");
 
   const resolved = await confirmProductIdentity(
-    { userId: USER_A, extractionId: mismatch.extractionId, decision: "same_product" },
+    { userId: USER_A, extractionId: mismatch.extraction_id, decision: "same_product" },
     { reasonVerdictDeps: REASON_DEPS_OK },
   );
 
   assert.equal(resolved.status, "combined");
   if (resolved.status === "combined") {
-    assert.equal(resolved.scanId, original.id);
+    assert.equal(resolved.scan_id, original.id);
   }
 
   const after1 = await fetchScan(original.id);
   assert.equal(after1.source, "combined");
 
   const { rows: extractions } = await pool.query("SELECT identity_confirmed_by_user FROM label_extractions WHERE id = $1", [
-    mismatch.extractionId,
+    mismatch.extraction_id,
   ]);
   assert.equal(extractions[0].identity_confirmed_by_user, true);
 });
@@ -244,7 +244,7 @@ test("confirming 'different_product' leaves the original scan untouched and crea
   if (mismatch.status !== "mismatch") throw new Error("unreachable");
 
   const resolved = await confirmProductIdentity(
-    { userId: USER_A, extractionId: mismatch.extractionId, decision: "different_product" },
+    { userId: USER_A, extractionId: mismatch.extraction_id, decision: "different_product" },
     { reasonVerdictDeps: REASON_DEPS_OK },
   );
 
@@ -256,14 +256,14 @@ test("confirming 'different_product' leaves the original scan untouched and crea
   assert.equal(after1.result, "contains_allergen");
 
   if (resolved.status === "standalone") {
-    assert.notEqual(resolved.scanId, original.id);
-    const { rows: newScanRows } = await pool.query("SELECT barcode, source FROM scans WHERE id = $1", [resolved.scanId]);
+    assert.notEqual(resolved.scan_id, original.id);
+    const { rows: newScanRows } = await pool.query("SELECT barcode, source FROM scans WHERE id = $1", [resolved.scan_id]);
     assert.equal(newScanRows[0].barcode, null);
     assert.equal(newScanRows[0].source, "label_photo");
   }
 
   const { rows: extractions } = await pool.query("SELECT identity_confirmed_by_user FROM label_extractions WHERE id = $1", [
-    mismatch.extractionId,
+    mismatch.extraction_id,
   ]);
   assert.equal(extractions[0].identity_confirmed_by_user, false);
 });
