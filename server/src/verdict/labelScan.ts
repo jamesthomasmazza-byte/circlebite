@@ -7,7 +7,7 @@ import { loadCommunityAdditions } from "../corrections/communityAdditions.js";
 import { pool } from "../db/pool.js";
 import { env } from "../env.js";
 import { getProduct as defaultGetProduct } from "../lib/productLookup.js";
-import { computeVerdict, type ProductForMatching, type ProfileAllergen, type Severity, type Verdict } from "../matcher/match.js";
+import { computeVerdict, hasUsableData, type ProductForMatching, type ProfileAllergen, type Severity, type Verdict } from "../matcher/match.js";
 import type { MatchedAllergenLike } from "../corrections/applyCorrections.js";
 import { explainVerdict } from "./explainVerdict.js";
 import { extractLabel as defaultExtractLabel, type ExtractLabelDeps } from "./extractLabel.js";
@@ -62,15 +62,6 @@ function publicCommunityReports(applied: AppliedCommunityAddition[]) {
 }
 
 /**
- * Same shape as match.ts's own hasUsableData check (not exported, so this mirrors it rather than
- * reaching into its internals) — decides whether a re-fetched Open Food Facts record still
- * justifies attaching its barcode to a Path C scan.
- */
-function productHasUsableData(product: { found: boolean; allergensTags: string[]; tracesTags: string[]; ingredientsText: string | null }): boolean {
-  return product.found && (product.allergensTags.length > 0 || product.tracesTags.length > 0 || Boolean(product.ingredientsText));
-}
-
-/**
  * Path C's orchestration, extracted out of the Express route (scans.ts) into its own
  * dependency-injectable, directly-testable function — the same shape reasonVerdict.ts and
  * extractLabel.ts already use, and what lets this be exercised against real Postgres with an
@@ -106,7 +97,7 @@ export async function runLabelScan(input: LabelScanInput, deps: LabelScanDeps = 
   // shelf, or the record simply got fixed since the earlier scan) could end up attached to a photo
   // of a different product's label.
   const barcode: string | null =
-    input.barcode !== null && !productHasUsableData(await getProduct(input.barcode)) ? input.barcode : null;
+    input.barcode !== null && !hasUsableData(await getProduct(input.barcode)) ? input.barcode : null;
 
   const extraction = await extractLabel(input.imageBuffer, input.mimeType, deps.extractLabelDeps);
 
