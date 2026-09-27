@@ -23,6 +23,7 @@ import { explainVerdict } from "../verdict/explainVerdict.js";
 import { runLabelScan } from "../verdict/labelScan.js";
 import { mergeVerdict } from "../verdict/mergeVerdict.js";
 import { reasonVerdict } from "../verdict/reasonVerdict.js";
+import { decideEvidenceNeeded } from "../verdict/scanPlan.js";
 
 // No router-level .use(requireAuth) here on purpose: this router's two routes ("/scans" and
 // "/profiles/:id/scans") don't share a mountable common prefix the way profilesRouter's do, so a
@@ -158,6 +159,12 @@ scansRouter.post(
       );
     }
 
+    // Adaptive scan flow (docs/verdict-engine.md Path D): gated behind the same kill switch as the
+    // photo endpoint itself — off means this field is simply absent, the same "looks like the
+    // feature doesn't exist" posture /scans/label's 404 already uses, so the client never renders a
+    // prompt or a required-photo step for an endpoint that would just reject the follow-up request.
+    const evidenceDecision = env.labelScan ? decideEvidenceNeeded(product, allergens, verdict) : null;
+
     // Full detail, unfiltered — this is the live, active-decision response, not history. See the
     // GET handler below for why history gets the opposite treatment. `effective` is null when no
     // community report changed anything; the client headlines it when present and always shows
@@ -165,6 +172,7 @@ scansRouter.post(
     res.status(201).json({
       ...rows[0],
       explanation,
+      evidence_decision: evidenceDecision,
       effective: community && { result: community.result, matched_allergens: community.matchedAllergens },
       community_reports: publicCommunityReports(community?.applied ?? []),
     });
