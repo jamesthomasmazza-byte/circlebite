@@ -1,7 +1,8 @@
 import { applyCommunityCorrectionsIfEnabled, type AppliedCommunityAddition } from "../corrections/applyCommunityCorrections.js";
 import { pool } from "../db/pool.js";
 import { getProduct as defaultGetProduct } from "../lib/productLookup.js";
-import { computeVerdict, hasUsableData, type ProductForMatching, type ProfileAllergen, type Severity, type Verdict } from "../matcher/match.js";
+import { computeVerdict, hasUsableData, type ProductForMatching, type Verdict } from "../matcher/match.js";
+import { loadProfileAllergens } from "../matcher/profileAllergens.js";
 import type { MatchedAllergenLike } from "../corrections/applyCorrections.js";
 import { explainVerdict } from "./explainVerdict.js";
 import { extractLabel as defaultExtractLabel, type ExtractLabelDeps } from "./extractLabel.js";
@@ -72,18 +73,7 @@ export async function runLabelScan(input: LabelScanInput, deps: LabelScanDeps = 
   const reasonVerdict = deps.reasonVerdict ?? defaultReasonVerdict;
   const getProduct = deps.getProduct ?? defaultGetProduct;
 
-  const { rows: allergenRows } = await pool.query<{
-    name: string;
-    severity: Severity;
-    treat_traces_as_unsafe: boolean;
-  }>("SELECT name, severity, treat_traces_as_unsafe FROM allergens WHERE allergen_profile_id = $1", [
-    input.allergenProfileId,
-  ]);
-  const allergens: ProfileAllergen[] = allergenRows.map((a) => ({
-    name: a.name,
-    severity: a.severity,
-    treatTracesAsUnsafe: a.treat_traces_as_unsafe,
-  }));
+  const allergens = await loadProfileAllergens(input.allergenProfileId);
 
   // Carried-forward barcode is never trusted as-is: re-validated against Open Food Facts right
   // now, and only attached to this scan if the record still doesn't justify skipping the photo

@@ -17,7 +17,8 @@ import { env } from "../env.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { HttpError } from "../lib/httpError.js";
 import { getProduct } from "../lib/productLookup.js";
-import { computeVerdict, type ProfileAllergen, type Severity } from "../matcher/match.js";
+import { computeVerdict, type Severity } from "../matcher/match.js";
+import { loadProfileAllergens } from "../matcher/profileAllergens.js";
 import { explainVerdict } from "../verdict/explainVerdict.js";
 import { runLabelScan } from "../verdict/labelScan.js";
 import { mergeVerdict } from "../verdict/mergeVerdict.js";
@@ -58,18 +59,7 @@ scansRouter.post(
     // Always the profile's FULL allergen list, never filtered by the scanner's own share_level —
     // filtering the safety check itself by what a severe_only follower happens to be shown could
     // mean a real (if mild) allergen gets missed entirely during an actual purchase decision.
-    const { rows: allergenRows } = await pool.query<{
-      name: string;
-      severity: Severity;
-      treat_traces_as_unsafe: boolean;
-    }>("SELECT name, severity, treat_traces_as_unsafe FROM allergens WHERE allergen_profile_id = $1", [
-      allergenProfileId,
-    ]);
-    const allergens: ProfileAllergen[] = allergenRows.map((a) => ({
-      name: a.name,
-      severity: a.severity,
-      treatTracesAsUnsafe: a.treat_traces_as_unsafe,
-    }));
+    const allergens = await loadProfileAllergens(allergenProfileId);
 
     const product = await getProduct(barcode);
     const { verdict: deterministicVerdict, matchedAllergens: deterministicAllergens } = computeVerdict(
