@@ -249,6 +249,23 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
       compile time. It didn't bite this time only because the grep was thorough. Collapse to one
       shared type and, where feasible, one shared rollup/label implementation, so the next new
       classification value is a compile error in every consumer instead of a manual audit
+- [ ] `pool.query()` called without a type parameter returns effectively-`any` rows, and spreading
+      one of those rows into a return object literal (`{ ...rows[0], someField }`) widens the whole
+      literal to `any` — which silently defeats TypeScript's checking of that literal against
+      whatever return type is declared, including every field that came from elsewhere in the
+      literal, not just the spread part. Concretely: `applyCorrections.ts`'s `ScanForCorrection`
+      declares `result: string`, but every real value flowing through it is a `Verdict`
+      (`"safe" | "contains_allergen" | "may_contain_caution" | "unable_to_confirm"`) — a real typing
+      gap. `scans.ts` and `labelScan.ts` both build their response objects by spreading an untyped
+      `pool.query()` row (`const { rows } = await pool.query(...)`, no `<T>`) into the same literal
+      that also sets `effective: community && { result: community.result, ... }`, so the mismatch
+      compiled clean in both. `combineScan.ts` builds its return objects with no such spread, and the
+      identical assignment failed to typecheck for real — the annotation had to be corrected to
+      `result: string` to match what the value actually is, rather than what it should be. Audit
+      other call sites for the same shape (an untyped `pool.query()` row spread into a typed return
+      or response object) — this is TypeScript being defeated precisely at the database-to-domain
+      boundary, which is exactly where the app's safety types (`Verdict`, `Classification`, and
+      friends) are supposed to be doing their job. Found while building `combineScan.ts`, 2026-09-27.
 - [ ] Run the age-gate verification checklist in `docs/coppa.md` §4
 - [x] Password change (Settings) + admin-issued reset flow for locked-out accounts — change
       revokes every *other* session for that user, keeping the caller's own session alive; reset-
