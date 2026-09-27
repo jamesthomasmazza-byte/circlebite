@@ -8,6 +8,7 @@ import { recordCorrection, type CorrectionType } from "../corrections/recordCorr
 import { pool } from "../db/pool.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { HttpError } from "../lib/httpError.js";
+import { getScanAllergenProfileId } from "../lib/scanAccess.js";
 
 // No router-level .use(requireAuth) here — same reasoning as scansRouter/circleRouter: applied
 // per-route so this router can be mounted at bare /api without its auth middleware intercepting
@@ -24,14 +25,6 @@ function isCorrectionType(value: unknown): value is CorrectionType {
 // memory first. multer/busboy enforce limits.fileSize during the stream itself, not after fully
 // buffering an oversized file — the cap holds even though this is memory storage.
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_PHOTO_BYTES } });
-
-async function getScanProfileId(scanId: string): Promise<string | null> {
-  const { rows } = await pool.query<{ allergen_profile_id: string }>(
-    "SELECT allergen_profile_id FROM scans WHERE id = $1",
-    [scanId],
-  );
-  return rows[0]?.allergen_profile_id ?? null;
-}
 
 correctionsRouter.post(
   "/scans/:scanId/corrections",
@@ -50,7 +43,7 @@ correctionsRouter.post(
   },
   asyncHandler(async (req, res) => {
     const scanId = req.params.scanId;
-    const profileId = await getScanProfileId(scanId);
+    const profileId = await getScanAllergenProfileId(scanId);
     if (!profileId) throw new HttpError(404, "not_found");
 
     // assertCanReadProfile, not assertCanManageProfile: reporting a correction is available to any
@@ -96,7 +89,7 @@ correctionsRouter.get(
   requireAuth,
   asyncHandler(async (req, res) => {
     const { scanId, correctionId } = req.params;
-    const profileId = await getScanProfileId(scanId);
+    const profileId = await getScanAllergenProfileId(scanId);
     if (!profileId) throw new HttpError(404, "not_found");
     await assertCanReadProfile(req.user!.id, profileId);
 
