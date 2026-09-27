@@ -125,8 +125,54 @@ Full spec in `docs/verdict-engine.md`. Give this two full weeks.
 **Path B confirmed working end to end against the real deployed app with a real key** — the AI
 call, the escalation, the span validation, the spend/reproducibility tracking, and a real defect it
 surfaced in the deterministic matcher (fixed, see `docs/journal.md` 2026-09-10) are all verified
-against production, not just unit tests. Paths A (AI-authored explanation only)/C (OCR)/D
-(reconciliation) remain future work.
+against production, not just unit tests. Path A (AI-authored explanation only) remains future work;
+Path D (reconciliation) is built now — see below, not yet deployed.
+
+**Path D (the adaptive scan flow) built, not yet deployed** — full reasoning in
+`docs/journal.md` 2026-09-27. One entry point instead of two: barcode always runs first,
+`decideEvidenceNeeded()` then decides whether a label photo is required (barcode data missing or
+thin), offered (a severe allergen on the profile, unless the barcode already says
+`contains_allergen`), or unneeded. A combine step merges the label read into the SAME scan the
+barcode produced (`scans.source` gains `'combined'`) rather than a second, disconnected record, so
+a correction against it still corroborates cross-profile by barcode like any other barcode scan.
+Per-allergen reconciliation decides whose finding wins when both sources speak: label silence can
+escalate a database's clear allergen (`label_stricter`) but can never weaken a database's positive
+finding (`label_looser` keeps the barcode's classification unchanged — a photo's silence can't
+clear an allergen on its own, so by the same logic it can't be strong enough to weaken a different
+source's finding either; the report link this row offers is grounded in the family's own reading of
+the physical package, never in the photo's silence). A product-identity check blocks the merge —
+verified genuinely dry against real Postgres, nothing partially written — until the family confirms
+the photographed label is actually for the scanned barcode; tuned as the loosest defensible rule
+against this project's own three real cached Open Food Facts names, not a numeric threshold guessed
+at from invented ones.
+
+**Consequence to know before judging:** for a profile with a severe allergen, the photo is now
+offered on every scan that doesn't already come back `contains_allergen` — every `safe`, every
+`may_contain_caution`, every missing/thin-data `unable_to_confirm`. Deliberate, not a bug — the
+core user is a family managing a severe allergy, so this is closer to the common case than an edge
+one — but worth knowing going into a demo.
+
+- [x] `decideEvidenceNeeded()` — the barcode-first decision (`server/src/verdict/scanPlan.ts`)
+- [x] `reconcileEvidence()` — per-allergen reconciliation; no new classification value added, the
+      five-value union from Path C stands
+- [x] `compareProductIdentity()` — the product-mismatch gate
+- [x] `combineLabelScan()`/`confirmProductIdentity()` — the combine step and mismatch resolution
+- [x] Client wired end to end (`Scan.tsx`) — card hierarchy is verdict and real findings first, a
+      disagreement banner loud but subordinate to the verdict, prompts and provenance last;
+      `evidence_decision.photo === "required"` skips the card entirely rather than showing a
+      barcode-only answer that isn't the real one yet
+- [ ] Browser-verify the three states that need a real Anthropic API key to reach — the mismatch
+      screen, an actual `combined` verdict, and the disagreement banner itself. All three are
+      covered by server-side tests against real Postgres with an injected fake AI layer, but none
+      have been driven through the browser; this dev environment has no key configured
+- [ ] Measure the actual distribution of `product_last_updated` across the cached `products` table
+      before adding staleness as a third `decideEvidenceNeeded()` trigger (`docs/verdict-engine.md`
+      names it, this build deliberately left it out) — the doc's ~12-month estimate is a guess, and
+      if most cached records are already older than that, the trigger would fire on nearly every
+      scan by accident, collapsing the adaptive flow into always-photo without anyone deciding that
+- [ ] Cache label evidence per barcode so a product only ever needs photo-verifying once across
+      every family, rather than re-prompting every family that scans it — the natural next trim on
+      the prompt-frequency consequence above, needs its own corroboration/staleness design
 
 ## Week 8 — Nov 3–9 · The overrule loop *[bonus 5%]*
 
@@ -297,10 +343,14 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
       behalf
 - [ ] `AI_DAILY_SPEND_CAP_CENTS` defaults to 200 ($2.00/day) — sized when a scan meant exactly one
       Anthropic call (Path B's `reasonVerdict`). Path C makes it two (extraction, then reasoning),
-      and a failed extraction still spends one call before it can even fail. Tripping the cap fails
-      closed to `unable_to_confirm` (correct behavior, but it reads as a broken app if it happens
-      mid-demo). Decide the judging-week value deliberately, not by leaving the default in place
-      and hoping — before `LABEL_SCAN` gets flipped on for judging, not after
+      and a failed extraction still spends one call before it can even fail. The adaptive flow
+      (Path D) can now make it three on a single combined scan — Path B's own reasoning call for a
+      thin barcode, then the label's extraction call, then the label's own reasoning call — and a
+      severe-allergen profile will hit this path on most scans (see Path D's "consequence to know"
+      note above), not just occasionally. Tripping the cap fails closed to `unable_to_confirm`
+      (correct behavior, but it reads as a broken app if it happens mid-demo). Decide the
+      judging-week value deliberately, not by leaving the default in place and hoping — before
+      `LABEL_SCAN` gets flipped on for judging, not after
 - [ ] Confirm to Prof. Yoest that the instance stays running through judging *(R10)*
 - [ ] Freeze the code
 

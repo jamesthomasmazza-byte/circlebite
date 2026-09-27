@@ -1327,3 +1327,125 @@ end, not just at the route.
 above. `AI_DAILY_SPEND_CAP_CENTS` also needs a deliberate judging-week value before that happens —
 Path C doubles the API calls a scan can make, and the default was sized for one call per scan; see
 `BACKLOG.md`.
+
+## 2026-09-27 — Path D: the adaptive scan flow
+
+**Did:** One entry point instead of two. Today's `/scan` made the family choose between a barcode
+and a label photo; this replaces that choice with a decision the app makes for them.
+`decideEvidenceNeeded()` (`server/src/verdict/scanPlan.ts`) runs right after the barcode call and
+says whether a label photo is `required` (barcode data missing or thin — `!hasUsableData`, or
+structured tags absent), `prompted` (a severe allergen on the profile, barcode data otherwise
+fine), or `none`. A combine step (`server/src/verdict/combineScan.ts`) then merges a label read
+into the *same* scan the barcode produced — `scans.source` gains a `'combined'` value — rather than
+creating a second, disconnected record, so a correction filed against a combined scan still
+corroborates cross-profile by barcode exactly like a plain barcode scan does. Per-allergen
+reconciliation (`server/src/verdict/reconcileEvidence.ts`) decides, allergen by allergen, whose
+finding wins when both sources have something to say. A product-identity check
+(`server/src/verdict/productIdentity.ts`) gates the whole merge: if the photographed label looks
+like it's for a different product than the scanned barcode, nothing merges until the family says
+which one it actually is. `Scan.tsx` renders all of this, reordered into a fixed hierarchy (below).
+Twenty-eight commits, each independently tested — `git log` from `aa452ce` to `d6ac1ee` has the
+full sequence.
+
+**Decided:** four real tradeoffs surfaced during the build, each with a reason worth keeping.
+
+1. *The unchecked rule.* An allergen is only "unchecked" (not proof of absence) when *neither*
+   source could speak to it — concretely, only when the barcode had zero usable data at all
+   (`!hasUsableData`) and the label was silent too. The more literal reading — "unchecked only if
+   either source spoke, this label had a chance" — was rejected: it would let a barcode carrying no
+   real data read as *more* trustworthy evidence than the identical photo scanned with no barcode
+   at all, purely because a number happened to be typed in first. The adopted rule reduces to one
+   sentence instead: the same photo, in the same evidentiary state, is trusted exactly as much
+   whether or not a barcode is attached.
+2. *`label_looser` keeps the barcode's finding, full stop.* When the database says an allergen is
+   present and the photographed label doesn't show it, the classification does **not** change — the
+   barcode's `contains`/`caution` stands, flagged with `disagreement: "label_looser"` and a report
+   link, nothing more. The first draft had this downgrade to a new "conflict" state that rolled the
+   scan up to `unable_to_confirm`; reversed once checked against the invariant the whole feature
+   already depends on — a photo's silence can't clear an allergen on its own (that's the entire
+   reason `unchecked` exists), so by the same logic it can't be strong enough to weaken a
+   *different* source's positive finding either. Left as originally designed, three app-prompted
+   reports would have laundered that same silence into a real community-corroborated removal — the
+   exact violation the `unchecked` rule exists to prevent, one layer higher up. `label_stricter`
+   (label found it, database didn't) still escalates freely; that direction was never in question,
+   it's the same "can add, never subtract" rule the deterministic matcher already followed before
+   this feature existed.
+3. *Product mismatch blocks the merge, doesn't just flag it.* The reason isn't the verdict —
+   escalate-only already means a wrongly-merged mismatch would over-warn, never under-warn — it's
+   that a merged mismatch writes barcode A's row with product B's label evidence, and that row
+   becomes correction evidence keyed on barcode A, corroborating out to every other family who
+   scans it. One mis-aimed photo would pollute the shared pool for a product it was never about.
+   Tuned deliberately loose in the other direction, on purpose: this project's local `products`
+   cache has only three genuine Open Food Facts names to check a comparison rule against — nowhere
+   near enough to derive a numeric similarity threshold with any real confidence. The shipped rule
+   is a binary instead: block only when the two names share zero significant words after stripping
+   punctuation, casing, sizes, counts, and packaging units, hand-verified against those three real
+   names (which already show comma-separated multi-brand lists, repeated brand words, and generic
+   descriptor suffixes) rather than tuned against invented tidy strings. A blocked mismatch is
+   genuinely dry — the `scans` row is never partially written — verified directly against Postgres:
+   a full row read before and after a blocked attempt comes back byte-for-byte identical.
+4. *Severe allergen triggers the prompt, and only when the barcode hasn't already said contains.*
+   Staleness (`product_last_updated`) is named in `docs/verdict-engine.md` as a second trigger;
+   left out of this build on purpose. Deciding a real threshold needs the actual distribution of
+   staleness across the cached `products` table, not a guess at the doc's ~12-month estimate — if
+   most cached records already sit past that, the trigger would fire on nearly every scan by
+   accident, and the adaptive flow would collapse into "always require a photo" without anyone
+   having decided that. The one narrowing that *was* adopted: skip the prompt when the barcode
+   already came back `contains_allergen` — a second opinion doesn't change what the family does
+   once the answer is already "don't buy it."
+
+**Consequence, stated plainly, not left to be discovered during a demo:** for a profile with a
+severe allergen, the photo is now offered on every scan that doesn't already come back
+`contains_allergen` — every `safe`, every `may_contain_caution`, every missing/thin-data
+`unable_to_confirm`. This is a deliberate acceptance of the tradeoff, not an oversight caught late:
+the app's core user is a family managing a severe allergy, so this is closer to the common case
+than an edge one. The one trim adopted (point 4 above) narrows it; caching label evidence per
+barcode so a product only ever needs verifying once across every family, rather than re-prompting
+each family that scans it, is `BACKLOG.md`, not built.
+
+**Card hierarchy, and why `required` shows no card at all:** the verdict and its real per-allergen
+findings come first — what justifies the headline and what to actually check against the box in
+hand. A disagreement banner comes next: loud (`role="alert"`, bold), but strictly subordinate to
+the verdict, since it's a pointer back to specific rows above it, never a second competing
+headline. The unchecked-allergens note follows — a limitation on the findings, not a finding
+itself. Prompts (an offered second opinion) come after that, never blocking. Provenance is last —
+the source badge, the raw extracted-text panel, the community-report note, the disclaimer — none of
+it changes what to decide, only how the decision was reached, so a shopper who already has an
+answer doesn't need to read it to act. `evidence_decision.photo === "required"` is the one state
+that skips the card entirely: a barcode-only verdict in that state isn't the real answer yet, so
+nothing renders until the photo is read or the family explicitly declines ("I don't have this in
+front of me" — never a trap; decline, and the fail-closed card stands with the offer still there).
+
+**Verified:** extensive server-side testing throughout the build against real Postgres —
+`decideEvidenceNeeded`'s every branch, `reconcileEvidence`'s full barcode-voice × label-voice table
+(including the specific case that a `label_looser` disagreement never changes the outcome a
+barcode-only scan would have reached), `compareProductIdentity` against the real cached names (and
+a caught-in-review bug in the test fixtures themselves, where a placeholder brand name accidentally
+shared a token with another and produced a false match), and `combineLabelScan`/
+`confirmProductIdentity` including the dry-run guarantee, a same-scan-row update on confirmation,
+and a guard against re-combining an already-combined scan. 289 passing by the end. Client
+smoke-tested against the real dev server/DB (`LABEL_SCAN` on, no AI key configured): the `prompted`
+offer renders correctly and in the right position for a severe allergen on good barcode data; the
+`required` flow auto-opens the capture form with no card first; dismissing it falls back to the
+fail-closed card with an offer, in the right place in the hierarchy; a failed extraction (no key →
+`no_api_key`, fails closed) leaves the scan row byte-for-byte unchanged in Postgres while showing an
+inline retry on the still-open form rather than a dead end; no console errors across the session.
+
+**Not yet verified — everything that needs a real Anthropic API key to reach:** the mismatch
+screen (needs a real `extractLabel` call to produce a `productName` to compare against), an actual
+`combined` verdict rendering (needs `reasonVerdict` to run against the label's text), and the
+disagreement banner itself. All three are exercised by server-side tests against real Postgres with
+an injected fake AI layer, but none have been driven through the browser — this dev environment has
+no key configured.
+
+**Not deployed.** Built and verified locally only; `LABEL_SCAN` stays off in production throughout.
+`AI_DAILY_SPEND_CAP_CENTS` already needed a deliberate judging-week value before Path C alone could
+go live (`BACKLOG.md`); this feature adds a third possible Anthropic call to a single scan (Path B's
+own reasoning call for a thin barcode, then the label's extraction call, then the label's own
+reasoning call) — and a severe-allergen profile will reach that path on most scans, not
+occasionally. That number needs revisiting again before `LABEL_SCAN` flips on for real.
+
+**Next:** get a real API key into a dev or staging environment and run the three not-yet-reached
+states above through an actual browser before this ships. Then: measure `product_last_updated`'s
+real distribution to decide the staleness trigger, and design the per-barcode caching idea for the
+prompt-frequency consequence above — both `BACKLOG.md`, neither built.
