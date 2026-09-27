@@ -5,11 +5,14 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../lib/AuthContext";
 import {
   ApiRequestError,
+  combineLabelScan,
+  confirmProductIdentity,
   createCorrection,
   createLabelScan,
   createScan,
   downscaleLabelPhoto,
   listProfiles,
+  type CombineOutcome,
   type CorrectionType,
   type ProfileSummary,
   type ScanResult,
@@ -80,6 +83,20 @@ function sourceLabel(m: ScanResult["matched_allergens"][number]): string {
   return "not found";
 }
 
+// Combined scans only (docs/verdict-engine.md Path D). A disagreement is a claim about how this
+// ALLERGEN's row was decided — separate from, and rendered below, whatever classificationLabel/
+// sourceLabel already say about it, so the row reads as "here's the finding, and here's the part
+// the two sources didn't agree on" rather than folding both into one sentence.
+function disagreementNote(m: ScanResult["matched_allergens"][number]): string | null {
+  if (m.disagreement === "label_stricter") {
+    return "Not listed in the product database — this came from your photo.";
+  }
+  if (m.disagreement === "label_looser") {
+    return "Listed in the product database, but your photo didn't show it.";
+  }
+  return null;
+}
+
 export function Scan() {
   const { labelScanEnabled } = useAuth();
   const [searchParams] = useSearchParams();
@@ -104,16 +121,33 @@ export function Scan() {
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
   const [reportOutcome, setReportOutcome] = useState<string | null>(null);
+  // Set only by the disagreement row's own report link (docs/principles.md, Sept 27 2026) — every
+  // other way of opening this form leaves it null, which the server already treats as
+  // "user_initiated". Never inferred from reportType/reportAllergen: this is about how the report
+  // was prompted, not what it claims.
+  const [reportOrigin, setReportOrigin] = useState<"disagreement_prompt" | null>(null);
 
-  // Path C (docs/verdict-engine.md) — photograph the ingredients label instead of/after a barcode.
-  // photoCarryBarcode is set only by the reactive entry point (a barcode scan came back
-  // unable_to_confirm); the standalone "no barcode" entry point leaves it null. Either way the
-  // server re-validates it — this is just what the UI remembers to offer back.
+  // Path C (docs/verdict-engine.md) and the adaptive flow's combine step (Path D) share this one
+  // capture form. "standalone" is the barcode-less entry point (createLabelScan, unchanged);
+  // "combine" is a photo taken against the EXISTING barcode scan in `result` (combineLabelScan) —
+  // required (evidence_decision.photo === "required") or offered (=== "prompted"). `result` is
+  // deliberately NOT cleared when opening combine mode, unlike standalone — combineLabelScan needs
+  // result.id, and the whole point of the adaptive flow is that the barcode identity survives.
   const [photoCaptureOpen, setPhotoCaptureOpen] = useState(false);
-  const [photoCarryBarcode, setPhotoCarryBarcode] = useState<string | null>(null);
+  const [photoCaptureMode, setPhotoCaptureMode] = useState<"standalone" | "combine">("standalone");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoReading, setPhotoReading] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  // required-photo is a strong default, never a trap: dismissing it renders the barcode-only card
+  // (fail-closed — unable_to_confirm stands) instead of blocking the flow indefinitely.
+  const [requiredPhotoDismissed, setRequiredPhotoDismissed] = useState(false);
+
+  // A detected product-identity mismatch, pending the user's own confirmation
+  // (docs/verdict-engine.md Path D) — its own screen, not a card state, since nothing about the
+  // original scan has been decided yet.
+  const [mismatch, setMismatch] = useState<Extract<CombineOutcome, { status: "mismatch" }> | null>(null);
+  const [mismatchResolving, setMismatchResolving] = useState(false);
+  const [mismatchError, setMismatchError] = useState<string | null>(null);
 
   useEffect(() => {
     listProfiles()
@@ -137,9 +171,13 @@ export function Scan() {
     setReportPhoto(null);
     setReportError(null);
     setReportOutcome(null);
+    setReportOrigin(null);
     setPhotoCaptureOpen(false);
     setPhotoFile(null);
     setPhotoError(null);
+    setRequiredPhotoDismissed(false);
+    setMismatch(null);
+    setMismatchError(null);
   }
 
   // Manual entry and the camera both end up here — same validation, same request, same rendering.
@@ -159,6 +197,13 @@ export function Scan() {
     try {
       const scan = await createScan(targetProfileId, rawBarcode.trim());
       setResult(scan);
+      // "required" is the next mandatory step, not an offer — go straight into the capture form
+      // rather than making the family read a barcode-only card first (docs/verdict-engine.md Path
+      // D's decision rules; server/src/verdict/scanPlan.ts is the single source of this rule).
+      if (scan.evidence_decision?.photo === "required") {
+        setPhotoCaptureMode("combine");
+        setPhotoCaptureOpen(true);
+      }
     } catch {
       setError("Couldn't complete that scan. Try again.");
     } finally {
@@ -171,12 +216,25 @@ export function Scan() {
     await runScan(barcode, profileId);
   }
 
-  // Standalone entry point ("No barcode? Photograph the label") or the reactive one (offered after
-  // an unable_to_confirm barcode scan) both open the same capture UI — carryBarcode is null for the
-  // former, the searched barcode for the latter. The server re-validates it either way.
-  function openPhotoCapture(carryBarcode: string | null) {
+  // The barcode-less entry point — always starts fresh, never carries a barcode forward. Every
+  // scenario that used to carry a barcode into this same form (a barcode scan with missing/thin
+  // data) now goes through openCombinePhotoCapture instead, which keeps the barcode's identity
+  // intact rather than re-validating a client-remembered string.
+  function openStandalonePhotoCapture() {
     resetForNewScan();
-    setPhotoCarryBarcode(carryBarcode);
+    setPhotoCaptureMode("standalone");
+    setPhotoFile(null);
+    setPhotoError(null);
+    setPhotoCaptureOpen(true);
+  }
+
+  // Opened by the "required" auto-trigger in runScan, or by clicking the "prompted" offer below —
+  // `result` is left exactly as it is; combineLabelScan reads its own barcode-side evidence back
+  // off result.id rather than anything sent from here.
+  function openCombinePhotoCapture() {
+    setPhotoCaptureMode("combine");
+    setPhotoFile(null);
+    setPhotoError(null);
     setPhotoCaptureOpen(true);
   }
 
@@ -185,14 +243,61 @@ export function Scan() {
     setPhotoFile(event.target.files?.[0] ?? null);
   }
 
+  // Applies a "combined" or "standalone" CombineOutcome to page state — shared by the initial
+  // combine attempt and by resolving a mismatch, since both can land on either outcome.
+  // "unreadable"/"mismatch" are handled by their own callers directly, not here, because each needs
+  // different UI (a form-level error vs. the mismatch screen).
+  function applyCombineOutcome(outcome: CombineOutcome) {
+    if (outcome.status === "combined") {
+      setResult((prev) =>
+        prev
+          ? {
+              ...prev,
+              source: "combined",
+              result: outcome.result,
+              confidence: outcome.confidence,
+              matched_allergens: outcome.matched_allergens,
+              explanation: outcome.explanation,
+              extracted_text: outcome.extracted_text,
+              extraction_legible: true,
+              extraction_complete: true,
+              effective: outcome.effective,
+              community_reports: outcome.community_reports,
+              evidence_decision: null,
+            }
+          : prev,
+      );
+    } else if (outcome.status === "standalone") {
+      // A genuinely new scan — the original barcode scan (whatever its id was) is left untouched
+      // and simply isn't what's on screen anymore.
+      setResult({
+        id: outcome.scan_id,
+        barcode: null,
+        product_name: outcome.product_name,
+        product_brand: null,
+        ingredients_text: outcome.extracted_text,
+        product_last_updated: null,
+        result: outcome.result,
+        matched_allergens: outcome.matched_allergens,
+        source: "label_photo",
+        confidence: outcome.confidence,
+        explanation: outcome.explanation,
+        created_at: new Date().toISOString(),
+        effective: outcome.effective,
+        community_reports: outcome.community_reports,
+        extracted_text: outcome.extracted_text,
+        extraction_legible: true,
+        extraction_complete: true,
+        evidence_decision: null,
+      });
+    }
+    setMismatch(null);
+  }
+
   async function handlePhotoSubmit(event: FormEvent) {
     event.preventDefault();
     setPhotoError(null);
 
-    if (!profileId) {
-      setPhotoError("Pick who you're scanning for.");
-      return;
-    }
     if (!photoFile) {
       setPhotoError("Choose a photo of the ingredients panel first.");
       return;
@@ -201,10 +306,31 @@ export function Scan() {
     setPhotoReading(true);
     try {
       const downscaled = await downscaleLabelPhoto(photoFile);
-      const scan = await createLabelScan(profileId, downscaled, photoCarryBarcode ?? undefined);
-      setPhotoCaptureOpen(false);
-      setPhotoFile(null);
-      setResult(scan);
+
+      if (photoCaptureMode === "combine") {
+        if (!result) return; // Not reachable — combine mode only opens with a result on screen.
+        const outcome = await combineLabelScan(result.id, downscaled);
+        if (outcome.status === "unreadable") {
+          // Genuinely dry: nothing was written to the scan, so stay on this same form and let the
+          // family try again immediately rather than dropping them into a dead-end screen.
+          setPhotoError(outcome.explanation);
+          return;
+        }
+        if (outcome.status === "mismatch") {
+          setMismatch(outcome);
+          setPhotoCaptureOpen(false);
+          setPhotoFile(null);
+          return;
+        }
+        applyCombineOutcome(outcome);
+        setPhotoCaptureOpen(false);
+        setPhotoFile(null);
+      } else {
+        const scan = await createLabelScan(profileId, downscaled);
+        setPhotoCaptureOpen(false);
+        setPhotoFile(null);
+        setResult(scan);
+      }
     } catch (err) {
       if (err instanceof ApiRequestError && err.status === 400 && err.message === "photo_too_large") {
         setPhotoError("That photo is too large — try a smaller image.");
@@ -216,6 +342,28 @@ export function Scan() {
     } finally {
       setPhotoReading(false);
     }
+  }
+
+  async function resolveMismatch(decision: "same_product" | "different_product") {
+    if (!mismatch) return;
+    setMismatchResolving(true);
+    setMismatchError(null);
+    try {
+      const outcome = await confirmProductIdentity(mismatch.extraction_id, decision);
+      applyCombineOutcome(outcome);
+    } catch {
+      setMismatchError("Couldn't record that — try again.");
+    } finally {
+      setMismatchResolving(false);
+    }
+  }
+
+  function openDisagreementReport(allergenName: string) {
+    setReportOpen(true);
+    setReportType("flag_wrong");
+    setReportAllergen(allergenName);
+    setReportOrigin("disagreement_prompt");
+    setReportOutcome(null);
   }
 
   async function handleReportSubmit(event: FormEvent) {
@@ -239,6 +387,7 @@ export function Scan() {
         allergen: reportType === "wrong_product" ? null : reportAllergen,
         note: reportNote.trim() || null,
         photo: reportPhoto,
+        origin: reportOrigin ?? undefined,
       });
       setReportOutcome(
         outcome.corroborated
@@ -295,6 +444,24 @@ export function Scan() {
   // The engine's own verdict unless a corroborated community report escalated it. Both are always
   // on the card: the headline is what to act on, the note under it says what changed it.
   const shown = result && (result.effective ?? { result: result.result, matched_allergens: result.matched_allergens });
+
+  // "required" and not yet resolved (photo not yet taken, and the family hasn't explicitly said
+  // "I don't have this in front of me") — no card renders at all; the capture form IS the screen.
+  const awaitingRequiredPhoto =
+    result?.source === "barcode" && result.evidence_decision?.photo === "required" && !requiredPhotoDismissed;
+
+  // Offered, not required — a "prompted" second opinion (severe allergen), or a required photo the
+  // family explicitly deferred. Either way the card already renders in full; this only adds a box
+  // beneath the findings, never blocking anything.
+  const offerPhoto =
+    result?.source === "barcode" &&
+    !photoCaptureOpen &&
+    (result.evidence_decision?.photo === "prompted" || (result.evidence_decision?.photo === "required" && requiredPhotoDismissed));
+
+  const couldntReadLabel =
+    result !== null &&
+    (result.source === "label_photo" || result.source === "combined") &&
+    (result.extraction_legible === false || result.extraction_complete === false);
 
   if (loadingProfiles) return <p>Loading…</p>;
 
@@ -367,9 +534,9 @@ export function Scan() {
             </button>
           </form>
 
-          {labelScanEnabled && !photoCaptureOpen && (
+          {labelScanEnabled && !photoCaptureOpen && !mismatch && (
             <p>
-              <button type="button" onClick={() => openPhotoCapture(null)}>
+              <button type="button" onClick={openStandalonePhotoCapture}>
                 No barcode? Photograph the label
               </button>
             </p>
@@ -378,10 +545,16 @@ export function Scan() {
           {photoCaptureOpen && (
             <form onSubmit={handlePhotoSubmit}>
               <h2>Photograph the ingredients label</h2>
-              {photoCarryBarcode && (
+              {photoCaptureMode === "combine" && result?.evidence_decision?.photo === "required" && (
                 <p>
-                  We couldn't find enough data for barcode {photoCarryBarcode} — a photo of the ingredients panel can
-                  still tell us what's in it.
+                  The barcode alone doesn't have enough data to check this — a photo of the ingredients panel is
+                  the next step.
+                </p>
+              )}
+              {photoCaptureMode === "combine" && result?.evidence_decision?.photo === "prompted" && (
+                <p>
+                  This profile has a severe allergen on file. The barcode data looks fine, but a photo of the label
+                  gives a second opinion.
                 </p>
               )}
               <label>
@@ -398,54 +571,71 @@ export function Scan() {
                   setPhotoCaptureOpen(false);
                   setPhotoFile(null);
                   setPhotoError(null);
+                  // A required photo can always be deferred — it never traps the family in this
+                  // form. Declining just means the barcode-only, already fail-closed result stands.
+                  if (photoCaptureMode === "combine" && result?.evidence_decision?.photo === "required") {
+                    setRequiredPhotoDismissed(true);
+                  }
                 }}
               >
-                Cancel
+                {photoCaptureMode === "combine" && result?.evidence_decision?.photo === "required"
+                  ? "I don't have this in front of me"
+                  : "Cancel"}
               </button>
             </form>
+          )}
+
+          {mismatch && (
+            <section>
+              <h2>Is this the same product?</h2>
+              <p>
+                The barcode scanned as <strong>{mismatch.off_product_name ?? "a product with no name on file"}</strong>,
+                but the photo looks like <strong>{mismatch.extracted_product_name ?? "a different product"}</strong>.
+              </p>
+              <details>
+                <summary>What we read from your photo</summary>
+                <p>{mismatch.extracted_text}</p>
+              </details>
+              {mismatchError && <p role="alert">{mismatchError}</p>}
+              <button type="button" disabled={mismatchResolving} onClick={() => resolveMismatch("same_product")}>
+                Same product — use my photo
+              </button>
+              <button type="button" disabled={mismatchResolving} onClick={() => resolveMismatch("different_product")}>
+                Different product
+              </button>
+            </section>
           )}
         </>
       )}
 
-      {result && shown && result.source === "label_photo" && (result.extraction_legible === false || result.extraction_complete === false) && (
+      {couldntReadLabel && (
         // Couldn't-read state (docs/verdict-engine.md Path C plan §5): covers an unreadable photo,
         // an extraction call failure, and an incomplete read (the ingredients statement was cut
         // off) uniformly — the server already picked the right distinct copy for whichever of
         // those happened; this just offers a retake rather than rendering a verdict card that has
-        // nothing real to show.
+        // nothing real to show. Standalone Path C only — a combine-mode unreadable read never
+        // reaches this state at all, since it's a form-level error on the still-open capture form.
         <section>
           <h2>Couldn't read that label</h2>
-          <p role="alert">{result.explanation}</p>
-          <button type="button" onClick={() => openPhotoCapture(result.barcode)}>
+          <p role="alert">{result!.explanation}</p>
+          <button type="button" onClick={openStandalonePhotoCapture}>
             Try again
           </button>
         </section>
       )}
 
-      {result &&
-        shown &&
-        !(result.source === "label_photo" && (result.extraction_legible === false || result.extraction_complete === false)) && (
+      {result && shown && !awaitingRequiredPhoto && !couldntReadLabel && !mismatch && (
         <section>
+          {/* 1. THE VERDICT — the single word this whole screen exists to deliver, first. */}
           <h2>{VERDICT_LABEL[shown.result]}</h2>
-          {result.source === "label_photo" && (
-            <p role="note">
-              <strong>From a photographed label</strong> — read by AI, not confirmed against the manufacturer's own
-              data.
-            </p>
-          )}
           <p>
             {result.product_name ?? "Unknown product"}
             {result.product_brand && ` — ${result.product_brand}`}
           </p>
 
+          {/* 2. REAL FINDINGS — the explanation sentence and the per-allergen rows. What justifies
+              the headline and what to actually check against the box in your hand. */}
           {result.explanation && <p>{result.explanation}</p>}
-
-          {result.source === "label_photo" && result.extracted_text && (
-            <details open>
-              <summary>What we read from your photo — check it against the package</summary>
-              <p>{result.extracted_text}</p>
-            </details>
-          )}
 
           {shown.matched_allergens.filter((m) => m.classification !== "clear" && m.classification !== "unchecked").length >
             0 && (
@@ -455,9 +645,32 @@ export function Scan() {
                 .map((m) => (
                   <li key={m.allergenName}>
                     <strong>{m.allergenName}</strong> ({m.severity}) — {classificationLabel(m)} — {sourceLabel(m)}
+                    {disagreementNote(m) && (
+                      <p role="note">
+                        {disagreementNote(m)}
+                        {m.disagreement === "label_looser" && (
+                          <>
+                            {" "}
+                            <button type="button" onClick={() => openDisagreementReport(m.allergenName)}>
+                              Check the package — report if it's not listed
+                            </button>
+                          </>
+                        )}
+                      </p>
+                    )}
                   </li>
                 ))}
             </ul>
+          )}
+
+          {/* 3. DISAGREEMENT — loud, but strictly after the verdict and its findings: the headline
+              is still what to act on, this says why it's worth a second look at the specific rows
+              above before deciding. */}
+          {shown.matched_allergens.some((m) => m.disagreement) && (
+            <p role="alert">
+              <strong>Your photo and the product database don't fully agree</strong> — see the notes above before
+              deciding.
+            </p>
           )}
 
           {(() => {
@@ -478,6 +691,38 @@ export function Scan() {
             );
           })()}
 
+          {/* 5. PROMPTS — an offered second opinion, never required reading to understand the
+              verdict above. */}
+          {offerPhoto && (
+            <p>
+              {result.evidence_decision?.photo === "required" ? (
+                <>We couldn't check this against a photo yet. </>
+              ) : (
+                <>This profile has a severe allergen on file — for extra confidence, </>
+              )}
+              <button type="button" onClick={openCombinePhotoCapture}>
+                Photograph the ingredients label
+              </button>
+            </p>
+          )}
+
+          {/* 6. PROVENANCE — where the evidence came from, and the reference material for checking
+              it yourself. Comes last: it doesn't change what to decide, only how the decision was
+              reached. */}
+          {(result.source === "label_photo" || result.source === "combined") && (
+            <p role="note">
+              <strong>{result.source === "combined" ? "Checked against the product database and a photographed label" : "From a photographed label"}</strong>
+              {result.source === "label_photo" && " — read by AI, not confirmed against the manufacturer's own data."}
+            </p>
+          )}
+
+          {(result.source === "label_photo" || result.source === "combined") && result.extracted_text && (
+            <details>
+              <summary>What we read from your photo — check it against the package</summary>
+              <p>{result.extracted_text}</p>
+            </details>
+          )}
+
           {result.effective && (
             <div role="note">
               <p>
@@ -496,19 +741,6 @@ export function Scan() {
 
           <p role="note">{DISCLAIMER}</p>
 
-          {labelScanEnabled && shown.result === "unable_to_confirm" && result.source === "barcode" && (
-            // Reactive entry point (docs/verdict-engine.md Path C plan §1): offered only for a
-            // barcode scan that came back unable_to_confirm, not on a scan that already came from a
-            // photo — a photo-sourced unable_to_confirm gets its own couldn't-read state instead.
-            // Gated by labelScanEnabled (server env.labelScan, carried on /me) so this is never
-            // offered when the server would just 404 the resulting request.
-            <p>
-              <button type="button" onClick={() => openPhotoCapture(result.barcode)}>
-                Photograph the ingredients label instead
-              </button>
-            </p>
-          )}
-
           {reportOutcome && <p role="status">{reportOutcome}</p>}
 
           {!reportOutcome && (
@@ -516,6 +748,16 @@ export function Scan() {
               {reportOpen ? (
                 <form onSubmit={handleReportSubmit}>
                   <h3>Report a problem with this verdict</h3>
+                  {reportOrigin === "disagreement_prompt" && (
+                    // Grounds the report in the parent's own reading of the package, not in the
+                    // photo's silence — a photo that shows nothing can't be the evidence for
+                    // removing a warning (docs/principles.md, Sept 27 2026); the parent's own
+                    // attestation can.
+                    <p>
+                      Check the package itself — if <strong>{reportAllergen}</strong> genuinely isn't listed there,
+                      tell us.
+                    </p>
+                  )}
                   <fieldset>
                     <legend>What's wrong?</legend>
                     {(Object.keys(CORRECTION_TYPE_LABEL) as CorrectionType[]).map((type) => (
@@ -592,7 +834,13 @@ export function Scan() {
                   </button>
                 </form>
               ) : (
-                <button type="button" onClick={() => setReportOpen(true)}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReportOpen(true);
+                    setReportOrigin(null);
+                  }}
+                >
                   Report a problem with this verdict
                 </button>
               )}
