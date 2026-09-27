@@ -1,11 +1,5 @@
-import {
-  applyCommunityCorrections,
-  type AppliedCommunityAddition,
-  type CommunityAddition,
-} from "../corrections/applyCommunityCorrections.js";
-import { loadCommunityAdditions } from "../corrections/communityAdditions.js";
+import { applyCommunityCorrectionsIfEnabled, type AppliedCommunityAddition } from "../corrections/applyCommunityCorrections.js";
 import { pool } from "../db/pool.js";
-import { env } from "../env.js";
 import { getProduct as defaultGetProduct } from "../lib/productLookup.js";
 import { computeVerdict, hasUsableData, type ProductForMatching, type ProfileAllergen, type Severity, type Verdict } from "../matcher/match.js";
 import type { MatchedAllergenLike } from "../corrections/applyCorrections.js";
@@ -146,19 +140,12 @@ export async function runLabelScan(input: LabelScanInput, deps: LabelScanDeps = 
     explanation = explainVerdict(merged, { photoSourced: true });
   }
 
-  // Community corrections only apply when a real barcode is attached — nothing to key the lookup
-  // on otherwise (loadCommunityAdditions/applyCommunityCorrections are both barcode-keyed).
-  let community: ReturnType<typeof applyCommunityCorrections> = null;
-  let communityApplied: AppliedCommunityAddition[] | null = null;
-  if (env.communityCorrections && barcode) {
-    const additions: CommunityAddition[] = (await loadCommunityAdditions([barcode])).get(barcode) ?? [];
-    community = applyCommunityCorrections(
-      { result: verdict, matchedAllergens: matchedAllergens as MatchedAllergenLike[] },
-      allergens,
-      additions,
-    );
-    communityApplied = community?.applied ?? [];
-  }
+  const { community, communityApplied } = await applyCommunityCorrectionsIfEnabled(
+    barcode,
+    verdict,
+    matchedAllergens as MatchedAllergenLike[],
+    allergens,
+  );
 
   const { rows } = await pool.query(
     `INSERT INTO scans

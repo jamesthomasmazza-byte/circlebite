@@ -1,5 +1,7 @@
-import { matchAllergen, type ProfileAllergen } from "../matcher/match.js";
+import { env } from "../env.js";
+import { matchAllergen, type ProfileAllergen, type Verdict } from "../matcher/match.js";
 import type { EffectiveScanResult, MatchedAllergenLike, ScanForCorrection } from "./applyCorrections.js";
+import { loadCommunityAdditions } from "./communityAdditions.js";
 
 /**
  * One corroborated add_caution claim about a barcode, aggregated across every reporter who made
@@ -120,4 +122,30 @@ export function applyCommunityCorrections(
   // Every applied entry is "contains", which dominates the rollup — including over a fail-closed
   // unable_to_confirm, the one case where the original result is kept by applyUserCorrections.
   return { result: "contains_allergen", matchedAllergens, applied };
+}
+
+/**
+ * The DB-touching wrapper around applyCommunityCorrections — load this barcode's corroborated
+ * additions (if the kill switch is on and there's a real barcode to key the lookup on) and apply
+ * them. Shared by every scan-writing path (scans.ts, labelScan.ts, and the adaptive flow's combine
+ * step) instead of each re-deriving "is the switch on and is there a barcode" plus the load/apply
+ * sequence on its own — three copies of a small block is still a duplication class worth avoiding,
+ * same reasoning as match.ts's hasUsableData.
+ *
+ * communityApplied is null whenever community is null, regardless of *why* (switch off vs. no
+ * barcode) — that's the existing, load-bearing meaning of a null community_corrections_applied
+ * column: "nothing to say," not "nothing happened."
+ */
+export async function applyCommunityCorrectionsIfEnabled(
+  barcode: string | null,
+  verdict: Verdict,
+  matchedAllergens: MatchedAllergenLike[],
+  profileAllergens: Pick<ProfileAllergen, "name" | "severity">[],
+): Promise<{ community: CommunityEffectiveResult | null; communityApplied: AppliedCommunityAddition[] | null }> {
+  if (!env.communityCorrections || !barcode) {
+    return { community: null, communityApplied: null };
+  }
+  const additions = (await loadCommunityAdditions([barcode])).get(barcode) ?? [];
+  const community = applyCommunityCorrections({ result: verdict, matchedAllergens }, profileAllergens, additions);
+  return { community, communityApplied: community?.applied ?? [] };
 }

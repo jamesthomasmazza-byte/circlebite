@@ -5,6 +5,7 @@ import { assertCanReadProfile } from "../authorization/profiles.js";
 import { requireAuth } from "../auth/requireAuth.js";
 import {
   applyCommunityCorrections,
+  applyCommunityCorrectionsIfEnabled,
   type AppliedCommunityAddition,
   type CommunityAddition,
 } from "../corrections/applyCommunityCorrections.js";
@@ -110,17 +111,12 @@ scansRouter.post(
     // what the matcher + AI produced (the accuracy report measures the engine, and the kill switch
     // has to revert without touching data); community_corrections_applied records what was layered
     // on, with null meaning the switch was off. docs/server-setup.md §11.
-    let community: ReturnType<typeof applyCommunityCorrections> = null;
-    let communityApplied: AppliedCommunityAddition[] | null = null;
-    if (env.communityCorrections) {
-      const additions = (await loadCommunityAdditions([barcode])).get(barcode) ?? [];
-      community = applyCommunityCorrections(
-        { result: verdict, matchedAllergens: matchedAllergens as MatchedAllergenLike[] },
-        allergens,
-        additions,
-      );
-      communityApplied = community?.applied ?? [];
-    }
+    const { community, communityApplied } = await applyCommunityCorrectionsIfEnabled(
+      barcode,
+      verdict,
+      matchedAllergens as MatchedAllergenLike[],
+      allergens,
+    );
 
     const { rows } = await pool.query(
       `INSERT INTO scans
