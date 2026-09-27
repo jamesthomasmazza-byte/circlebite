@@ -129,7 +129,12 @@ function classifyAllergen(
   return { classification: "contains", aiEscalated: true, citedSpan: finding.citedSpan, reason: finding.reason };
 }
 
-function rollupVerdict(details: MergedAllergenDetail[]): Verdict {
+/**
+ * Exported so the adaptive scan flow's reconciliation step (reconcileEvidence.ts) can roll up its
+ * own reconciled per-allergen array with the identical rule this file already uses and tests,
+ * rather than a second copy of "contains beats unresolved/unchecked beats caution beats safe."
+ */
+export function rollupVerdict(details: MergedAllergenDetail[]): Verdict {
   if (details.some((d) => d.classification === "contains")) return "contains_allergen";
   // "unchecked" forces the same outcome as "unresolved" — same reasoning as the granularity
   // precedent (docs/principles.md, Sept 26, 2026): an override justified by "we can't see
