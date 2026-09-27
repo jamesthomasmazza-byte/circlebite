@@ -56,6 +56,7 @@ function ReportRow({
     <li>
       <p>
         <strong>{report.reporterLabel}</strong> — {report.correctionType} ({report.target}) — {report.createdAt}
+        {report.origin === "disagreement_prompt" && <> — <em>prompted by a label/database disagreement</em></>}
       </p>
       {report.note && <p>&ldquo;{report.note}&rdquo;</p>}
       <p>

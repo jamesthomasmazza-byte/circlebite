@@ -479,6 +479,11 @@ export function getNpsReport(): Promise<NpsReport> {
 // Deliberately no email field anywhere here — reporter identity never leaves the server (see that
 // module's docs and docs/principles.md's precedent row); only rejector identity does, since that's
 // admin accountability rather than a user's health data.
+// "disagreement_prompt": filed from the verdict card's label_looser row — the app prompted for it
+// after a photo didn't echo the database, and the reporter attested to reading the package
+// themselves (docs/principles.md, Sept 27 2026). "user_initiated": everything else.
+export type CorrectionOrigin = "user_initiated" | "disagreement_prompt";
+
 export type ReviewQueueReport = {
   id: string;
   correctionType: CorrectionType;
@@ -490,6 +495,7 @@ export type ReviewQueueReport = {
   rejectedBy: { email: string } | null;
   rejectedAt: string | null;
   rejectionReason: string | null;
+  origin: CorrectionOrigin;
 };
 
 export type ReviewQueueClaim = {
