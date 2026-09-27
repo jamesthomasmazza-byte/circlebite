@@ -71,6 +71,18 @@ export function matchAllergen(allergenName: string, product: ProductForMatching)
 }
 
 /**
+ * Whether a product record has anything at all to search — tags or free ingredient text. Exported
+ * (rather than kept private to computeVerdict, as it originally was) because the adaptive scan flow
+ * (verdict/scanPlan.ts) needs the identical check to decide whether a photo is required, and a
+ * second hand-copied version of a safety-relevant boolean is exactly the kind of drift that
+ * reintroduces a silent miss. labelScan.ts's own productHasUsableData mirrors this same shape for a
+ * different purpose (validating a carried-forward barcode) and is left as its own copy for now.
+ */
+export function hasUsableData(product: ProductForMatching): boolean {
+  return product.found && (product.allergensTags.length > 0 || product.tracesTags.length > 0 || Boolean(product.ingredientsText));
+}
+
+/**
  * Fail-closed shape from docs/legacy-spec.md §4: an empty product record produces
  * unable_to_confirm, never safe. The overall verdict is always computed against every allergen on
  * the profile — never filtered by who's asking — because filtering the safety check itself by a
@@ -81,11 +93,7 @@ export function computeVerdict(
   allergens: ProfileAllergen[],
   product: ProductForMatching,
 ): { verdict: Verdict; matchedAllergens: AllergenVerdictDetail[] } {
-  const hasUsableData =
-    product.found &&
-    (product.allergensTags.length > 0 || product.tracesTags.length > 0 || Boolean(product.ingredientsText));
-
-  if (!hasUsableData) {
+  if (!hasUsableData(product)) {
     return { verdict: "unable_to_confirm", matchedAllergens: [] };
   }
 
