@@ -35,6 +35,17 @@ async function makeVerdictExplanation(scanId: string, model = "claude-haiku-4-5-
   );
 }
 
+// matched_product_identity is what combineLabelScan actually sets on a real combine attempt
+// (docs/verdict-engine.md Path D) — inserted directly here rather than going through the full
+// combine flow, since this file is only exercising recordCorrection's own gating logic against it.
+async function makeLabelExtraction(scanId: string, matchedProductIdentity: boolean | null) {
+  await pool.query(
+    `INSERT INTO label_extractions (scan_id, model, prompt_version, matched_product_identity)
+     VALUES ($1, 'claude-haiku-4-5-20251001', 'path-d-v1', $2)`,
+    [scanId, matchedProductIdentity],
+  );
+}
+
 before(async () => {
   await pool.query(
     `INSERT INTO users (id, email, password_hash, display_name, age_attested_adult, age_attested_at) VALUES
@@ -243,6 +254,53 @@ test("a different allergen on the same barcode gets its own independent corrobor
   // One reporter each, threshold 3 for remove_caution — neither should corroborate yet.
   assert.equal(milkResult.corroborated, false);
   assert.equal(soyResult.corroborated, false);
+});
+
+test("a correction against a scan whose label evidence mismatched never corroborates, even past the add_caution threshold of 1", async () => {
+  const barcode = "1000000000012";
+  const scanId = await makeScan(barcode, "safe", [{ allergenName: "Egg", severity: "moderate", classification: "clear" }]);
+  await makeLabelExtraction(scanId, false);
+
+  const result = await recordCorrection({ scanId, reportedBy: USER_A, correctionType: "flag_missing", allergen: "Egg", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
+
+  // Same proof shape as the barcode-less test above: add_caution normally corroborates on the very
+  // first report, so it not doing so here is the actual assertion that the mismatch gate fired.
+  assert.equal(result.corroborated, false);
+  assert.equal(result.status, "pending");
+
+  const { rows } = await pool.query("SELECT identity_mismatch_at_report, status FROM product_corrections WHERE id = $1", [result.id]);
+  assert.equal(rows[0].identity_mismatch_at_report, true);
+  assert.equal(rows[0].status, "pending");
+});
+
+test("a correction against an ordinary scan (no label mismatch) records identity_mismatch_at_report as false and corroborates normally", async () => {
+  const barcode = "1000000000013";
+  const scanId = await makeScan(barcode, "safe", [{ allergenName: "Egg", severity: "moderate", classification: "clear" }]);
+  await makeLabelExtraction(scanId, true); // matched, not mismatched
+
+  const result = await recordCorrection({ scanId, reportedBy: USER_A, correctionType: "flag_missing", allergen: "Egg", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
+
+  assert.equal(result.corroborated, true);
+  const { rows } = await pool.query("SELECT identity_mismatch_at_report FROM product_corrections WHERE id = $1", [result.id]);
+  assert.equal(rows[0].identity_mismatch_at_report, false);
+});
+
+test("a scan with two label_extractions rows (an old mismatched attempt, then a later matched retry) still gates — over-gating is the safe direction", async () => {
+  // Reproduces a shape only possible from before the mismatch block was removed: a blocked
+  // mismatch attempt left one row, then a retry against the same scan succeeded and left a second,
+  // matched row. recordCorrection checks for ANY mismatched row on the scan, not just the latest —
+  // skipping corroboration here even though the scan's current state matched is the deliberately
+  // conservative choice.
+  const barcode = "1000000000014";
+  const scanId = await makeScan(barcode, "safe", [{ allergenName: "Egg", severity: "moderate", classification: "clear" }]);
+  await makeLabelExtraction(scanId, false);
+  await makeLabelExtraction(scanId, true);
+
+  const result = await recordCorrection({ scanId, reportedBy: USER_A, correctionType: "flag_missing", allergen: "Egg", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
+
+  assert.equal(result.corroborated, false);
+  const { rows } = await pool.query("SELECT identity_mismatch_at_report FROM product_corrections WHERE id = $1", [result.id]);
+  assert.equal(rows[0].identity_mismatch_at_report, true);
 });
 
 test("origin is persisted as given, never inferred or defaulted by this function", async () => {

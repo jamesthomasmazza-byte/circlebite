@@ -105,6 +105,23 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
     const scan = scanRows[0];
     if (!scan) throw new Error(`scan not found: ${scanId}`);
 
+    // A label whose own product identity didn't match the barcode (label_extractions.
+    // matched_product_identity = false — docs/verdict-engine.md Path D) still merges into the scan
+    // automatically now (the mismatch is an inline note, not a block — see combineScan.ts), and
+    // reconcileEvidence's escalate-only invariant means it can't make this scan's own verdict less
+    // cautious. What it CAN do is feed a wrong product's allergen data into a correction that then
+    // corroborates and changes what other families see for this barcode — checked here, not against
+    // "any row for this scan_id", deliberately: a scan combined before this change existed could have
+    // more than one label_extractions row (a blocked mismatch attempt, then a later retry that
+    // succeeded), so this treats ANY mismatched attempt on this scan as disqualifying, not just the
+    // most recent. Over-gating a scan whose retry actually matched is the safe direction; under-
+    // gating one that never really matched is not.
+    const { rows: mismatchRows } = await client.query<{ mismatched: boolean }>(
+      "SELECT true AS mismatched FROM label_extractions WHERE scan_id = $1 AND matched_product_identity = false LIMIT 1",
+      [scanId],
+    );
+    const identityMismatched = mismatchRows.length > 0;
+
     const matchedEntry = allergen
       ? scan.matched_allergens.find((m) => m.allergenName.toLowerCase() === allergen.toLowerCase())
       : undefined;
@@ -129,8 +146,8 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
       `INSERT INTO product_corrections
          (scan_id, barcode, reported_by, correction_type, direction, allergen, target,
           verdict_explanation_id, verdict_at_report, model_at_report, prompt_version_at_report,
-          source_text_at_report, note, photo_path, origin)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+          source_text_at_report, note, photo_path, origin, identity_mismatch_at_report)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
        RETURNING id, status`,
       [
         scanId,
@@ -148,6 +165,7 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
         note,
         photoPath,
         origin,
+        identityMismatched,
       ],
     );
     const inserted = insertRows[0];
@@ -162,8 +180,14 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
     // overrides the reporter's own view immediately (CONTEST_RULES.md §3); it just never reaches
     // 'corroborated' status, and the admin review queue (reviewQueue.ts) shows it as its own
     // singleton, non-aggregating report rather than folding it into a barcode-keyed claim.
+    //
+    // identityMismatched is the second, unrelated reason this can skip: a real barcode, but a
+    // report filed against a combined scan whose label evidence didn't match the barcode's own
+    // product identity (see the comment above where identityMismatched is computed). Same
+    // treatment, different cause — one is "no reliable identity to key off," the other is "an
+    // identity check already flagged this specific evidence as questionable."
     let corroborated = false;
-    if (scan.barcode !== null) {
+    if (scan.barcode !== null && !identityMismatched) {
       const { rows: countRows } = await client.query<{ count: string }>(
         allergen
           ? `SELECT count(DISTINCT reported_by) FROM product_corrections WHERE barcode = $1 AND allergen = $2 AND direction = $3`
