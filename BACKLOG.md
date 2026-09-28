@@ -247,6 +247,30 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
 
 ## Week 9 — Nov 10–16 · Polish and hardening *[10% UX, 15% code quality]*
 
+JT's own read, 2026-09-28, after using the app on a phone in a real session: the UI and UX are
+the weakest part of the project. That matches the rubric risk — 10% of the grade sits here and
+it is the least-worked area. Treat this whole section as the priority block it is.
+
+- [ ] **Scanner targeting box, and a fallback when the barcode won't read.** The camera scanner
+      gives no indication of where to hold the package, so it hunts across the whole frame and
+      takes longer than it needs to. Draw a reticle — a bounded box with the live view dimmed
+      outside it — and, if the decoding library supports a region of interest, restrict decoding
+      to that box: a smaller decode area is faster per frame as well as clearer to aim at.
+      Then, when no barcode decodes within a set interval, surface the ingredients-label photo
+      as an alternative rather than leaving someone pointing a camera at nothing.
+      Open question worth deciding deliberately rather than by default: whether that switch is
+      automatic or offered. Automatic is fewer taps one-handed in an aisle, which is the stated
+      primary context (2026-09-27). But a scanner that gives up on its own while someone is
+      still lining up the shot is worse than one that waits, and barcodes on crushed or curved
+      packaging often read on the third try. Lean toward surfacing the offer on a timer while
+      the scanner keeps running, so nothing is taken away from the user — the same reasoning
+      that made the Path D photo prompt an offer rather than a redirect.
+      Note this is the same junction Path D already models — barcode first, label second —
+      reached from capture failure instead of from thin data. It should reuse
+      `decideEvidenceNeeded`'s vocabulary rather than inventing a parallel one, and the resulting
+      scan is a label-only Path C scan, not a `combined` one: there is no barcode evidence to
+      combine, so `photoSourced`'s `unable_to_confirm` floor applies unchanged.
+
 - [ ] A correction can only be reported from the live scan result — scan history is read-only and
       there's no per-scan route, so there is no path back to a past scan. The realistic moment
       someone notices a verdict was wrong is later, with the package in hand, which means reports
