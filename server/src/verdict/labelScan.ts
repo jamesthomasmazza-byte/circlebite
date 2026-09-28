@@ -127,7 +127,7 @@ export async function runLabelScan(input: LabelScanInput, deps: LabelScanDeps = 
     verdict = merged.verdict;
     confidence = merged.confidence;
     matchedAllergens = merged.matchedAllergens;
-    explanation = explainVerdict(merged, { photoSourced: true });
+    explanation = explainVerdict(merged, { evidenceSource: "photo" });
   }
 
   const { community, communityApplied } = await applyCommunityCorrectionsIfEnabled(

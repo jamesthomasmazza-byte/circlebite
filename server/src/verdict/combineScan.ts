@@ -234,7 +234,7 @@ export async function combineLabelScan(input: CombineScanInput, deps: CombineSca
   );
 
   const reconciled = reconcileEvidence(scan.matched_allergens, labelSide.matchedAllergens);
-  const explanation = explainVerdict(reconciled, { photoSourced: scan.matched_allergens.length === 0 });
+  const explanation = explainVerdict(reconciled, { evidenceSource: "combined" });
 
   const { community, communityApplied } = await applyCommunityCorrectionsIfEnabled(
     scan.barcode,

@@ -130,24 +130,24 @@ test("falls back to a clean 'nothing found' sentence when every allergen is clea
   assert.equal(text, "No listed allergens from this profile were found in the ingredient text.");
 });
 
-test("photoSourced: the backstop 'nothing found' sentence (a raw 'clear' input mergeVerdict.ts no longer actually produces) still leads with the limit", () => {
+test("evidenceSource: photo — the backstop 'nothing found' sentence (a raw 'clear' input mergeVerdict.ts no longer actually produces) still leads with the limit", () => {
   const text = explainVerdict(
     result([allergen({ allergenName: "Milk", severity: "severe", classification: "clear", matched: false })], "unable_to_confirm"),
-    { photoSourced: true },
+    { evidenceSource: "photo" },
   );
   assert.match(text, /^This hasn't been confirmed safe/);
   assert.doesNotMatch(text, /^No listed allergens/);
 });
 
-test("photoSourced: an 'unchecked' allergen produces the real downgrade sentence, distinct from the 'clear' backstop", () => {
+test("evidenceSource: photo — an 'unchecked' allergen produces the real downgrade sentence, distinct from the 'clear' backstop", () => {
   const text = explainVerdict(
     result([allergen({ allergenName: "Almond", severity: "severe", classification: "unchecked", matched: false })], "unable_to_confirm"),
-    { photoSourced: true },
+    { evidenceSource: "photo" },
   );
   assert.match(text, /^This hasn't been confirmed safe — some of your listed allergens couldn't be checked against this photo/);
 });
 
-test("photoSourced: 'unchecked' allergens don't get a headline sentence at all when a contains/unresolved/caution finding also exists — that branch wins first", () => {
+test("evidenceSource: photo — 'unchecked' allergens don't get a headline sentence at all when a contains/unresolved/caution finding also exists — that branch wins first", () => {
   const text = explainVerdict(
     result(
       [
@@ -156,23 +156,50 @@ test("photoSourced: 'unchecked' allergens don't get a headline sentence at all w
       ],
       "contains_allergen",
     ),
-    { photoSourced: true },
+    { evidenceSource: "photo" },
   );
   assert.equal(text, "Contains Peanut.");
 });
 
-test("photoSourced with a real contains finding still uses the normal contains sentence, not the downgrade copy", () => {
+test("evidenceSource: photo with a real contains finding still uses the normal contains sentence, not the downgrade copy", () => {
   const text = explainVerdict(
     result([allergen({ allergenName: "Milk", severity: "severe", classification: "contains", source: "ingredients" })]),
-    { photoSourced: true },
+    { evidenceSource: "photo" },
   );
   assert.equal(text, "Contains Milk.");
 });
 
-test("photoSourced with an unresolved finding still uses the normal unresolved sentence", () => {
+test("evidenceSource: photo with an unresolved finding still uses the normal unresolved sentence", () => {
   const text = explainVerdict(
     result([allergen({ allergenName: "Egg", severity: "mild", classification: "unresolved", aiEscalated: true })], "unable_to_confirm"),
-    { photoSourced: true },
+    { evidenceSource: "photo" },
   );
   assert.match(text, /^Could not confirm Egg/);
+});
+
+test("evidenceSource: combined — nothing found names both sources, not the single-source Path B fallback", () => {
+  const text = explainVerdict(
+    result([allergen({ allergenName: "Milk", severity: "severe", classification: "clear", matched: false })], "unable_to_confirm"),
+    { evidenceSource: "combined" },
+  );
+  assert.equal(text, "Neither the product record nor the label you photographed listed any allergens from this profile.");
+});
+
+test("evidenceSource: combined — an 'unchecked' allergen names both sources too, not 'this photo'", () => {
+  const text = explainVerdict(
+    result([allergen({ allergenName: "Almond", severity: "severe", classification: "unchecked", matched: false })], "unable_to_confirm"),
+    { evidenceSource: "combined" },
+  );
+  assert.match(
+    text,
+    /^This hasn't been confirmed safe — some of your listed allergens couldn't be checked against either the product record or the label you photographed/,
+  );
+});
+
+test("evidenceSource: combined with a real contains finding still uses the normal contains sentence", () => {
+  const text = explainVerdict(
+    result([allergen({ allergenName: "Milk", severity: "severe", classification: "contains", source: "ingredients" })]),
+    { evidenceSource: "combined" },
+  );
+  assert.equal(text, "Contains Milk.");
 });

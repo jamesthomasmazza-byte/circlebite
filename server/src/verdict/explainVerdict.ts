@@ -11,10 +11,13 @@ function namesWithSpans(details: { allergenName: string; citedSpan?: string }[])
 }
 
 export type ExplainVerdictOptions = {
-  /** Same flag mergeVerdict.ts takes — true for a Path C scan. Only changes the branches below that
-   *  fire when nothing escalates; a real contains/caution/unresolved finding is exactly as real
-   *  from a photo as from a barcode (rule 2: escalation only), so those branches are untouched. */
-  photoSourced?: boolean;
+  /** Which non-barcode evidence contributed, if any — "photo" for a standalone Path C scan (photo
+   *  only, no barcode record), "combined" for Path D (both a barcode record and a photographed
+   *  label). Omitted entirely for Path B (barcode only). Only changes the branches below that fire
+   *  when nothing escalates, so the reader knows which source(s) actually looked and found nothing;
+   *  a real contains/caution/unresolved finding is exactly as real from a photo as from a barcode
+   *  (rule 2: escalation only), so those branches are untouched regardless of this option. */
+  evidenceSource?: "photo" | "combined";
 };
 
 // The names of which allergens are unchecked live in the client's own grouped block (Scan.tsx),
@@ -24,6 +27,14 @@ export type ExplainVerdictOptions = {
 const PHOTO_SOURCED_SOME_UNCHECKED =
   "This hasn't been confirmed safe — some of your listed allergens couldn't be checked against " +
   'this photo. Always check the label yourself, especially for "may contain" warnings.';
+
+// Path D's version of the string above — combined evidence still leaves the same gap, but naming
+// only "this photo" would understate it: a barcode record was checked too, and neither side
+// resolved these allergens.
+const COMBINED_SOME_UNCHECKED =
+  "This hasn't been confirmed safe — some of your listed allergens couldn't be checked against " +
+  'either the product record or the label you photographed. Always check the label yourself, ' +
+  'especially for "may contain" warnings.';
 
 // Dead for any real photoSourced scan with at least one allergen configured — mergeVerdict.ts's
 // photoSourced branch means "clear" never actually occurs there anymore, so
@@ -38,6 +49,11 @@ const PHOTO_SOURCED_NOTHING_FOUND =
   'This hasn\'t been confirmed safe — we only checked the text read from your photo, not the ' +
   "manufacturer's own data. None of your listed allergens appeared in it, but always check the " +
   'label yourself, especially for "may contain" warnings.';
+
+// Path D's nothing-found string: names both sources explicitly rather than reusing Path B's single-
+// source fallback below, which reads as though only one record was ever checked.
+const COMBINED_NOTHING_FOUND =
+  "Neither the product record nor the label you photographed listed any allergens from this profile.";
 
 /**
  * A short, plain-language explanation naming the exact cited token(s) behind the verdict — a
@@ -71,9 +87,12 @@ export function explainVerdict(merged: MergeResult, options: ExplainVerdictOptio
   }
 
   const unchecked = merged.matchedAllergens.filter((a) => a.classification === "unchecked");
-  if (unchecked.length > 0) return PHOTO_SOURCED_SOME_UNCHECKED;
+  if (unchecked.length > 0) {
+    return options.evidenceSource === "combined" ? COMBINED_SOME_UNCHECKED : PHOTO_SOURCED_SOME_UNCHECKED;
+  }
 
-  if (options.photoSourced) return PHOTO_SOURCED_NOTHING_FOUND;
+  if (options.evidenceSource === "photo") return PHOTO_SOURCED_NOTHING_FOUND;
+  if (options.evidenceSource === "combined") return COMBINED_NOTHING_FOUND;
 
   return "No listed allergens from this profile were found in the ingredient text.";
 }
