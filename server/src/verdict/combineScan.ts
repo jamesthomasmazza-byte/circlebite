@@ -24,10 +24,8 @@ export type CombineScanInput = {
   mimeType: "image/jpeg" | "image/png" | "image/webp";
 };
 
-export type ConfirmProductIdentityInput = {
-  userId: string;
+export type DiscardLabelEvidenceInput = {
   extractionId: string;
-  decision: "same_product" | "different_product";
 };
 
 // effective.result below is typed "string", not Verdict: CommunityEffectiveResult.result
@@ -39,15 +37,6 @@ export type ConfirmProductIdentityInput = {
 export type CombineOutcome =
   | { status: "unreadable"; scan_id: string; explanation: string }
   | {
-      status: "mismatch";
-      scan_id: string;
-      extraction_id: string;
-      off_product_name: string | null;
-      extracted_product_name: string | null;
-      extracted_text: string;
-      mismatch_note: string;
-    }
-  | {
       status: "combined";
       scan_id: string;
       barcode: string | null;
@@ -58,20 +47,29 @@ export type CombineOutcome =
       extracted_text: string;
       effective: { result: string; matched_allergens: unknown } | null;
       community_reports: { allergenName: string; reporterCount: number }[];
+      // Set when the label's own extracted name didn't match the barcode's — no longer a block
+      // (see reconcileEvidence.ts: label evidence can only escalate, never weaken, a barcode
+      // finding, so there is nothing a mismatched label can make less cautious). Surfaced as an
+      // inline note on the verdict card instead; extraction_id lets that card offer "discard the
+      // photo" without a second round trip to look it up.
+      identity_mismatch: {
+        extraction_id: string;
+        off_product_name: string | null;
+        extracted_product_name: string | null;
+        note: string;
+      } | null;
     }
   | {
-      status: "standalone";
-      original_scan_id: string;
+      // Produced only by discardLabelEvidence below — reverts a combined scan whose label evidence
+      // was flagged as an identity mismatch back to its own pre-combine barcode-only verdict,
+      // restored from the snapshot taken at combine time (no recomputation, no new AI call: rule 8).
+      status: "discarded";
       scan_id: string;
-      // Absent from "combined" above on purpose: that branch updates a scan the client already has
-      // full ScanResult context for. This branch is a brand-new scan the client has never seen, so
-      // it needs enough to render without a fresh fetch.
-      product_name: string | null;
+      barcode: string | null;
       result: Verdict;
       confidence: Confidence;
       matched_allergens: MergedAllergenDetail[];
       explanation: string;
-      extracted_text: string;
       effective: { result: string; matched_allergens: unknown } | null;
       community_reports: { allergenName: string; reporterCount: number }[];
     };
@@ -82,13 +80,17 @@ type ScanForCombine = {
   barcode: string | null;
   product_name: string | null;
   product_brand: string | null;
+  result: Verdict;
+  confidence: Confidence | null;
   matched_allergens: MergedAllergenDetail[];
   source: string;
 };
 
 async function loadScanForCombine(scanId: string): Promise<ScanForCombine> {
   const { rows } = await pool.query<ScanForCombine>(
-    "SELECT id, allergen_profile_id, barcode, product_name, product_brand, matched_allergens, source FROM scans WHERE id = $1",
+    `SELECT id, allergen_profile_id, barcode, product_name, product_brand, result, confidence,
+            matched_allergens, source
+     FROM scans WHERE id = $1`,
     [scanId],
   );
   const scan = rows[0];
@@ -105,10 +107,9 @@ function publicCommunityReports(applied: AppliedCommunityAddition[]) {
 }
 
 /** The deterministic-plus-AI merge over the label's own extracted text — identical to what today's
- *  standalone Path C (labelScan.ts) already does, factored out here since three call sites in this
- *  file all need exactly this: the initial combine attempt, and both branches of confirming a
- *  mismatch (same_product and different_product each need a real labelSide merge; only which scan
- *  row it ends up attached to differs). */
+ *  standalone Path C (labelScan.ts) already does, factored out into its own function since it's a
+ *  real AI call: keeping it separate from combineLabelScan's own orchestration is what makes that
+ *  function's tests able to inject a fake reasonVerdict without stubbing anything else. */
 async function computeLabelSide(
   allergens: ProfileAllergen[],
   ingredientsText: string,
@@ -161,16 +162,14 @@ async function insertVerdictExplanation(
  * The adaptive scan flow's combine step: a label photo taken against an EXISTING barcode scan,
  * rather than a standalone Path C read. Mirrors labelScan.ts's runLabelScan up through extraction,
  * then diverges — the barcode side is read back from the scan already on file (never recomputed,
- * so its own AI call is never paid for twice), and a product-identity check gates whether anything
- * about that scan is touched at all.
+ * so its own AI call is never paid for twice), and reconciled against the label side regardless of
+ * whether the two sides' product identity matches.
  *
- * THE DRY-RUN GUARANTEE: the `scans` UPDATE statement below is reachable from exactly one place in
- * this function — the branch where `identity.matched !== false`. Every other branch (extraction
- * failure/illegible/incomplete, and a genuine mismatch) returns before that statement is ever
- * built, having written nothing to the `scans` row at all. A blocked mismatch still writes a
- * `label_extractions` row (rule 8 — the extraction call itself is real and reproducible regardless
- * of what happens next), but that's a new, independent row referencing the original scan by FK, not
- * a change to the scan itself. There is no code path that partially applies a combine.
+ * The `scans` UPDATE below is reachable from exactly one place: after a legible, complete
+ * extraction. An unreadable/illegible/incomplete photo returns before it, having written nothing to
+ * the `scans` row — a genuine identity mismatch used to be a second early-return here too, but isn't
+ * anymore (see the `identity` comment below): the merge always proceeds, and a mismatch is only
+ * ever a difference in what gets *returned*, not in whether `scans` gets touched.
  */
 export async function combineLabelScan(input: CombineScanInput, deps: CombineScanDeps = {}): Promise<CombineOutcome> {
   const extractLabel = deps.extractLabel ?? defaultExtractLabel;
@@ -219,51 +218,12 @@ export async function combineLabelScan(input: CombineScanInput, deps: CombineSca
     return { status: "unreadable", scan_id: scan.id, explanation };
   }
 
+  // No longer a gate (docs/verdict-engine.md Path D, mismatch-demotion follow-up): reconcileEvidence
+  // is escalate-only regardless of identity match, so a mismatched label can never make this verdict
+  // less cautious than the barcode alone. Every attempt — matched, mismatched, or nothing to compare
+  // — proceeds through the exact same merge below; only the returned `identity_mismatch` differs.
   const identity = compareProductIdentity(scan.product_name, scan.product_brand, extraction.productName);
 
-  if (identity.matched === false) {
-    const { rows } = await pool.query<{ id: string }>(
-      `INSERT INTO label_extractions
-         (scan_id, model, prompt_version, ingredients_text, product_name, contains, may_contain,
-          legible, complete, incomplete_reason, language, latency_ms, tokens_in, tokens_out,
-          cost_cents, matched_product_identity, identity_mismatch_note)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, false, $16)
-       RETURNING id`,
-      [
-        scan.id,
-        extraction.model,
-        extraction.promptVersion,
-        extraction.ingredientsText,
-        extraction.productName,
-        JSON.stringify(extraction.contains),
-        JSON.stringify(extraction.mayContain),
-        extraction.legible,
-        extraction.complete,
-        extraction.incompleteReason,
-        extraction.language,
-        extraction.latencyMs,
-        extraction.tokensIn,
-        extraction.tokensOut,
-        extraction.costCents,
-        identity.note,
-      ],
-    );
-
-    // Deliberately no reasonVerdict call yet — spending on the AI reasoning step before knowing
-    // whether this photo will even be used would be wasted if the user says "different product".
-    // Nothing above touched `scans` either — this is the dry-run branch the guarantee is about.
-    return {
-      status: "mismatch",
-      scan_id: scan.id,
-      extraction_id: rows[0].id,
-      off_product_name: scan.product_name,
-      extracted_product_name: extraction.productName,
-      extracted_text: extraction.ingredientsText,
-      mismatch_note: identity.note,
-    };
-  }
-
-  // identity.matched is true or null (nothing to compare) — proceed to merge.
   const { aiResult, merged: labelSide } = await computeLabelSide(
     allergens,
     extraction.ingredientsText,
@@ -299,12 +259,17 @@ export async function combineLabelScan(input: CombineScanInput, deps: CombineSca
 
   await insertVerdictExplanation(scan.id, aiResult, reconciled.verdict, reconciled.confidence);
 
-  await pool.query(
+  // pre_combine_* snapshots exactly what `scan` was before the UPDATE above overwrote it — the only
+  // way discardLabelEvidence can revert this scan to its barcode-only verdict later without
+  // recomputing anything (no new AI call, byte-identical to what the barcode-only scan already had).
+  const { rows: extractionRows } = await pool.query<{ id: string }>(
     `INSERT INTO label_extractions
        (scan_id, model, prompt_version, ingredients_text, product_name, contains, may_contain,
         legible, complete, incomplete_reason, language, latency_ms, tokens_in, tokens_out,
-        cost_cents, matched_product_identity)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+        cost_cents, matched_product_identity, identity_mismatch_note,
+        pre_combine_result, pre_combine_confidence, pre_combine_matched_allergens)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+     RETURNING id`,
     [
       scan.id,
       extraction.model,
@@ -321,7 +286,11 @@ export async function combineLabelScan(input: CombineScanInput, deps: CombineSca
       extraction.tokensIn,
       extraction.tokensOut,
       extraction.costCents,
-      identity.matched, // true, or null when there was nothing to compare
+      identity.matched, // true, false, or null when there was nothing to compare
+      identity.note,
+      scan.result,
+      scan.confidence,
+      JSON.stringify(scan.matched_allergens),
     ],
   );
 
@@ -336,159 +305,102 @@ export async function combineLabelScan(input: CombineScanInput, deps: CombineSca
     extracted_text: extraction.ingredientsText,
     effective: community && { result: community.result, matched_allergens: community.matchedAllergens },
     community_reports: publicCommunityReports(community?.applied ?? []),
+    identity_mismatch:
+      identity.matched === false
+        ? {
+            extraction_id: extractionRows[0].id,
+            off_product_name: scan.product_name,
+            extracted_product_name: extraction.productName,
+            note: identity.note,
+          }
+        : null,
   };
 }
 
-type PendingMismatch = {
-  extraction_id: string;
+type DiscardableExtraction = {
   scan_id: string;
   allergen_profile_id: string;
   barcode: string | null;
-  matched_allergens: MergedAllergenDetail[];
-  ingredients_text: string;
-  product_name: string | null;
-  contains: string[];
-  may_contain: string[];
+  matched_product_identity: boolean | null;
   identity_confirmed_by_user: boolean | null;
+  pre_combine_result: Verdict | null;
+  pre_combine_confidence: Confidence | null;
+  pre_combine_matched_allergens: MergedAllergenDetail[] | null;
 };
 
-async function loadPendingMismatch(extractionId: string): Promise<PendingMismatch> {
-  const { rows } = await pool.query<PendingMismatch>(
-    `SELECT le.id AS extraction_id, le.scan_id, s.allergen_profile_id, s.barcode, s.matched_allergens,
-            le.ingredients_text, le.product_name, le.contains, le.may_contain, le.identity_confirmed_by_user
+async function loadDiscardableExtraction(extractionId: string): Promise<DiscardableExtraction> {
+  const { rows } = await pool.query<DiscardableExtraction>(
+    `SELECT le.scan_id, s.allergen_profile_id, s.barcode, le.matched_product_identity,
+            le.identity_confirmed_by_user, le.pre_combine_result, le.pre_combine_confidence,
+            le.pre_combine_matched_allergens
      FROM label_extractions le
      JOIN scans s ON s.id = le.scan_id
-     WHERE le.id = $1 AND le.matched_product_identity = false`,
+     WHERE le.id = $1`,
     [extractionId],
   );
   const row = rows[0];
   if (!row) throw new HttpError(404, "not_found");
+  // Only ever offered on the inline mismatch note (Scan.tsx) — restrict it to the same case that
+  // note is shown for, rather than a general "undo any combine" action.
+  if (row.matched_product_identity !== false) throw new HttpError(400, "not_mismatched");
   if (row.identity_confirmed_by_user !== null) throw new HttpError(400, "already_resolved");
+  // Only null for a combine attempt that never actually reached the merge (shouldn't happen for a
+  // row with matched_product_identity === false, since that's only ever set on the merge branch —
+  // guarded anyway rather than trusting the invariant silently).
+  if (row.pre_combine_matched_allergens === null) throw new HttpError(400, "nothing_to_discard");
   return row;
 }
 
 /**
- * Resolves a pending mismatch from combineLabelScan. Reads the extraction back from
- * label_extractions rather than re-running the vision call — the photo was already processed once,
- * and this never touches it again either way.
- *
- * same_product: proceeds to the exact merge-and-update combineLabelScan's own proceed branch would
- * have run, against the SAME scan row. different_product: the original scan is still never
- * touched — a brand new standalone scan is inserted instead (today's existing barcode-less Path C
- * shape), so the user's photo still produces an answer without ever attaching it to a barcode it
- * turned out not to belong to.
+ * "That wasn't this product" — the one thing removing the mismatch block (see combineLabelScan
+ * above) took away: a way to say a specific label read doesn't belong on this scan. Reverts the
+ * scan to its own pre-combine barcode-only verdict, restored from the snapshot combineLabelScan
+ * took before ever touching the scan row — no recomputation, no new AI call (rule 8: this has to
+ * be reconstructable, and re-deriving it would just be spending money to get back data already on
+ * hand). identity_confirmed_by_user records the judgment where it always has: false, same meaning
+ * "different product" carried before this flow stopped asking the question up front.
  */
-export async function confirmProductIdentity(input: ConfirmProductIdentityInput, deps: CombineScanDeps = {}): Promise<CombineOutcome> {
-  const reasonVerdict = deps.reasonVerdict ?? defaultReasonVerdict;
-  const pending = await loadPendingMismatch(input.extractionId);
-  const allergens = await loadProfileAllergens(pending.allergen_profile_id);
+export async function discardLabelEvidence(input: DiscardLabelEvidenceInput): Promise<CombineOutcome> {
+  const row = await loadDiscardableExtraction(input.extractionId);
+  const allergens = await loadProfileAllergens(row.allergen_profile_id);
 
-  const { aiResult, merged: labelSide } = await computeLabelSide(
-    allergens,
-    pending.ingredients_text,
-    pending.contains,
-    pending.may_contain,
-    reasonVerdict,
-    deps.reasonVerdictDeps,
-  );
+  const preCombine = {
+    verdict: row.pre_combine_result!,
+    confidence: row.pre_combine_confidence!,
+    matchedAllergens: row.pre_combine_matched_allergens!,
+  };
+  const explanation = explainVerdict(preCombine);
 
-  if (input.decision === "same_product") {
-    const reconciled = reconcileEvidence(pending.matched_allergens, labelSide.matchedAllergens);
-    const explanation = explainVerdict(reconciled, { photoSourced: pending.matched_allergens.length === 0 });
-
-    const { community, communityApplied } = await applyCommunityCorrectionsIfEnabled(
-      pending.barcode,
-      reconciled.verdict,
-      reconciled.matchedAllergens as MatchedAllergenLike[],
-      allergens,
-    );
-
-    await pool.query(
-      `UPDATE scans
-         SET source = 'combined', result = $2, matched_allergens = $3, confidence = $4,
-             community_corrections_applied = $5
-       WHERE id = $1`,
-      [
-        pending.scan_id,
-        reconciled.verdict,
-        JSON.stringify(reconciled.matchedAllergens),
-        reconciled.confidence,
-        communityApplied === null ? null : JSON.stringify(communityApplied),
-      ],
-    );
-    await insertVerdictExplanation(pending.scan_id, aiResult, reconciled.verdict, reconciled.confidence);
-    await pool.query("UPDATE label_extractions SET identity_confirmed_by_user = true WHERE id = $1", [pending.extraction_id]);
-
-    return {
-      status: "combined",
-      scan_id: pending.scan_id,
-      barcode: pending.barcode,
-      result: reconciled.verdict,
-      confidence: reconciled.confidence,
-      matched_allergens: reconciled.matchedAllergens,
-      explanation,
-      extracted_text: pending.ingredients_text,
-      effective: community && { result: community.result, matched_allergens: community.matchedAllergens },
-      community_reports: publicCommunityReports(community?.applied ?? []),
-    };
-  }
-
-  // different_product: the original barcode scan is untouched — a new, barcode-less scan is
-  // created from the label evidence alone, same shape as today's standalone Path C.
-  const explanation = explainVerdict(labelSide, { photoSourced: true });
   const { community, communityApplied } = await applyCommunityCorrectionsIfEnabled(
-    null,
-    labelSide.verdict,
-    labelSide.matchedAllergens as MatchedAllergenLike[],
+    row.barcode,
+    preCombine.verdict,
+    preCombine.matchedAllergens as MatchedAllergenLike[],
     allergens,
   );
 
-  const { rows } = await pool.query<{ id: string }>(
-    `INSERT INTO scans
-       (scanner_id, allergen_profile_id, barcode, product_name, product_brand, ingredients_text,
-        product_data, product_last_updated, result, matched_allergens, source, confidence,
-        community_corrections_applied)
-     VALUES ($1, $2, NULL, $3, NULL, $4, NULL, NULL, $5, $6, 'label_photo', $7, $8)
-     RETURNING id`,
+  await pool.query(
+    `UPDATE scans
+       SET source = 'barcode', result = $2, matched_allergens = $3, confidence = $4,
+           community_corrections_applied = $5
+     WHERE id = $1`,
     [
-      input.userId,
-      pending.allergen_profile_id,
-      pending.product_name,
-      pending.ingredients_text,
-      labelSide.verdict,
-      JSON.stringify(labelSide.matchedAllergens),
-      labelSide.confidence,
+      row.scan_id,
+      preCombine.verdict,
+      JSON.stringify(preCombine.matchedAllergens),
+      preCombine.confidence,
       communityApplied === null ? null : JSON.stringify(communityApplied),
     ],
   );
-  const newScanId = rows[0].id;
-
-  await insertVerdictExplanation(newScanId, aiResult, labelSide.verdict, labelSide.confidence);
-
-  // A fresh label_extractions row for the NEW scan — the original row (still pointed at the scan
-  // this photo was attempted against) is never repointed, just marked resolved below, so it stays
-  // an accurate record of what was actually attempted against that scan.
-  await pool.query(
-    `INSERT INTO label_extractions
-       (scan_id, model, prompt_version, ingredients_text, product_name, contains, may_contain,
-        legible, complete, language)
-     SELECT $1, model, prompt_version, ingredients_text, product_name, contains, may_contain, legible, complete, language
-     FROM label_extractions WHERE id = $2`,
-    [newScanId, pending.extraction_id],
-  );
-
-  await pool.query("UPDATE label_extractions SET identity_confirmed_by_user = false WHERE id = $1", [pending.extraction_id]);
+  await pool.query("UPDATE label_extractions SET identity_confirmed_by_user = false WHERE id = $1", [input.extractionId]);
 
   return {
-    status: "standalone",
-    original_scan_id: pending.scan_id,
-    scan_id: newScanId,
-    product_name: pending.product_name,
-    result: labelSide.verdict,
-    confidence: labelSide.confidence,
-    matched_allergens: labelSide.matchedAllergens,
+    status: "discarded",
+    scan_id: row.scan_id,
+    barcode: row.barcode,
+    result: preCombine.verdict,
+    confidence: preCombine.confidence,
+    matched_allergens: preCombine.matchedAllergens,
     explanation,
-    extracted_text: pending.ingredients_text,
     effective: community && { result: community.result, matched_allergens: community.matchedAllergens },
     community_reports: publicCommunityReports(community?.applied ?? []),
   };

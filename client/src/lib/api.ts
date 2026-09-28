@@ -311,6 +311,10 @@ export type ScanResult = {
   // is already the answer to the question this field poses), and absent entirely when LABEL_SCAN is
   // off server-side.
   evidence_decision?: EvidenceDecision | null;
+  // Set only on a "combined" result whose label evidence didn't match the barcode's own product
+  // identity — an inline note on the verdict card, not a block (docs/verdict-engine.md Path D).
+  // null/absent otherwise, and cleared entirely if the family discards that photo.
+  identity_mismatch?: IdentityMismatch | null;
 };
 
 export type CorrectionType = "flag_wrong" | "flag_missing" | "wrong_product";
@@ -415,17 +419,15 @@ export async function createLabelScan(
 // The adaptive scan flow's combine step (docs/verdict-engine.md Path D, server/src/verdict/
 // combineScan.ts's CombineOutcome — field names mirrored exactly, snake_case like every other
 // response in this API).
+export type IdentityMismatch = {
+  extraction_id: string;
+  off_product_name: string | null;
+  extracted_product_name: string | null;
+  note: string;
+};
+
 export type CombineOutcome =
   | { status: "unreadable"; scan_id: string; explanation: string }
-  | {
-      status: "mismatch";
-      scan_id: string;
-      extraction_id: string;
-      off_product_name: string | null;
-      extracted_product_name: string | null;
-      extracted_text: string;
-      mismatch_note: string;
-    }
   | {
       status: "combined";
       scan_id: string;
@@ -437,17 +439,20 @@ export type CombineOutcome =
       extracted_text: string;
       effective: { result: Verdict; matched_allergens: MatchedAllergen[] } | null;
       community_reports: CommunityReport[];
+      // No longer a block (docs/verdict-engine.md Path D) — an inline note on the verdict card
+      // instead. null when the label's name matched, or there was nothing to compare.
+      identity_mismatch: IdentityMismatch | null;
     }
   | {
-      status: "standalone";
-      original_scan_id: string;
+      // Produced only by discardLabelEvidence — reverts a scan back to its pre-combine barcode-only
+      // verdict after the family says a flagged label read didn't belong to it.
+      status: "discarded";
       scan_id: string;
-      product_name: string | null;
+      barcode: string | null;
       result: Verdict;
       confidence: Confidence;
       matched_allergens: MatchedAllergen[];
       explanation: string;
-      extracted_text: string;
       effective: { result: Verdict; matched_allergens: MatchedAllergen[] } | null;
       community_reports: CommunityReport[];
     };
@@ -476,14 +481,12 @@ export async function combineLabelScan(scanId: string, photo: File): Promise<Com
 }
 
 /**
- * Resolves a mismatch combineLabelScan reported — no photo re-upload, the extraction is read back
- * server-side by id.
+ * "That wasn't this product" — reverts a combined scan back to its pre-combine barcode-only verdict
+ * after a flagged identity mismatch. No photo re-upload, the extraction is read back server-side by
+ * id.
  */
-export function confirmProductIdentity(
-  extractionId: string,
-  decision: "same_product" | "different_product",
-): Promise<CombineOutcome> {
-  return apiFetch("/scans/label/confirm", { method: "POST", body: JSON.stringify({ extractionId, decision }) });
+export function discardLabelEvidence(extractionId: string): Promise<CombineOutcome> {
+  return apiFetch("/scans/label/discard", { method: "POST", body: JSON.stringify({ extractionId }) });
 }
 
 export function getScanHistory(profileId: string): Promise<ScanHistoryEntry[]> {

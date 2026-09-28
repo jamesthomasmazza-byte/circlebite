@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 
 import { pool } from "../db/pool.js";
-import { combineLabelScan, confirmProductIdentity } from "./combineScan.js";
+import { combineLabelScan, discardLabelEvidence } from "./combineScan.js";
 import type { AiClientResult, AiVisionClientResult } from "./types.js";
 
 // Real Postgres, same discipline as labelScan.test.ts — this is mostly insert/branch/guard logic
@@ -106,7 +106,7 @@ after(async () => {
   await pool.end();
 });
 
-test("a mismatch blocks: the original scan is byte-for-byte unchanged, never partially updated", async () => {
+test("a mismatched label still merges automatically, flagged as identity_mismatch — not blocked", async () => {
   const original = await insertBarcodeScan({
     barcode: "1111111111111",
     productName: "Real Milk Product",
@@ -118,24 +118,43 @@ test("a mismatch blocks: the original scan is byte-for-byte unchanged, never par
 
   const outcome = await combineLabelScan(
     { scanId: original.id, imageBuffer: IMAGE, mimeType: "image/jpeg" },
-    { extractLabelDeps: fakeExtractOk({ productName: "Totally Different Snack Bar" }) },
+    {
+      extractLabelDeps: fakeExtractOk({ productName: "Totally Different Snack Bar" }),
+      reasonVerdictDeps: REASON_DEPS_OK,
+    },
   );
 
-  assert.equal(outcome.status, "mismatch");
+  assert.equal(outcome.status, "combined");
+  if (outcome.status !== "combined") throw new Error("unreachable");
+  assert.ok(outcome.identity_mismatch);
+  assert.equal(outcome.identity_mismatch!.off_product_name, "Real Milk Product");
+  assert.equal(outcome.identity_mismatch!.extracted_product_name, "Totally Different Snack Bar");
+
+  // Escalate-only holds regardless of the mismatch: the barcode's own "contains" finding stands —
+  // the label stayed silent about Milk (label_looser), and silence can't clear a decided finding.
+  assert.equal(outcome.result, "contains_allergen");
+  const milk = outcome.matched_allergens.find((m) => m.allergenName === "Milk");
+  assert.ok(milk);
+  assert.equal(milk!.classification, "contains");
+  assert.equal(milk!.disagreement, "label_looser");
 
   const after1 = await fetchScan(original.id);
-  assert.deepEqual(after1, original, "the scan row must be identical to what it was before the combine attempt");
+  assert.equal(after1.source, "combined");
+  assert.equal(after1.result, "contains_allergen");
 
   const { rows: extractions } = await pool.query(
-    "SELECT matched_product_identity, identity_confirmed_by_user FROM label_extractions WHERE scan_id = $1",
+    `SELECT matched_product_identity, identity_confirmed_by_user, pre_combine_result, pre_combine_matched_allergens
+     FROM label_extractions WHERE scan_id = $1`,
     [original.id],
   );
   assert.equal(extractions.length, 1);
   assert.equal(extractions[0].matched_product_identity, false);
   assert.equal(extractions[0].identity_confirmed_by_user, null);
+  assert.equal(extractions[0].pre_combine_result, "contains_allergen");
+  assert.deepEqual(extractions[0].pre_combine_matched_allergens, original.matched_allergens);
 });
 
-test("an unreadable photo also leaves the original scan untouched", async () => {
+test("an unreadable photo leaves the original scan untouched", async () => {
   const original = await insertBarcodeScan({
     barcode: "1111111111112",
     productName: "Another Product",
@@ -153,7 +172,7 @@ test("an unreadable photo also leaves the original scan untouched", async () => 
   assert.deepEqual(after1, original);
 });
 
-test("matching identity: the scan is updated to source 'combined', label_stricter escalates a clear allergen", async () => {
+test("matching identity: the scan is updated to source 'combined', label_stricter escalates a clear allergen, identity_mismatch is null", async () => {
   const original = await insertBarcodeScan({
     barcode: "2222222222222",
     productName: "Cookies",
@@ -177,6 +196,7 @@ test("matching identity: the scan is updated to source 'combined', label_stricte
   assert.equal(outcome.status, "combined");
   if (outcome.status === "combined") {
     assert.equal(outcome.result, "contains_allergen");
+    assert.equal(outcome.identity_mismatch, null);
     const milk = outcome.matched_allergens.find((m) => m.allergenName === "Milk");
     assert.ok(milk);
     assert.equal(milk!.classification, "contains");
@@ -192,7 +212,7 @@ test("matching identity: the scan is updated to source 'combined', label_stricte
   assert.equal(ve[0].evidence_source, "label");
 });
 
-test("confirming 'same_product' after a mismatch finalizes the combine against the SAME scan row", async () => {
+test("discardLabelEvidence reverts a mismatched combine back to the pre-combine barcode-only verdict", async () => {
   const original = await insertBarcodeScan({
     barcode: "3333333333333",
     productName: "Crackers",
@@ -200,33 +220,39 @@ test("confirming 'same_product' after a mismatch finalizes the combine against t
     matchedAllergens: [{ allergenName: "Milk", matched: false, source: null, severity: "severe", classification: "clear" }],
   });
 
-  const mismatch = await combineLabelScan(
+  const outcome = await combineLabelScan(
     { scanId: original.id, imageBuffer: IMAGE, mimeType: "image/jpeg" },
-    { extractLabelDeps: fakeExtractOk({ productName: "Something Else Entirely", ingredientsText: "flour, sugar" }) },
+    {
+      extractLabelDeps: fakeExtractOk({ productName: "Something Else Entirely", ingredientsText: "flour, sugar" }),
+      reasonVerdictDeps: REASON_DEPS_OK,
+    },
   );
-  assert.equal(mismatch.status, "mismatch");
-  if (mismatch.status !== "mismatch") throw new Error("unreachable");
+  assert.equal(outcome.status, "combined");
+  if (outcome.status !== "combined") throw new Error("unreachable");
+  assert.ok(outcome.identity_mismatch);
 
-  const resolved = await confirmProductIdentity(
-    { userId: USER_A, extractionId: mismatch.extraction_id, decision: "same_product" },
-    { reasonVerdictDeps: REASON_DEPS_OK },
-  );
+  const afterCombine = await fetchScan(original.id);
+  assert.equal(afterCombine.source, "combined");
 
-  assert.equal(resolved.status, "combined");
-  if (resolved.status === "combined") {
-    assert.equal(resolved.scan_id, original.id);
-  }
+  const discarded = await discardLabelEvidence({ extractionId: outcome.identity_mismatch!.extraction_id });
+  assert.equal(discarded.status, "discarded");
+  if (discarded.status !== "discarded") throw new Error("unreachable");
+  assert.equal(discarded.scan_id, original.id);
+  assert.equal(discarded.result, original.result);
+  assert.deepEqual(discarded.matched_allergens, original.matched_allergens);
 
   const after1 = await fetchScan(original.id);
-  assert.equal(after1.source, "combined");
+  assert.equal(after1.source, "barcode");
+  assert.equal(after1.result, original.result);
+  assert.deepEqual(after1.matched_allergens, original.matched_allergens);
 
   const { rows: extractions } = await pool.query("SELECT identity_confirmed_by_user FROM label_extractions WHERE id = $1", [
-    mismatch.extraction_id,
+    outcome.identity_mismatch!.extraction_id,
   ]);
-  assert.equal(extractions[0].identity_confirmed_by_user, true);
+  assert.equal(extractions[0].identity_confirmed_by_user, false);
 });
 
-test("confirming 'different_product' leaves the original scan untouched and creates a new standalone scan", async () => {
+test("discardLabelEvidence rejects a second discard on the same extraction", async () => {
   const original = await insertBarcodeScan({
     barcode: "4444444444444",
     productName: "Granola Bars",
@@ -236,36 +262,47 @@ test("confirming 'different_product' leaves the original scan untouched and crea
     ],
   });
 
-  const mismatch = await combineLabelScan(
+  const outcome = await combineLabelScan(
     { scanId: original.id, imageBuffer: IMAGE, mimeType: "image/jpeg" },
-    { extractLabelDeps: fakeExtractOk({ productName: "A Totally Unrelated Cereal", ingredientsText: "oats, sugar" }) },
+    {
+      extractLabelDeps: fakeExtractOk({ productName: "A Totally Unrelated Cereal", ingredientsText: "oats, sugar" }),
+      reasonVerdictDeps: REASON_DEPS_OK,
+    },
   );
-  assert.equal(mismatch.status, "mismatch");
-  if (mismatch.status !== "mismatch") throw new Error("unreachable");
+  assert.equal(outcome.status, "combined");
+  if (outcome.status !== "combined") throw new Error("unreachable");
+  const extractionId = outcome.identity_mismatch!.extraction_id;
 
-  const resolved = await confirmProductIdentity(
-    { userId: USER_A, extractionId: mismatch.extraction_id, decision: "different_product" },
-    { reasonVerdictDeps: REASON_DEPS_OK },
+  await discardLabelEvidence({ extractionId });
+
+  await assert.rejects(
+    () => discardLabelEvidence({ extractionId }),
+    (err: unknown) => (err as { status?: number }).status === 400,
   );
+});
 
-  assert.equal(resolved.status, "standalone");
+test("discardLabelEvidence rejects an extraction whose identity actually matched", async () => {
+  const original = await insertBarcodeScan({
+    barcode: "5555555555556",
+    productName: "Chips",
+    result: "safe",
+    matchedAllergens: [{ allergenName: "Milk", matched: false, source: null, severity: "severe", classification: "clear" }],
+  });
 
-  // The original barcode scan is exactly as it was before any of this happened.
-  const after1 = await fetchScan(original.id);
-  assert.equal(after1.source, "barcode");
-  assert.equal(after1.result, "contains_allergen");
+  const outcome = await combineLabelScan(
+    { scanId: original.id, imageBuffer: IMAGE, mimeType: "image/jpeg" },
+    { extractLabelDeps: fakeExtractOk({ productName: "Chips" }), reasonVerdictDeps: REASON_DEPS_OK },
+  );
+  assert.equal(outcome.status, "combined");
+  if (outcome.status !== "combined") throw new Error("unreachable");
+  assert.equal(outcome.identity_mismatch, null);
 
-  if (resolved.status === "standalone") {
-    assert.notEqual(resolved.scan_id, original.id);
-    const { rows: newScanRows } = await pool.query("SELECT barcode, source FROM scans WHERE id = $1", [resolved.scan_id]);
-    assert.equal(newScanRows[0].barcode, null);
-    assert.equal(newScanRows[0].source, "label_photo");
-  }
+  const { rows: extractions } = await pool.query("SELECT id FROM label_extractions WHERE scan_id = $1", [original.id]);
 
-  const { rows: extractions } = await pool.query("SELECT identity_confirmed_by_user FROM label_extractions WHERE id = $1", [
-    mismatch.extraction_id,
-  ]);
-  assert.equal(extractions[0].identity_confirmed_by_user, false);
+  await assert.rejects(
+    () => discardLabelEvidence({ extractionId: extractions[0].id }),
+    (err: unknown) => (err as { status?: number }).status === 400,
+  );
 });
 
 test("re-combining an already-combined scan is rejected, not silently re-applied", async () => {

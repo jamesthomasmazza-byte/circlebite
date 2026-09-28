@@ -6,10 +6,10 @@ import { useAuth } from "../lib/AuthContext";
 import {
   ApiRequestError,
   combineLabelScan,
-  confirmProductIdentity,
   createCorrection,
   createLabelScan,
   createScan,
+  discardLabelEvidence,
   downscaleLabelPhoto,
   listProfiles,
   type CombineOutcome,
@@ -142,12 +142,11 @@ export function Scan() {
   // (fail-closed — unable_to_confirm stands) instead of blocking the flow indefinitely.
   const [requiredPhotoDismissed, setRequiredPhotoDismissed] = useState(false);
 
-  // A detected product-identity mismatch, pending the user's own confirmation
-  // (docs/verdict-engine.md Path D) — its own screen, not a card state, since nothing about the
-  // original scan has been decided yet.
-  const [mismatch, setMismatch] = useState<Extract<CombineOutcome, { status: "mismatch" }> | null>(null);
-  const [mismatchResolving, setMismatchResolving] = useState(false);
-  const [mismatchError, setMismatchError] = useState<string | null>(null);
+  // "Discard this photo" — the one action left for a flagged identity mismatch
+  // (docs/verdict-engine.md Path D). The mismatch itself is just result.identity_mismatch, rendered
+  // inline on the verdict card; this is only the in-flight state for the discard request itself.
+  const [discardingMismatch, setDiscardingMismatch] = useState(false);
+  const [discardMismatchError, setDiscardMismatchError] = useState<string | null>(null);
 
   useEffect(() => {
     listProfiles()
@@ -176,8 +175,8 @@ export function Scan() {
     setPhotoFile(null);
     setPhotoError(null);
     setRequiredPhotoDismissed(false);
-    setMismatch(null);
-    setMismatchError(null);
+    setDiscardingMismatch(false);
+    setDiscardMismatchError(null);
   }
 
   // Manual entry and the camera both end up here — same validation, same request, same rendering.
@@ -243,10 +242,10 @@ export function Scan() {
     setPhotoFile(event.target.files?.[0] ?? null);
   }
 
-  // Applies a "combined" or "standalone" CombineOutcome to page state — shared by the initial
-  // combine attempt and by resolving a mismatch, since both can land on either outcome.
-  // "unreadable"/"mismatch" are handled by their own callers directly, not here, because each needs
-  // different UI (a form-level error vs. the mismatch screen).
+  // Applies a "combined" or "discarded" CombineOutcome to page state — shared by the initial combine
+  // attempt and by discarding a flagged mismatch, since both can land on "combined" (an unreadable
+  // photo is handled by its own caller directly, since it needs different UI: a form-level error,
+  // not a card update).
   function applyCombineOutcome(outcome: CombineOutcome) {
     if (outcome.status === "combined") {
       setResult((prev) =>
@@ -264,34 +263,33 @@ export function Scan() {
               effective: outcome.effective,
               community_reports: outcome.community_reports,
               evidence_decision: null,
+              identity_mismatch: outcome.identity_mismatch,
             }
           : prev,
       );
-    } else if (outcome.status === "standalone") {
-      // A genuinely new scan — the original barcode scan (whatever its id was) is left untouched
-      // and simply isn't what's on screen anymore.
-      setResult({
-        id: outcome.scan_id,
-        barcode: null,
-        product_name: outcome.product_name,
-        product_brand: null,
-        ingredients_text: outcome.extracted_text,
-        product_last_updated: null,
-        result: outcome.result,
-        matched_allergens: outcome.matched_allergens,
-        source: "label_photo",
-        confidence: outcome.confidence,
-        explanation: outcome.explanation,
-        created_at: new Date().toISOString(),
-        effective: outcome.effective,
-        community_reports: outcome.community_reports,
-        extracted_text: outcome.extracted_text,
-        extraction_legible: true,
-        extraction_complete: true,
-        evidence_decision: null,
-      });
+    } else if (outcome.status === "discarded") {
+      // Reverts to the scan's own pre-combine barcode-only verdict — the photo and its extracted
+      // text are no longer part of what's shown, matching what a plain barcode scan looks like.
+      setResult((prev) =>
+        prev
+          ? {
+              ...prev,
+              source: "barcode",
+              result: outcome.result,
+              confidence: outcome.confidence,
+              matched_allergens: outcome.matched_allergens,
+              explanation: outcome.explanation,
+              extracted_text: undefined,
+              extraction_legible: undefined,
+              extraction_complete: undefined,
+              effective: outcome.effective,
+              community_reports: outcome.community_reports,
+              evidence_decision: null,
+              identity_mismatch: null,
+            }
+          : prev,
+      );
     }
-    setMismatch(null);
   }
 
   async function handlePhotoSubmit(event: FormEvent) {
@@ -316,12 +314,6 @@ export function Scan() {
           setPhotoError(outcome.explanation);
           return;
         }
-        if (outcome.status === "mismatch") {
-          setMismatch(outcome);
-          setPhotoCaptureOpen(false);
-          setPhotoFile(null);
-          return;
-        }
         applyCombineOutcome(outcome);
         setPhotoCaptureOpen(false);
         setPhotoFile(null);
@@ -344,17 +336,17 @@ export function Scan() {
     }
   }
 
-  async function resolveMismatch(decision: "same_product" | "different_product") {
-    if (!mismatch) return;
-    setMismatchResolving(true);
-    setMismatchError(null);
+  async function discardMismatch() {
+    if (!result?.identity_mismatch) return;
+    setDiscardingMismatch(true);
+    setDiscardMismatchError(null);
     try {
-      const outcome = await confirmProductIdentity(mismatch.extraction_id, decision);
+      const outcome = await discardLabelEvidence(result.identity_mismatch.extraction_id);
       applyCombineOutcome(outcome);
     } catch {
-      setMismatchError("Couldn't record that — try again.");
+      setDiscardMismatchError("Couldn't discard that — try again.");
     } finally {
-      setMismatchResolving(false);
+      setDiscardingMismatch(false);
     }
   }
 
@@ -534,7 +526,7 @@ export function Scan() {
             </button>
           </form>
 
-          {labelScanEnabled && !photoCaptureOpen && !mismatch && (
+          {labelScanEnabled && !photoCaptureOpen && (
             <p>
               <button type="button" onClick={openStandalonePhotoCapture}>
                 No barcode? Photograph the label
@@ -585,26 +577,6 @@ export function Scan() {
             </form>
           )}
 
-          {mismatch && (
-            <section>
-              <h2>Is this the same product?</h2>
-              <p>
-                The barcode scanned as <strong>{mismatch.off_product_name ?? "a product with no name on file"}</strong>,
-                but the photo looks like <strong>{mismatch.extracted_product_name ?? "a different product"}</strong>.
-              </p>
-              <details>
-                <summary>What we read from your photo</summary>
-                <p>{mismatch.extracted_text}</p>
-              </details>
-              {mismatchError && <p role="alert">{mismatchError}</p>}
-              <button type="button" disabled={mismatchResolving} onClick={() => resolveMismatch("same_product")}>
-                Same product — use my photo
-              </button>
-              <button type="button" disabled={mismatchResolving} onClick={() => resolveMismatch("different_product")}>
-                Different product
-              </button>
-            </section>
-          )}
         </>
       )}
 
@@ -624,7 +596,7 @@ export function Scan() {
         </section>
       )}
 
-      {result && shown && !awaitingRequiredPhoto && !couldntReadLabel && !mismatch && (
+      {result && shown && !awaitingRequiredPhoto && !couldntReadLabel && (
         <section>
           {/* 1. THE VERDICT — the single word this whole screen exists to deliver, first. */}
           <h2>{VERDICT_LABEL[shown.result]}</h2>
@@ -632,6 +604,25 @@ export function Scan() {
             {result.product_name ?? "Unknown product"}
             {result.product_brand && ` — ${result.product_brand}`}
           </p>
+
+          {result.identity_mismatch && (
+            <p role="note">
+              The label you photographed reads as a different product. We've kept your barcode
+              result and flagged what the label said.
+              <details>
+                <summary>What we read from your photo</summary>
+                <p>
+                  Product on file: <strong>{result.identity_mismatch.off_product_name ?? "no name on file"}</strong>
+                  <br />
+                  Label read: <strong>{result.identity_mismatch.extracted_product_name ?? "no product name found"}</strong>
+                </p>
+              </details>
+              {discardMismatchError && <p role="alert">{discardMismatchError}</p>}
+              <button type="button" disabled={discardingMismatch} onClick={discardMismatch}>
+                That wasn't this product — discard the photo
+              </button>
+            </p>
+          )}
 
           {/* 2. REAL FINDINGS — the explanation sentence and the per-allergen rows. What justifies
               the headline and what to actually check against the box in your hand. */}

@@ -20,7 +20,7 @@ import { getProduct } from "../lib/productLookup.js";
 import { getExtractionAllergenProfileId, getScanAllergenProfileId } from "../lib/scanAccess.js";
 import { computeVerdict, type Severity } from "../matcher/match.js";
 import { loadProfileAllergens } from "../matcher/profileAllergens.js";
-import { combineLabelScan, confirmProductIdentity } from "../verdict/combineScan.js";
+import { combineLabelScan, discardLabelEvidence } from "../verdict/combineScan.js";
 import { explainVerdict } from "../verdict/explainVerdict.js";
 import { runLabelScan } from "../verdict/labelScan.js";
 import { mergeVerdict } from "../verdict/mergeVerdict.js";
@@ -263,24 +263,23 @@ scansRouter.post(
   }),
 );
 
-// Resolves a mismatch combineLabelScan reported: no photo re-upload, no re-running the vision call
-// — the extraction was already processed once and is read back from label_extractions by id.
+// "That wasn't this product" — reverts a combined scan whose label evidence was flagged as an
+// identity mismatch back to its own pre-combine barcode-only verdict. No photo re-upload, no
+// re-running the vision call — the extraction was already processed once and is read back from
+// label_extractions by id.
 scansRouter.post(
-  "/scans/label/confirm",
+  "/scans/label/discard",
   requireAuth,
   requireLabelScanEnabled,
   asyncHandler(async (req, res) => {
-    const { extractionId, decision } = req.body ?? {};
+    const { extractionId } = req.body ?? {};
     if (typeof extractionId !== "string") throw new HttpError(400, "invalid_request");
-    if (decision !== "same_product" && decision !== "different_product") {
-      throw new HttpError(400, "invalid_request");
-    }
 
     const profileId = await getExtractionAllergenProfileId(extractionId);
     if (!profileId) throw new HttpError(404, "not_found");
     await assertCanReadProfile(req.user!.id, profileId);
 
-    const outcome = await confirmProductIdentity({ userId: req.user!.id, extractionId, decision });
+    const outcome = await discardLabelEvidence({ extractionId });
     res.status(200).json(outcome);
   }),
 );

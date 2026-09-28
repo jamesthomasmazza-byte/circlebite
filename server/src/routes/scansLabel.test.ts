@@ -35,18 +35,18 @@ test("POST /scans/label: the kill-switch guard 404s when LABEL_SCAN is off (env.
   assert.equal((calledWith as { code?: string }).code, "not_found");
 });
 
-// The adaptive scan flow's confirm endpoint shares the exact same middleware function
-// (requireLabelScanEnabled) as /scans/label itself — a disabled LABEL_SCAN has to hide the whole
-// feature, not just the first half of it.
-test("POST /scans/label/confirm: also 404s when LABEL_SCAN is off", () => {
+// The adaptive scan flow's discard endpoint ("that wasn't this product" — docs/verdict-engine.md
+// Path D) shares the exact same middleware function (requireLabelScanEnabled) as /scans/label
+// itself — a disabled LABEL_SCAN has to hide the whole feature, not just the first half of it.
+test("POST /scans/label/discard: also 404s when LABEL_SCAN is off", () => {
   assert.equal(env.labelScan, false, "this test assumes the default/local-dev env has LABEL_SCAN unset");
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const layer = (scansRouter as any).stack.find(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (l: any) => l.route?.path === "/scans/label/confirm" && l.route.methods.post,
+    (l: any) => l.route?.path === "/scans/label/discard" && l.route.methods.post,
   );
-  assert.ok(layer, "expected a registered POST /scans/label/confirm route");
+  assert.ok(layer, "expected a registered POST /scans/label/discard route");
   const handlers = layer.route.stack;
   // [0] requireAuth, [1] the kill-switch guard, [2] the main async handler.
   assert.ok(handlers.length >= 2);
