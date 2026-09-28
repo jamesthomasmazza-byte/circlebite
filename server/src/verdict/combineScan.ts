@@ -81,13 +81,14 @@ type ScanForCombine = {
   allergen_profile_id: string;
   barcode: string | null;
   product_name: string | null;
+  product_brand: string | null;
   matched_allergens: MergedAllergenDetail[];
   source: string;
 };
 
 async function loadScanForCombine(scanId: string): Promise<ScanForCombine> {
   const { rows } = await pool.query<ScanForCombine>(
-    "SELECT id, allergen_profile_id, barcode, product_name, matched_allergens, source FROM scans WHERE id = $1",
+    "SELECT id, allergen_profile_id, barcode, product_name, product_brand, matched_allergens, source FROM scans WHERE id = $1",
     [scanId],
   );
   const scan = rows[0];
@@ -218,7 +219,7 @@ export async function combineLabelScan(input: CombineScanInput, deps: CombineSca
     return { status: "unreadable", scan_id: scan.id, explanation };
   }
 
-  const identity = compareProductIdentity(scan.product_name, extraction.productName);
+  const identity = compareProductIdentity(scan.product_name, scan.product_brand, extraction.productName);
 
   if (identity.matched === false) {
     const { rows } = await pool.query<{ id: string }>(

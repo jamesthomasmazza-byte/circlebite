@@ -33,6 +33,16 @@ function significantTokens(name: string): Set<string> {
  * descriptor OFF has and the label doesn't, different capitalization or punctuation, one name being
  * a subset of the other's words — counts as a match.
  *
+ * offBrand is folded into the same token pool as offName, not compared separately: OFF's
+ * product_name is often just the component/variant name on a multi-part package (a kit, a variety
+ * pack), while the brand is the one thing both sides reliably agree on. A real example that
+ * motivated this: OFF name "Soft taco dinner kit imp", OFF brand "Old El Paso", label read "Flour
+ * Tortillas (Old El Paso)" — zero shared words in the names alone, but the brand is right there on
+ * both sides. No parenthesis-specific parsing is needed for that case: significantTokens() already
+ * turns "(" and ")" into whitespace, so a brand mentioned in parentheses on the label tokenizes
+ * exactly like a brand mentioned plainly — widening the OFF side's own token pool to include its
+ * brand is the whole fix.
+ *
  * This is intentionally biased toward proceeding: a false block interrupts every combined scan a
  * family runs, while the harm case (two genuinely different products merged into one verdict) is
  * rare. See productIdentity.test.ts for why this specific rule was chosen — it's checked against
@@ -43,12 +53,16 @@ function significantTokens(name: string): Set<string> {
  * revisited (BACKLOG) once real combined scans exist to test against actual OCR output, not just
  * Open Food Facts' side of the comparison.
  */
-export function compareProductIdentity(offName: string | null, extractedName: string | null): IdentityComparison {
+export function compareProductIdentity(
+  offName: string | null,
+  offBrand: string | null,
+  extractedName: string | null,
+): IdentityComparison {
   const off = offName?.trim();
   const extracted = extractedName?.trim();
   if (!off || !extracted) return { matched: null, note: null };
 
-  const offTokens = significantTokens(off);
+  const offTokens = new Set([...significantTokens(off), ...significantTokens(offBrand?.trim() ?? "")]);
   const extractedTokens = significantTokens(extracted);
   if (offTokens.size === 0 || extractedTokens.size === 0) return { matched: null, note: null };
 
