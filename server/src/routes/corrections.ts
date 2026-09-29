@@ -4,9 +4,10 @@ import multer from "multer";
 import { assertCanReadProfile } from "../authorization/profiles.js";
 import { requireAuth } from "../auth/requireAuth.js";
 import { EXTENSION_TO_MIME, MAX_PHOTO_BYTES, resolvePhotoPath, savePhotoBuffer, sniffImageType } from "../corrections/photoStorage.js";
-import { recordCorrection, type CorrectionType } from "../corrections/recordCorrection.js";
+import { directionForCorrectionType, recordCorrection, type CorrectionType } from "../corrections/recordCorrection.js";
 import { loadUserScanViews, publicCommunityReports, type ScanForView } from "../corrections/userScanView.js";
 import { pool } from "../db/pool.js";
+import { env } from "../env.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { HttpError } from "../lib/httpError.js";
 import { getScanAllergenProfileId } from "../lib/scanAccess.js";
@@ -102,6 +103,12 @@ correctionsRouter.post(
 
     res.status(201).json({
       ...result,
+      // Whether this report is now changing what other families are shown — the fact the
+      // reporter's confirmation states, so it has to come from what's actually happening rather
+      // than be inferred client-side from the direction (docs/principles.md principle 7). Only a
+      // corroborated addition with COMMUNITY_CORRECTIONS on; removals never reach anyone else.
+      reaches_other_families:
+        result.corroborated && directionForCorrectionType(correctionType) === "add_caution" && env.communityCorrections,
       effective: view?.effective ? { result: view.effective.result, matched_allergens: view.effective.matchedAllergens } : null,
       corrections: view?.corrections ?? [],
       community_reports: publicCommunityReports(view?.communityApplied ?? []),

@@ -4,6 +4,7 @@ import { after, before, test } from "node:test";
 
 import { resolvePhotoPath } from "../corrections/photoStorage.js";
 import { pool } from "../db/pool.js";
+import { env } from "../env.js";
 import { correctionsRouter } from "./corrections.js";
 
 // No HTTP harness in this codebase (see scansLabel.test.ts) — this reaches into the router and
@@ -109,4 +110,27 @@ test("a pending removal still changes the reporter's own card, and says it's pen
   assert.equal(body.corroborated, false);
   assert.equal((body.effective as { result: string }).result, "safe");
   assert.equal((body.corrections as { status: string }[])[0].status, "pending");
+});
+
+test("reaches_other_families is true only for a corroborated addition with community corrections on", async () => {
+  const matched = [{ allergenName: "Sesame", severity: "severe", classification: "clear" }];
+  const previous = env.communityCorrections;
+  try {
+    env.communityCorrections = false;
+    const off = await postCorrection(await makeScan("8000000000003", "safe", matched), { correctionType: "flag_missing", allergen: "Sesame" });
+    assert.equal(off.body.corroborated, true);
+    assert.equal(off.body.reaches_other_families, false, "switched off: the warning is only on the reporter's view");
+
+    env.communityCorrections = true;
+    const on = await postCorrection(await makeScan("8000000000004", "safe", matched), { correctionType: "flag_missing", allergen: "Sesame" });
+    assert.equal(on.body.reaches_other_families, true);
+
+    const removal = await postCorrection(await makeScan("8000000000005", "contains_allergen", matched), {
+      correctionType: "flag_wrong",
+      allergen: "Sesame",
+    });
+    assert.equal(removal.body.reaches_other_families, false, "removals never reach other families");
+  } finally {
+    env.communityCorrections = previous;
+  }
 });
