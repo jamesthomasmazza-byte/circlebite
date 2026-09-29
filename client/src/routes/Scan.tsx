@@ -17,6 +17,7 @@ import {
   type ProfileSummary,
   type ScanResult,
 } from "../lib/api";
+import { reportOutcomeMessage } from "../lib/correctionCopy";
 
 const CORRECTION_TYPE_LABEL: Record<CorrectionType, string> = {
   flag_wrong: "This allergen isn't actually in this product",
@@ -382,12 +383,7 @@ export function Scan() {
         origin: reportOrigin ?? undefined,
       });
       setReportOutcome(
-        outcome.corroborated
-          ? "Reported — enough other reports agreed that this is now corroborated."
-          : result.barcode === null
-            ? "Reported — thanks. This is recorded against your own view; without a barcode we can't check it " +
-              "against anyone else's report of the same product."
-            : "Reported — thanks. This is now in the review queue.",
+        reportOutcomeMessage({ correctionType: reportType, corroborated: outcome.corroborated, hasBarcode: result.barcode !== null }),
       );
       setReportOpen(false);
     } catch (err) {
