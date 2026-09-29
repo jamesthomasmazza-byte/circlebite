@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { reportOutcomeMessage } from "./correctionCopy";
+import { reportOutcomeMessage, yourReportLine } from "./correctionCopy";
 
 test("reportOutcomeMessage: a first add_caution report never claims other reports agreed", () => {
   // The 2026-09-29 live test: one sesame report, and the confirmation said "enough other reports
@@ -29,4 +29,21 @@ test("reportOutcomeMessage: pending and barcode-less reports keep their existing
   for (const correctionType of ["flag_missing", "flag_wrong"] as const) {
     assert.match(reportOutcomeMessage({ correctionType, corroborated: false, hasBarcode: false }), /without a barcode/);
   }
+});
+
+test("yourReportLine: names the allergen, the claim and where the report stands", () => {
+  assert.equal(
+    yourReportLine({ correctionType: "flag_missing", allergen: "Sesame", status: "corroborated", note: null }),
+    "Your report: Sesame is in this product, but wasn't flagged — corroborated",
+  );
+  assert.equal(
+    yourReportLine({ correctionType: "wrong_product", allergen: null, status: "pending", note: "different flavour" }),
+    'Your report: this is the wrong product entirely — pending review — "different flavour"',
+  );
+});
+
+test("yourReportLine: a rejected report says rejected, not pending review", () => {
+  // History used to fall through to "pending review" for anything not corroborated — including the
+  // report rejected in the 2026-09-29 live test.
+  assert.match(yourReportLine({ correctionType: "flag_missing", allergen: "Sesame", status: "rejected", note: null }), /rejected on review$/);
 });

@@ -1,4 +1,4 @@
-import type { CorrectionType } from "./api";
+import type { CorrectionType, ScanCorrection } from "./api";
 
 // Plain functions, no JSX — the wording a family or an admin reads about a correction, kept here
 // so it can be tested (`npm test -w client`) and shared between pages instead of drifting apart.
@@ -28,4 +28,25 @@ export function reportOutcomeMessage(input: {
     );
   }
   return "Reported — thanks. This is now in the review queue.";
+}
+
+const CORRECTION_CLAIM: Record<CorrectionType, string> = {
+  flag_wrong: "isn't actually in this product",
+  flag_missing: "is in this product, but wasn't flagged",
+  wrong_product: "this is the wrong product entirely",
+};
+
+const CORRECTION_STATUS: Record<ScanCorrection["status"], string> = {
+  corroborated: "corroborated",
+  pending: "pending review",
+  rejected: "rejected on review",
+};
+
+/**
+ * One of the viewer's own reports, as listed under a verdict it changed — on the live card straight
+ * after reporting and in scan history later, worded the same in both places.
+ */
+export function yourReportLine(c: Pick<ScanCorrection, "correctionType" | "allergen" | "status" | "note">): string {
+  const what = `${c.allergen ? `${c.allergen} ` : ""}${CORRECTION_CLAIM[c.correctionType]}`;
+  return `Your report: ${what} — ${CORRECTION_STATUS[c.status]}${c.note ? ` — "${c.note}"` : ""}`;
 }

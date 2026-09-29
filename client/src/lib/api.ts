@@ -301,6 +301,10 @@ export type ScanResult = {
   // still shows the engine's verdict alongside it, never silently replacing it.
   effective: { result: Verdict; matched_allergens: MatchedAllergen[] } | null;
   community_reports: CommunityReport[];
+  // Absent on a fresh scan. Set once the viewer reports a correction from this card: the POST
+  // returns their corrected view (the same one scan history shows), `effective` above is replaced
+  // with it, and these are the viewer's own reports that changed it.
+  corrections?: ScanCorrection[];
   // Path C only (source === "label_photo" or "combined") — present so the user can check the read
   // against the physical package themselves (docs/verdict-engine.md Path C plan §5). Absent/null on
   // a plain barcode scan.
@@ -493,7 +497,17 @@ export function getScanHistory(profileId: string): Promise<ScanHistoryEntry[]> {
   return apiFetch(`/profiles/${profileId}/scans`);
 }
 
-export type CorrectionResult = { id: string; status: CorrectionStatus; corroborated: boolean };
+// `effective`/`corrections`/`community_reports`: the reporter's own view of the scan once this
+// report is applied — the same shape and meaning as a ScanHistoryEntry's, from the same server
+// function, so the live card can show what history will.
+export type CorrectionResult = {
+  id: string;
+  status: CorrectionStatus;
+  corroborated: boolean;
+  effective: { result: Verdict; matched_allergens: MatchedAllergen[] } | null;
+  corrections: ScanCorrection[];
+  community_reports: CommunityReport[];
+};
 
 /**
  * multipart/form-data, not the JSON apiFetch() helper above — a File can't be JSON-serialized, and

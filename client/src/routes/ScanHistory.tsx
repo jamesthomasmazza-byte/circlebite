@@ -1,19 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { getScanHistory, type MatchedAllergen, type ScanCorrection, type ScanHistoryEntry, type Verdict } from "../lib/api";
+import { getScanHistory, type MatchedAllergen, type ScanHistoryEntry, type Verdict } from "../lib/api";
+import { yourReportLine } from "../lib/correctionCopy";
 
 const VERDICT_LABEL: Record<Verdict, string> = {
   safe: "Safe",
   contains_allergen: "Contains an allergen",
   may_contain_caution: "May contain — caution",
   unable_to_confirm: "Unable to confirm",
-};
-
-const CORRECTION_TYPE_LABEL: Record<ScanCorrection["correctionType"], string> = {
-  flag_wrong: "isn't actually in this product",
-  flag_missing: "is in this product, but wasn't flagged",
-  wrong_product: "this is the wrong product entirely",
 };
 
 // "unresolved" only appears on a scan that ran the AI reasoning step (docs/verdict-engine.md Path
@@ -111,13 +106,7 @@ export function ScanHistory() {
                     </p>
                     <ul>
                       {scan.corrections.map((c) => (
-                        <li key={c.id}>
-                          Your report: {c.allergen ? `${c.allergen} ` : ""}
-                          {CORRECTION_TYPE_LABEL[c.correctionType]}
-                          {" — "}
-                          {c.status === "corroborated" ? "corroborated" : "pending review"}
-                          {c.note && ` — "${c.note}"`}
-                        </li>
+                        <li key={c.id}>{yourReportLine(c)}</li>
                       ))}
                       {/* Read fresh, so this can name a report made after the scan itself — which is
                           the point: a warning about something already in the pantry. */}

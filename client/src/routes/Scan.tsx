@@ -17,7 +17,7 @@ import {
   type ProfileSummary,
   type ScanResult,
 } from "../lib/api";
-import { reportOutcomeMessage } from "../lib/correctionCopy";
+import { reportOutcomeMessage, yourReportLine } from "../lib/correctionCopy";
 
 const CORRECTION_TYPE_LABEL: Record<CorrectionType, string> = {
   flag_wrong: "This allergen isn't actually in this product",
@@ -82,6 +82,18 @@ function sourceLabel(m: ScanResult["matched_allergens"][number]): string {
   if (m.source === "ingredients") return "found in ingredient text";
   if (m.source === "trace") return "may contain traces";
   return "not found";
+}
+
+// Whether the viewer's own "this has an allergen the card didn't flag" report is what this row's
+// "contains" rests on — applyUserCorrections (server) sets it straight to "contains" and leaves the
+// row's original source alone, so the source can't say so itself. Not when the engine already said
+// "contains": the label data is the stronger source, same call applyCommunityCorrections makes.
+function reportedPresentByYou(scan: ScanResult, allergenName: string): boolean {
+  const key = allergenName.toLowerCase();
+  if (scan.matched_allergens.some((m) => m.allergenName.toLowerCase() === key && m.classification === "contains")) {
+    return false;
+  }
+  return (scan.corrections ?? []).some((c) => c.direction === "add_caution" && c.allergen?.toLowerCase() === key);
 }
 
 // Combined scans only (docs/verdict-engine.md Path D). A disagreement is a claim about how this
@@ -385,6 +397,15 @@ export function Scan() {
       setReportOutcome(
         reportOutcomeMessage({ correctionType: reportType, corroborated: outcome.corroborated, hasBarcode: result.barcode !== null }),
       );
+      // CONTEST_RULES.md §3: the report overrides this person's own view immediately — so the card
+      // they're still looking at shows it, not the verdict they just said was wrong. The server
+      // returns the same corrected view scan history shows; the engine's own verdict stays in
+      // result.result and the callout below names what changed it.
+      setResult((prev) =>
+        prev
+          ? { ...prev, effective: outcome.effective, community_reports: outcome.community_reports, corrections: outcome.corrections }
+          : prev,
+      );
       setReportOpen(false);
     } catch (err) {
       if (err instanceof ApiRequestError && err.status === 400 && err.message === "photo_too_large") {
@@ -631,7 +652,13 @@ export function Scan() {
                 .filter((m) => m.classification !== "clear" && m.classification !== "unchecked")
                 .map((m) => (
                   <li key={m.allergenName}>
-                    <strong>{m.allergenName}</strong> ({m.severity}) — {classificationLabel(m)} — {sourceLabel(m)}
+                    <strong>{m.allergenName}</strong> ({m.severity}) —{" "}
+                    {/* Checked ahead of both labels, like communityReported: the row kept its
+                        original source, which would otherwise read as "not found" or as the
+                        label's own "may contain" — neither is what made it "contains". */}
+                    {reportedPresentByYou(result, m.allergenName)
+                      ? "contains — your report, with a photo of the label"
+                      : `${classificationLabel(m)} — ${sourceLabel(m)}`}
                     {disagreementNote(m) && (
                       <p role="note">
                         {disagreementNote(m)}
@@ -713,10 +740,15 @@ export function Scan() {
           {result.effective && (
             <div role="note">
               <p>
-                The product data alone says <strong>{VERDICT_LABEL[result.result]}</strong>. Changed by shopper reports,
-                each with a photo of the label:
+                The product data alone says <strong>{VERDICT_LABEL[result.result]}</strong>. Changed by{" "}
+                {result.corrections?.length ? "your report" : "shopper reports"}
+                {result.corrections?.length && result.community_reports.length ? " and shopper reports" : ""}, each with a
+                photo of the label:
               </p>
               <ul>
+                {result.corrections?.map((c) => (
+                  <li key={c.id}>{yourReportLine(c)}</li>
+                ))}
                 {result.community_reports.map((r) => (
                   <li key={r.allergenName}>
                     {r.allergenName} — reported present by {shopperCount(r.reporterCount)}
