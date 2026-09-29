@@ -1,7 +1,18 @@
 # CircleBite
 
-**AI Vibe Coding Competition — Busch School of Business, Fall 2026**
-Built by JT Mazza (mazzajt@cua.edu) · Individual entry
+**JT Mazza — CUA Busch School AI Vibe Coding Contest, Fall 2026**
+mazzajt@cua.edu · Individual entry
+
+## MVP statement
+
+CircleBite answers one question: is this grocery product safe for this specific child? A parent
+builds an allergen profile with per-allergen severity and invites the people who feed that child —
+grandparents, babysitters, friends' parents — into the child's circle. Anyone in the circle scans a
+barcode and gets a verdict for that child: safe, contains, or unable to confirm. When product data is
+thin or missing, they photograph the ingredients panel and an AI model reads it and cites the exact
+ingredient behind the verdict. A deterministic matcher runs first, and the AI may escalate a verdict
+but never clear an allergen the matcher found. Any circle member can overrule a verdict, and every
+overrule is logged against the model and prompt version that produced it.
 
 ## Thesis
 
