@@ -3,22 +3,17 @@ import multer from "multer";
 
 import { assertCanReadProfile } from "../authorization/profiles.js";
 import { requireAuth } from "../auth/requireAuth.js";
-import {
-  applyCommunityCorrections,
-  applyCommunityCorrectionsIfEnabled,
-  type AppliedCommunityAddition,
-  type CommunityAddition,
-} from "../corrections/applyCommunityCorrections.js";
-import { applyUserCorrections, type MatchedAllergenLike, type UserCorrection } from "../corrections/applyCorrections.js";
-import { loadCommunityAdditions } from "../corrections/communityAdditions.js";
+import { applyCommunityCorrectionsIfEnabled } from "../corrections/applyCommunityCorrections.js";
+import type { MatchedAllergenLike } from "../corrections/applyCorrections.js";
 import { MAX_PHOTO_BYTES, sniffImageType } from "../corrections/photoStorage.js";
+import { loadUserScanViews, publicCommunityReports } from "../corrections/userScanView.js";
 import { pool } from "../db/pool.js";
 import { env } from "../env.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { HttpError } from "../lib/httpError.js";
 import { getProduct } from "../lib/productLookup.js";
 import { getExtractionAllergenProfileId, getScanAllergenProfileId } from "../lib/scanAccess.js";
-import { computeVerdict, type Severity } from "../matcher/match.js";
+import { computeVerdict } from "../matcher/match.js";
 import { loadProfileAllergens } from "../matcher/profileAllergens.js";
 import { combineLabelScan, discardLabelEvidence } from "../verdict/combineScan.js";
 import { explainVerdict } from "../verdict/explainVerdict.js";
@@ -37,13 +32,6 @@ export const scansRouter = Router();
 
 const HISTORY_LIMIT = 20; // "the last handful," not deep history — CONTEST_RULES.md §7
 const BARCODE_PATTERN = /^\d{6,14}$/;
-
-// What the client gets about community reports: which of this profile's allergens a report
-// changed, and how many people made it. Not the correction ids, and not how other people's
-// profiles spelled the allergen — that's their data (docs/principles.md principle 5).
-function publicCommunityReports(applied: AppliedCommunityAddition[]) {
-  return applied.map(({ allergenName, reporterCount }) => ({ allergenName, reporterCount }));
-}
 
 scansRouter.post(
   "/scans",
@@ -300,40 +288,10 @@ scansRouter.get(
       [profileId, HISTORY_LIMIT],
     );
 
-    // CONTEST_RULES.md §3: a user's own correction overrides the verdict for their view
-    // immediately. Only this requester's own corrections — never someone else's, and never
-    // silently: the original always ships alongside the effective override, in the response below.
-    const { rows: correctionRows } = await pool.query<
-      { scan_id: string } & Pick<UserCorrection, "id" | "correctionType" | "direction" | "allergen" | "note" | "status" | "createdAt">
-    >(
-      `SELECT id, scan_id, correction_type AS "correctionType", direction, allergen, note, status,
-              created_at AS "createdAt"
-       FROM product_corrections
-       WHERE scan_id = ANY($1) AND reported_by = $2
-       ORDER BY created_at ASC`,
-      [rows.map((r) => r.id), req.user!.id],
-    );
-    const correctionsByScanId = new Map<string, UserCorrection[]>();
-    for (const { scan_id, ...correction } of correctionRows) {
-      const existing = correctionsByScanId.get(scan_id) ?? [];
-      existing.push(correction);
-      correctionsByScanId.set(scan_id, existing);
-    }
-
-    // Community additions are read fresh here rather than from each scan's
-    // community_corrections_applied snapshot: a warning reported after someone bought a product is
-    // exactly what they need to see when they look back at it. The snapshot is the audit record of
-    // what they were told at the time; this is what's known now. Current allergens, not the scan's
-    // snapshot, because a not-found scan has no per-allergen snapshot to match against at all.
-    let additionsByBarcode = new Map<string, CommunityAddition[]>();
-    let profileAllergens: { name: string; severity: Severity }[] = [];
-    if (env.communityCorrections && rows.length > 0) {
-      additionsByBarcode = await loadCommunityAdditions([...new Set(rows.map((r) => r.barcode as string))]);
-      ({ rows: profileAllergens } = await pool.query<{ name: string; severity: Severity }>(
-        "SELECT name, severity FROM allergens WHERE allergen_profile_id = $1",
-        [profileId],
-      ));
-    }
+    // Only this requester's own corrections, plus community additions read fresh — see
+    // loadUserScanViews. Never silently: the original always ships alongside the effective
+    // override, in the response below.
+    const views = await loadUserScanViews(rows, profileId, req.user!.id);
 
     // Unlike the live scan result, history is browsing at leisure, not an active safety decision
     // — the same category of access the profile page's own severity filtering already applies to
@@ -343,17 +301,8 @@ scansRouter.get(
       severeOnly ? matchedAllergens.filter((m) => m.severity === "severe") : matchedAllergens;
 
     const history = rows.map(({ result, matched_allergens, ...row }) => {
-      const corrections = correctionsByScanId.get(row.id) ?? [];
-      const userEffective = applyUserCorrections({ result, matchedAllergens: matched_allergens }, corrections);
-      // On top of the user's own corrections, not under them: if this user reported an allergen
-      // isn't there and the community has corroborated that it is, the warning survives
-      // (docs/legacy-spec.md §6) — and the card shows both notes, so neither is silent.
-      const community = applyCommunityCorrections(
-        userEffective ?? { result, matchedAllergens: matched_allergens },
-        profileAllergens,
-        additionsByBarcode.get(row.barcode) ?? [],
-      );
-      const effective = community ?? userEffective;
+      // The card shows both the user's own and the community's notes, so neither is silent.
+      const { corrections, effective, communityApplied } = views.get(row.id)!;
       const shownAllergens = effective ? filterSevere(effective.matchedAllergens) : [];
       // Filtered to what the list itself shows: a severe_only follower mustn't learn the name of a
       // mild allergen from the community note when the allergen list hides it.
@@ -364,7 +313,7 @@ scansRouter.get(
         effective: effective && { result: effective.result, matched_allergens: shownAllergens },
         corrections,
         community_reports: publicCommunityReports(
-          (community?.applied ?? []).filter((a) => shownNames.has(a.allergenName.toLowerCase())),
+          communityApplied.filter((a) => shownNames.has(a.allergenName.toLowerCase())),
         ),
       };
     });
