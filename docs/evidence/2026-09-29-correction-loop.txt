@@ -1,0 +1,17 @@
+Correction loop, production, 2026-09-29 (see docs/journal.md)
+
+$ psql "$DB" -c "SELECT id, correction_type, direction, allergen, status, origin, identity_mismatch_at_report, rejected_by IS NOT NULL AS has_rejector, rejection_reason FROM product_corrections;"
+                  id                  | correction_type |  direction  | allergen |  status  |     origin     | identity_mismatch_at_report | has_rejector |                   rejection_reason
+--------------------------------------+-----------------+-------------+----------+----------+----------------+-----------------------------+--------------+------------------------------------------------------
+ 5abf43ca-383c-4725-ad76-51c52b6847b7 | flag_missing    | add_caution | sesame   | rejected | user_initiated | f                           | t            | Correction-flow test, product doesn't contain sesame
+(1 row)
+
+$ psql "$DB" -c "SELECT id, created_at, community_corrections_applied FROM scans WHERE barcode = '5690516025007' ORDER BY created_at;"
+                  id                  |          created_at           | community_corrections_applied
+--------------------------------------+-------------------------------+---------------------------------------------------------------------------------------------------------------------------------------
+ 672605a9-d6ea-4db6-b2ef-528a05e3fdec | 2026-09-29 15:38:03.492297+00 | []
+ 68a9e72d-018b-4283-aca6-d5ec0e89258d | 2026-09-29 15:42:34.849281+00 | [{"reportedAs": ["sesame"], "allergenName": "sesame", "correctionIds": ["5abf43ca-383c-4725-ad76-51c52b6847b7"], "reporterCount": 1}]
+(2 rows)
+
+Row 1 = reporter A's scan (switch on, nothing applied yet). Row 2 = B's scan (profile John), addition applied.
+Rejected 2026-09-29T15:45:42Z by the admin account; B's history showed Safe afterwards.

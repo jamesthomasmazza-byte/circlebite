@@ -1508,3 +1508,34 @@ for reads is the fix.
 **Next:** file one real correction and work it through the review queue to rejected — the single
 highest-value unverified thing in the project. Then the unknown-product header fix above. Then Week 9,
 starting with the scanner targeting box and the barcode-failure fallback now in `BACKLOG.md`.
+
+
+---
+
+## 2026-09-29 — First live correction, worked through to rejected
+
+**Did:** Filed the first real correction on production and took it all the way through the review
+queue — the overrule loop had been fully built and tested against real Postgres but had never seen a
+live row. A (admin) checked barcode 5690516025007 (Smjörvi, an Icelandic butter spread, chosen via an
+Open Food Facts country search so no real family would ever scan it) → Safe. Reported sesame as
+missing, with a label photo, from the live scan card → corroborated on the single report. B, a
+throwaway account in a separate circle (profile John, sesame severe), checked the same barcode →
+"Contains an allergen", sesame "reported by 1 shopper with a label photo — not in the product data",
+and "The product data alone says Safe. Changed by shopper reports". Rejected the claim from
+`/admin/review-queue` with a reason; B's history went back to Safe on refresh. The warning was live
+for about six minutes (15:39–15:45 UTC).
+
+**Evidence:** `product_corrections` `5abf43ca-383c-4725-ad76-51c52b6847b7`: `flag_missing` /
+`add_caution`, `status=rejected`, `origin=user_initiated`, `identity_mismatch_at_report=f` (the 0032
+gate stayed out of the way — plain barcode scan, no combine), rejector and reason recorded.
+`scans.community_corrections_applied`: A's scan `[]`, B's scan names `5abf43ca…` — the audit column
+proves the addition reached B at scan time, and B's history now reading Safe proves the rejection
+removed it retroactively. The queue showed the reporter as "Reporter A", not an email. Full output in
+`docs/evidence/2026-09-29-correction-loop.txt`.
+
+**Found:** three things the server tests couldn't — all in `BACKLOG.md` Week 9. The report
+confirmation says "enough other reports agreed" after the only report; the reporter's own live card
+keeps headlining "Safe" after they report an allergen; and a resolved claim reads "0 reports — 0 from
+live accounts" above the one report it lists.
+
+**Next:** those three copy/UX fixes, then the unknown-product header fix.

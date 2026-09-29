@@ -251,17 +251,32 @@ JT's own read, 2026-09-28, after using the app on a phone in a real session: the
 the weakest part of the project. That matches the rubric risk — 10% of the grade sits here and
 it is the least-worked area. Treat this whole section as the priority block it is.
 
-- [ ] **Exercise the overrule loop on production — highest-value unverified thing in the project.**
-      `product_corrections` is empty on the live site: not one correction has ever been filed. The
-      recording path, corroboration counting, reporter pseudonyms, the same-circle warning, the 0023
-      rejection audit trail and the new 0032 identity gate are all built and tested against real
-      Postgres, and none has ever seen a real row. This is a graded feature (bonus 5%) with no live
-      evidence behind it, and the reject flow specifically has been outstanding since 2026-09-20.
-      File a correction from a live scan result, then work that claim through the admin queue to
-      rejected, checking the confirm copy, the `add_caution` reason requirement, and the retroactive
-      removal from another profile's history. `COMMUNITY_CORRECTIONS=on` in production, so the test
-      report is a live warning for that barcode until it's rejected — do it on a barcode nobody else
-      will scan, and finish the rejection in the same sitting.
+- [x] **Exercise the overrule loop on production.** Done 2026-09-29 — first real correction filed
+      and worked through to rejected on the live site (`docs/journal.md`, same date; DB output in
+      `docs/evidence/2026-09-29-correction-loop.txt`). Barcode 5690516025007 (Smjörvi, Icelandic): A
+      scanned Safe → reported sesame missing with a photo → corroborated on 1 report; B (separate
+      circle, profile John, sesame severe) scanned → "Contains an allergen", labeled as a shopper
+      report, "product data alone says Safe"; rejected from `/admin/review-queue` with a reason → B's
+      history back to Safe. Row `5abf43ca…`: `status=rejected`, `origin=user_initiated`,
+      `identity_mismatch_at_report=f`, rejector + reason recorded; B's scan's
+      `community_corrections_applied` names it, A's is `[]`. Reporter shown as "Reporter A". Not
+      separately captured: the empty-reason disabled state and the confirm-dialog copy.
+- [ ] **Report confirmation overstates corroboration.** Filing a single `add_caution` report shows
+      "Reported — enough other reports agreed that this is now corroborated." There were no other
+      reports — the add threshold is 1 (`recordCorrection.ts`). Copy should say what happened, e.g.
+      "Reported — this warning now shows for other families scanning this product." (`Scan.tsx`
+      `handleReportSubmit`). Found in the 2026-09-29 live test.
+- [ ] **Reporter's own live card doesn't change after reporting.** After submitting, A's card still
+      headlined "Safe" with only the status line added — `handleReportSubmit` sets `reportOutcome`
+      and never re-renders the corrected verdict, though the Week 8 item says the reporter's view
+      changes immediately (in history). The person who just said "this has sesame" is still looking
+      at "Safe". Confirm what A's history shows, then either refetch the scan or render the
+      corrected verdict in place. Found in the 2026-09-29 live test.
+- [ ] **Resolved claim's count contradicts its own list.** In the review queue's Resolved section the
+      rejected claim reads "0 reports — 0 from live accounts" directly above the one report it lists.
+      The count excludes rejected reports; say so ("1 report, rejected" / "0 still active") so it
+      doesn't read as a bug to a judge (`ReviewQueue.tsx` / `reviewQueue.ts`). Found in the
+      2026-09-29 live test.
 - [ ] **The verdict card's evidence header describes the code path, not the evidence.** On a scan
       whose barcode returned no product record, the card still reads "Checked against the product
       database and a photographed label" — two lines below "Unknown product" (observed live
