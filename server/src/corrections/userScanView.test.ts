@@ -60,7 +60,7 @@ after(async () => {
 });
 
 test("no corrections and no community reports: effective is null, so no transparency note renders", async () => {
-  const scan = await makeScan(REPORTER_PROFILE, "3000000000001", "safe");
+  const scan = await makeScan(REPORTER_PROFILE, "7000000000001", "safe");
   const view = (await loadUserScanViews([scan], REPORTER_PROFILE, REPORTER)).get(scan.id)!;
   assert.equal(view.effective, null);
   assert.deepEqual(view.corrections, []);
@@ -69,7 +69,7 @@ test("no corrections and no community reports: effective is null, so no transpar
 
 test("the reporter's own add_caution flips their view to contains_allergen straight after reporting", async () => {
   // The 2026-09-29 live test: A scanned Safe, reported sesame missing — A's card must now say so.
-  const scan = await makeScan(REPORTER_PROFILE, "3000000000002", "safe");
+  const scan = await makeScan(REPORTER_PROFILE, "7000000000002", "safe");
   await report(scan.id, REPORTER, "flag_missing", "Sesame");
 
   const view = (await loadUserScanViews([scan], REPORTER_PROFILE, REPORTER)).get(scan.id)!;
@@ -83,7 +83,7 @@ test("the reporter's own add_caution flips their view to contains_allergen strai
 });
 
 test("the reporter's own remove_caution changes only their view, even though it can't corroborate alone", async () => {
-  const scan = await makeScan(REPORTER_PROFILE, "3000000000003", "contains_allergen", [
+  const scan = await makeScan(REPORTER_PROFILE, "7000000000003", "contains_allergen", [
     { allergenName: "Sesame", severity: "severe", classification: "contains" },
   ]);
   await report(scan.id, REPORTER, "flag_wrong", "Sesame");
@@ -99,9 +99,9 @@ test("the reporter's own remove_caution changes only their view, even though it 
 });
 
 test("community additions reach another profile only with the switch on, and apply on top of that user's own view", async () => {
-  const reported = await makeScan(REPORTER_PROFILE, "3000000000004", "safe");
+  const reported = await makeScan(REPORTER_PROFILE, "7000000000004", "safe");
   await report(reported.id, REPORTER, "flag_missing", "Sesame");
-  const othersScan = await makeScan(OTHER_PROFILE, "3000000000004", "safe");
+  const othersScan = await makeScan(OTHER_PROFILE, "7000000000004", "safe");
 
   const previous = env.communityCorrections;
   try {
@@ -131,7 +131,7 @@ test("a barcode-less scan in the batch doesn't break the community lookup for th
   try {
     env.communityCorrections = true;
     const noBarcode = await makeScan(REPORTER_PROFILE, null, "safe");
-    const withBarcode = await makeScan(REPORTER_PROFILE, "3000000000005", "safe");
+    const withBarcode = await makeScan(REPORTER_PROFILE, "7000000000005", "safe");
     const views = await loadUserScanViews([noBarcode, withBarcode], REPORTER_PROFILE, REPORTER);
     assert.equal(views.get(noBarcode.id)!.effective, null);
     assert.equal(views.get(withBarcode.id)!.effective, null);
@@ -143,7 +143,7 @@ test("a barcode-less scan in the batch doesn't break the community lookup for th
 test("after an admin rejects it, a removal stops clearing the reporter's view; an addition keeps warning it", async () => {
   // docs/principles.md principle 1, decided 2026-09-29. OTHER stands in for the admin here —
   // rejectCorrection records who rejected, it doesn't check is_admin (the route does).
-  const removed = await makeScan(REPORTER_PROFILE, "3000000000006", "contains_allergen", [
+  const removed = await makeScan(REPORTER_PROFILE, "7000000000006", "contains_allergen", [
     { allergenName: "Sesame", severity: "severe", classification: "contains" },
   ]);
   const removal = await report(removed.id, REPORTER, "flag_wrong", "Sesame");
@@ -153,7 +153,7 @@ test("after an admin rejects it, a removal stops clearing the reporter's view; a
   assert.equal(afterRemovalRejected.effective, null, "the engine's own contains_allergen shows again");
   assert.equal(afterRemovalRejected.corrections[0].status, "rejected", "the report itself is still listed");
 
-  const added = await makeScan(REPORTER_PROFILE, "3000000000007", "safe");
+  const added = await makeScan(REPORTER_PROFILE, "7000000000007", "safe");
   const addition = await report(added.id, REPORTER, "flag_missing", "Sesame");
   await rejectCorrection(addition.id, OTHER, "label photo shows no sesame");
 

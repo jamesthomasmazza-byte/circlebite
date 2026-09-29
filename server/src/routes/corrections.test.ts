@@ -77,7 +77,7 @@ after(async () => {
 
 test("reporting an allergen missing returns the reporter's corrected view, not just the report status", async () => {
   // The 2026-09-29 live test: a Safe card, sesame reported missing, and the card kept saying Safe.
-  const scanId = await makeScan("4000000000001", "safe", [
+  const scanId = await makeScan("8000000000001", "safe", [
     { allergenName: "Sesame", severity: "severe", classification: "clear" },
   ]);
 
@@ -100,7 +100,7 @@ test("reporting an allergen missing returns the reporter's corrected view, not j
 });
 
 test("a pending removal still changes the reporter's own card, and says it's pending", async () => {
-  const scanId = await makeScan("4000000000002", "contains_allergen", [
+  const scanId = await makeScan("8000000000002", "contains_allergen", [
     { allergenName: "Sesame", severity: "severe", classification: "contains" },
   ]);
 
