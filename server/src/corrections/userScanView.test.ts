@@ -4,6 +4,7 @@ import { after, before, test } from "node:test";
 import { pool } from "../db/pool.js";
 import { env } from "../env.js";
 import { recordCorrection } from "./recordCorrection.js";
+import { rejectCorrection } from "./reviewQueue.js";
 import { loadUserScanViews, type ScanForView } from "./userScanView.js";
 
 // Real Postgres, same discipline as recordCorrection.test.ts: real inserts, real cleanup. This is
@@ -137,4 +138,25 @@ test("a barcode-less scan in the batch doesn't break the community lookup for th
   } finally {
     env.communityCorrections = previous;
   }
+});
+
+test("after an admin rejects it, a removal stops clearing the reporter's view; an addition keeps warning it", async () => {
+  // docs/principles.md principle 1, decided 2026-09-29. OTHER stands in for the admin here —
+  // rejectCorrection records who rejected, it doesn't check is_admin (the route does).
+  const removed = await makeScan(REPORTER_PROFILE, "3000000000006", "contains_allergen", [
+    { allergenName: "Sesame", severity: "severe", classification: "contains" },
+  ]);
+  const removal = await report(removed.id, REPORTER, "flag_wrong", "Sesame");
+  await rejectCorrection(removal.id, OTHER, null);
+
+  const afterRemovalRejected = (await loadUserScanViews([removed], REPORTER_PROFILE, REPORTER)).get(removed.id)!;
+  assert.equal(afterRemovalRejected.effective, null, "the engine's own contains_allergen shows again");
+  assert.equal(afterRemovalRejected.corrections[0].status, "rejected", "the report itself is still listed");
+
+  const added = await makeScan(REPORTER_PROFILE, "3000000000007", "safe");
+  const addition = await report(added.id, REPORTER, "flag_missing", "Sesame");
+  await rejectCorrection(addition.id, OTHER, "label photo shows no sesame");
+
+  const afterAdditionRejected = (await loadUserScanViews([added], REPORTER_PROFILE, REPORTER)).get(added.id)!;
+  assert.equal(afterAdditionRejected.effective?.result, "contains_allergen");
 });

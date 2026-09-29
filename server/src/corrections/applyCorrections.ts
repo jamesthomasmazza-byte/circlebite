@@ -60,20 +60,29 @@ function rollupResult(matchedAllergens: { classification: string }[]): string {
  * caution beats false safety). Corrections are applied in the order reported; if the same user
  * somehow has both directions on the same allergen (no schema constraint prevents it, since it only
  * dedupes within one direction), the most recent one wins.
+ *
+ * A rejected report is judged by its direction (docs/principles.md principle 1, decided
+ * 2026-09-29). A rejected removal (flag_wrong, wrong_product) stops applying: an admin looked at the
+ * photo and said no, and keeping the warning cleared on the reporter's own view anyway would be
+ * false safety for the one family that saw it. A rejected addition (flag_missing) keeps applying:
+ * the rejection stops it reaching other families (communityAdditions.ts), but it never lifts a
+ * warning the parent attested to from the package in their own hand — that would let someone
+ * else's decision move this family's view toward safe.
  */
 export function applyUserCorrections(
   scan: ScanForCorrection,
   corrections: UserCorrection[],
 ): EffectiveScanResult | null {
-  if (corrections.length === 0) return null;
+  const applicable = corrections.filter((c) => !(c.status === "rejected" && c.direction === "remove_caution"));
+  if (applicable.length === 0) return null;
 
-  if (corrections.some((c) => c.correctionType === "wrong_product")) {
+  if (applicable.some((c) => c.correctionType === "wrong_product")) {
     return { result: "unable_to_confirm", matchedAllergens: [] };
   }
 
   const matchedAllergens = scan.matchedAllergens.map((m) => ({ ...m }));
 
-  for (const correction of corrections) {
+  for (const correction of applicable) {
     if (!correction.allergen) continue;
     const key = correction.allergen.toLowerCase();
     const existing = matchedAllergens.find((m) => m.allergenName.toLowerCase() === key);

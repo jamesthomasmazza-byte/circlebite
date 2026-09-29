@@ -169,3 +169,32 @@ test("clearing the one 'unresolved' allergen that caused unable_to_confirm is st
   ]);
   assert.equal(effective?.result, "safe");
 });
+
+// docs/principles.md principle 1, decided 2026-09-29: rejection is judged by direction. A rejected
+// removal stops clearing the reporter's own view — an admin looked at the photo and said no — while
+// a rejected addition keeps warning the family who read the package themselves.
+test("a rejected flag_wrong no longer clears the allergen on the reporter's own view", () => {
+  const s = scan("contains_allergen", [{ allergenName: "Sesame", severity: "severe", classification: "contains" }]);
+  const effective = applyUserCorrections(s, [
+    correction({ correctionType: "flag_wrong", direction: "remove_caution", allergen: "Sesame", status: "rejected" }),
+  ]);
+  assert.equal(effective, null);
+});
+
+test("a rejected wrong_product no longer clears everything on the reporter's own view", () => {
+  const s = scan("contains_allergen", [{ allergenName: "Milk", severity: "severe", classification: "contains" }]);
+  const effective = applyUserCorrections(s, [
+    correction({ correctionType: "wrong_product", direction: "remove_caution", status: "rejected" }),
+    correction({ id: "c2", correctionType: "flag_missing", direction: "add_caution", allergen: "Egg" }),
+  ]);
+  assert.equal(effective?.result, "contains_allergen");
+  assert.equal(effective?.matchedAllergens.find((m) => m.allergenName === "Milk")?.classification, "contains");
+});
+
+test("a rejected flag_missing still warns the reporter's own view", () => {
+  const s = scan("safe", [{ allergenName: "Sesame", severity: "severe", classification: "clear" }]);
+  const effective = applyUserCorrections(s, [
+    correction({ correctionType: "flag_missing", direction: "add_caution", allergen: "Sesame", status: "rejected" }),
+  ]);
+  assert.equal(effective?.result, "contains_allergen");
+});
