@@ -251,6 +251,29 @@ JT's own read, 2026-09-28, after using the app on a phone in a real session: the
 the weakest part of the project. That matches the rubric risk — 10% of the grade sits here and
 it is the least-worked area. Treat this whole section as the priority block it is.
 
+- [ ] **Exercise the overrule loop on production — highest-value unverified thing in the project.**
+      `product_corrections` is empty on the live site: not one correction has ever been filed. The
+      recording path, corroboration counting, reporter pseudonyms, the same-circle warning, the 0023
+      rejection audit trail and the new 0032 identity gate are all built and tested against real
+      Postgres, and none has ever seen a real row. This is a graded feature (bonus 5%) with no live
+      evidence behind it, and the reject flow specifically has been outstanding since 2026-09-20.
+      File a correction from a live scan result, then work that claim through the admin queue to
+      rejected, checking the confirm copy, the `add_caution` reason requirement, and the retroactive
+      removal from another profile's history. `COMMUNITY_CORRECTIONS=on` in production, so the test
+      report is a live warning for that barcode until it's rejected — do it on a barcode nobody else
+      will scan, and finish the rejection in the same sitting.
+- [ ] **The verdict card's evidence header describes the code path, not the evidence.** On a scan
+      whose barcode returned no product record, the card still reads "Checked against the product
+      database and a photographed label" — two lines below "Unknown product" (observed live
+      2026-09-28, barcode 2113792886078). `scans.source` is correctly `combined`, since a barcode was
+      entered; the header is wrong because it describes flow rather than what was actually consulted.
+      This is the same over-claiming the 2026-09-28 identity work fixed in the other direction, so fix
+      it with one rule rather than two patches: the header and the explanation text both derive from
+      the evidence that existed, never from which function ran. While in there, the same card stacks
+      two paragraphs saying the same thing at different scopes — the general fallback ("couldn't be
+      checked against either the product record or the label you photographed") and the per-allergen
+      detail ("couldn't check 4 of James Mazza's allergens against this photo"). On a card meant to be
+      read in three seconds in an aisle, one of them goes.
 - [ ] **Scanner targeting box, and a fallback when the barcode won't read.** The camera scanner
       gives no indication of where to hold the package, so it hunts across the whole frame and
       takes longer than it needs to. Draw a reticle — a bounded box with the live view dimmed

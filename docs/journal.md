@@ -12,38 +12,46 @@ of a session, not the beginning.
 
 ---
 
-## Status as of 2026-09-10
+## Status as of 2026-09-29
 
-Through Week 7 of `BACKLOG.md`: auth, allergen profiles, and the full circle invite flow are built;
-scan-to-verdict works end to end, deterministic matcher plus the Path B AI verdict engine, both
-confirmed against the real deployed app with a real key — a genuine AI escalation, the fail-closed
-path, and a real defect in the deterministic matcher's word-boundary matching that the AI surfaced
-and got fixed (see the three 2026-09-10 entries below). Still open from earlier weeks, not yet
-started: the judge-account seed script. Password reset, also open since Week 1, is now built and
-deployed too (2026-09-17 entry below) — change-password in Settings plus an admin-issued reset
-token for a locked-out account, release 20260917151614, with session revocation and reset-token
-reuse both confirmed live. Week 8 — the overrule loop — has its
-recording path and (as of the evening of 2026-09-10) corroborated additions reaching other profiles
-— browser-checked, deployed, and switched on in production, plus the AI accuracy page itself
-(planned with JT, then built the same day — see the entry below). Login/register rate limiting,
-open since Week 1, is built and deployed (2026-09-11 entry below) — release 20260911220220, with the
-§13 real-IP check and a production 429 both confirmed live. Account deletion and the 24-month
-scan-retention job, open since Week 2-3, are now built and deployed too (2026-09-16 entry below) —
-release 20260916143727, with the transfer-vs-destroy behavior and the retention job's audit trail
-both confirmed live. The review queue (BACKLOG.md line 145) is now built too (2026-09-20 entry
-below) — an admin-gated page to browse and reject corrections instead of running SQL, with
-`rejected_by`/`rejected_at`/`rejection_reason` as the audit trail that runbook never had, and two
-real bugs caught during verification rather than left for production. 185 server tests passing,
-and deployed — release 20260920173010, migration 0023 applied. Verified live: the page renders, the
-admin gate holds, and the empty state is accurate (production has no corrections at all right now).
-**Still unverified in a browser: the reject flow itself** — the confirm copy, the `add_caution`
-reason requirement, and the retroactive removal from another family's history. To verify, report a
-missing allergen from a live scan (the report form exists only on the scan result screen, see the
-new BACKLOG item) and work that claim through the queue. Note `COMMUNITY_CORRECTIONS=on` in
-production, so a test report becomes a live warning for anyone scanning that barcode until it's
-rejected. Still open: the reverse "warning survives" gap in
-`recordCorrection.ts` and letting corroborated removals actually reach other profiles, the
-judge-account seed script, and Week 9's polish/hardening pass.
+Well ahead of `BACKLOG.md`: everything through Week 8 is built and deployed, plus Path C (reading a
+photographed ingredients label) and Path D (the adaptive flow that decides, after the barcode, whether
+a label photo is required, offered, or unnecessary). The schedule puts this at Weeks 2-3. The gap is
+Week 9 — UI/UX — which JT's own read after using the app on a phone calls the weakest part of the
+project, and which carries 10% of the grade.
+
+**Live now:** release `20260928215503`, migrations applied through 0033, `LABEL_SCAN=on` in
+production. Auth, profiles, the circle invite flow, scan-to-verdict, the deterministic matcher, Paths
+A through D, the overrule loop and review queue, the AI accuracy page, NPS, rate limiting, password
+reset, account deletion and the retention job.
+
+**Verified live on a phone, 2026-09-28:** a `contains` verdict correctly suppressing the second-opinion
+offer (a label read can only escalate, so there is nothing to offer once the answer is already
+"don't buy it"); a full `combined` verdict as a single scan row rather than two; and the
+`photo: required` branch on an unknown store barcode, failing closed to `unable_to_confirm` with every
+allergen `unchecked`.
+
+**The biggest untested thing is not code.** `product_corrections` is **empty on production** — not one
+correction has ever been filed against the live site. The overrule loop, the review queue, corroboration
+counting, reporter pseudonyms, the same-circle warning, the 0023 rejection audit trail and the new 0032
+identity gate are all built, tested against real Postgres, and have never seen a real row. The reject
+flow has been on this list since 2026-09-20. It is a graded feature (bonus 5%) with zero live evidence
+behind it. Clearing it takes about ten minutes: file a correction from a live scan result, then work
+that claim through the admin queue to rejected. Note `COMMUNITY_CORRECTIONS=on` in production, so a
+test report becomes a live warning for that barcode until it is rejected.
+
+**Known, unfixed, found 2026-09-28:** on a scan where the barcode returned no product record, the
+verdict card still says "Checked against the product database and a photographed label." There was no
+database record — the card says so two lines above. The header describes the code path rather than the
+evidence that actually existed, which is the same over-claiming the 2026-09-28 work corrected in the
+other direction. The same card stacks two paragraphs that say the same thing at different scopes.
+The rule worth applying once rather than twice: the header and the explanation should both derive from
+what evidence existed, not from which function ran.
+
+**Also still open:** the judge-account seed script (open since Week 1); a deliberate judging-week value
+for `AI_DAILY_SPEND_CAP_CENTS`, now that one scan can make three Anthropic calls; the reverse
+"warning survives" gap in `recordCorrection.ts`; letting corroborated removals reach other profiles;
+and Week 9's polish and hardening pass in full.
 
 ---
 
@@ -1449,3 +1457,54 @@ occasionally. That number needs revisiting again before `LABEL_SCAN` flips on fo
 states above through an actual browser before this ships. Then: measure `product_last_updated`'s
 real distribution to decide the staleness trigger, and design the per-barcode caching idea for the
 prompt-frequency consequence above — both `BACKLOG.md`, neither built.
+
+---
+
+## 2026-09-29 — Path D on real packages, and a safety gate that was guarding the wrong direction
+
+**Did:** Took Path D into a store-style session on a phone against real packages, which surfaced more
+than the server tests had. Then four commits (`5c695d3`, `a5b922c`, `ad0903b`, `f3efe48`), deployed as
+release `20260928215503` with migrations 0032 and 0033.
+
+A correct combined scan of an Old El Paso taco kit tripped the product-identity mismatch gate and had
+to be clicked through. The cause was visible in the data: the photo returned `Flour Tortillas (Old El
+Paso)` and the database row said `Soft taco dinner kit imp` — no shared words, because a dinner kit's
+ingredients panel names its components. `compareProductIdentity()` compared product names only, and
+the brand, present and matching on both sides, was never looked at. Multi-component kits, variety
+packs and anything whose panel names a sub-item would all have tripped it.
+
+**Learned — the part worth keeping:** investigating why the gate existed at all mattered more than
+fixing its precision. Tracing every branch of `reconcileOne()` showed the label channel is
+escalate-or-hold in all ten cases, and that `reconcileOne` has no access to identity at all — it only
+ever sees two classifications. So the mismatch gate sat exclusively on the one flow where a wrong photo
+*cannot* make a verdict less cautious. It was never protecting against a false "safe"; the architecture
+already did that. What it actually guarded against was a false *warning* — a real cost, but one that
+does not justify interrupting a correct scan with a question the user can almost always answer
+"same product" to from holding the box. JT hit it on a scan he was deliberately testing and could not
+recall its contents afterward: a gate whose correct answer is nearly always the same trains people to
+answer without reading.
+
+**Decided:** fold brand into the identity comparison; demote the block to a non-blocking inline note
+with a "that wasn't this product — discard the photo" link that reverts the scan to its pre-combine
+barcode verdict from a snapshot (migration 0033, no recomputation, no new AI spend); and move the one
+genuinely hard gate to where a mismatched label could cause durable harm — the shared
+`product_corrections` record (migration 0032), where a wrong product's allergens would otherwise reach
+other families. Showing one user a flagged finding is cheap and reversible. Writing it into shared data
+is neither. Also replaced `explainVerdict`'s boolean `photoSourced` with a tri-state `evidenceSource`,
+after finding that combined scans were deciding their explanation text from
+`matched_allergens.length === 0` — a heuristic about the barcode side, not about whether a photo
+contributed.
+
+**Hit a wall on:** migration 0032 backfills existing rows rather than only defaulting them, because the
+old confirm-through path had already been writing label evidence into scans that corrections denormalize
+without re-checking. On production the backfill's warning block stayed silent, which is the answer we
+wanted: nothing had been corroborated through that hole. It found nothing because
+`product_corrections` is empty — see the status note above.
+
+Also lost time to git lock files: a Cowork session's shell on the Mac cannot delete files, so every
+`git` command it ran left an `index.lock` behind and blocked Claude Code. `git --no-optional-locks`
+for reads is the fix.
+
+**Next:** file one real correction and work it through the review queue to rejected — the single
+highest-value unverified thing in the project. Then the unknown-product header fix above. Then Week 9,
+starting with the scanner targeting box and the barcode-failure fallback now in `BACKLOG.md`.
