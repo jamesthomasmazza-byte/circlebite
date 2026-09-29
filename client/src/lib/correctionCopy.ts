@@ -1,4 +1,4 @@
-import type { CorrectionType, ScanCorrection } from "./api";
+import type { CorrectionType, ReviewQueueClaim, ScanCorrection } from "./api";
 
 // Plain functions, no JSX — the wording a family or an admin reads about a correction, kept here
 // so it can be tested (`npm test -w client`) and shared between pages instead of drifting apart.
@@ -49,4 +49,26 @@ const CORRECTION_STATUS: Record<ScanCorrection["status"], string> = {
 export function yourReportLine(c: Pick<ScanCorrection, "correctionType" | "allergen" | "status" | "note">): string {
   const what = `${c.allergen ? `${c.allergen} ` : ""}${CORRECTION_CLAIM[c.correctionType]}`;
   return `Your report: ${what} — ${CORRECTION_STATUS[c.status]}${c.note ? ` — "${c.note}"` : ""}`;
+}
+
+/**
+ * The review queue's per-claim count line. liveReporterCount and deletedAccountReportCount both
+ * exclude rejected reports (reviewQueue.ts's groupIntoClaims), while claim.reports lists every
+ * report whatever its status — so counting only the first two put "0 reports" directly above the
+ * one rejected report the claim lists. The rejected ones are counted from claim.reports and said
+ * outright. Correct after a reject too: the page refetches rather than patching counts locally.
+ */
+export function reportCountLine(
+  claim: Pick<ReviewQueueClaim, "liveReporterCount" | "deletedAccountReportCount" | "reports">,
+): string {
+  const total = claim.reports.length;
+  const active = claim.liveReporterCount + claim.deletedAccountReportCount;
+  const reports = `${total} ${total === 1 ? "report" : "reports"}`;
+  const breakdown =
+    `${claim.liveReporterCount} from live accounts` +
+    (claim.deletedAccountReportCount > 0 ? `, ${claim.deletedAccountReportCount} from a deleted account` : "");
+
+  if (active === total) return `${reports} — ${breakdown}.`;
+  if (active === 0) return `${reports} — ${total === 1 ? "rejected" : "all rejected"}.`;
+  return `${reports}, ${active} still active — ${breakdown}.`;
 }

@@ -8,28 +8,12 @@ import {
   type ReviewQueueClaim,
   type ReviewQueueReport,
 } from "../lib/api";
+import { reportCountLine } from "../lib/correctionCopy";
 
 function claimTitle(claim: ReviewQueueClaim): string {
   const what = claim.allergen ?? "product identity (wrong_product)";
   const directionLabel = claim.direction === "add_caution" ? "reported as present" : "reported as not present";
   return `${claim.barcode ?? "no barcode"} — ${what} — ${directionLabel}`;
-}
-
-function ReportCount({ claim }: { claim: ReviewQueueClaim }) {
-  const total = claim.liveReporterCount + claim.deletedAccountReportCount;
-  if (claim.deletedAccountReportCount === 0) {
-    return (
-      <p>
-        {total} {total === 1 ? "report" : "reports"} — {claim.liveReporterCount} from live accounts.
-      </p>
-    );
-  }
-  return (
-    <p>
-      {total} {total === 1 ? "report" : "reports"} — {claim.liveReporterCount} from live accounts,{" "}
-      {claim.deletedAccountReportCount} from a deleted account.
-    </p>
-  );
 }
 
 function ReportRow({
@@ -112,7 +96,7 @@ function ClaimSection({
   return (
     <section>
       <h3>{claimTitle(claim)}</h3>
-      <ReportCount claim={claim} />
+      <p>{reportCountLine(claim)}</p>
       {claim.sameCircleWarning && (
         <p>
           Two or more of the live reporters on this claim share a circle (they manage or follow the same profile) —
