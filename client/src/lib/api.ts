@@ -504,6 +504,8 @@ export type CorrectionResult = {
   id: string;
   status: CorrectionStatus;
   corroborated: boolean;
+  // True only when this report is now changing what other families see for this product.
+  reaches_other_families: boolean;
   effective: { result: Verdict; matched_allergens: MatchedAllergen[] } | null;
   corrections: ScanCorrection[];
   community_reports: CommunityReport[];

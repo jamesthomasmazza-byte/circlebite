@@ -9,17 +9,27 @@ import type { CorrectionType, ReviewQueueClaim, ScanCorrection } from "./api";
  * FIRST report — threshold 1, recordCorrection.ts — so "enough other reports agreed" would be false
  * there. Only a remove_caution (threshold 3) needs others to agree, and even corroborated it still
  * only changes the reporter's own view (docs/principles.md, Sept 10 2026 precedent).
+ *
+ * "Shows for other families" only when the server says it does (reachesOtherFamilies) — with
+ * COMMUNITY_CORRECTIONS switched off, a corroborated addition changes the reporter's own view and
+ * nobody else's, and the message has to say what actually happened (principle 7).
  */
 export function reportOutcomeMessage(input: {
   correctionType: CorrectionType;
   corroborated: boolean;
+  reachesOtherFamilies: boolean;
   hasBarcode: boolean;
 }): string {
   if (input.corroborated) {
-    return input.correctionType === "flag_missing"
+    if (input.correctionType !== "flag_missing") {
+      return (
+        "Reported — enough other reports agreed that this is now corroborated. Removing a warning still only " +
+        "changes your own view; other families keep seeing it."
+      );
+    }
+    return input.reachesOtherFamilies
       ? "Reported — this warning now shows for other families who scan this product."
-      : "Reported — enough other reports agreed that this is now corroborated. Removing a warning still only " +
-          "changes your own view; other families keep seeing it.";
+      : "Reported — this warning now shows on your own view.";
   }
   if (!input.hasBarcode) {
     return (

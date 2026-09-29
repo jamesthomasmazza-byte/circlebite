@@ -395,7 +395,12 @@ export function Scan() {
         origin: reportOrigin ?? undefined,
       });
       setReportOutcome(
-        reportOutcomeMessage({ correctionType: reportType, corroborated: outcome.corroborated, hasBarcode: result.barcode !== null }),
+        reportOutcomeMessage({
+          correctionType: reportType,
+          corroborated: outcome.corroborated,
+          reachesOtherFamilies: outcome.reaches_other_families,
+          hasBarcode: result.barcode !== null,
+        }),
       );
       // CONTEST_RULES.md §3: the report overrides this person's own view immediately — so the card
       // they're still looking at shows it, not the verdict they just said was wrong. The server
