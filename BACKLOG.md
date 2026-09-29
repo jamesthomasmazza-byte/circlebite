@@ -263,7 +263,9 @@ it is the least-worked area. Treat this whole section as the priority block it i
       separately captured: the empty-reason disabled state and the confirm-dialog copy.
 - [x] **Report confirmation overstates corroboration.** Done 2026-09-29. A corroborated
       `flag_missing` (add_caution, threshold 1) now says "Reported — this warning now shows for other
-      families who scan this product." "Enough other reports agreed" is kept only for a corroborated
+      families who scan this product." — only when the server's `reaches_other_families` says so;
+      with COMMUNITY_CORRECTIONS off it says "this warning now shows on your own view" (principles
+      precedent, same date). "Enough other reports agreed" is kept only for a corroborated
       removal (threshold 3), which adds that removals still change only the reporter's own view.
       Pending and barcode-less wording unchanged. Copy lives in `client/src/lib/correctionCopy.ts`
       with tests; this added the client's first `npm test` script (node:test + tsx, the server's
@@ -276,7 +278,11 @@ it is the least-worked area. Treat this whole section as the priority block it i
       `community_reports` from it, and the card headlines that. The engine's verdict stays in the
       callout with a "Your report: …" line shared with history. No new AI calls. Tested against real
       Postgres (`userScanView.test.ts`, `routes/corrections.test.ts`). Side fix: history showed a
-      rejected report as "pending review". Found in the 2026-09-29 live test.
+      rejected report as "pending review". Follow-on decided from principle 1 (precedent row, same
+      date): a rejected removal stops clearing the reporter's own view, and history says why; a
+      rejected addition keeps warning them. Known gap: reporting and then photographing the label
+      on the same card drops back to the photo's result on the live card (history is right).
+      Found in the 2026-09-29 live test.
 - [x] **Resolved claim's count contradicts its own list.** Done 2026-09-29. The count line now
       counts from `claim.reports`, which `reviewQueue.ts` already returned with every status: "1
       report — rejected", "N reports — all rejected", or "N reports, M still active — …". No new server
