@@ -5,6 +5,7 @@ import { assertCanReadProfile } from "../authorization/profiles.js";
 import { requireAuth } from "../auth/requireAuth.js";
 import { EXTENSION_TO_MIME, MAX_PHOTO_BYTES, resolvePhotoPath, savePhotoBuffer, sniffImageType } from "../corrections/photoStorage.js";
 import { recordCorrection, type CorrectionType } from "../corrections/recordCorrection.js";
+import { loadUserScanViews, publicCommunityReports, type ScanForView } from "../corrections/userScanView.js";
 import { pool } from "../db/pool.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { HttpError } from "../lib/httpError.js";
@@ -89,7 +90,22 @@ correctionsRouter.post(
       origin,
     });
 
-    res.status(201).json(result);
+    // CONTEST_RULES.md §3: the correction overrides the reporter's own view immediately — so the
+    // live card they're still looking at gets the same corrected view their history shows, from
+    // the same function, rather than headlining the verdict they just said was wrong. Unfiltered,
+    // like the live scan response itself (scans.ts): this is still the active decision.
+    const { rows: scanRows } = await pool.query<ScanForView>(
+      "SELECT id, barcode, result, matched_allergens FROM scans WHERE id = $1",
+      [scanId],
+    );
+    const view = (await loadUserScanViews(scanRows, profileId, req.user!.id)).get(scanId);
+
+    res.status(201).json({
+      ...result,
+      effective: view?.effective ? { result: view.effective.result, matched_allergens: view.effective.matchedAllergens } : null,
+      corrections: view?.corrections ?? [],
+      community_reports: publicCommunityReports(view?.communityApplied ?? []),
+    });
   }),
 );
 
