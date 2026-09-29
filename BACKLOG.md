@@ -261,22 +261,26 @@ it is the least-worked area. Treat this whole section as the priority block it i
       `identity_mismatch_at_report=f`, rejector + reason recorded; B's scan's
       `community_corrections_applied` names it, A's is `[]`. Reporter shown as "Reporter A". Not
       separately captured: the empty-reason disabled state and the confirm-dialog copy.
-- [ ] **Report confirmation overstates corroboration.** Filing a single `add_caution` report shows
-      "Reported — enough other reports agreed that this is now corroborated." There were no other
-      reports — the add threshold is 1 (`recordCorrection.ts`). Copy should say what happened, e.g.
-      "Reported — this warning now shows for other families scanning this product." (`Scan.tsx`
-      `handleReportSubmit`). Found in the 2026-09-29 live test.
-- [ ] **Reporter's own live card doesn't change after reporting.** After submitting, A's card still
-      headlined "Safe" with only the status line added — `handleReportSubmit` sets `reportOutcome`
-      and never re-renders the corrected verdict, though the Week 8 item says the reporter's view
-      changes immediately (in history). The person who just said "this has sesame" is still looking
-      at "Safe". Confirm what A's history shows, then either refetch the scan or render the
-      corrected verdict in place. Found in the 2026-09-29 live test.
-- [ ] **Resolved claim's count contradicts its own list.** In the review queue's Resolved section the
-      rejected claim reads "0 reports — 0 from live accounts" directly above the one report it lists.
-      The count excludes rejected reports; say so ("1 report, rejected" / "0 still active") so it
-      doesn't read as a bug to a judge (`ReviewQueue.tsx` / `reviewQueue.ts`). Found in the
-      2026-09-29 live test.
+- [x] **Report confirmation overstates corroboration.** Done 2026-09-29. A corroborated
+      `flag_missing` (add_caution, threshold 1) now says "Reported — this warning now shows for other
+      families who scan this product." "Enough other reports agreed" is kept only for a corroborated
+      removal (threshold 3), which adds that removals still change only the reporter's own view.
+      Pending and barcode-less wording unchanged. Copy lives in `client/src/lib/correctionCopy.ts`
+      with tests; this added the client's first `npm test` script (node:test + tsx, the server's
+      convention). Found in the 2026-09-29 live test.
+- [x] **Reporter's own live card doesn't change after reporting.** Done 2026-09-29. A's history
+      already showed the corrected verdict ("Contains an allergen", with an "Originally Safe" callout
+      naming A's report); only the live card was stale. History's per-scan sequence (own corrections,
+      then community additions) moved into `corrections/userScanView.ts`, so no third rollup copy.
+      `POST /scans/:scanId/corrections` now also returns the reporter's `effective`, `corrections` and
+      `community_reports` from it, and the card headlines that. The engine's verdict stays in the
+      callout with a "Your report: …" line shared with history. No new AI calls. Tested against real
+      Postgres (`userScanView.test.ts`, `routes/corrections.test.ts`). Side fix: history showed a
+      rejected report as "pending review". Found in the 2026-09-29 live test.
+- [x] **Resolved claim's count contradicts its own list.** Done 2026-09-29. The count line now
+      counts from `claim.reports`, which `reviewQueue.ts` already returned with every status: "1
+      report — rejected", "N reports — all rejected", or "N reports, M still active — …". No new server
+      field. Tests in `correctionCopy.test.ts`. Found in the 2026-09-29 live test.
 - [ ] **The verdict card's evidence header describes the code path, not the evidence.** On a scan
       whose barcode returned no product record, the card still reads "Checked against the product
       database and a photographed label" — two lines below "Unknown product" (observed live
