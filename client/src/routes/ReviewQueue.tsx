@@ -147,8 +147,8 @@ export function ReviewQueue() {
 
     const confirmed = window.confirm(
       isAddCaution
-        ? "Reject this report? This immediately stops showing this warning to other families — including on scans already in their history, not just new ones."
-        : "Reject this report? This only affects the reporter's own view — removals don't propagate to other families yet.",
+        ? "Reject this report? This immediately stops showing this warning to other families — including on scans already in their history, not just new ones. The reporter keeps seeing it on their own view."
+        : "Reject this report? This puts the warning back on the reporter's own view — removals don't propagate to other families yet.",
     );
     if (!confirmed) return;
 
@@ -252,7 +252,7 @@ export function ReviewQueue() {
               <h3>Removals reported (reporter's own view only)</h3>
               <p>
                 This direction doesn't propagate to other profiles yet (docs/principles.md's precedent on
-                community-additions-reach-other-profiles) — rejecting one only affects that reporter's own view.
+                community-additions-reach-other-profiles) — rejecting one puts the warning back on that reporter's own view.
               </p>
               {removeCautionCorroborated.map((claim) => (
                 <ClaimSection key={claimTitle(claim)} claim={claim} {...claimSectionProps} />

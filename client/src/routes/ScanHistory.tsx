@@ -99,6 +99,19 @@ export function ScanHistory() {
                     </p>
                   );
                 })()}
+                {!scan.effective && scan.corrections.length > 0 && (
+                  // Only reachable when every report here is a rejected removal — those stop
+                  // applying (docs/principles.md principle 1), so this is the engine's own verdict
+                  // again. Said, not silent: this person may last have seen it cleared.
+                  <div role="note">
+                    <p>Your report was reviewed and rejected, so this shows the original verdict again:</p>
+                    <ul>
+                      {scan.corrections.map((c) => (
+                        <li key={c.id}>{yourReportLine(c)}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 {scan.effective && (
                   <div role="note">
                     <p>
