@@ -17,6 +17,12 @@ import {
   type ProfileSummary,
   type ScanResult,
 } from "../lib/api";
+import {
+  classificationLabel,
+  isTraceEscalatedToContains,
+  shopperCount,
+  sourceLabel,
+} from "../lib/allergenRowCopy";
 import { reportOutcomeMessage, yourReportLine } from "../lib/correctionCopy";
 import { onlyUncheckedGaps, provenanceLine, uncheckedNote } from "../lib/evidenceCopy";
 
@@ -37,66 +43,6 @@ const VERDICT_LABEL: Record<ScanResult["result"], string> = {
 // unconditionally, not just when something matched.
 const DISCLAIMER =
   "This is a screening aid, not a guarantee — always check the physical label, especially for “may contain” warnings.";
-
-// Mirrors server/src/verdict/mergeVerdict.ts's own isTraceEscalatedToContains exactly — same rule,
-// so the two never drift apart on what counts as "the label said 'may contain', the app treated it
-// as unsafe" versus a genuine direct finding. communityReported is checked ahead of this at every
-// call site below (never inside this function) — a corroborated community report is a different
-// claim from a trace escalation, and the two are the one case this rule alone can't tell apart: a
-// deterministic trace tag (source: "trace", aiEscalated: false) that a *community* report — not
-// treatTracesAsUnsafe — later escalated to "contains" would otherwise read as a false positive here.
-function isTraceEscalatedToContains(m: ScanResult["matched_allergens"][number]): boolean {
-  if (m.classification !== "contains") return false;
-  if (!m.aiEscalated) return m.source === "trace";
-  return m.escalatedFromTrace === true;
-}
-
-function classificationLabel(m: ScanResult["matched_allergens"][number]): string {
-  if (!m.communityReported && isTraceEscalatedToContains(m)) return 'label says "may contain"';
-  if (m.classification === "contains") return "contains";
-  if (m.classification === "unresolved") return "couldn't confirm from the label text";
-  return "may contain traces";
-}
-
-function shopperCount(n: number): string {
-  return n === 1 ? "1 shopper" : `${n} shoppers`;
-}
-
-// matchedText: the verbatim ingredient text the matcher hit (server matcher/match.ts). Absent on tag
-// and trace matches, and on any scan stored before the matcher kept it.
-type MatchedRow = ScanResult["matched_allergens"][number] & { matchedText?: string };
-
-function sourceLabel(m: MatchedRow, scan: Pick<ScanResult, "source">): string {
-  // docs/principles.md principle 7: a community report is a different claim from the label data,
-  // and says so on the card rather than borrowing the label's authority.
-  if (m.communityReported) {
-    return `reported by ${shopperCount(m.communityReporterCount ?? 1)} with a label photo — not in the product data`;
-  }
-  // The label's own claim (a trace) and the app's decision (treat it as unsafe, because this
-  // profile flags traces) are two separate statements — never collapse them into "contains", which
-  // is a claim the label itself never made. Checked before the AI-escalated branch below, since a
-  // trace escalation is very often AI-driven and would otherwise be caught by it first.
-  if (isTraceEscalatedToContains(m)) return "treated as unsafe because this profile flags traces";
-  // AI-escalated findings carry their own citedSpan rather than the deterministic source
-  // (tag/ingredients/trace) — the deterministic matcher found nothing for these, that's exactly
-  // why the AI reasoning step ran.
-  if (m.aiEscalated) {
-    return m.citedSpan ? `AI review — "${m.citedSpan}"` : "flagged by AI review";
-  }
-  // Where the claim came from, not the claim again — the claim line above already says what the
-  // package claims (classificationLabel). One fact per line. A row came from the photographed label
-  // on a photo scan, and on a combined scan when reconciliation took the label's side.
-  const fromPhoto = scan.source === "label_photo" || (scan.source === "combined" && m.evidenceSource === "label");
-  // Tags are structured data with no text behind them to quote — say where they are listed, and
-  // never fill the slot with a quote the source didn't contain.
-  if (m.source === "tag") return fromPhoto ? "listed on the label you photographed" : "listed on the product record";
-  // The one source with real text: quote exactly what matched, so it can be found on the package.
-  if (m.source === "ingredients") return m.matchedText ? `found in ingredient text — "${m.matchedText}"` : "found in ingredient text";
-  if (m.source === "trace") {
-    return fromPhoto ? "allergen warning on the label you photographed" : "allergen warning on the product record";
-  }
-  return "not found";
-}
 
 // Styling hooks only — which visual treatment a row gets. Each follows exactly the precedence
 // classificationLabel/sourceLabel use for their words, so the look can never disagree with the text.
