@@ -17,6 +17,10 @@ export type AllergenMatchResult = {
   allergenName: string;
   matched: boolean;
   source: MatchSource | null;
+  /** Ingredient-text matches only: the exact characters matched, sliced from ingredientsText
+   *  itself (never the keyword, never reconstructed), so the card can quote what to look for on the
+   *  package. Absent for tag and trace matches, which have no source text to quote. */
+  matchedText?: string;
 };
 
 // Carries severity through into the stored snapshot, not just matched/source/classification —
@@ -40,9 +44,10 @@ function keywordsFor(allergenName: string): string[] {
   return singular === normalized ? [normalized] : [normalized, singular];
 }
 
-function wordBoundaryMatch(text: string, keyword: string): boolean {
+/** The matched characters as they appear in `text`, or null. */
+function wordBoundaryMatch(text: string, keyword: string): string | null {
   const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`\\b${escaped}\\b`, "i").test(text);
+  return new RegExp(`\\b${escaped}\\b`, "i").exec(text)?.[0] ?? null;
 }
 
 /**
@@ -58,9 +63,8 @@ export function matchAllergen(allergenName: string, product: ProductForMatching)
   }
   if (product.ingredientsText) {
     for (const kw of keywords) {
-      if (wordBoundaryMatch(product.ingredientsText, kw)) {
-        return { allergenName, matched: true, source: "ingredients" };
-      }
+      const matchedText = wordBoundaryMatch(product.ingredientsText, kw);
+      if (matchedText) return { allergenName, matched: true, source: "ingredients", matchedText };
     }
   }
   for (const kw of keywords) {

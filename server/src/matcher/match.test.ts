@@ -22,7 +22,26 @@ test("recognizes 'caseinate' as milk — barcode 0050000328420, the case that su
     allergenName: "Milk",
     matched: true,
     source: "ingredients",
+    matchedText: "caseinate",
   });
+});
+
+test("matchedText is sliced verbatim from the ingredient text — the source's own casing, never the keyword", () => {
+  // The card quotes this as the thing to look for on the package, so it must be real text.
+  const text = "Rolled Oats, ALMONDS, Honey";
+  const result = matchAllergen("Tree nut", productWithIngredients(text));
+  assert.equal(result.source, "ingredients");
+  assert.ok(result.matchedText);
+  assert.ok(text.includes(result.matchedText!), `"${result.matchedText}" is not a substring of the text`);
+  assert.equal(result.matchedText, result.matchedText!.toUpperCase());
+});
+
+test("tag and trace matches carry no matchedText — there is no source text to quote", () => {
+  const product = { found: true, allergensTags: ["peanuts"], tracesTags: ["eggs"], ingredientsText: null };
+  assert.equal(matchAllergen("Peanut", product).source, "tag");
+  assert.equal(matchAllergen("Peanut", product).matchedText, undefined);
+  assert.equal(matchAllergen("Egg", product).source, "trace");
+  assert.equal(matchAllergen("Egg", product).matchedText, undefined);
 });
 
 test("recognizes 'buttermilk' as milk", () => {
