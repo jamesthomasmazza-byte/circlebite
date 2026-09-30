@@ -41,7 +41,11 @@ abandoned in a grocery aisle.
    Ask for per-allergen finding, the exact triggering substring, a confidence band, and any term it
    could not resolve.
 4. **Merge under the safety rule** *(deterministic)* — see below.
-5. **Explain with citations** — one or two sentences naming the exact token.
+5. **Explain with citations** — every finding cites its exact token on its own row: the model's
+   validated `citedSpan`, or the matcher's `matchedText` sliced verbatim from the ingredient text.
+   A structured tag has no text to quote and says where it is listed instead — a quote is never
+   synthesised. The explanation sentence appears only when it says what no row can: why an allergen
+   was unresolved, why nothing was found, or why there was nothing to check (Sept 30, 2026).
 6. **Human overrule** — the correction flow, now able to target the AI verdict.
 
 ## Functions
