@@ -81,7 +81,9 @@ function sourceLabel(m: ScanResult["matched_allergens"][number]): string {
   }
   if (m.source === "tag") return "listed ingredient";
   if (m.source === "ingredients") return "found in ingredient text";
-  if (m.source === "trace") return "may contain traces";
+  // Where the claim came from, not the claim again — the claim line above already says "may
+  // contain traces" (classificationLabel). One fact per line.
+  if (m.source === "trace") return "the label's allergen warning";
   return "not found";
 }
 
