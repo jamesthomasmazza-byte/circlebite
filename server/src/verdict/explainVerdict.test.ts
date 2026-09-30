@@ -185,15 +185,15 @@ test("evidenceSource: combined — nothing found names both sources, not the sin
   assert.equal(text, "Neither the product record nor the label you photographed listed any allergens from this profile.");
 });
 
-test("evidenceSource: combined — an 'unchecked' allergen names both sources too, not 'this photo'", () => {
-  const text = explainVerdict(
-    result([allergen({ allergenName: "Almond", severity: "severe", classification: "unchecked", matched: false })], "unable_to_confirm"),
-    { evidenceSource: "combined" },
-  );
-  assert.match(
-    text,
-    /^This hasn't been confirmed safe — some of your listed allergens couldn't be checked against either the product record or the label you photographed/,
-  );
+test("an 'unchecked' allergen never claims a product record was checked — unchecked only comes from a label with no record behind it", () => {
+  for (const evidenceSource of ["photo", "combined"] as const) {
+    const text = explainVerdict(
+      result([allergen({ allergenName: "Almond", severity: "severe", classification: "unchecked", matched: false })], "unable_to_confirm"),
+      { evidenceSource },
+    );
+    assert.match(text, /^This hasn't been confirmed safe — some of your listed allergens couldn't be checked against this photo/);
+    assert.doesNotMatch(text, /product record/);
+  }
 });
 
 test("evidenceSource: combined with a real contains finding still uses the normal contains sentence", () => {

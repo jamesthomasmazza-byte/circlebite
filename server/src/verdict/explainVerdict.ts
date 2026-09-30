@@ -11,9 +11,9 @@ function namesWithSpans(details: { allergenName: string; citedSpan?: string }[])
 }
 
 export type ExplainVerdictOptions = {
-  /** Which non-barcode evidence contributed, if any — "photo" for a standalone Path C scan (photo
-   *  only, no barcode record), "combined" for Path D (both a barcode record and a photographed
-   *  label). Omitted entirely for Path B (barcode only). Only changes the branches below that fire
+  /** Which evidence was actually consulted — "photo" when a photographed label was the only
+   *  evidence (standalone Path C, or a Path D scan whose barcode had no usable product record),
+   *  "combined" for Path D with both a barcode record and a photographed label. Omitted entirely for Path B (barcode only). Only changes the branches below that fire
    *  when nothing escalates, so the reader knows which source(s) actually looked and found nothing;
    *  a real contains/caution/unresolved finding is exactly as real from a photo as from a barcode
    *  (rule 2: escalation only), so those branches are untouched regardless of this option. */
@@ -27,14 +27,6 @@ export type ExplainVerdictOptions = {
 const PHOTO_SOURCED_SOME_UNCHECKED =
   "This hasn't been confirmed safe — some of your listed allergens couldn't be checked against " +
   'this photo. Always check the label yourself, especially for "may contain" warnings.';
-
-// Path D's version of the string above — combined evidence still leaves the same gap, but naming
-// only "this photo" would understate it: a barcode record was checked too, and neither side
-// resolved these allergens.
-const COMBINED_SOME_UNCHECKED =
-  "This hasn't been confirmed safe — some of your listed allergens couldn't be checked against " +
-  'either the product record or the label you photographed. Always check the label yourself, ' +
-  'especially for "may contain" warnings.';
 
 // Dead for any real photoSourced scan with at least one allergen configured — mergeVerdict.ts's
 // photoSourced branch means "clear" never actually occurs there anymore, so
@@ -86,10 +78,13 @@ export function explainVerdict(merged: MergeResult, options: ExplainVerdictOptio
     return `May contain traces of ${joinList(namesWithSpans(caution))}.`;
   }
 
+  // One string for both photo and combined: "unchecked" only ever comes from a label with nothing
+  // behind it. reconcileEvidence keeps the barcode's own classification whenever the barcode side has
+  // an entry, so an unchecked allergen means no product record was consulted for it — and a combined
+  // scan with no usable record is passed here as "photo" (combineScan.ts). A "product record or the
+  // label" version of this sentence could only ever fire when there was no product record.
   const unchecked = merged.matchedAllergens.filter((a) => a.classification === "unchecked");
-  if (unchecked.length > 0) {
-    return options.evidenceSource === "combined" ? COMBINED_SOME_UNCHECKED : PHOTO_SOURCED_SOME_UNCHECKED;
-  }
+  if (unchecked.length > 0) return PHOTO_SOURCED_SOME_UNCHECKED;
 
   if (options.evidenceSource === "photo") return PHOTO_SOURCED_NOTHING_FOUND;
   if (options.evidenceSource === "combined") return COMBINED_NOTHING_FOUND;

@@ -28,6 +28,11 @@ export type DiscardLabelEvidenceInput = {
   extractionId: string;
 };
 
+/** Which evidence a combined scan actually rests on — the verdict card's provenance line reads this
+ *  rather than `source`, which records the flow (a barcode was entered) and not whether that barcode
+ *  had a product record behind it. */
+export type CombinedEvidence = "barcode_and_label" | "label_only";
+
 // effective.result below is typed "string", not Verdict: CommunityEffectiveResult.result
 // (applyCorrections.ts's ScanForCorrection) is a plain string throughout this codebase. Every other
 // call site (scans.ts, labelScan.ts) escapes noticing the mismatch only because it spreads an
@@ -44,6 +49,7 @@ export type CombineOutcome =
       confidence: Confidence;
       matched_allergens: ReconciledAllergenDetail[];
       explanation: string;
+      evidence: CombinedEvidence;
       extracted_text: string;
       effective: { result: string; matched_allergens: unknown } | null;
       community_reports: { allergenName: string; reporterCount: number }[];
@@ -234,7 +240,14 @@ export async function combineLabelScan(input: CombineScanInput, deps: CombineSca
   );
 
   const reconciled = reconcileEvidence(scan.matched_allergens, labelSide.matchedAllergens);
-  const explanation = explainVerdict(reconciled, { evidenceSource: "combined" });
+
+  // What was actually consulted, not which function ran. A barcode with no usable product record
+  // still lands here as source 'combined' (a barcode was entered), but its stored barcode side is
+  // empty — computeVerdict's own fail-closed shape, and the exact condition reconcileEvidence treats
+  // as "the label is the sole evidence". Claiming the product record was checked in that case is the
+  // same over-claiming the identity work fixed in the other direction (BACKLOG.md Week 9).
+  const evidence: CombinedEvidence = scan.matched_allergens.length > 0 ? "barcode_and_label" : "label_only";
+  const explanation = explainVerdict(reconciled, { evidenceSource: evidence === "label_only" ? "photo" : "combined" });
 
   const { community, communityApplied } = await applyCommunityCorrectionsIfEnabled(
     scan.barcode,
@@ -302,6 +315,7 @@ export async function combineLabelScan(input: CombineScanInput, deps: CombineSca
     confidence: reconciled.confidence,
     matched_allergens: reconciled.matchedAllergens,
     explanation,
+    evidence,
     extracted_text: extraction.ingredientsText,
     effective: community && { result: community.result, matched_allergens: community.matchedAllergens },
     community_reports: publicCommunityReports(community?.applied ?? []),

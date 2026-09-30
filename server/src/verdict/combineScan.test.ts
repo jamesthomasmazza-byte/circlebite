@@ -62,7 +62,7 @@ type ScanRow = {
 
 async function insertBarcodeScan(input: {
   barcode: string;
-  productName: string;
+  productName: string | null;
   result: string;
   matchedAllergens: unknown[];
 }): Promise<ScanRow> {
@@ -210,6 +210,50 @@ test("matching identity: the scan is updated to source 'combined', label_stricte
   const { rows: ve } = await pool.query("SELECT evidence_source FROM verdict_explanations WHERE scan_id = $1", [original.id]);
   assert.equal(ve.length, 1);
   assert.equal(ve[0].evidence_source, "label");
+});
+
+test("a barcode with no product record combines as label_only — the explanation never claims the product record was checked", async () => {
+  // The live case from 2026-09-28 (barcode 2113792886078): a barcode was entered, so the scan is
+  // 'combined', but there was no product behind it — computeVerdict's empty fail-closed shape.
+  const original = await insertBarcodeScan({
+    barcode: "3333333333333",
+    productName: null,
+    result: "unable_to_confirm",
+    matchedAllergens: [],
+  });
+
+  const outcome = await combineLabelScan(
+    { scanId: original.id, imageBuffer: IMAGE, mimeType: "image/jpeg" },
+    { extractLabelDeps: fakeExtractOk(), reasonVerdictDeps: REASON_DEPS_OK },
+  );
+
+  assert.equal(outcome.status, "combined");
+  if (outcome.status !== "combined") throw new Error("unreachable");
+  assert.equal(outcome.evidence, "label_only");
+  assert.equal(outcome.result, "unable_to_confirm");
+  assert.equal(outcome.matched_allergens.find((m) => m.allergenName === "Milk")!.classification, "unchecked");
+  assert.doesNotMatch(outcome.explanation, /product record/);
+  assert.match(outcome.explanation, /this photo/);
+  assert.equal((await fetchScan(original.id)).source, "combined");
+});
+
+test("a barcode with a product record combines as barcode_and_label", async () => {
+  const original = await insertBarcodeScan({
+    barcode: "3333333333334",
+    productName: "Real Product",
+    result: "safe",
+    matchedAllergens: [{ allergenName: "Milk", matched: false, source: null, severity: "severe", classification: "clear" }],
+  });
+
+  const outcome = await combineLabelScan(
+    { scanId: original.id, imageBuffer: IMAGE, mimeType: "image/jpeg" },
+    { extractLabelDeps: fakeExtractOk(), reasonVerdictDeps: REASON_DEPS_OK },
+  );
+
+  assert.equal(outcome.status, "combined");
+  if (outcome.status !== "combined") throw new Error("unreachable");
+  assert.equal(outcome.evidence, "barcode_and_label");
+  assert.equal(outcome.explanation, "Neither the product record nor the label you photographed listed any allergens from this profile.");
 });
 
 test("discardLabelEvidence reverts a mismatched combine back to the pre-combine barcode-only verdict", async () => {
