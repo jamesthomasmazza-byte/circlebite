@@ -62,7 +62,11 @@ function shopperCount(n: number): string {
   return n === 1 ? "1 shopper" : `${n} shoppers`;
 }
 
-function sourceLabel(m: ScanResult["matched_allergens"][number]): string {
+// matchedText: the verbatim ingredient text the matcher hit (server matcher/match.ts). Absent on tag
+// and trace matches, and on any scan stored before the matcher kept it.
+type MatchedRow = ScanResult["matched_allergens"][number] & { matchedText?: string };
+
+function sourceLabel(m: MatchedRow, scan: Pick<ScanResult, "source">): string {
   // docs/principles.md principle 7: a community report is a different claim from the label data,
   // and says so on the card rather than borrowing the label's authority.
   if (m.communityReported) {
@@ -79,11 +83,18 @@ function sourceLabel(m: ScanResult["matched_allergens"][number]): string {
   if (m.aiEscalated) {
     return m.citedSpan ? `AI review — "${m.citedSpan}"` : "flagged by AI review";
   }
-  if (m.source === "tag") return "listed ingredient";
-  if (m.source === "ingredients") return "found in ingredient text";
-  // Where the claim came from, not the claim again — the claim line above already says "may
-  // contain traces" (classificationLabel). One fact per line.
-  if (m.source === "trace") return "the label's allergen warning";
+  // Where the claim came from, not the claim again — the claim line above already says what the
+  // package claims (classificationLabel). One fact per line. A row came from the photographed label
+  // on a photo scan, and on a combined scan when reconciliation took the label's side.
+  const fromPhoto = scan.source === "label_photo" || (scan.source === "combined" && m.evidenceSource === "label");
+  // Tags are structured data with no text behind them to quote — say where they are listed, and
+  // never fill the slot with a quote the source didn't contain.
+  if (m.source === "tag") return fromPhoto ? "listed on the label you photographed" : "listed on the product record";
+  // The one source with real text: quote exactly what matched, so it can be found on the package.
+  if (m.source === "ingredients") return m.matchedText ? `found in ingredient text — "${m.matchedText}"` : "found in ingredient text";
+  if (m.source === "trace") {
+    return fromPhoto ? "allergen warning on the label you photographed" : "allergen warning on the product record";
+  }
   return "not found";
 }
 
@@ -727,7 +738,7 @@ export function Scan() {
                         <span className="allergen-row__claim">{classificationLabel(m)}</span>
                         <span className="visually-hidden"> — </span>
                         <span className="allergen-row__source" data-source={rowSource(m)}>
-                          {sourceLabel(m)}
+                          {sourceLabel(m, result)}
                         </span>
                       </>
                     )}
