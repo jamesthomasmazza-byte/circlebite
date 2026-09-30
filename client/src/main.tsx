@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
+import "./styles.css";
 import { AuthProvider } from "./lib/AuthContext";
 import { RequireAuth } from "./RequireAuth";
 import { AcceptCoManager } from "./routes/AcceptCoManager";
