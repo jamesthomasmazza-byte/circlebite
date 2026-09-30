@@ -232,8 +232,8 @@ test("a barcode with no product record combines as label_only — the explanatio
   assert.equal(outcome.evidence, "label_only");
   assert.equal(outcome.result, "unable_to_confirm");
   assert.equal(outcome.matched_allergens.find((m) => m.allergenName === "Milk")!.classification, "unchecked");
-  assert.doesNotMatch(outcome.explanation, /product record/);
-  assert.match(outcome.explanation, /this photo/);
+  assert.doesNotMatch(outcome.explanation ?? "", /product record/);
+  assert.match(outcome.explanation ?? "", /this photo/);
   assert.equal((await fetchScan(original.id)).source, "combined");
 });
 

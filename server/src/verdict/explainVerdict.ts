@@ -1,13 +1,9 @@
-import { isTraceEscalatedToContains, type MergeResult } from "./mergeVerdict.js";
+import type { MergeResult } from "./mergeVerdict.js";
 
 function joinList(items: string[]): string {
   if (items.length === 1) return items[0];
   if (items.length === 2) return `${items[0]} and ${items[1]}`;
   return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
-}
-
-function namesWithSpans(details: { allergenName: string; citedSpan?: string }[]): string[] {
-  return details.map((d) => (d.citedSpan ? `${d.allergenName} ("${d.citedSpan}")` : d.allergenName));
 }
 
 export type ExplainVerdictOptions = {
@@ -61,35 +57,30 @@ export function explainMissingProductData(product: { found: boolean }): string {
 }
 
 /**
- * A short, plain-language explanation naming the exact cited token(s) behind the verdict — a
- * fixed template over the already-merged, already-validated result, not a second model call. That
+ * A short, plain-language explanation of what the card's rows can't say on their own, or null when
+ * they say it all — a fixed template over the already-merged, already-validated result, not a
+ * second model call. The exact token behind each finding lives on its row (matchedText, citedSpan). That
  * keeps cost and failure surface down, and makes the text trivially reproducible from the stored
  * findings alone (rule 8), rather than something that has to be regenerated to be checked.
  */
-export function explainVerdict(merged: MergeResult, options: ExplainVerdictOptions = {}): string {
-  // Excludes trace-escalated entries deliberately — "Contains X" is a claim the label itself made
-  // directly, and asserting it for an allergen the label only called "may contain" is exactly the
-  // false claim this whole distinction exists to avoid. Those get their own sentence below.
-  const contains = merged.matchedAllergens.filter((a) => a.classification === "contains" && !isTraceEscalatedToContains(a));
-  if (contains.length > 0) {
-    return `Contains ${joinList(namesWithSpans(contains))}.`;
-  }
+export function explainVerdict(merged: MergeResult, options: ExplainVerdictOptions = {}): string | null {
+  // Says something only when it carries what no row on the card does (docs/principles.md, Sept 30
+  // 2026). Each row already names its allergen, its claim and its evidence — the quoted matched
+  // text or cited span — so a sentence restating them ("Contains Peanut and Tree nut") is a second
+  // copy of the rows on a card read in three seconds. What rows can't say: why an allergen couldn't
+  // be resolved, why nothing was found, and why nothing could be checked.
 
-  const treatedAsUnsafe = merged.matchedAllergens.filter(isTraceEscalatedToContains);
-  if (treatedAsUnsafe.length > 0) {
-    return `Treat as containing ${joinList(treatedAsUnsafe.map((a) => a.allergenName))}.`;
-  }
-
+  // First, even alongside a positive finding: the row says "couldn't confirm", only this says why.
   const unresolved = merged.matchedAllergens.filter((a) => a.classification === "unresolved");
   if (unresolved.length > 0) {
     const names = unresolved.map((a) => a.allergenName);
     return `Could not confirm ${joinList(names)} from the ingredient text — the wording was too ambiguous to resolve.`;
   }
 
-  const caution = merged.matchedAllergens.filter((a) => a.classification === "caution");
-  if (caution.length > 0) {
-    return `May contain traces of ${joinList(namesWithSpans(caution))}.`;
-  }
+  // contains, treated-as-unsafe traces, and may-contain traces: the rows say it all. Unchecked
+  // allergens alongside them get the card's own grouped note, not this sentence.
+  const positive = merged.matchedAllergens.some((a) => a.classification === "contains" || a.classification === "caution");
+  if (positive) return null;
 
   // One string for both photo and combined: "unchecked" only ever comes from a label with nothing
   // behind it. reconcileEvidence keeps the barcode's own classification whenever the barcode side has

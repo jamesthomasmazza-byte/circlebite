@@ -446,7 +446,8 @@ export type CombineOutcome =
       result: Verdict;
       confidence: Confidence;
       matched_allergens: MatchedAllergen[];
-      explanation: string;
+      // null when the rows say it all (server explainVerdict).
+      explanation: string | null;
       evidence: CombinedEvidence;
       extracted_text: string;
       effective: { result: Verdict; matched_allergens: MatchedAllergen[] } | null;
@@ -464,7 +465,7 @@ export type CombineOutcome =
       result: Verdict;
       confidence: Confidence;
       matched_allergens: MatchedAllergen[];
-      explanation: string;
+      explanation: string | null;
       effective: { result: Verdict; matched_allergens: MatchedAllergen[] } | null;
       community_reports: CommunityReport[];
     };

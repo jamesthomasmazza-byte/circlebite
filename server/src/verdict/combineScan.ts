@@ -48,7 +48,8 @@ export type CombineOutcome =
       result: Verdict;
       confidence: Confidence;
       matched_allergens: ReconciledAllergenDetail[];
-      explanation: string;
+      // null when the rows say it all (explainVerdict).
+      explanation: string | null;
       evidence: CombinedEvidence;
       extracted_text: string;
       effective: { result: string; matched_allergens: unknown } | null;
@@ -75,7 +76,7 @@ export type CombineOutcome =
       result: Verdict;
       confidence: Confidence;
       matched_allergens: MergedAllergenDetail[];
-      explanation: string;
+      explanation: string | null;
       effective: { result: string; matched_allergens: unknown } | null;
       community_reports: { allergenName: string; reporterCount: number }[];
     };

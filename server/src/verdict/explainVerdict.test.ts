@@ -12,92 +12,30 @@ function result(matchedAllergens: MergeResult["matchedAllergens"], verdict: Merg
   return { verdict, confidence: "medium", matchedAllergens };
 }
 
-test("a trace-escalated 'contains' (source: trace, deterministic — treatTracesAsUnsafe already resolved by match.ts) gets its own headline, not the 'Contains' sentence", () => {
-  const text = explainVerdict(
-    result([allergen({ allergenName: "Sesame", severity: "severe", classification: "contains", source: "trace" })], "contains_allergen"),
-  );
-  assert.equal(text, "Treat as containing Sesame.");
+test("says nothing when the rows already say it: contains, treated-as-unsafe traces, may-contain traces", () => {
+  // Each row names its allergen, its claim and its evidence (quoted matchedText or citedSpan), so a
+  // sentence restating them is a second copy on a card read in three seconds (principles, Sept 30
+  // 2026). Covers every positive shape the old sentences distinguished, including the trace-
+  // escalated ones — that "may contain" vs "contains" distinction now lives on the row's claim line.
+  const positives: [string, MergedAllergenDetail[]][] = [
+    ["deterministic contains", [allergen({ allergenName: "Milk", classification: "contains", source: "ingredients" })]],
+    ["AI contains with a span", [allergen({ allergenName: "Milk", classification: "contains", aiEscalated: true, citedSpan: "whey powder" })]],
+    ["deterministic trace treated as unsafe", [allergen({ allergenName: "Sesame", classification: "contains", source: "trace" })]],
+    ["AI trace treated as unsafe", [allergen({ allergenName: "Sesame", classification: "contains", aiEscalated: true, escalatedFromTrace: true, citedSpan: "may contain sesame" })]],
+    ["may contain", [allergen({ allergenName: "Soy", classification: "caution", source: "trace" })]],
+    ["positive alongside unchecked", [
+      allergen({ allergenName: "Peanut", classification: "contains", source: "ingredients" }),
+      allergen({ allergenName: "Almond", classification: "unchecked", matched: false }),
+    ]],
+  ];
+  for (const [name, rows] of positives) {
+    for (const evidenceSource of [undefined, "photo", "combined"] as const) {
+      assert.equal(explainVerdict(result(rows, "contains_allergen"), { evidenceSource }), null, `${name} (${evidenceSource ?? "barcode"})`);
+    }
+  }
 });
 
-test("a trace-escalated 'contains' via an AI-reported trace finding (escalatedFromTrace: true) also gets the 'Treat as containing' headline", () => {
-  const text = explainVerdict(
-    result(
-      [allergen({ allergenName: "Sesame", severity: "severe", classification: "contains", aiEscalated: true, escalatedFromTrace: true, citedSpan: "may contain sesame" })],
-      "contains_allergen",
-    ),
-  );
-  assert.equal(text, "Treat as containing Sesame.");
-});
-
-test("a 'contains' from an AI direct finding that happens to share a trace-tagged allergen (source: trace, but escalatedFromTrace not set) still reads as a genuine 'Contains' claim", () => {
-  // The exact case that would be a false positive if isTraceEscalatedToContains trusted `source`
-  // alone whenever aiEscalated is true: a deterministic trace tag existed, but the AI found
-  // separate, direct evidence ("yes", not "trace") — a real "contains" claim, not a "may contain"
-  // one.
-  const text = explainVerdict(
-    result(
-      [allergen({ allergenName: "Sesame", severity: "severe", classification: "contains", source: "trace", aiEscalated: true, citedSpan: "sesame oil" })],
-      "contains_allergen",
-    ),
-  );
-  assert.equal(text, 'Contains Sesame ("sesame oil").');
-});
-
-test("a genuine 'Contains' finding takes priority over a trace-escalated one when both are present", () => {
-  const text = explainVerdict(
-    result(
-      [
-        allergen({ allergenName: "Milk", severity: "severe", classification: "contains", source: "ingredients" }),
-        allergen({ allergenName: "Sesame", severity: "severe", classification: "contains", source: "trace" }),
-      ],
-      "contains_allergen",
-    ),
-  );
-  assert.equal(text, "Contains Milk.");
-});
-
-test("multiple trace-escalated allergens join into one 'Treat as containing' sentence", () => {
-  const text = explainVerdict(
-    result(
-      [
-        allergen({ allergenName: "Sesame", severity: "severe", classification: "contains", source: "trace" }),
-        allergen({ allergenName: "Milk", severity: "severe", classification: "contains", source: "trace" }),
-      ],
-      "contains_allergen",
-    ),
-  );
-  assert.equal(text, "Treat as containing Sesame and Milk.");
-});
-
-test("names the cited span for a single contains", () => {
-  const text = explainVerdict(
-    result([allergen({ allergenName: "Milk", severity: "severe", classification: "contains", aiEscalated: true, citedSpan: "whey powder" })]),
-  );
-  assert.equal(text, 'Contains Milk ("whey powder").');
-});
-
-test("joins two contains allergens with 'and'", () => {
-  const text = explainVerdict(
-    result([
-      allergen({ allergenName: "Milk", severity: "severe", classification: "contains", source: "ingredients" }),
-      allergen({ allergenName: "Soy", severity: "mild", classification: "contains", source: "ingredients" }),
-    ]),
-  );
-  assert.equal(text, "Contains Milk and Soy.");
-});
-
-test("joins three or more with an Oxford comma", () => {
-  const text = explainVerdict(
-    result([
-      allergen({ allergenName: "Milk", severity: "severe", classification: "contains", source: "ingredients" }),
-      allergen({ allergenName: "Soy", severity: "mild", classification: "contains", source: "ingredients" }),
-      allergen({ allergenName: "Peanut", severity: "severe", classification: "contains", source: "ingredients" }),
-    ]),
-  );
-  assert.equal(text, "Contains Milk, Soy, and Peanut.");
-});
-
-test("contains takes priority over unresolved and caution when several allergens differ", () => {
+test("an unresolved allergen is still explained alongside a contains — the row says 'couldn't confirm', only this says why", () => {
   const text = explainVerdict(
     result([
       allergen({ allergenName: "Milk", severity: "severe", classification: "contains", source: "ingredients" }),
@@ -105,24 +43,24 @@ test("contains takes priority over unresolved and caution when several allergens
       allergen({ allergenName: "Soy", severity: "mild", classification: "caution", source: "trace" }),
     ]),
   );
-  assert.equal(text, "Contains Milk.");
+  assert.equal(text, "Could not confirm Egg from the ingredient text — the wording was too ambiguous to resolve.");
+});
+
+test("several unresolved allergens join with an Oxford comma", () => {
+  const text = explainVerdict(
+    result(
+      ["Egg", "Soy", "Sesame"].map((allergenName) => allergen({ allergenName, classification: "unresolved", aiEscalated: true })),
+      "unable_to_confirm",
+    ),
+  );
+  assert.match(text ?? "", /^Could not confirm Egg, Soy, and Sesame from the ingredient text/);
 });
 
 test("unresolved allergens are named without a cited span", () => {
   const text = explainVerdict(
     result([allergen({ allergenName: "Egg", severity: "mild", classification: "unresolved", aiEscalated: true })], "unable_to_confirm"),
   );
-  assert.match(text, /^Could not confirm Egg from the ingredient text/);
-});
-
-test("caution names the cited span when present", () => {
-  const text = explainVerdict(
-    result(
-      [allergen({ allergenName: "Soy", severity: "mild", classification: "caution", aiEscalated: true, citedSpan: "may contain soy" })],
-      "may_contain_caution",
-    ),
-  );
-  assert.equal(text, 'May contain traces of Soy ("may contain soy").');
+  assert.match(text ?? "", /^Could not confirm Egg from the ingredient text/);
 });
 
 test("falls back to a clean 'nothing found' sentence when every allergen is clear", () => {
@@ -135,8 +73,8 @@ test("evidenceSource: photo — the backstop 'nothing found' sentence (a raw 'cl
     result([allergen({ allergenName: "Milk", severity: "severe", classification: "clear", matched: false })], "unable_to_confirm"),
     { evidenceSource: "photo" },
   );
-  assert.match(text, /^This hasn't been confirmed safe/);
-  assert.doesNotMatch(text, /^No listed allergens/);
+  assert.match(text ?? "", /^This hasn't been confirmed safe/);
+  assert.doesNotMatch(text ?? "", /^No listed allergens/);
 });
 
 test("evidenceSource: photo — an 'unchecked' allergen produces the real downgrade sentence, distinct from the 'clear' backstop", () => {
@@ -144,29 +82,7 @@ test("evidenceSource: photo — an 'unchecked' allergen produces the real downgr
     result([allergen({ allergenName: "Almond", severity: "severe", classification: "unchecked", matched: false })], "unable_to_confirm"),
     { evidenceSource: "photo" },
   );
-  assert.match(text, /^This hasn't been confirmed safe — some of your listed allergens couldn't be checked against this photo/);
-});
-
-test("evidenceSource: photo — 'unchecked' allergens don't get a headline sentence at all when a contains/unresolved/caution finding also exists — that branch wins first", () => {
-  const text = explainVerdict(
-    result(
-      [
-        allergen({ allergenName: "Peanut", severity: "severe", classification: "contains", source: "ingredients" }),
-        allergen({ allergenName: "Almond", severity: "severe", classification: "unchecked", matched: false }),
-      ],
-      "contains_allergen",
-    ),
-    { evidenceSource: "photo" },
-  );
-  assert.equal(text, "Contains Peanut.");
-});
-
-test("evidenceSource: photo with a real contains finding still uses the normal contains sentence, not the downgrade copy", () => {
-  const text = explainVerdict(
-    result([allergen({ allergenName: "Milk", severity: "severe", classification: "contains", source: "ingredients" })]),
-    { evidenceSource: "photo" },
-  );
-  assert.equal(text, "Contains Milk.");
+  assert.match(text ?? "", /^This hasn't been confirmed safe — some of your listed allergens couldn't be checked against this photo/);
 });
 
 test("evidenceSource: photo with an unresolved finding still uses the normal unresolved sentence", () => {
@@ -174,7 +90,7 @@ test("evidenceSource: photo with an unresolved finding still uses the normal unr
     result([allergen({ allergenName: "Egg", severity: "mild", classification: "unresolved", aiEscalated: true })], "unable_to_confirm"),
     { evidenceSource: "photo" },
   );
-  assert.match(text, /^Could not confirm Egg/);
+  assert.match(text ?? "", /^Could not confirm Egg/);
 });
 
 test("evidenceSource: combined — nothing found names both sources, not the single-source Path B fallback", () => {
@@ -191,17 +107,9 @@ test("an 'unchecked' allergen never claims a product record was checked — unch
       result([allergen({ allergenName: "Almond", severity: "severe", classification: "unchecked", matched: false })], "unable_to_confirm"),
       { evidenceSource },
     );
-    assert.match(text, /^This hasn't been confirmed safe — some of your listed allergens couldn't be checked against this photo/);
-    assert.doesNotMatch(text, /product record/);
+    assert.match(text ?? "", /^This hasn't been confirmed safe — some of your listed allergens couldn't be checked against this photo/);
+    assert.doesNotMatch(text ?? "", /product record/);
   }
-});
-
-test("evidenceSource: combined with a real contains finding still uses the normal contains sentence", () => {
-  const text = explainVerdict(
-    result([allergen({ allergenName: "Milk", severity: "severe", classification: "contains", source: "ingredients" })]),
-    { evidenceSource: "combined" },
-  );
-  assert.equal(text, "Contains Milk.");
 });
 
 test("explainMissingProductData tells an unknown barcode apart from a known product with no data (principle 2)", () => {
@@ -212,7 +120,7 @@ test("explainMissingProductData tells an unknown barcode apart from a known prod
   assert.match(empty, /have this product on file, but without its ingredients or allergen information/);
   for (const text of [unknown, empty]) {
     // Says why there's no verdict — never that anything was checked, never that it's probably fine.
-    assert.match(text, /nothing to check it against/);
-    assert.doesNotMatch(text, /safe|probably|no allergens/i);
+    assert.match(text ?? "", /nothing to check it against/);
+    assert.doesNotMatch(text ?? "", /safe|probably|no allergens/i);
   }
 });
