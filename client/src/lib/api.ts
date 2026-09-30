@@ -311,6 +311,9 @@ export type ScanResult = {
   extracted_text?: string | null;
   extraction_legible?: boolean;
   extraction_complete?: boolean;
+  // Set only on a "combined" result — what was actually consulted, which the card's provenance line
+  // reads instead of `source`.
+  evidence?: CombinedEvidence;
   // Only ever set on a barcode scan's own response (never on a label_photo/combined result, which
   // is already the answer to the question this field poses), and absent entirely when LABEL_SCAN is
   // off server-side.
@@ -430,6 +433,10 @@ export type IdentityMismatch = {
   note: string;
 };
 
+// What a combined scan actually rests on (server combineScan.ts). `source: "combined"` only says a
+// barcode was entered — not that it had a product record behind it.
+export type CombinedEvidence = "barcode_and_label" | "label_only";
+
 export type CombineOutcome =
   | { status: "unreadable"; scan_id: string; explanation: string }
   | {
@@ -440,6 +447,7 @@ export type CombineOutcome =
       confidence: Confidence;
       matched_allergens: MatchedAllergen[];
       explanation: string;
+      evidence: CombinedEvidence;
       extracted_text: string;
       effective: { result: Verdict; matched_allergens: MatchedAllergen[] } | null;
       community_reports: CommunityReport[];

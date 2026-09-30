@@ -18,6 +18,7 @@ import {
   type ScanResult,
 } from "../lib/api";
 import { reportOutcomeMessage, yourReportLine } from "../lib/correctionCopy";
+import { onlyUncheckedGaps, provenanceLine, uncheckedNote } from "../lib/evidenceCopy";
 
 const CORRECTION_TYPE_LABEL: Record<CorrectionType, string> = {
   flag_wrong: "This allergen isn't actually in this product",
@@ -270,6 +271,7 @@ export function Scan() {
               confidence: outcome.confidence,
               matched_allergens: outcome.matched_allergens,
               explanation: outcome.explanation,
+              evidence: outcome.evidence,
               extracted_text: outcome.extracted_text,
               extraction_legible: true,
               extraction_complete: true,
@@ -292,6 +294,7 @@ export function Scan() {
               confidence: outcome.confidence,
               matched_allergens: outcome.matched_allergens,
               explanation: outcome.explanation,
+              evidence: undefined,
               extracted_text: undefined,
               extraction_legible: undefined,
               extraction_complete: undefined,
@@ -648,7 +651,13 @@ export function Scan() {
 
           {/* 2. REAL FINDINGS — the explanation sentence and the per-allergen rows. What justifies
               the headline and what to actually check against the box in your hand. */}
-          {result.explanation && <p>{result.explanation}</p>}
+          {/* Omitted when it's only the generic "some allergens couldn't be checked" sentence — the
+              grouped note below says the same thing with the count and names. One of the two had
+              to go on a card read in three seconds in an aisle. */}
+          {result.explanation &&
+            !(onlyUncheckedGaps(result.matched_allergens) && shown.matched_allergens.some((m) => m.classification === "unchecked")) && (
+              <p>{result.explanation}</p>
+            )}
 
           {shown.matched_allergens.filter((m) => m.classification !== "clear" && m.classification !== "unchecked").length >
             0 && (
@@ -699,15 +708,12 @@ export function Scan() {
             // together, with the "why" said once instead of once per row.
             const unchecked = shown.matched_allergens.filter((m) => m.classification === "unchecked");
             if (unchecked.length === 0) return null;
-            const profileLabel = profiles.find((p) => p.id === profileId)?.label;
-            const names = unchecked.map((m) => m.allergenName.toLowerCase()).join(", ");
-            return (
-              <p role="note">
-                We couldn't check {unchecked.length} of {profileLabel ? `${profileLabel}'s` : "your"} allergen
-                {unchecked.length === 1 ? "" : "s"} against this photo: {names}. A photo isn't checked as thoroughly
-                as a barcode — always check the package.
-              </p>
-            );
+            const note = uncheckedNote({
+              names: unchecked.map((m) => m.allergenName.toLowerCase()),
+              profileLabel: profiles.find((p) => p.id === profileId)?.label ?? null,
+              leadsCard: onlyUncheckedGaps(shown.matched_allergens),
+            });
+            return <p role="note">{note}</p>;
           })()}
 
           {/* 5. PROMPTS — an offered second opinion, never required reading to understand the
@@ -728,12 +734,16 @@ export function Scan() {
           {/* 6. PROVENANCE — where the evidence came from, and the reference material for checking
               it yourself. Comes last: it doesn't change what to decide, only how the decision was
               reached. */}
-          {(result.source === "label_photo" || result.source === "combined") && (
-            <p role="note">
-              <strong>{result.source === "combined" ? "Checked against the product database and a photographed label" : "From a photographed label"}</strong>
-              {result.source === "label_photo" && " — read by AI, not confirmed against the manufacturer's own data."}
-            </p>
-          )}
+          {(() => {
+            const provenance = provenanceLine(result);
+            if (!provenance) return null;
+            return (
+              <p role="note">
+                <strong>{provenance.heading}</strong>
+                {provenance.detail}
+              </p>
+            );
+          })()}
 
           {(result.source === "label_photo" || result.source === "combined") && result.extracted_text && (
             <details>
