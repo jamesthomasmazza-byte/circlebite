@@ -287,7 +287,14 @@ it is the least-worked area. Treat this whole section as the priority block it i
       counts from `claim.reports`, which `reviewQueue.ts` already returned with every status: "1
       report — rejected", "N reports — all rejected", or "N reports, M still active — …". No new server
       field. Tests in `correctionCopy.test.ts`. Found in the 2026-09-29 live test.
-- [ ] **The verdict card's evidence header describes the code path, not the evidence.** On a scan
+- [x] **The verdict card's evidence header describes the code path, not the evidence.** Done
+      2026-09-30 (`d81e455`, `f83a786`). `combineLabelScan` returns `evidence: "barcode_and_label" |
+      "label_only"`, derived from whether the stored barcode side is empty (the contract
+      `reconcileEvidence` already relies on); the explanation and the card's provenance line both read
+      it. `COMBINED_SOME_UNCHECKED` deleted — "unchecked" only arises with no record behind it, so it
+      could only fire when false. The generic unchecked sentence is dropped when the grouped note shows,
+      which now leads with "This hasn't been confirmed safe". Not yet seen live — needs a key and a
+      barcode with no product record. Original note: On a scan
       whose barcode returned no product record, the card still reads "Checked against the product
       database and a photographed label" — two lines below "Unknown product" (observed live
       2026-09-28, barcode 2113792886078). `scans.source` is correctly `combined`, since a barcode was
