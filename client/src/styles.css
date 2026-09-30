@@ -446,40 +446,114 @@ th {
   border-left: 4px solid var(--color-border);
 }
 
-/* ---------- Verdict states ------------------------------------------------------------------- */
+/* ---------- Utilities ------------------------------------------------------------------------ */
+
+/* Present for a screen reader, absent on screen — used where the visual layout splits one sentence
+   into lines and the punctuation between them should still be read. */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Icons ---------------------------------------------------------------------------- */
+
+/* Drawn as CSS masks so they take the surrounding text colour and add nothing for a screen reader
+   to read twice — every one sits next to words that already say the same thing. */
+:root {
+  --icon-check: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><path d='M7 12.5l3.5 3.5L17 9'/></svg>");
+  --icon-warning: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M12 3L2 20.5h20z'/><path d='M12 10v4.5M12 17.5v.01'/></svg>");
+  --icon-stop: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M8 2h8l6 6v8l-6 6H8l-6-6V8z'/><path d='M9 9l6 6M15 9l-6 6'/></svg>");
+  --icon-question: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><path d='M9.2 9a3 3 0 0 1 5.6 1c0 2-2.8 2.5-2.8 4'/><path d='M12 17.5v.01'/></svg>");
+  /* Evidence sources: the package's own label, the AI reading step, other shoppers, the viewer. */
+  --icon-label: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z'/><circle cx='7.5' cy='7.5' r='1.5'/></svg>");
+  --icon-ai: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z'/><path d='M19 16v4M17 18h4'/></svg>");
+  --icon-shoppers: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><circle cx='9' cy='8' r='3.5'/><path d='M2.5 20a6.5 6.5 0 0 1 13 0'/><path d='M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4-6'/></svg>");
+  --icon-you: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='8' r='4'/><path d='M4 21a8 8 0 0 1 16 0'/></svg>");
+}
+
+/* ---------- Verdict card --------------------------------------------------------------------- */
 
 /*
- * Hooks for the verdict card pass — nothing sets data-verdict yet. Four states a parent reads in
- * a hurry, each signalled three ways besides hue, so the difference survives colour blindness and a
- * sunlit screen:
+ * The screen the whole app exists to produce. Four states a parent reads in a hurry, each signalled
+ * three ways besides hue, so the difference survives colour blindness and a sunlit screen:
  *
  *   safe                 check in a circle     · 4px solid rule
  *   may_contain_caution  warning triangle      · 6px dashed rule
  *   contains_allergen    cross in an octagon   · 10px solid rule, and an 800-weight headline
  *   unable_to_confirm    question in a circle  · 6px dotted rule
  *
- * — plus the verdict words themselves, which already differ. The icon is a CSS mask, so it takes
- * the text colour and adds nothing for a screen reader to read twice.
+ * — plus the verdict words themselves, which already differ. The rule runs the full height of the
+ * card, so the verdict, its rows, its provenance and its disclaimer read as one object.
  */
-[data-verdict] {
-  --verdict-rule: 2px solid;
-  padding: var(--space-4);
-  border-radius: var(--radius-lg);
+[data-verdict="safe"] {
+  --verdict-text: var(--color-safe-text);
+  --verdict-bg: var(--color-safe-bg);
+  --verdict-line: var(--color-safe-line);
+  --verdict-rule: 4px solid;
+  --verdict-icon: var(--icon-check);
+}
+
+[data-verdict="may_contain_caution"] {
+  --verdict-text: var(--color-caution-text);
+  --verdict-bg: var(--color-caution-bg);
+  --verdict-line: var(--color-caution-line);
+  --verdict-rule: 6px dashed;
+  --verdict-icon: var(--icon-warning);
+}
+
+[data-verdict="contains_allergen"] {
+  --verdict-text: var(--color-contains-text);
+  --verdict-bg: var(--color-contains-bg);
+  --verdict-line: var(--color-contains-line);
+  --verdict-rule: 10px solid;
+  --verdict-icon: var(--icon-stop);
+  --verdict-weight: 800;
+}
+
+[data-verdict="unable_to_confirm"] {
+  --verdict-text: var(--color-unknown-text);
+  --verdict-bg: var(--color-unknown-bg);
+  --verdict-line: var(--color-unknown-line);
+  --verdict-rule: 6px dotted;
+  --verdict-icon: var(--icon-question);
+}
+
+.verdict-card {
+  margin-block: var(--space-5) var(--space-3);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
   border-left: var(--verdict-rule) var(--verdict-line);
-  background: var(--verdict-bg);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg);
   box-shadow: var(--shadow);
 }
 
-[data-verdict] > h2:first-child {
+/* The verdict word first, big enough to read at arm's length before anything else. */
+.verdict-card__header {
+  padding: var(--space-4);
+  border-bottom: 2px solid var(--verdict-line);
+  background: var(--verdict-bg);
+}
+
+.verdict-card__header h2 {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  margin-top: 0;
-  font-size: var(--text-verdict);
+  margin: 0;
   color: var(--verdict-text);
+  font-size: var(--text-verdict);
+  font-weight: var(--verdict-weight, 700);
+  line-height: 1.1;
 }
 
-[data-verdict] > h2:first-child::before {
+.verdict-card__header h2::before {
   content: "";
   flex: none;
   width: 1em;
@@ -489,40 +563,247 @@ th {
   mask: var(--verdict-icon) center / contain no-repeat;
 }
 
-[data-verdict="safe"] {
-  --verdict-text: var(--color-safe-text);
-  --verdict-bg: var(--color-safe-bg);
-  --verdict-line: var(--color-safe-line);
-  --verdict-rule: 4px solid;
-  --verdict-icon: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><path d='M7 12.5l3.5 3.5L17 9'/></svg>");
+/* Present — people check they scanned the right thing — but subordinate: body size, regular weight,
+   under a headline twice its size. */
+.verdict-card__product {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-base);
 }
 
-[data-verdict="may_contain_caution"] {
-  --verdict-text: var(--color-caution-text);
-  --verdict-bg: var(--color-caution-bg);
-  --verdict-line: var(--color-caution-line);
-  --verdict-rule: 6px dashed;
-  --verdict-icon: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M12 3L2 20.5h20z'/><path d='M12 10v4.5M12 17.5v.01'/></svg>");
+.verdict-card__body {
+  padding: var(--space-4);
 }
 
-[data-verdict="contains_allergen"] {
-  --verdict-text: var(--color-contains-text);
-  --verdict-bg: var(--color-contains-bg);
-  --verdict-line: var(--color-contains-line);
-  --verdict-rule: 10px solid;
-  --verdict-icon: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M8 2h8l6 6v8l-6 6H8l-6-6V8z'/><path d='M9 9l6 6M15 9l-6 6'/></svg>");
+.verdict-card__body > :last-child {
+  margin-bottom: 0;
 }
 
-[data-verdict="contains_allergen"] > h2:first-child {
-  font-weight: 800;
+/* ---------- Allergen rows -------------------------------------------------------------------- */
+
+/*
+ * One block per allergen, four facts on four visual lines: the allergen and its severity for this
+ * profile, then what the package claims, then how we know.
+ *
+ * "contains" and "may contain" never share a look: a direct "contains" is an octagon on a solid
+ * rule; a trace is a triangle on a dashed rule. A trace this profile treats as unsafe keeps the
+ * trace's triangle and dashed rule — the label only said "may contain" — but takes the unsafe colour
+ * and weight, because for this child it is a no.
+ */
+.allergen-rows {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
 }
 
-[data-verdict="unable_to_confirm"] {
-  --verdict-text: var(--color-unknown-text);
-  --verdict-bg: var(--color-unknown-bg);
-  --verdict-line: var(--color-unknown-line);
-  --verdict-rule: 6px dotted;
-  --verdict-icon: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><path d='M9.2 9a3 3 0 0 1 5.6 1c0 2-2.8 2.5-2.8 4'/><path d='M12 17.5v.01'/></svg>");
+.allergen-row {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  column-gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-3);
+  border-left: var(--row-rule) var(--row-line);
+  border-radius: var(--radius-md);
+  background: var(--row-bg);
+}
+
+.allergen-row::before {
+  content: "";
+  grid-row: 1 / span 3;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: 0.15rem;
+  background: var(--row-text);
+  -webkit-mask: var(--row-icon) center / contain no-repeat;
+  mask: var(--row-icon) center / contain no-repeat;
+}
+
+.allergen-row > :not(.visually-hidden) {
+  grid-column: 2;
+}
+
+.allergen-row[data-claim="contains"] {
+  --row-text: var(--color-contains-text);
+  --row-bg: var(--color-contains-bg);
+  --row-line: var(--color-contains-line);
+  --row-rule: 6px solid;
+  --row-icon: var(--icon-stop);
+  --claim-weight: 800;
+}
+
+.allergen-row[data-claim="trace_unsafe"] {
+  --row-text: var(--color-contains-text);
+  --row-bg: var(--color-contains-bg);
+  --row-line: var(--color-contains-line);
+  --row-rule: 6px dashed;
+  --row-icon: var(--icon-warning);
+  --claim-weight: 800;
+}
+
+.allergen-row[data-claim="caution"] {
+  --row-text: var(--color-caution-text);
+  --row-bg: var(--color-caution-bg);
+  --row-line: var(--color-caution-line);
+  --row-rule: 6px dashed;
+  --row-icon: var(--icon-warning);
+  --claim-weight: 600;
+}
+
+.allergen-row[data-claim="unresolved"] {
+  --row-text: var(--color-unknown-text);
+  --row-bg: var(--color-unknown-bg);
+  --row-line: var(--color-unknown-line);
+  --row-rule: 6px dotted;
+  --row-icon: var(--icon-question);
+  --claim-weight: 600;
+}
+
+/* 1 + 2: which allergen, and how severe for this profile. */
+.allergen-row__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+}
+
+.allergen-row__name {
+  font-size: var(--text-lg);
+  line-height: var(--leading-heading);
+}
+
+/* Severity differs by fill as well as word: severe is solid, moderate outlined, mild dashed. */
+.allergen-row__severity {
+  padding: 0.0625rem var(--space-2);
+  border: 2px solid var(--color-text);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.allergen-row__severity[data-severity="severe"] {
+  background: var(--color-text);
+  color: var(--color-bg); /* the text/bg pair, inverted */
+}
+
+.allergen-row__severity[data-severity="mild"] {
+  border-style: dashed;
+  font-weight: 600;
+}
+
+/* 3: what the package claims. */
+.allergen-row__claim {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--row-text);
+  font-weight: var(--claim-weight);
+}
+
+/* 4: how we know — present, but quieter than the claim. The icon says whose word it is: the label,
+   the AI reading step, other shoppers, or you. A shopper report is also set in italic, so "reported
+   by 2 shoppers" never reads with the same voice as "the label says". */
+.allergen-row__source {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+
+.allergen-row__source::before {
+  content: "";
+  flex: none;
+  /* On the first line, not centred against a source that wraps to three. */
+  align-self: flex-start;
+  margin-top: 0.2em;
+  width: 1rem;
+  height: 1rem;
+  background: currentColor;
+  -webkit-mask: var(--source-icon) center / contain no-repeat;
+  mask: var(--source-icon) center / contain no-repeat;
+}
+
+.allergen-row__source[data-source="label"] {
+  --source-icon: var(--icon-label);
+}
+
+.allergen-row__source[data-source="ai"] {
+  --source-icon: var(--icon-ai);
+}
+
+.allergen-row__source[data-source="community"] {
+  --source-icon: var(--icon-shoppers);
+  font-style: italic;
+}
+
+.allergen-row__source[data-source="you"] {
+  --source-icon: var(--icon-you);
+  font-style: italic;
+}
+
+.allergen-row [role="note"] {
+  margin: var(--space-2) 0 0;
+  border-left-color: var(--row-line);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+}
+
+.allergen-row [role="note"] button {
+  margin: var(--space-2) 0 0;
+}
+
+/* ---------- Provenance, the label read, the disclaimer --------------------------------------- */
+
+/* Visible, not shouting: small, muted, set off by a hairline instead of a rule. */
+.verdict-card__provenance {
+  padding: var(--space-3) 0 0;
+  border-top: 1px solid var(--color-border);
+  border-left: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.verdict-card__provenance strong {
+  color: var(--color-text);
+}
+
+/* The parent's cross-check against the physical package: full size, generous leading, the label's
+   own line breaks kept. */
+.verdict-card__label-read p {
+  padding-bottom: var(--space-3);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+/* A graded ethical-AI element, not boilerplate: full body size, full contrast, its own panel. */
+.verdict-card__disclaimer {
+  padding: var(--space-3) var(--space-4);
+  border-left: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-weight: 500;
+}
+
+/* ---------- Report — directly under the card it disputes ------------------------------------ */
+
+.verdict-report__open {
+  width: 100%;
+  margin: 0;
+}
+
+.verdict-report {
+  margin-top: var(--space-3);
+  padding: var(--space-4);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.verdict-report h3 {
+  margin-top: 0;
 }
 
 /* ---------- Motion --------------------------------------------------------------------------- */

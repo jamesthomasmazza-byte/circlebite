@@ -85,6 +85,24 @@ function sourceLabel(m: ScanResult["matched_allergens"][number]): string {
   return "not found";
 }
 
+// Styling hooks only — which visual treatment a row gets. Each follows exactly the precedence
+// classificationLabel/sourceLabel use for their words, so the look can never disagree with the text.
+// "trace_unsafe" is kept apart from "contains" on purpose: the label only said "may contain", and
+// this profile's trace rule is what made it unsafe — styling it as a plain "contains" would undo the
+// distinction the copy was fixed to draw.
+function rowClaim(scan: ScanResult, m: ScanResult["matched_allergens"][number]): string {
+  if (reportedPresentByYou(scan, m.allergenName)) return "contains";
+  if (!m.communityReported && isTraceEscalatedToContains(m)) return "trace_unsafe";
+  return m.classification;
+}
+
+function rowSource(m: ScanResult["matched_allergens"][number]): "community" | "label" | "ai" {
+  if (m.communityReported) return "community";
+  if (isTraceEscalatedToContains(m)) return "label";
+  if (m.aiEscalated) return "ai";
+  return "label";
+}
+
 // Whether the viewer's own "this has an allergen the card didn't flag" report is what this row's
 // "contains" rests on — applyUserCorrections (server) sets it straight to "contains" and leaves the
 // row's original source alone, so the source can't say so itself. Not when the engine already said
@@ -623,12 +641,17 @@ export function Scan() {
 
       {result && shown && !awaitingRequiredPhoto && !couldntReadLabel && (
         <section>
+          <div className="verdict-card" data-verdict={shown.result}>
           {/* 1. THE VERDICT — the single word this whole screen exists to deliver, first. */}
-          <h2>{VERDICT_LABEL[shown.result]}</h2>
-          <p>
-            {result.product_name ?? "Unknown product"}
-            {result.product_brand && ` — ${result.product_brand}`}
-          </p>
+          <header className="verdict-card__header">
+            <h2>{VERDICT_LABEL[shown.result]}</h2>
+            <p className="verdict-card__product">
+              {result.product_name ?? "Unknown product"}
+              {result.product_brand && ` — ${result.product_brand}`}
+            </p>
+          </header>
+
+          <div className="verdict-card__body">
 
           {result.identity_mismatch && (
             <p role="note">
@@ -661,18 +684,44 @@ export function Scan() {
 
           {shown.matched_allergens.filter((m) => m.classification !== "clear" && m.classification !== "unchecked").length >
             0 && (
-            <ul>
+            <ul className="allergen-rows">
               {shown.matched_allergens
                 .filter((m) => m.classification !== "clear" && m.classification !== "unchecked")
                 .map((m) => (
-                  <li key={m.allergenName}>
-                    <strong>{m.allergenName}</strong> ({m.severity}) —{" "}
+                  // Four facts per row, each on its own visual line: which allergen, how severe for
+                  // this profile, what the package claims, and how we know. The "(" ")" and " — "
+                  // separators stay in the DOM, visually hidden, so a screen reader hears the row
+                  // exactly as the one-line version read.
+                  <li key={m.allergenName} className="allergen-row" data-claim={rowClaim(result, m)}>
+                    <span className="allergen-row__head">
+                      <strong className="allergen-row__name">{m.allergenName}</strong>{" "}
+                      <span className="allergen-row__severity" data-severity={m.severity}>
+                        <span className="visually-hidden">(</span>
+                        {m.severity}
+                        <span className="visually-hidden">)</span>
+                      </span>
+                    </span>
+                    <span className="visually-hidden"> — </span>
                     {/* Checked ahead of both labels, like communityReported: the row kept its
                         original source, which would otherwise read as "not found" or as the
                         label's own "may contain" — neither is what made it "contains". */}
-                    {reportedPresentByYou(result, m.allergenName)
-                      ? "contains — your report, with a photo of the label"
-                      : `${classificationLabel(m)} — ${sourceLabel(m)}`}
+                    {reportedPresentByYou(result, m.allergenName) ? (
+                      <>
+                        <span className="allergen-row__claim">contains</span>
+                        <span className="visually-hidden"> — </span>
+                        <span className="allergen-row__source" data-source="you">
+                          your report, with a photo of the label
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="allergen-row__claim">{classificationLabel(m)}</span>
+                        <span className="visually-hidden"> — </span>
+                        <span className="allergen-row__source" data-source={rowSource(m)}>
+                          {sourceLabel(m)}
+                        </span>
+                      </>
+                    )}
                     {disagreementNote(m) && (
                       <p role="note">
                         {disagreementNote(m)}
@@ -738,7 +787,7 @@ export function Scan() {
             const provenance = provenanceLine(result);
             if (!provenance) return null;
             return (
-              <p role="note">
+              <p role="note" className="verdict-card__provenance">
                 <strong>{provenance.heading}</strong>
                 {provenance.detail}
               </p>
@@ -746,7 +795,7 @@ export function Scan() {
           })()}
 
           {(result.source === "label_photo" || result.source === "combined") && result.extracted_text && (
-            <details>
+            <details className="verdict-card__label-read">
               <summary>What we read from your photo — check it against the package</summary>
               <p>{result.extracted_text}</p>
             </details>
@@ -773,14 +822,19 @@ export function Scan() {
             </div>
           )}
 
-          <p role="note">{DISCLAIMER}</p>
+          <p role="note" className="verdict-card__disclaimer">
+            {DISCLAIMER}
+          </p>
+          </div>
+          </div>
 
+          {/* Directly under the card it disputes — never at the foot of the page. */}
           {reportOutcome && <p role="status">{reportOutcome}</p>}
 
           {!reportOutcome && (
             <>
               {reportOpen ? (
-                <form onSubmit={handleReportSubmit}>
+                <form onSubmit={handleReportSubmit} className="verdict-report">
                   <h3>Report a problem with this verdict</h3>
                   {reportOrigin === "disagreement_prompt" && (
                     // Grounds the report in the parent's own reading of the package, not in the
@@ -870,6 +924,7 @@ export function Scan() {
               ) : (
                 <button
                   type="button"
+                  className="verdict-report__open"
                   onClick={() => {
                     setReportOpen(true);
                     setReportOrigin(null);
