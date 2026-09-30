@@ -48,6 +48,19 @@ const COMBINED_NOTHING_FOUND =
   "Neither the product record nor the label you photographed listed any allergens from this profile.";
 
 /**
+ * Why a barcode scan had nothing to check — the two cases principle 2 says to tell apart, because
+ * they mean different things to the person holding the package: we don't know this barcode at all,
+ * or we know the product but have no ingredient or allergen data for it. Only called when the
+ * product record has no usable data (matcher/match.ts's hasUsableData), which is exactly when
+ * computeVerdict fails closed to unable_to_confirm with no rows to explain it.
+ */
+export function explainMissingProductData(product: { found: boolean }): string {
+  return product.found
+    ? "We have this product on file, but without its ingredients or allergen information, so there was nothing to check it against."
+    : "We don't have this barcode on file, so there was nothing to check it against.";
+}
+
+/**
  * A short, plain-language explanation naming the exact cited token(s) behind the verdict — a
  * fixed template over the already-merged, already-validated result, not a second model call. That
  * keeps cost and failure surface down, and makes the text trivially reproducible from the stored

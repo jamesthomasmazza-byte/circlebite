@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { explainVerdict } from "./explainVerdict.js";
+import { explainMissingProductData, explainVerdict } from "./explainVerdict.js";
 import type { MergedAllergenDetail, MergeResult } from "./mergeVerdict.js";
 
 function allergen(overrides: Partial<MergedAllergenDetail> & Pick<MergedAllergenDetail, "allergenName" | "classification">): MergedAllergenDetail {
@@ -202,4 +202,17 @@ test("evidenceSource: combined with a real contains finding still uses the norma
     { evidenceSource: "combined" },
   );
   assert.equal(text, "Contains Milk.");
+});
+
+test("explainMissingProductData tells an unknown barcode apart from a known product with no data (principle 2)", () => {
+  const unknown = explainMissingProductData({ found: false });
+  const empty = explainMissingProductData({ found: true });
+  assert.notEqual(unknown, empty);
+  assert.match(unknown, /don't have this barcode/);
+  assert.match(empty, /have this product on file, but without its ingredients or allergen information/);
+  for (const text of [unknown, empty]) {
+    // Says why there's no verdict — never that anything was checked, never that it's probably fine.
+    assert.match(text, /nothing to check it against/);
+    assert.doesNotMatch(text, /safe|probably|no allergens/i);
+  }
 });

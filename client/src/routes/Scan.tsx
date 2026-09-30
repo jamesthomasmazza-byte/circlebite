@@ -580,12 +580,19 @@ export function Scan() {
           {photoCaptureOpen && (
             <form onSubmit={handlePhotoSubmit}>
               <h2>Photograph the ingredients label</h2>
-              {photoCaptureMode === "combine" && result?.evidence_decision?.photo === "required" && (
-                <p>
-                  The barcode alone doesn't have enough data to check this — a photo of the ingredients panel is
-                  the next step.
-                </p>
-              )}
+              {photoCaptureMode === "combine" &&
+                result?.evidence_decision?.photo === "required" &&
+                // Missing data: the server's explanation already says which case — barcode unknown,
+                // or product known with no ingredient data (principle 2). Thin data keeps the
+                // general line, since the record does exist and does say something.
+                (result.evidence_decision.reason === "missing_data" && result.explanation ? (
+                  <p>{result.explanation} A photo of the ingredients panel is the next step.</p>
+                ) : (
+                  <p>
+                    The barcode alone doesn't have enough data to check this — a photo of the ingredients panel is
+                    the next step.
+                  </p>
+                ))}
               {photoCaptureMode === "combine" && result?.evidence_decision?.photo === "prompted" && (
                 <p>
                   This profile has a severe allergen on file. The barcode data looks fine, but a photo of the label

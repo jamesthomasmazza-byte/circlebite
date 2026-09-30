@@ -13,10 +13,10 @@ import { asyncHandler } from "../lib/asyncHandler.js";
 import { HttpError } from "../lib/httpError.js";
 import { getProduct } from "../lib/productLookup.js";
 import { getExtractionAllergenProfileId, getScanAllergenProfileId } from "../lib/scanAccess.js";
-import { computeVerdict } from "../matcher/match.js";
+import { computeVerdict, hasUsableData } from "../matcher/match.js";
 import { loadProfileAllergens } from "../matcher/profileAllergens.js";
 import { combineLabelScan, discardLabelEvidence } from "../verdict/combineScan.js";
-import { explainVerdict } from "../verdict/explainVerdict.js";
+import { explainMissingProductData, explainVerdict } from "../verdict/explainVerdict.js";
 import { runLabelScan } from "../verdict/labelScan.js";
 import { mergeVerdict } from "../verdict/mergeVerdict.js";
 import { reasonVerdict } from "../verdict/reasonVerdict.js";
@@ -85,6 +85,10 @@ scansRouter.post(
       confidence = merged.confidence;
       matchedAllergens = merged.matchedAllergens;
       explanation = explainVerdict(merged);
+    } else if (!hasUsableData(product)) {
+      // Nothing to match against, so no rows — without this the card said "Unknown product" and
+      // nothing about why, or what "unable to confirm" rests on.
+      explanation = explainMissingProductData(product);
     }
 
     // Week 8 part 2: corroborated community additions for this barcode escalate this profile's
