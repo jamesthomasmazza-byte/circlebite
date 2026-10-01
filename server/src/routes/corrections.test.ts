@@ -15,12 +15,15 @@ import { correctionsRouter } from "./corrections.js";
 // Postgres.
 
 const REPORTER = "aaaaaaaa-0000-0000-0000-0000000000c1";
+// The other two kinds of circle member on the same profile (REPORTER owns it).
+const CO_MANAGER = "aaaaaaaa-0000-0000-0000-0000000000c2";
+const FOLLOWER = "aaaaaaaa-0000-0000-0000-0000000000c3";
 const PROFILE_ID = "bbbbbbbb-0000-0000-0000-0000000000c1";
 const JPEG_MAGIC = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
 
 type Captured = { status: number; body: Record<string, unknown> };
 
-function postCorrection(scanId: string, body: Record<string, unknown>): Promise<Captured> {
+function postCorrection(scanId: string, body: Record<string, unknown>, userId = REPORTER): Promise<Captured> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const layer = (correctionsRouter as any).stack.find(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -41,7 +44,7 @@ function postCorrection(scanId: string, body: Record<string, unknown>): Promise<
         resolve({ status, body: payload });
       },
     };
-    const req = { params: { scanId }, user: { id: REPORTER }, body, file: { buffer: JPEG_MAGIC } };
+    const req = { params: { scanId }, user: { id: userId }, body, file: { buffer: JPEG_MAGIC } };
     handler(req, res, (err: unknown) => reject(err ?? new Error("handler called next() without responding")));
   });
 }
@@ -58,13 +61,25 @@ async function makeScan(barcode: string, result: string, matched: object[]): Pro
 before(async () => {
   await pool.query(
     `INSERT INTO users (id, email, password_hash, display_name, age_attested_adult, age_attested_at)
-     VALUES ($1, 'corr-route-test@example.com', 'x', 'A', true, now())`,
-    [REPORTER],
+     VALUES ($1, 'corr-route-test@example.com', 'x', 'A', true, now()),
+            ($2, 'corr-route-comanager@example.com', 'x', 'Co-manager', true, now()),
+            ($3, 'corr-route-follower@example.com', 'x', 'Follower', true, now())`,
+    [REPORTER, CO_MANAGER, FOLLOWER],
   );
   await pool.query("INSERT INTO allergen_profiles (id, manager_id, label) VALUES ($1, $2, 'Test Profile')", [
     PROFILE_ID,
     REPORTER,
   ]);
+  await pool.query("INSERT INTO profile_managers (allergen_profile_id, user_id, added_by) VALUES ($1, $2, $3)", [
+    PROFILE_ID,
+    CO_MANAGER,
+    REPORTER,
+  ]);
+  await pool.query(
+    `INSERT INTO follow_relationships (allergen_profile_id, follower_id, invited_by, token_hash, status, share_level)
+     VALUES ($1, $2, $3, 'corr-route-test-follow-token', 'accepted', 'all')`,
+    [PROFILE_ID, FOLLOWER, REPORTER],
+  );
 });
 
 after(async () => {
@@ -73,7 +88,7 @@ after(async () => {
     [PROFILE_ID],
   );
   await Promise.all(rows.map((r) => rm(resolvePhotoPath(r.photo_path), { force: true })));
-  await pool.query("DELETE FROM users WHERE id = $1", [REPORTER]);
+  await pool.query("DELETE FROM users WHERE id = ANY($1)", [[REPORTER, CO_MANAGER, FOLLOWER]]);
   await pool.end();
 });
 
@@ -193,4 +208,48 @@ test("my-reports finds an earlier report on the same product from a different sc
   assert.equal(reports[0].allergen, "Sesame");
   assert.ok(reports[0].rejectedAt);
   assert.ok(!JSON.stringify(reports).includes("admin-only text"), "the rejection reason never reaches the reporter");
+});
+
+// Owner-only downgrades (docs/approvals/2026-10-01-yoest-mvp-statement.md): any circle member may
+// report an allergen present; only the owner or a co-manager may report one isn't, or the wrong
+// product. Prof. Yoest's babysitter is a follower.
+test("a follower's removal is refused with 403, and leaves no row and no photo", async () => {
+  const matched = [{ allergenName: "Peanut", severity: "severe", classification: "contains" }];
+  const dir = path.join(env.uploadDir, "corrections");
+  const filesBefore = await readdir(dir);
+
+  for (const [correctionType, allergen] of [["flag_wrong", "Peanut"], ["wrong_product", null]] as const) {
+    const scanId = await makeScan("8000000000008", "contains_allergen", matched);
+    await assert.rejects(
+      () => postCorrection(scanId, { correctionType, allergen }, FOLLOWER),
+      (err: { status?: number; code?: string }) => err.status === 403 && err.code === "removal_requires_manager",
+      correctionType,
+    );
+  }
+
+  const { rows } = await pool.query("SELECT 1 FROM product_corrections WHERE reported_by = $1", [FOLLOWER]);
+  assert.equal(rows.length, 0);
+  assert.deepEqual((await readdir(dir)).sort(), filesBefore.sort());
+});
+
+test("the owner's and a co-manager's removals both go through", async () => {
+  const matched = [{ allergenName: "Peanut", severity: "severe", classification: "contains" }];
+  for (const userId of [REPORTER, CO_MANAGER]) {
+    const { status } = await postCorrection(
+      await makeScan("8000000000009", "contains_allergen", matched),
+      { correctionType: "flag_wrong", allergen: "Peanut" },
+      userId,
+    );
+    assert.equal(status, 201, userId === REPORTER ? "owner" : "co-manager");
+  }
+});
+
+test("a follower can still report an allergen present", async () => {
+  const { status, body } = await postCorrection(
+    await makeScan("8000000000010", "safe", [{ allergenName: "Peanut", severity: "severe", classification: "clear" }]),
+    { correctionType: "flag_missing", allergen: "Peanut" },
+    FOLLOWER,
+  );
+  assert.equal(status, 201);
+  assert.equal(body.corroborated, true);
 });

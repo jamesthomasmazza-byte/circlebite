@@ -58,7 +58,7 @@ correctionsRouter.post(
     // assertCanReadProfile, not assertCanManageProfile: reporting a correction is available to any
     // circle member who can see the scan, same reasoning scans.ts already applies to scanning
     // itself — a follower's whole point is being able to act on a profile's behalf, not just view.
-    await assertCanReadProfile(req.user!.id, profileId);
+    const access = await assertCanReadProfile(req.user!.id, profileId);
 
     const { correctionType, allergen, note, origin: rawOrigin } = req.body ?? {};
     if (!isCorrectionType(correctionType)) throw new HttpError(400, "invalid_request");
@@ -81,8 +81,26 @@ correctionsRouter.post(
 
     // Decided before any file is written: whether this person may file a report in this direction
     // is a check on the request, and a refused report must never leave a photo on disk.
-    // (Owner-only downgrades — docs/approvals/2026-10-01-yoest-mvp-statement.md — belong here.)
     const direction = directionForCorrectionType(correctionType);
+
+    // Downgrades are for the people who manage the profile (docs/approvals/2026-10-01-yoest-mvp-
+    // statement.md). Any circle member may report an allergen IS there; only the owner or a
+    // co-manager may report one isn't (flag_wrong) or that the product is wrong (wrong_product) —
+    // because that report clears the allergen on their view of this profile at once (CONTEST_RULES
+    // §3). Prof. Yoest's example is a babysitter clearing "contains" to safe: a babysitter is a
+    // follower, and followers are refused here.
+    //
+    // "The parent who owns the profile" is read as owner OR co-manager, deliberately (JT, Oct 1): a
+    // co-manager was explicitly invited and already has full edit rights on the profile (migration
+    // 0006) — they can delete the allergen outright. Refusing them a report of a false positive
+    // protects nothing and makes the safe, reviewable action harder than the drastic one.
+    //
+    // 403, not this codebase's usual 404-for-no-access: the follower can see this profile and scan
+    // (assertCanReadProfile above), so hiding its existence would be untrue. The client hides the two
+    // removal options from followers; this is the enforcement.
+    if (direction === "remove_caution" && access.level === "follower") {
+      throw new HttpError(403, "removal_requires_manager");
+    }
 
     // Required per docs/legacy-spec.md §6 — not optional, and not something recordCorrection
     // itself enforces (it only knows a photoPath string was supplied), so it's checked here before
