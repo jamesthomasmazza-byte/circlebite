@@ -365,15 +365,22 @@ export function createScan(allergenProfileId: string, barcode: string): Promise<
 const LABEL_PHOTO_MAX_DIMENSION = 1568;
 const LABEL_PHOTO_JPEG_QUALITY = 0.85;
 
+// A correction photo has a different reader. 1568 is sized for the vision model, which reads Path C
+// photos and never sees more than that anyway. A correction photo is read by a human admin in the
+// review queue deciding whether to warn other families, and it's kept as the evidence behind that
+// warning — so it gets more pixels for small print in a whole-package shot. Still a fraction of the
+// 2-5MB originals that were going up over cell data.
+export const CORRECTION_PHOTO_MAX_DIMENSION = 2048;
+
 /**
  * Downscales a captured photo client-side via canvas before upload — a 4MB phone photo over
  * cellular vs. a few hundred KB. Never upscales a smaller image. Canvas resampling is lower
  * quality than a server-side Lanczos filter would be; if label reads measurably degrade because of
  * that specifically (not lighting/framing), revisit server-side downscaling — see the Path C plan.
  */
-export async function downscaleLabelPhoto(file: File): Promise<File> {
+export async function downscaleLabelPhoto(file: File, maxDimension = LABEL_PHOTO_MAX_DIMENSION): Promise<File> {
   const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, LABEL_PHOTO_MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));
+  const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
   const width = Math.round(bitmap.width * scale);
   const height = Math.round(bitmap.height * scale);
 

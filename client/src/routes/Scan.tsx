@@ -5,6 +5,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../lib/AuthContext";
 import {
   ApiRequestError,
+  CORRECTION_PHOTO_MAX_DIMENSION,
   combineLabelScan,
   createCorrection,
   createLabelScan,
@@ -367,11 +368,15 @@ export function Scan() {
 
     setReportSubmitting(true);
     try {
+      // Same helper as the label scan, at the correction cap (see CORRECTION_PHOTO_MAX_DIMENSION).
+      // A photo the browser can't decode goes up as-is: the server's own type check then says what's
+      // wrong with it, which is more useful than a client-side "couldn't read".
+      const photo = await downscaleLabelPhoto(reportPhoto, CORRECTION_PHOTO_MAX_DIMENSION).catch(() => reportPhoto);
       const outcome = await createCorrection(result.id, {
         correctionType: reportType,
         allergen: reportType === "wrong_product" ? null : reportAllergen,
         note: reportNote.trim() || null,
-        photo: reportPhoto,
+        photo,
         origin: reportOrigin ?? undefined,
       });
       setReportOutcome(
