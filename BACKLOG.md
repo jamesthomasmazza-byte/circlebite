@@ -482,11 +482,26 @@ it is the least-worked area. Treat this whole section as the priority block it i
 - [x] Account deletion: removes solo-owned profiles, their scans, and follow relationships;
       transfers a co-managed profile to its longest-standing co-manager instead of destroying it;
       corrections are deliberately excluded (`docs/coppa.md` §2.7)
-- [ ] Judge account seeded and tested end to end from a fresh browser, including re-running the
+- [x] Judge account seeded and tested end to end from a fresh browser, including re-running the
       seed script over an already-seeded database — that rerun is the recovery path if a judge
-      deletes the account mid-week. The script and its tests exist (see the Weeks 2–3 item); still
-      open until JT has run it on production per `docs/server-setup.md` §16 and logged in as the
-      judge from a fresh browser
+      deletes the account mid-week. Done 2026-10-01 on production: seed run twice per
+      `docs/server-setup.md` §16, the second time with `JUDGE_PASSWORD` set via `read -s`, so the
+      recovery reseed has run on the live box too. Then JT, from a fresh private browser as
+      `judge@demo.circlebite.test`:
+      - login works; Maya, Leo and Noor all present
+      - Maya's history shows all four verdicts (No listed allergens found, Contains, May contain —
+        caution, Unable to confirm), with the disclaimer + 911 panel at the top
+      - as owner and co-manager the report form offers all three types; on Noor (follower) it
+        offers only "This product has an allergen the card didn't flag"
+      - `2990000000076` for Maya: Contains, Peanut "reported by 1 shopper", product data alone says
+        Unable to confirm, 911 line present
+- [ ] Scan history repeats the whole "Originally Unable to confirm — changed because of…" block on
+      every community-escalated entry, so with several of them the page gets long fast (seen on the
+      judge account, 2026-10-01: three scans of the same seeded barcode, three identical blocks).
+      Consider a shorter per-entry line — the headline verdict plus a one-line "escalated by 1
+      shopper report" — with the full block on the live card only, or behind a disclosure. Keep the
+      original verdict visible either way: the never-silently rule (docs/legacy-spec.md §6) is the
+      reason the block exists.
 
 ## Weeks 10–11 — Nov 17–25 · Submission prep *[10% presentation]*
 
@@ -521,6 +536,11 @@ it is the least-worked area. Treat this whole section as the priority block it i
 
 ## Week of Nov 26 — Judging
 
+- [ ] Shortly before judging opens, rerun the judge seed on production (`docs/server-setup.md` §16)
+      with the **same** `JUDGE_PASSWORD`, so the credentials already sent keep working. This
+      refreshes the scan dates (seeded history is dated relative to the run, and would otherwise
+      read as two months old) and clears test activity on the judge account — including JT's two
+      extra `2990000000076` scans in Maya's history from the 2026-10-01 verification.
 - [ ] Check the review queue (`/admin/review-queue`) daily. A judge's reports are rejected by any
       reseed, but if a judge deletes the account first those reports turn anonymous and the seed can
       no longer find them — the queue is the only place they'd show up

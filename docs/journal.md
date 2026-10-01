@@ -1609,3 +1609,60 @@ are always the Mac; psql, nginx, journalctl and anything under /etc or /var are 
 **Next:** Prof. Yoest's three required changes, which are promised in the README and built nowhere —
 owner-only downgrades first, while `recordCorrection.ts` is still fresh. Then prompts 3-5 of the UI
 pass.
+
+## 2026-10-01 — Prof. Yoest's three changes, and a judge account that survives the judges
+
+**Done — the three required changes** (`CONTEST_RULES.md` §3a), all promised in the README since this
+morning and built nowhere until now:
+
+- **Downgrades are for the profile's managers.** A follower's `flag_wrong`/`wrong_product` gets 403
+  `removal_requires_manager`, decided before the photo is written; the form only offers followers
+  "has an allergen". Read as owner *or co-manager*, deliberately: a co-manager can already delete the
+  allergen outright, so refusing them a reviewable report protects nothing. His babysitter is a
+  follower.
+- **No "Safe" anywhere a user reads it.** The clean verdict is "No listed allergens found". The three
+  "This hasn't been confirmed safe — …" lead sentences became "Not confirmed — …", superseding the
+  Sept 30 wording while keeping its point (the limit comes first).
+- **"If anyone has an allergic reaction, call 911."** In the disclaimer panel on every verdict card,
+  and once at the top of scan history, which had no disclaimer at all before.
+
+Checked whether any model-written text reaches a user, since a model could say "safe" on its own:
+none is rendered. The reasoning call's free-text `reason` *is* in the browser's JSON, unrendered —
+backlogged with what has to happen before anything renders it.
+
+**Done — the judge seed.** `server/src/db/seedJudge.ts`, one command, rerunnable, and the recovery
+path if a judge deletes the account mid-week. The judge owns Maya, co-manages Leo, follows Noor —
+every role, including the follower's escalate-only form — with history across all four verdicts and
+one live community report, all on barcodes no real product can carry (GTINs with deliberately invalid
+check digits). It finds its own rows by one marker, a reserved `.test` domain that signup now
+refuses, and never by guessing.
+
+**Decided.** The judge is not an admin (Sept 11 precedent — the review queue shows real reporters'
+notes and photos). A judge's own reports are *rejected* on reseed, not deleted: that stops a test
+report on a real product warning real families, and keeps the overrule log whole. A real person a
+judge invites onto a seeded child stops the seed by default; `--force` removes exactly those rows.
+`JUDGE_PASSWORD` comes from `read -s`, never the command line, and is never echoed back.
+
+**Verified on production**, by JT from a fresh private browser: seed run twice — the second time with
+`JUDGE_PASSWORD`, so the recovery reseed has run on the live box — then login, all three profiles,
+all four verdicts in history with the 911 panel, the full report form as owner and co-manager, the
+follower's single option on Noor, and the community barcode reading Contains over "product data
+alone says Unable to confirm". Evidence in `BACKLOG.md`, Week 9.
+
+**Learned.** Two things the tests found that reading the code didn't.
+- The product cache refreshes after 24 hours, and for a barcode Open Food Facts has never heard of,
+  "refresh" means "replace with not found". The seed would have worked on day one and quietly
+  broken every rescan from day two. Seed-marked rows are now never refreshed.
+- A Postgres foreign-key check fired inside a cascade, because the row had already been updated
+  earlier in the same transaction: rejecting the judge's report, then deleting the judge, failed —
+  in exactly the case the reseed exists for. Fixed by doing the two `SET NULL`s explicitly, first.
+
+Both have the same shape as this morning's bugs: correct on their own, wrong in combination, and
+invisible until something exercised the pair.
+
+**Hit a wall on:** a secret-scan hook refused a commit over a dummy password literal in a test. It
+was right to — the value now gets built at run time instead of being written into the file.
+
+**Next:** rerun the seed just before judging week, so the dates are fresh and today's test scans go.
+Then the rest of the UI pass — starting with scan history, where every community-escalated entry
+repeats its whole explanation block.
