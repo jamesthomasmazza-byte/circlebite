@@ -228,6 +228,21 @@ test("groupIntoClaims: pseudonyms are assigned by row order (created_at ASC), st
   assert.deepEqual(claim.reports.map((r) => r.reporterLabel), ["Reporter A", "Reporter B", "Reporter C"]);
 });
 
+test("groupIntoClaims: one reporter's two reports in a claim share one pseudonym — never read as two people", () => {
+  const [claim] = groupIntoClaims(
+    [
+      makeRow({ reported_by: "same-person", status: "rejected" }),
+      makeRow({ reported_by: "someone-else", status: "corroborated" }),
+      makeRow({ reported_by: "same-person", status: "pending" }),
+    ],
+    new Map(),
+  );
+  assert.deepEqual(
+    claim.reports.map((r) => r.reporterLabel),
+    ["Reporter A", "Reporter B", "Reporter A"],
+  );
+});
+
 test("groupIntoClaims: a null reported_by always renders the fixed deleted-account label, never a letter", () => {
   const [claim] = groupIntoClaims([makeRow({ reported_by: null }), makeRow({ reported_by: null })], new Map());
   assert.deepEqual(claim.reports.map((r) => r.reporterLabel), [

@@ -12,8 +12,9 @@ export type ReviewQueueReport = {
   note: string | null;
   status: ReviewQueueReportStatus;
   createdAt: string;
-  // Never a real identity. Assigned once per claim over ALL reports (live + rejected), ordered by
-  // createdAt, so a pseudonym never shifts after another report in the same claim is rejected.
+  // Never a real identity. Assigned once per reporter per claim over ALL reports (live + rejected),
+  // ordered by createdAt, so a pseudonym never shifts after another report in the same claim is
+  // rejected, and a re-file carries the same label as the report it re-files.
   reporterLabel: string; // "Reporter A" | "Reporter B" | ... | "Reporter (account deleted)"
   rejectedBy: { email: string } | null; // admin accountability, shown in full — not user health data
   rejectedAt: string | null;
@@ -205,9 +206,16 @@ export function groupIntoClaims(
 
   const claims: ReviewQueueClaim[] = [];
   for (const { barcode, allergen, direction, rows: claimRows } of buckets.values()) {
-    let letterIndex = 0;
+    // One letter per reporter, not per row: since migration 0034 a reporter can have a rejected
+    // report and its re-file in the same claim, and lettering them separately would make one person
+    // read as two independent reporters backing the claim.
+    const letters = new Map<string, string>();
     const reports: ReviewQueueReport[] = claimRows.map((row) => {
-      const reporterLabel = row.reported_by === null ? "Reporter (account deleted)" : `Reporter ${letterFor(letterIndex++)}`;
+      let reporterLabel = "Reporter (account deleted)";
+      if (row.reported_by !== null) {
+        if (!letters.has(row.reported_by)) letters.set(row.reported_by, `Reporter ${letterFor(letters.size)}`);
+        reporterLabel = letters.get(row.reported_by)!;
+      }
       return {
         id: row.id,
         correctionType: row.correction_type,
