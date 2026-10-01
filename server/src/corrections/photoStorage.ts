@@ -8,8 +8,8 @@ import { env } from "../env.js";
 // unbounded. This is the first endpoint in the app that accepts a file from a user, and a required
 // photo field is the first place someone can fill the disk — enforced here, not left implicit in
 // whatever multer's own default happens to be. nginx's client_max_body_size
-// (scripts/nginx-circlebite.conf) has to stay in step with this, or the proxy rejects uploads this
-// allows before they ever arrive.
+// (scripts/nginx-circlebite.conf) has to stay a little above this — it caps the whole multipart
+// body, not just the file — or the proxy rejects uploads this allows before they ever arrive.
 export const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
 
 export type SniffedImageType = { mimeType: "image/jpeg" | "image/png" | "image/webp"; extension: "jpg" | "png" | "webp" };
