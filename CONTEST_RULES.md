@@ -48,6 +48,17 @@ Treated here as a requirement, not a suggestion:
 - Every user overrule of a verdict is logged with the verdict it overruled, the model and prompt
   version that produced it, and the source text that verdict was based on.
 
+### 3a. MVP statement directives (October 1, 2026)
+
+From Prof. Yoest's approval of the MVP statement (`docs/approvals/2026-10-01-yoest-mvp-statement.md`).
+Requirements, same standing as §3:
+
+- **Escalate: anyone in the circle. Downgrade: the profile's owner only.** A babysitter must not be
+  able to turn "contains" into a clean verdict, even in their own view.
+- **Never label a verdict "Safe".** Use "No listed allergens found" — a clean label can still carry
+  cross-contact risk.
+- **Emergency referral**: the in-app disclaimer includes "call 911 for any allergic reaction".
+
 ## 4. Deliverables at judging
 
 - [ ] Live deployed app at a public URL, behind a working login
