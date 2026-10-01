@@ -407,3 +407,72 @@ psql "$DB" -c "UPDATE password_reset_tokens SET used_at = now()
                WHERE user_id = (SELECT id FROM users WHERE email = '<account-email>')
                AND used_at IS NULL;"
 ```
+
+## 16. Seed the judge account and demo data
+
+One command creates the judge account and everything it needs to show: invented families, every
+circle role, scan history across all four verdicts, one community report, and the NPS rows. It is
+also the **recovery path** — if a judge deletes the account mid-week, run it again and everything is
+back. Rerunnable: a second run over a seeded database ends in exactly the same state.
+
+What it touches, and only this (details in `server/src/db/seed/judgeSeed.ts`):
+
+- Accounts on the reserved `demo.circlebite.test` domain, which signup refuses — deleted and
+  recreated with everything they own.
+- Corrections those accounts filed (a judge testing on a real product) are **rejected**, not
+  deleted, with the reason "Judge test data — cleared by reseed" — that stops any live warning
+  immediately and keeps the overrule log. NPS responses they filed are deleted.
+- Fixed seed barcodes (GTINs with deliberately invalid check digits — no real product has them) in
+  the `products` cache, and the seed's own NPS and correction rows by fixed id.
+- Never your account, never any other real account or its profiles, never a real product's row.
+- Signs a logged-in judge out (their sessions are deleted with the account).
+
+It makes no AI calls and spends no AI budget. The judge is **not** an admin (`docs/principles.md`,
+Sept 11 2026 precedent).
+
+**Run it** from the live release, after a deploy that includes it. The password never goes on the
+command line, into shell history, or into a file:
+
+```bash
+cd ~/circlebite/current
+
+# Optional: choose the judge password. read -s keeps it off the screen and out of shell history.
+# Skip both lines to have a strong one generated and printed once instead.
+read -s JUDGE_PASSWORD && export JUDGE_PASSWORD
+
+( set -a; source ~/circlebite/.env; set +a; node server/dist/db/seedJudge.js )
+
+unset JUDGE_PASSWORD
+```
+
+Never `JUDGE_PASSWORD=... node ...` inline — that lands in shell history. With `JUDGE_PASSWORD` set,
+the output only confirms it was used; without it, the generated password is printed **once** — copy
+it into the one-time secret link and nowhere else. Run a recovery reseed with the same
+`JUDGE_PASSWORD` and the judges' credentials keep working.
+
+**If it refuses.** A judge may invite a real address to try the invite flow. By default the seed
+won't delete a real person's access to a seeded child, or their scans of one — it changes nothing
+and prints the counts:
+
+```
+Not seeded — nothing was changed. Seeded profiles have non-seeded people or rows attached:
+  co-managers: 0
+  followers: 1
+  scans by non-seeded people: 2
+  ...
+```
+
+Look at who it is, then rerun with `--force` to remove exactly those rows and seed:
+
+```bash
+( set -a; source ~/circlebite/.env; set +a; node server/dist/db/seedJudge.js --force )
+```
+
+`--force` only removes rows *on seeded profiles* (synthetic children) — that person's follow or
+co-manager access to them and their scans of them. Their own account, their own profiles, and their
+scans of those are never touched.
+
+**Known limit.** If a judge deletes the account *before* a reseed, the reports they filed are
+already anonymous (`reported_by` is set to NULL on account deletion) and the seed can no longer find
+them. Check the review queue (`/admin/review-queue`) daily during judging week for reports on real
+products that don't look like real families'.
