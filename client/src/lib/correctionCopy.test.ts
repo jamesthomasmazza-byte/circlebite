@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import type { ReviewQueueReport } from "./api";
-import { reportCountLine, reportErrorMessage, reportOutcomeMessage, yourReportLine } from "./correctionCopy";
+import { priorReportNotice, reportCountLine, reportErrorMessage, reportOutcomeMessage, yourReportLine } from "./correctionCopy";
 
 test("reportOutcomeMessage: a first add_caution report never claims other reports agreed", () => {
   // The 2026-09-29 live test: one sesame report, and the confirmation said "enough other reports
@@ -126,4 +126,40 @@ test("reportErrorMessage: nginx's 413 reads the same as the app's own photo_too_
 test("reportErrorMessage: only an unexplained failure says try again", () => {
   assert.match(reportErrorMessage({ status: 500, code: "internal_error" }), /Try again/);
   assert.match(reportErrorMessage({ status: 0, code: "network" }), /Try again/);
+});
+
+test("priorReportNotice: a live report of the same claim blocks a duplicate up front", () => {
+  const notice = priorReportNotice(
+    [{ allergen: "Sesame", direction: "add_caution", status: "pending", createdAt: "2026-09-29T15:39:44Z" }],
+    { correctionType: "flag_missing", allergen: "Sesame" },
+  );
+  assert.equal(notice?.blocking, true);
+  assert.match(notice!.message, /already reported this/);
+});
+
+test("priorReportNotice: a rejected report allows a re-file, and says it was reviewed — never why", () => {
+  // The 2026-10-01 lockout: sesame reported on Sep 29, rejected the same day.
+  const notice = priorReportNotice(
+    [{ allergen: "Sesame", direction: "add_caution", status: "rejected", createdAt: "2026-09-29T15:39:44Z" }],
+    { correctionType: "flag_missing", allergen: "Sesame" },
+  );
+  assert.equal(notice?.blocking, false);
+  assert.match(notice!.message, /on Sep 29/);
+  assert.match(notice!.message, /reviewed and not accepted/);
+  assert.match(notice!.message, /report it again/);
+});
+
+test("priorReportNotice: a different claim on the same product says nothing", () => {
+  const reports = [{ allergen: "Sesame", direction: "add_caution" as const, status: "rejected" as const, createdAt: "2026-09-29T15:39:44Z" }];
+  assert.equal(priorReportNotice(reports, { correctionType: "flag_wrong", allergen: "Sesame" }), null, "other direction");
+  assert.equal(priorReportNotice(reports, { correctionType: "flag_missing", allergen: "Milk" }), null, "other allergen");
+  assert.equal(priorReportNotice([], { correctionType: "wrong_product", allergen: null }), null);
+});
+
+test("priorReportNotice: wrong_product matches its own null-allergen claim", () => {
+  const notice = priorReportNotice(
+    [{ allergen: null, direction: "remove_caution", status: "corroborated", createdAt: "2026-09-29T15:39:44Z" }],
+    { correctionType: "wrong_product", allergen: null },
+  );
+  assert.equal(notice?.blocking, true);
 });

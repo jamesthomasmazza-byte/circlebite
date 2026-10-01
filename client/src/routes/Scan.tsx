@@ -12,9 +12,11 @@ import {
   createScan,
   discardLabelEvidence,
   downscaleLabelPhoto,
+  getMyReports,
   listProfiles,
   type CombineOutcome,
   type CorrectionType,
+  type MyReport,
   type ProfileSummary,
   type ScanResult,
 } from "../lib/api";
@@ -24,7 +26,7 @@ import {
   shopperCount,
   sourceLabel,
 } from "../lib/allergenRowCopy";
-import { reportErrorMessage, reportOutcomeMessage, yourReportLine } from "../lib/correctionCopy";
+import { priorReportNotice, reportErrorMessage, reportOutcomeMessage, yourReportLine } from "../lib/correctionCopy";
 import { onlyUncheckedGaps, provenanceLine, uncheckedNote } from "../lib/evidenceCopy";
 
 const CORRECTION_TYPE_LABEL: Record<CorrectionType, string> = {
@@ -118,6 +120,10 @@ export function Scan() {
   // "user_initiated". Never inferred from reportType/reportAllergen: this is about how the report
   // was prompted, not what it claims.
   const [reportOrigin, setReportOrigin] = useState<"disagreement_prompt" | null>(null);
+  // The viewer's own earlier reports on this product, fetched when the form opens. Null until it
+  // arrives, or if it can't load — the form then works as it always did, and the server's 409 is
+  // still the backstop for a duplicate.
+  const [myReports, setMyReports] = useState<MyReport[] | null>(null);
 
   // Path C (docs/verdict-engine.md) and the adaptive flow's combine step (Path D) share this one
   // capture form. "standalone" is the barcode-less entry point (createLabelScan, unchanged);
@@ -139,6 +145,21 @@ export function Scan() {
   // inline on the verdict card; this is only the in-flight state for the discard request itself.
   const [discardingMismatch, setDiscardingMismatch] = useState(false);
   const [discardMismatchError, setDiscardMismatchError] = useState<string | null>(null);
+
+  const reportScanId = reportOpen ? result?.id : undefined;
+  useEffect(() => {
+    if (!reportScanId) return;
+    let cancelled = false;
+    setMyReports(null);
+    getMyReports(reportScanId)
+      .then((reports) => {
+        if (!cancelled) setMyReports(reports);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [reportScanId]);
 
   useEffect(() => {
     listProfiles()
@@ -439,6 +460,11 @@ export function Scan() {
   // The engine's own verdict unless a corroborated community report escalated it. Both are always
   // on the card: the headline is what to act on, the note under it says what changed it.
   const shown = result && (result.effective ?? { result: result.result, matched_allergens: result.matched_allergens });
+  // Only once the claim is fully chosen — an allergen, or wrong_product, which has none.
+  const priorNotice =
+    myReports && (reportType === "wrong_product" || reportAllergen)
+      ? priorReportNotice(myReports, { correctionType: reportType, allergen: reportAllergen || null })
+      : null;
 
   // "required" and not yet resolved (photo not yet taken, and the family hasn't explicitly said
   // "I don't have this in front of me") — no card renders at all; the capture form IS the screen.
@@ -879,9 +905,11 @@ export function Scan() {
                     <textarea value={reportNote} onChange={(e) => setReportNote(e.target.value)} />
                   </label>
 
+                  {priorNotice && <p role="status">{priorNotice.message}</p>}
+
                   {reportError && <p role="alert">{reportError}</p>}
 
-                  <button type="submit" disabled={reportSubmitting}>
+                  <button type="submit" disabled={reportSubmitting || priorNotice?.blocking}>
                     {reportSubmitting ? "Submitting…" : "Submit report"}
                   </button>
                   <button type="button" onClick={() => setReportOpen(false)}>

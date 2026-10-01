@@ -150,3 +150,47 @@ test("a duplicate report is a 409 already_reported, and its photo doesn't stay o
   );
   assert.deepEqual((await readdir(dir)).sort(), filesBefore.sort());
 });
+
+function getMyReports(scanId: string): Promise<{ status: number; body: unknown }> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const layer = (correctionsRouter as any).stack.find(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (l: any) => l.route?.path === "/scans/:scanId/my-reports" && l.route.methods.get,
+  );
+  assert.ok(layer, "expected a registered GET /scans/:scanId/my-reports route");
+  const handler = layer.route.stack.at(-1).handle;
+
+  return new Promise((resolve, reject) => {
+    let status = 200;
+    const res = {
+      status(code: number) {
+        status = code;
+        return res;
+      },
+      json(payload: Record<string, unknown>) {
+        resolve({ status, body: payload });
+      },
+    };
+    handler({ params: { scanId }, user: { id: REPORTER } }, res, (err: unknown) =>
+      reject(err ?? new Error("handler called next() without responding")),
+    );
+  });
+}
+
+test("my-reports finds an earlier report on the same product from a different scan, without the admin's reason", async () => {
+  const matched = [{ allergenName: "Sesame", severity: "severe", classification: "clear" }];
+  const first = await postCorrection(await makeScan("8000000000007", "safe", matched), { correctionType: "flag_missing", allergen: "Sesame" });
+  await pool.query(
+    "UPDATE product_corrections SET status = 'rejected', rejected_at = now(), rejection_reason = 'admin-only text' WHERE id = $1",
+    [first.body.id],
+  );
+
+  // A rescan is a new scan — the earlier report is only reachable by barcode.
+  const { body } = await getMyReports(await makeScan("8000000000007", "safe", matched));
+  const reports = body as Record<string, unknown>[];
+  assert.equal(reports.length, 1);
+  assert.equal(reports[0].status, "rejected");
+  assert.equal(reports[0].allergen, "Sesame");
+  assert.ok(reports[0].rejectedAt);
+  assert.ok(!JSON.stringify(reports).includes("admin-only text"), "the rejection reason never reaches the reporter");
+});

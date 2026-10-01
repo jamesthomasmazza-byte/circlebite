@@ -1,4 +1,4 @@
-import type { CorrectionType, ReviewQueueClaim, ScanCorrection } from "./api";
+import type { CorrectionType, MyReport, ReviewQueueClaim, ScanCorrection } from "./api";
 
 // Plain functions, no JSX — the wording a family or an admin reads about a correction, kept here
 // so it can be tested (`npm test -w client`) and shared between pages instead of drifting apart.
@@ -60,6 +60,43 @@ export function reportErrorMessage(error: { status: number; code: string }): str
     return "That doesn't look like a photo — please attach a JPEG, PNG, or WebP image.";
   }
   return "Couldn't submit that report. Try again.";
+}
+
+/**
+ * What the report form says about the reporter's own earlier report of the same claim on this
+ * product, before they file — matched the way the server buckets a claim (direction plus exact
+ * allergen, null for wrong_product), so this never disagrees with what a submit would do.
+ *
+ * - A live report (pending or corroborated): filing again is a duplicate the server refuses, so the
+ *   form says so up front and `blocking` disables submit.
+ * - Only rejected ones: re-filing is allowed (migration 0034), but they shouldn't re-file blind —
+ *   they're told it was reviewed and not accepted, and what would help a reviewer now. Never the
+ *   admin's reason: that was written for the audit trail, not for them.
+ */
+export function priorReportNotice(
+  reports: Pick<MyReport, "allergen" | "direction" | "status" | "createdAt">[],
+  claim: { correctionType: CorrectionType; allergen: string | null },
+): { blocking: boolean; message: string } | null {
+  const direction = claim.correctionType === "flag_missing" ? "add_caution" : "remove_caution";
+  const allergen = claim.correctionType === "wrong_product" ? null : claim.allergen;
+  const sameClaim = reports.filter((r) => r.direction === direction && r.allergen === allergen);
+
+  if (sameClaim.some((r) => r.status !== "rejected")) {
+    return {
+      blocking: true,
+      message: "You've already reported this for this product, and that report still stands — there's nothing new to send.",
+    };
+  }
+  const lastRejected = sameClaim.at(-1);
+  if (!lastRejected) return null;
+
+  const when = new Date(lastRejected.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return {
+    blocking: false,
+    message:
+      `You reported this on ${when}, and it was reviewed and not accepted. If the product has changed, ` +
+      "you can report it again — a clear photo of the current ingredients panel is what the reviewer will look at.",
+  };
 }
 
 const CORRECTION_CLAIM: Record<CorrectionType, string> = {

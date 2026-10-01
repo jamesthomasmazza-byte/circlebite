@@ -567,7 +567,22 @@ export async function createCorrection(
   return body as CorrectionResult;
 }
 
-export type AccuracyBucket = { escalations: number; overruled: number; rate: number | null };
+// One of the viewer's own earlier reports on this scan's product (by barcode, from any scan of it).
+// Never carries who rejected it or why — that's the review queue's audit trail, not the reporter's.
+export type MyReport = {
+  correctionType: CorrectionType;
+  allergen: string | null;
+  direction: "add_caution" | "remove_caution";
+  status: CorrectionStatus;
+  createdAt: string;
+  rejectedAt: string | null;
+};
+
+export function getMyReports(scanId: string): Promise<MyReport[]> {
+  return apiFetch(`/scans/${scanId}/my-reports`);
+}
+
+export type AccuracyBucket ={ escalations: number; overruled: number; rate: number | null };
 export type AccuracyCategoryBuckets = { escalation: AccuracyBucket; unresolved: AccuracyBucket };
 export type AccuracyAllergenRow = AccuracyCategoryBuckets & { allergen: string };
 export type AccuracyModelRow = AccuracyCategoryBuckets & { model: string; promptVersion: string };

@@ -135,6 +135,34 @@ correctionsRouter.post(
   }),
 );
 
+// This user's own earlier reports on the scan's product — by barcode, across every scan of it, not
+// just this one. A rescan is a new scan, so the per-scan corrections list can't tell someone that
+// the report they're about to re-file was already reviewed and rejected (migration 0034). Only what
+// the reporter needs to decide whether to file: never who rejected it or the admin's reason, which
+// was written for the review queue's audit trail, not for the reporter (decided with JT, Oct 1).
+// A barcode-less scan has no product to look across, so it's always empty.
+correctionsRouter.get(
+  "/scans/:scanId/my-reports",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const scanId = req.params.scanId;
+    const profileId = await getScanAllergenProfileId(scanId);
+    if (!profileId) throw new HttpError(404, "not_found");
+    await assertCanReadProfile(req.user!.id, profileId);
+
+    const { rows } = await pool.query(
+      `SELECT pc.correction_type AS "correctionType", pc.allergen, pc.direction, pc.status,
+              pc.created_at AS "createdAt", pc.rejected_at AS "rejectedAt"
+       FROM product_corrections pc
+       JOIN scans s ON s.id = $1 AND s.barcode IS NOT NULL AND pc.barcode = s.barcode
+       WHERE pc.reported_by = $2
+       ORDER BY pc.created_at ASC`,
+      [scanId, req.user!.id],
+    );
+    res.json(rows);
+  }),
+);
+
 correctionsRouter.get(
   "/scans/:scanId/corrections/:correctionId/photo",
   requireAuth,
