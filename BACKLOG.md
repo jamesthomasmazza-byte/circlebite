@@ -251,6 +251,25 @@ JT's own read, 2026-09-28, after using the app on a phone in a real session: the
 the weakest part of the project. That matches the rubric risk — 10% of the grade sits here and
 it is the least-worked area. Treat this whole section as the priority block it is.
 
+- [ ] **Prof. Yoest's two required changes — binding, promised in the README, none of them built.**
+      `docs/approvals/2026-10-01-yoest-mvp-statement.md` approved the MVP statement *with two
+      changes*, and that statement is already in the README promising them. The code does none of
+      it yet. He said the judges will look for this, and it is the ethical-AI bonus in his own
+      words. Do these ahead of the rest of this section.
+      - **Downgrades are owner-only.** Any circle member may escalate (`add_caution`). Anything
+        with direction `remove_caution` — `flag_wrong`, `wrong_product` — is reserved for the
+        parent who owns the profile. `recordCorrection.ts` computes the direction but never checks
+        who is filing it. His example is the one that matters: a babysitter who clears "contains"
+        to safe puts a child at risk. This is a safety control, not a permissions nicety; it needs
+        a test asserting a non-owner's `remove_caution` is refused, and a look at whether the
+        already-filed corrections on production were filed by profile owners.
+      - **The word "Safe" goes.** The clean verdict reads "No listed allergens found" everywhere —
+        `Scan.tsx:36` and `ScanHistory.tsx:8` both still map `safe: "Safe"`. Design consequence
+        worth planning for: the verdict headline is 36px and the replacement is five words rather
+        than one, so the card's hierarchy needs re-checking at 320px. A clean label is not a
+        promise of safety — cross-contact risk survives a clean label, which is his whole point.
+      - **Emergency referral in the app.** "Call 911 for any allergic reaction" alongside the
+        disclaimer. No occurrence of "911" or "emergency" exists in the client today.
 - [x] **Exercise the overrule loop on production.** Done 2026-09-29 — first real correction filed
       and worked through to rejected on the live site (`docs/journal.md`, same date; DB output in
       `docs/evidence/2026-09-29-correction-loop.txt`). Barcode 5690516025007 (Smjörvi, Icelandic): A
