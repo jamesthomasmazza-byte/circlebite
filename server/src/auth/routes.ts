@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import { pool } from "../db/pool.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
+import { isSeedEmail } from "../lib/seedMarker.js";
 import { blockSignup, evaluateAgeGate, isSignupBlocked } from "./ageGate.js";
 import { changePassword } from "./changePassword.js";
 import { normalizeEmail } from "./email.js";
@@ -39,8 +40,12 @@ authRouter.post(
 
     const normalizedEmail = normalizeEmail(email);
     const trimmedDisplayName = displayName.trim();
+    // isSeedEmail: the judge seed's reserved domain (lib/seedMarker.ts). The seed deletes every
+    // account on it when it reseeds, so nobody may sign up with one. Same generic 400 as any other
+    // rejected input — there's nothing a real person could do differently.
     if (
       !normalizedEmail.includes("@") ||
+      isSeedEmail(normalizedEmail) ||
       password.length < MIN_PASSWORD_LENGTH ||
       trimmedDisplayName.length === 0
     ) {
