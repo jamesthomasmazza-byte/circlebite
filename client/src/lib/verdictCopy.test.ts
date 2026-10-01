@@ -13,3 +13,11 @@ test("the disclaimer says it's a screening aid and to check the physical label",
   assert.match(DISCLAIMER, /screening aid/);
   assert.match(DISCLAIMER, /check the physical label/);
 });
+
+test("the clean verdict reads 'No listed allergens found', and no verdict label says safe", () => {
+  // Prof. Yoest's Oct 1 directive: a clean label can still carry cross-contact risk.
+  assert.equal(VERDICT_LABEL.safe, "No listed allergens found");
+  for (const label of Object.values(VERDICT_LABEL)) {
+    assert.doesNotMatch(label, /\bsafe\b/i, label);
+  }
+});
