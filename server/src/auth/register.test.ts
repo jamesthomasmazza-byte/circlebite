@@ -56,6 +56,8 @@ test("signup refuses the judge seed's reserved domain, however it's cased or pad
     assert.deepEqual(body, { error: "invalid_request" });
   }
 
-  const { rows } = await pool.query("SELECT 1 FROM users WHERE email LIKE $1", [`%@${SEED_EMAIL_DOMAIN}`]);
+  // The exact address tried, not the whole domain: the judge seed's own test creates seed-domain
+  // accounts and may be running in parallel.
+  const { rows } = await pool.query("SELECT 1 FROM users WHERE email = $1", [`someone@${SEED_EMAIL_DOMAIN}`]);
   assert.equal(rows.length, 0, "nothing was created");
 });
