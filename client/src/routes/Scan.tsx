@@ -34,24 +34,13 @@ import {
   yourReportLine,
 } from "../lib/correctionCopy";
 import { onlyUncheckedGaps, provenanceLine, uncheckedNote } from "../lib/evidenceCopy";
+import { DISCLAIMER, VERDICT_LABEL } from "../lib/verdictCopy";
 
 const CORRECTION_TYPE_LABEL: Record<CorrectionType, string> = {
   flag_wrong: "This allergen isn't actually in this product",
   flag_missing: "This product has an allergen the card didn't flag",
   wrong_product: "This is the wrong product entirely",
 };
-
-const VERDICT_LABEL: Record<ScanResult["result"], string> = {
-  safe: "Safe",
-  contains_allergen: "Contains an allergen",
-  may_contain_caution: "May contain — caution",
-  unable_to_confirm: "Unable to confirm",
-};
-
-// Exact wording from docs/verdict-engine.md §"non-negotiables" — renders on every verdict card,
-// unconditionally, not just when something matched.
-const DISCLAIMER =
-  "This is a screening aid, not a guarantee — always check the physical label, especially for “may contain” warnings.";
 
 // Styling hooks only — which visual treatment a row gets. Each follows exactly the precedence
 // classificationLabel/sourceLabel use for their words, so the look can never disagree with the text.

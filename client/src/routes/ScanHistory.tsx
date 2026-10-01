@@ -1,15 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { getScanHistory, type MatchedAllergen, type ScanHistoryEntry, type Verdict } from "../lib/api";
+import { getScanHistory, type MatchedAllergen, type ScanHistoryEntry } from "../lib/api";
 import { yourReportLine } from "../lib/correctionCopy";
-
-const VERDICT_LABEL: Record<Verdict, string> = {
-  safe: "Safe",
-  contains_allergen: "Contains an allergen",
-  may_contain_caution: "May contain — caution",
-  unable_to_confirm: "Unable to confirm",
-};
+import { VERDICT_LABEL } from "../lib/verdictCopy";
 
 // "unresolved" only appears on a scan that ran the AI reasoning step (docs/verdict-engine.md Path
 // B) — real model uncertainty, distinct from "may contain traces".
