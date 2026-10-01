@@ -228,6 +228,27 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
       loosening it to match the display query would let two differently-spelled reports corroborate
       an allergen removal that neither reporter alone had cleared the threshold for. Found while
       building the review queue (2026-09-20 journal entry); not blocking anything, not fixed there.
+- [x] Correction form fixes from the 2026-10-01 production logs. Correction photos are downscaled
+      client-side to 2048px before upload. A duplicate report is a 409 `already_reported` with its
+      own copy, not a 500 and "try again". Rejected reports no longer count toward corroboration. A
+      rejection no longer locks the reporter out of that claim: they can re-file (migration 0034),
+      the form tells them the earlier report was reviewed and not accepted, and the re-file is held
+      out of corroboration until an admin accepts it from the review queue (migration 0035) —
+      `docs/principles.md`, Oct 1 2026 precedent.
+- [ ] An optional, reporter-facing note an admin can write when rejecting — separate from
+      `rejection_reason`, which stays audit-only. Today a re-filer only learns their report "was
+      reviewed and not accepted", not what was wrong with it, so they can re-file blind.
+- [ ] Decide whether re-filing needs a cap (e.g. refused after two rejections of the same claim).
+      Depends on the note above: a reporter who's told why is much less likely to re-file the same
+      evidence, so build the note first and see whether the queue still fills before adding a cap.
+      Every re-file today costs the reporter a new photo and reaches nobody until an admin acts.
+- [ ] A correction filed against a mismatched-label scan (`identity_mismatch_at_report`, migration
+      0032) never corroborates itself, but `corroborateClaimIfThresholdMet` doesn't exclude it when
+      *someone else's* report runs the threshold — it still counts as a reporter there, and gets
+      flipped to `corroborated` with the claim. 0032's stated intent was to keep these out of
+      barcode-level corroboration entirely. Add `AND NOT identity_mismatch_at_report` to the count
+      (and probably the UPDATE). Found 2026-10-01 while extracting the threshold step; not fixed
+      there, out of scope for that change.
 - [x] AI accuracy page — overrule rate overall, by allergen, and by model/prompt version, scoped to
       `target = 'ai_verdict' AND direction = 'remove_caution'` (the false-alarm sense of "overrule"),
       with unresolved escalations counted separately from contains/caution ones. Reported misses and
