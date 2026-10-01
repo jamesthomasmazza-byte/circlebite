@@ -242,13 +242,10 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
       Depends on the note above: a reporter who's told why is much less likely to re-file the same
       evidence, so build the note first and see whether the queue still fills before adding a cap.
       Every re-file today costs the reporter a new photo and reaches nobody until an admin acts.
-- [ ] A correction filed against a mismatched-label scan (`identity_mismatch_at_report`, migration
-      0032) never corroborates itself, but `corroborateClaimIfThresholdMet` doesn't exclude it when
-      *someone else's* report runs the threshold — it still counts as a reporter there, and gets
-      flipped to `corroborated` with the claim. 0032's stated intent was to keep these out of
-      barcode-level corroboration entirely. Add `AND NOT identity_mismatch_at_report` to the count
-      (and probably the UPDATE). Found 2026-10-01 while extracting the threshold step; not fixed
-      there, out of scope for that change.
+- [x] A correction filed against a mismatched-label scan (`identity_mismatch_at_report`, migration
+      0032) never corroborated itself, but still counted as a reporter when *someone else's* report
+      ran the threshold, and was flipped to `corroborated` with the claim. Both halves now excluded
+      in `corroborateClaimIfThresholdMet`. Found and fixed 2026-10-01.
 - [x] AI accuracy page — overrule rate overall, by allergen, and by model/prompt version, scoped to
       `target = 'ai_verdict' AND direction = 'remove_caution'` (the false-alarm sense of "overrule"),
       with unresolved escalations counted separately from contains/caution ones. Reported misses and

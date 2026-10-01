@@ -242,6 +242,12 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
  * otherwise an add_caution re-file would meet its threshold of 1 by itself and undo the rejection
  * for every family on insert. An unaccepted re-file still goes to 'corroborated' along with its
  * claim when independent reporters reach the threshold on their own.
+ *
+ * A report filed against a mismatched label (identity_mismatch_at_report, migration 0032) neither
+ * counts nor is flipped. recordCorrection already skips this step when the new report is the
+ * mismatched one; without these two clauses the same report still counted as a reporter whenever
+ * someone else's report ran the threshold, and was then marked 'corroborated' along with the claim
+ * — feeding communityAdditions.ts's family-facing count. 0032's gate covers both halves.
  */
 export async function corroborateClaimIfThresholdMet(
   client: PoolClient,
@@ -252,10 +258,12 @@ export async function corroborateClaimIfThresholdMet(
     allergen
       ? `SELECT count(DISTINCT reported_by) FROM product_corrections
          WHERE barcode = $1 AND allergen = $2 AND direction = $3
-           AND status <> 'rejected' AND (refiles_rejected_id IS NULL OR accepted_at IS NOT NULL)`
+           AND status <> 'rejected' AND (refiles_rejected_id IS NULL OR accepted_at IS NOT NULL)
+           AND NOT identity_mismatch_at_report`
       : `SELECT count(DISTINCT reported_by) FROM product_corrections
          WHERE barcode = $1 AND allergen IS NULL AND direction = $2
-           AND status <> 'rejected' AND (refiles_rejected_id IS NULL OR accepted_at IS NOT NULL)`,
+           AND status <> 'rejected' AND (refiles_rejected_id IS NULL OR accepted_at IS NOT NULL)
+           AND NOT identity_mismatch_at_report`,
     allergen ? [barcode, allergen, direction] : [barcode, direction],
   );
   const reporterCount = Number(countRows[0]?.count ?? 0);
@@ -274,9 +282,9 @@ export async function corroborateClaimIfThresholdMet(
   await client.query(
     allergen
       ? `UPDATE product_corrections SET status = 'corroborated'
-         WHERE barcode = $1 AND allergen = $2 AND direction = $3 AND status = 'pending'`
+         WHERE barcode = $1 AND allergen = $2 AND direction = $3 AND status = 'pending' AND NOT identity_mismatch_at_report`
       : `UPDATE product_corrections SET status = 'corroborated'
-         WHERE barcode = $1 AND allergen IS NULL AND direction = $2 AND status = 'pending'`,
+         WHERE barcode = $1 AND allergen IS NULL AND direction = $2 AND status = 'pending' AND NOT identity_mismatch_at_report`,
     allergen ? [barcode, allergen, direction] : [barcode, direction],
   );
   return true;

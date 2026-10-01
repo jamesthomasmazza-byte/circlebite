@@ -407,3 +407,35 @@ test("re-files don't count toward the remove_caution threshold", async () => {
   const third = await recordCorrection({ scanId: await makeScan(barcode, "contains_allergen", soy), ...report(USER_C) });
   assert.equal(third.corroborated, false);
 });
+
+test("reports against a mismatched label never count toward someone else's threshold, and aren't flipped with the claim", async () => {
+  const barcode = "1000000000019";
+  const soy = [{ allergenName: "Soy", severity: "mild", classification: "contains" }];
+  const report = (reportedBy: string) => ({ reportedBy, correctionType: "flag_wrong" as const, allergen: "Soy", note: null, photoPath: "/fake.jpg", origin: "user_initiated" as const });
+
+  // Two removals filed against scans whose label didn't match the barcode's product (migration 0032).
+  const mismatchedIds: string[] = [];
+  for (const user of [USER_A, USER_B]) {
+    const scanId = await makeScan(barcode, "contains_allergen", soy);
+    await makeLabelExtraction(scanId, false);
+    mismatchedIds.push((await recordCorrection({ scanId, ...report(user) })).id);
+  }
+
+  // A third, clean report: three distinct reporters, but only one whose evidence counts.
+  const third = await recordCorrection({ scanId: await makeScan(barcode, "contains_allergen", soy), ...report(USER_C) });
+  assert.equal(third.corroborated, false);
+
+  // And when a claim does corroborate (add_caution, threshold 1), a mismatched row in it stays pending.
+  const milk = [{ allergenName: "Milk", severity: "severe", classification: "clear" }];
+  const mismatchedScan = await makeScan(barcode, "safe", milk);
+  await makeLabelExtraction(mismatchedScan, false);
+  const mismatchedAdd = await recordCorrection({ scanId: mismatchedScan, reportedBy: USER_A, correctionType: "flag_missing", allergen: "Milk", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
+  const cleanAdd = await recordCorrection({ scanId: await makeScan(barcode, "safe", milk), reportedBy: USER_B, correctionType: "flag_missing", allergen: "Milk", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
+  assert.equal(cleanAdd.corroborated, true);
+
+  const { rows } = await pool.query<{ id: string; status: string }>(
+    "SELECT id, status FROM product_corrections WHERE id = ANY($1)",
+    [[...mismatchedIds, mismatchedAdd.id]],
+  );
+  assert.ok(rows.every((r) => r.status === "pending"), "mismatched reports are never marked corroborated");
+});
