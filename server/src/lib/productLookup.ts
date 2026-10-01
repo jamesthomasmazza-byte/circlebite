@@ -31,12 +31,27 @@ function rowToLookup(row: ProductRow): ProductLookup {
   };
 }
 
+/**
+ * A row the judge seed wrote (server/src/db/seedJudge.ts), marked in raw_data. Its barcode is a
+ * GTIN with a deliberately invalid check digit, so Open Food Facts can never have it: refreshing it
+ * after the TTL would replace the seeded product with "not found" mid-week, and a judge rescanning
+ * a barcode from their history would get "Unable to confirm" where history says something else. A
+ * seeded row is the product record for that barcode, so it is never refreshed. Real rows never
+ * carry the marker — only the seed writes it.
+ */
+export const SEED_PRODUCT_MARKER = "circlebite_seed";
+
+function isSeedProduct(row: ProductRow): boolean {
+  const raw = row.raw_data as Record<string, unknown> | null;
+  return raw !== null && typeof raw === "object" && raw[SEED_PRODUCT_MARKER] === true;
+}
+
 /** Cache-aware product lookup: consults `products` before ever calling Open Food Facts. */
 export async function getProduct(barcode: string): Promise<ProductLookup> {
   const { rows } = await pool.query<ProductRow>("SELECT * FROM products WHERE barcode = $1", [barcode]);
   const cached = rows[0];
 
-  if (cached && Date.now() - cached.fetched_at.getTime() < CACHE_TTL_MS) {
+  if (cached && (isSeedProduct(cached) || Date.now() - cached.fetched_at.getTime() < CACHE_TTL_MS)) {
     return rowToLookup(cached);
   }
 
