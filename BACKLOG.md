@@ -287,11 +287,10 @@ it is the least-worked area. Treat this whole section as the priority block it i
         "The product data alone says Safe." separately from `Scan.tsx`'s and `ScanHistory.tsx`'s
         `safe: "Safe"` entries. The rename below is a sweep for every place the verdict word is
         produced, not a two-line change, and a grep for the literal won't find all of it.
-- [ ] **Prof. Yoest's two required changes — binding, promised in the README, none of them built.**
-      `docs/approvals/2026-10-01-yoest-mvp-statement.md` approved the MVP statement *with two
-      changes*, and that statement is already in the README promising them. The code does none of
-      it yet. He said the judges will look for this, and it is the ethical-AI bonus in his own
-      words. Do these ahead of the rest of this section.
+- [x] **Prof. Yoest's two required changes — binding, promised in the README.** All built
+      2026-10-01. `docs/approvals/2026-10-01-yoest-mvp-statement.md` approved the MVP statement
+      *with two changes*, and that statement is already in the README promising them. He said the
+      judges will look for this, and it is the ethical-AI bonus in his own words.
       - [x] **Downgrades are owner-only.** Any circle member may escalate (`add_caution`). Anything
         with direction `remove_caution` — `flag_wrong`, `wrong_product` — is reserved for the
         people who manage the profile: owner or co-manager, deliberately (`CONTEST_RULES.md` §3a,
@@ -299,14 +298,29 @@ it is the least-worked area. Treat this whole section as the priority block it i
         with 403 `removal_requires_manager` before the photo is written, with tests for follower,
         owner and co-manager; the report form only offers followers `flag_missing`. Production had
         no `remove_caution` rows at all when checked the morning of Oct 1, so nothing already
-        filed needed reviewing.
-      - **The word "Safe" goes.** The clean verdict reads "No listed allergens found" everywhere —
-        `Scan.tsx:36` and `ScanHistory.tsx:8` both still map `safe: "Safe"`. Design consequence
-        worth planning for: the verdict headline is 36px and the replacement is five words rather
-        than one, so the card's hierarchy needs re-checking at 320px. A clean label is not a
-        promise of safety — cross-contact risk survives a clean label, which is his whole point.
-      - **Emergency referral in the app.** "Call 911 for any allergic reaction" alongside the
-        disclaimer. No occurrence of "911" or "emergency" exists in the client today.
+        filed needed reviewing. The per-reporter-role query for after the deploy hasn't been run
+        yet — re-run it before judging to confirm no follower-filed removal slipped in.
+      - [x] **The word "Safe" goes.** Done 2026-10-01. The clean verdict reads "No listed
+        allergens found" on the live card and in scan history, from one `VERDICT_LABEL` in
+        `client/src/lib/verdictCopy.ts` (it was duplicated in both pages); the `safe` enum value is
+        unchanged. The three lead sentences that said "This hasn't been confirmed safe — …"
+        (`explainVerdict.ts` ×2, `evidenceCopy.ts`) now open "Not confirmed — …", which supersedes
+        the Sept 30 wording (`docs/principles.md`, Oct 1 precedent). Tests assert no verdict label
+        or lead sentence contains "safe". Checked at 318px on a real clean scan: the headline wraps
+        to three lines beside its icon, no horizontal overflow, no size change needed.
+      - [x] **Emergency referral in the app.** Done 2026-10-01. "If anyone has an allergic
+        reaction, call 911." in bold inside the disclaimer panel on every live verdict card, and
+        the same panel once at the top of scan history, which had no disclaimer at all before.
+- [ ] Model-written text that could one day say "safe". Checked 2026-10-01: none reaches a user
+      today. The reasoning call's free-text `reason` per finding is copied onto `matched_allergens`
+      by `mergeVerdict.ts` and **is in the JSON sent to the browser**, but the client's
+      `MatchedAllergen` type doesn't declare it and nothing renders it. The label call's
+      `incompleteReason` is stored in `label_extractions` and never sent. What *is* rendered —
+      `citedSpan`, the extracted text, `contains`/`mayContain` — is verbatim label text (the span
+      validator enforces it for `citedSpan`), so a "safe" there is the manufacturer's word, quoted.
+      Before anything renders `reason`: add a prompt rule never to describe a product as safe, bump
+      `PROMPT_VERSION` so the AI accuracy page keeps old and new apart, and add a test for a model
+      response containing "safe". Worth also dropping `reason` from the client payload until then.
 - [x] **Exercise the overrule loop on production.** Done 2026-09-29 — first real correction filed
       and worked through to rejected on the live site (`docs/journal.md`, same date; DB output in
       `docs/evidence/2026-09-29-correction-loop.txt`). Barcode 5690516025007 (Smjörvi, Icelandic): A
