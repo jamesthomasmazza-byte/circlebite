@@ -186,12 +186,18 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
     // product identity (see the comment above where identityMismatched is computed). Same
     // treatment, different cause — one is "no reliable identity to key off," the other is "an
     // identity check already flagged this specific evidence as questionable."
+    //
+    // Rejected rows never count toward the threshold: a report an admin rejected corroborates
+    // nothing. Without this, two rejected removals plus one new one reached the remove_caution
+    // threshold of 3 — the admin's rejection didn't stop the claim it rejected.
     let corroborated = false;
     if (scan.barcode !== null && !identityMismatched) {
       const { rows: countRows } = await client.query<{ count: string }>(
         allergen
-          ? `SELECT count(DISTINCT reported_by) FROM product_corrections WHERE barcode = $1 AND allergen = $2 AND direction = $3`
-          : `SELECT count(DISTINCT reported_by) FROM product_corrections WHERE barcode = $1 AND allergen IS NULL AND direction = $2`,
+          ? `SELECT count(DISTINCT reported_by) FROM product_corrections
+             WHERE barcode = $1 AND allergen = $2 AND direction = $3 AND status <> 'rejected'`
+          : `SELECT count(DISTINCT reported_by) FROM product_corrections
+             WHERE barcode = $1 AND allergen IS NULL AND direction = $2 AND status <> 'rejected'`,
         allergen ? [scan.barcode, allergen, direction] : [scan.barcode, direction],
       );
       const reporterCount = Number(countRows[0]?.count ?? 0);

@@ -174,6 +174,20 @@ test("remove_caution stays pending until the third distinct reporter — thresho
   assert.ok(rows.every((r) => r.status === "corroborated"));
 });
 
+test("rejected reports don't count toward the remove_caution threshold", async () => {
+  const barcode = "1000000000015";
+  const soy = [{ allergenName: "Soy", severity: "mild", classification: "contains" }];
+
+  const first = await recordCorrection({ scanId: await makeScan(barcode, "contains_allergen", soy), reportedBy: USER_A, correctionType: "flag_wrong", allergen: "Soy", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
+  const second = await recordCorrection({ scanId: await makeScan(barcode, "contains_allergen", soy), reportedBy: USER_B, correctionType: "flag_wrong", allergen: "Soy", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
+  await pool.query("UPDATE product_corrections SET status = 'rejected' WHERE id = ANY($1)", [[first.id, second.id]]);
+
+  // Three distinct reporters on the claim, but two were rejected — only one live report.
+  const third = await recordCorrection({ scanId: await makeScan(barcode, "contains_allergen", soy), reportedBy: USER_C, correctionType: "flag_wrong", allergen: "Soy", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
+  assert.equal(third.corroborated, false);
+  assert.equal(third.status, "pending");
+});
+
 test("wrong_product uses its own corroboration bucket, keyed by barcode alone (allergen is null)", async () => {
   const barcode = "1000000000008";
   const scan1 = await makeScan(barcode, "contains_allergen", []);
