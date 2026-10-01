@@ -12,46 +12,43 @@ of a session, not the beginning.
 
 ---
 
-## Status as of 2026-09-29
+## Status as of 2026-10-01
 
-Well ahead of `BACKLOG.md`: everything through Week 8 is built and deployed, plus Path C (reading a
-photographed ingredients label) and Path D (the adaptive flow that decides, after the barcode, whether
-a label photo is required, offered, or unnecessary). The schedule puts this at Weeks 2-3. The gap is
-Week 9 — UI/UX — which JT's own read after using the app on a phone calls the weakest part of the
-project, and which carries 10% of the grade.
+Well ahead of `BACKLOG.md`, which puts this at Weeks 2-3: everything through Week 8 is built and
+deployed, plus Path C (reading a photographed ingredients label), Path D (the adaptive flow), the
+first real styling the project has ever had, and a reworked correction flow. Seven weeks to judging.
+The thin areas are the rest of the UI pass and Prof. Yoest's three required changes.
 
-**Live now:** release `20260928215503`, migrations applied through 0033, `LABEL_SCAN=on` in
-production. Auth, profiles, the circle invite flow, scan-to-verdict, the deterministic matcher, Paths
-A through D, the overrule loop and review queue, the AI accuracy page, NPS, rate limiting, password
-reset, account deletion and the retention job.
+**Live now:** release `20261001132947`, migrations through 0035, `LABEL_SCAN=on`,
+`COMMUNITY_CORRECTIONS=on`. nginx `client_max_body_size 9m`, set by hand on the box and mirrored in
+`scripts/nginx-circlebite.conf`.
 
-**Verified live on a phone, 2026-09-28:** a `contains` verdict correctly suppressing the second-opinion
-offer (a label read can only escalate, so there is nothing to offer once the answer is already
-"don't buy it"); a full `combined` verdict as a single scan row rather than two; and the
-`photo: required` branch on an unknown store barcode, failing closed to `unable_to_confirm` with every
-allergen `unchecked`.
+**The overrule loop is proven end to end on production, 2026-10-01.** Report → rejected → re-filed →
+held → accepted by an admin → the warning reaches a *different* account's profile, attributed as
+"reported by 1 shopper with a label photo — not in the product data", in italic with its own icon,
+visually distinct from anything the label said. The card tells that parent how much of the verdict is
+Open Food Facts and how much is a stranger with a photo. That is the full Week 8 feature, working
+rather than described, and it had never run outside a test before this week.
 
-**The biggest untested thing is not code.** `product_corrections` is **empty on production** — not one
-correction has ever been filed against the live site. The overrule loop, the review queue, corroboration
-counting, reporter pseudonyms, the same-circle warning, the 0023 rejection audit trail and the new 0032
-identity gate are all built, tested against real Postgres, and have never seen a real row. The reject
-flow has been on this list since 2026-09-20. It is a graded feature (bonus 5%) with zero live evidence
-behind it. Clearing it takes about ten minutes: file a correction from a live scan result, then work
-that claim through the admin queue to rejected. Note `COMMUNITY_CORRECTIONS=on` in production, so a
-test report becomes a live warning for that barcode until it is rejected.
+**The app has a stylesheet.** As of 2026-09-30 the client had no CSS at all — no stylesheet, no
+`className`, one inline `style`. Every screen was browser-default HTML. `client/src/styles.css` is
+now the whole design system: 17px body, 44px touch targets, 7:1 contrast verified by a test that
+reads the stylesheet back (`styles.contrast.test.ts`, which caught three ratios that had been
+estimated rather than computed), safe-area insets, dark mode. The verdict card has a real hierarchy,
+one block per allergen, four facts on separate lines, and the contains-vs-may-contain distinction
+carried in icon, rule and weight as well as colour.
 
-**Known, unfixed, found 2026-09-28:** on a scan where the barcode returned no product record, the
-verdict card still says "Checked against the product database and a photographed label." There was no
-database record — the card says so two lines above. The header describes the code path rather than the
-evidence that actually existed, which is the same over-claiming the 2026-09-28 work corrected in the
-other direction. The same card stacks two paragraphs that say the same thing at different scopes.
-The rule worth applying once rather than twice: the header and the explanation should both derive from
-what evidence existed, not from which function ran.
+**Prof. Yoest's two required changes are promised and not built.** His Oct 1 approval
+(`docs/approvals/2026-10-01-yoest-mvp-statement.md`) is already quoted in the README. None of it is
+enforced in code: downgrades are not owner-only, the verdict still reads "Safe", and there is no 911
+referral anywhere in the client. These are binding, he said judges will look for them, and they are
+the top of Week 9 in `BACKLOG.md`.
 
-**Also still open:** the judge-account seed script (open since Week 1); a deliberate judging-week value
-for `AI_DAILY_SPEND_CAP_CENTS`, now that one scan can make three Anthropic calls; the reverse
-"warning survives" gap in `recordCorrection.ts`; letting corroborated removals reach other profiles;
-and Week 9's polish and hardening pass in full.
+**Also still open:** the rest of the Week 9 UI pass (`docs/ui-pass-prompts.md`, prompts 3-5 — the
+scan flow with its targeting box and barcode-failure fallback, the remaining screens, accessibility);
+the judge-account seed script, open since Week 1; a deliberate judging-week value for
+`AI_DAILY_SPEND_CAP_CENTS` now that one scan can make three Anthropic calls; and a pending kernel
+restart on the box, to be scheduled deliberately rather than discovered during judging (R10).
 
 ---
 
@@ -1539,3 +1536,76 @@ keeps headlining "Safe" after they report an allergen; and a resolved claim read
 live accounts" above the one report it lists.
 
 **Next:** those three copy/UX fixes, then the unknown-product header fix.
+
+---
+
+## 2026-10-01 — Three bugs between a parent and the report they were trying to file
+
+**Did:** Tried to file a correction from a phone. It failed. Three separate causes, none of which had
+a test that could have caught them, and a fourth found by reading the code while chasing the others.
+Twelve commits, deployed as releases `20261001131234` and `20261001132947` with migrations 0034 and
+0035.
+
+**1. nginx had no `client_max_body_size`,** so it defaulted to 1 MB and returned 413 before the
+request reached Node — while `MAX_PHOTO_BYTES` allowed 8 MB. The proxy and the server had disagreed
+since the day the box was provisioned. The logs showed 2.1 MB and 4.9 MB bodies refused.
+
+The reason this never surfaced until now is the interesting part: `Scan.tsx` downscales the Path C
+label photo before upload and does not downscale the correction photo. Same phone, same camera, two
+paths, one of which happened to stay under the limit. Every label scan this week worked; no
+correction ever had. Plausibly why `product_corrections` sat empty on production for weeks — not only
+because the test kept getting deferred, but because the flow did not work from a phone, which is the
+only way anyone would ever use it.
+
+**2. A rejected report locked its reporter out permanently.** `product_corrections_no_dup_allergen_report_idx`
+is unique on (barcode, allergen, direction, reported_by) and knows nothing about status, so the Sept 29
+rejected sesame report blocked the same person from ever reporting it again — and the app said
+"Couldn't submit that report. Try again," which is advice that cannot work. Third time this week the
+app told someone something they could not act on.
+
+**3. The review queue would have shown one person as two.** Pseudonyms were assigned per row, not per
+reporter. A re-file would have appeared as "Reporter B" beside the original's "Reporter A", and an
+admin reading that screen would have seen two independent people agreeing — on the screen whose
+entire job is to convey how many distinct people said a thing. Found by a test, not by eye.
+
+**4. Rejected reports were counting toward corroboration.** Found by reading `recordCorrection.ts`
+while planning the rest: the distinct-reporter count had no status filter, so two rejected removals
+plus one new report would have hit the removal threshold of three. An admin's rejection did not
+actually stop the thing it rejected. Nobody reported this; it was never going to be reported, because
+production had one correction row in it.
+
+**Decided — the re-file rule.** A rejection unlocks re-filing, but a re-file is *evidence for review,
+not a vote*. It overrides the reporter's own view immediately and is excluded from auto-corroboration
+until an admin accepts it. The alternatives were a permanent lockout (loses reformulations, reported
+by exactly the person most likely to notice them) or letting a re-file count normally (one click
+undoes the admin's decision for every family). Recorded in `docs/principles.md`.
+
+Also decided: the admin's rejection *reason* is not shown to reporters, because that text was written
+for an admin audience as a required audit step, and showing it would change who admins write for. The
+cost is real and named — a reporter who cannot see why will re-file blind — so the reporter gets a
+"reviewed and not accepted" notice instead, and an optional reporter-facing note is backlogged.
+
+And: correction photos cap at 2048px rather than Path C's 1568px. Different reader, different floor —
+1568 is sized for the vision model, which reads Path C photos; a correction photo is read by a human
+admin deciding whether to warn other families.
+
+**Learned.** Four bugs, one shape: in each case something claimed more than it knew, or said less
+than it knew. The proxy limit and the server limit each believed a different number. The error told a
+user to retry an action that could never succeed. The queue presented one voice as two. The
+corroboration count treated a rejected report as a live one. The verdict card's "Checked against the
+product database" on a product with no record, fixed two days earlier, is the same bug. Worth watching
+for as a class rather than fixing one at a time.
+
+Second: none of these had a failing test, and three of them could not have had one. A 1 MB proxy
+limit and an 8 MB server limit are each individually correct; only the pair is wrong, and no unit test
+sees a pair. The permanent lockout required a rejected row to exist first. The pseudonym bug required
+two reports from one reporter, which was impossible until the re-file path existed. The tests were
+right and the system was broken anyway.
+
+**Hit a wall on:** nothing technical. Lost time to running commands on the wrong machine — git on the
+box, nginx config on the Mac — which is worth a line in `docs/server-setup.md`: git and Claude Code
+are always the Mac; psql, nginx, journalctl and anything under /etc or /var are always the box.
+
+**Next:** Prof. Yoest's three required changes, which are promised in the README and built nowhere —
+owner-only downgrades first, while `recordCorrection.ts` is still fresh. Then prompts 3-5 of the UI
+pass.

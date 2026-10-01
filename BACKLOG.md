@@ -269,6 +269,24 @@ JT's own read, 2026-09-28, after using the app on a phone in a real session: the
 the weakest part of the project. That matches the rubric risk — 10% of the grade sits here and
 it is the least-worked area. Treat this whole section as the priority block it is.
 
+- [ ] **Four small findings from the 2026-10-01 live session, none of them tracked elsewhere.**
+      - **A sentence ending in a comma before a button.** The verdict card reads "This profile has a
+        severe allergen on file — for extra confidence," and then a "Photograph the ingredients
+        label" button is used as the end of the sentence. It doesn't read as one thing, and a screen
+        reader gets a fragment followed by an unconnected button label. Seen on the app's most
+        important screen in three separate captures.
+      - **The rejection-reason field sits between Reject and Accept** in the review queue, so it
+        reads as applying to either. A reason typed before pressing Accept is silently discarded. It
+        belongs to Reject alone — move it under that button, or reveal it only once Reject is
+        pressed.
+      - **The admin's real email shows as the rejecter** in the review queue ("Rejected by
+        jamesthomasmazza@gmail.com"). A judge logged in as admin sees it, and R9 wants synthetic data
+        in anything a judge can reach. Either the seeded demo admin does the rejecting in judge data,
+        or the queue shows a display name rather than an address.
+      - **"Safe" is built inside composed sentences, not just the two label maps.** The card renders
+        "The product data alone says Safe." separately from `Scan.tsx`'s and `ScanHistory.tsx`'s
+        `safe: "Safe"` entries. The rename below is a sweep for every place the verdict word is
+        produced, not a two-line change, and a grep for the literal won't find all of it.
 - [ ] **Prof. Yoest's two required changes — binding, promised in the README, none of them built.**
       `docs/approvals/2026-10-01-yoest-mvp-statement.md` approved the MVP statement *with two
       changes*, and that statement is already in the README promising them. The code does none of
