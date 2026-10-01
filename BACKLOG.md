@@ -63,11 +63,22 @@ often isn't the person whose allergies are at stake.
       *(`docs/coppa.md` §2.7 — an unenforced stated policy is worse than none)*. Runs in-process
       (no cron/systemd timer on this box) with a `retention_runs` audit row per run, success or
       failure, so "did it run" is a `psql` query, not a guess
-- [ ] Seed script: invented families, profiles, and circle members for the judge account *(R9)*.
+- [x] Seed script: invented families, profiles, and circle members for the judge account *(R9)*.
       **Rerunnable** — wiping and re-seeding the judge data must be one command. The judge account
       can delete itself from the Settings page (Week 9), and re-creating demo data by hand during
       judging week is not a position to be in. Give at least one seeded profile a co-manager, so
       that profile transfers to them instead of being destroyed if the account is ever deleted.
+      Done 2026-10-01: `npm run seed:judge -w server` locally, `node server/dist/db/seedJudge.js`
+      on the box (`docs/server-setup.md` §16). Four accounts on the reserved
+      `demo.circlebite.test` domain (signup refuses it); the judge owns Maya (co-managed by Priya,
+      so she inherits it on deletion), co-manages Leo, follows Noor — every role, including the
+      follower's escalate-only form. History spans all four verdicts from the real matcher, on GTINs
+      with invalid check digits cached as seed products so rescans reproduce it; no AI calls. One
+      corroborated community report on a seed barcode. Judge's own reports are rejected on reseed,
+      not deleted. A guard refuses when a real person is attached to a seeded profile; `--force`
+      removes only those rows. Judge is not an admin (Sept 11 precedent). Tests cover fresh seed,
+      reseed, reseed after the judge deleted itself, non-seeded rows untouched, the guard, `--force`,
+      and rescans reproducing history.
 
 ## Weeks 4–5 — Oct 6–19 · Scan to verdict, end to end
 
@@ -259,9 +270,9 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
       `/admin/ai-accuracy` exactly (`assertIsAdmin`, same small-n suppression), kept deliberately
       minimal — score, counts, and verbatim reasons only — as the approved, narrow exception to
       §7's "admin analytics beyond the AI accuracy report" freeze (`CONTEST_RULES.md` §7, dated
-      Sept 25, 2026). A standalone, rerunnable seed script (`server/src/db/seedJudgeNps.ts`) seeds
-      invented responses so the page isn't empty during judging — scoped only to this table, since
-      the real judge seed script below doesn't exist yet; fold it in once that's built.
+      Sept 25, 2026). Invented responses keep the page from being empty during judging — first a
+      standalone NPS-only seed, folded into the judge seed script on Oct 1 (one command, same 24
+      rows, `source = 'seed'`).
 
 ## Week 9 — Nov 10–16 · Polish and hardening *[10% UX, 15% code quality]*
 
@@ -473,7 +484,9 @@ it is the least-worked area. Treat this whole section as the priority block it i
       corrections are deliberately excluded (`docs/coppa.md` §2.7)
 - [ ] Judge account seeded and tested end to end from a fresh browser, including re-running the
       seed script over an already-seeded database — that rerun is the recovery path if a judge
-      deletes the account mid-week
+      deletes the account mid-week. The script and its tests exist (see the Weeks 2–3 item); still
+      open until JT has run it on production per `docs/server-setup.md` §16 and logged in as the
+      judge from a fresh browser
 
 ## Weeks 10–11 — Nov 17–25 · Submission prep *[10% presentation]*
 
@@ -489,7 +502,10 @@ it is the least-worked area. Treat this whole section as the priority block it i
       exercise, and it costs nothing. The seeded account stays the main path regardless: a
       self-registered judge lands in an empty app, and the circle in particular can't be seen from
       one account, since it takes a second person to accept an invite and scan on a profile's
-      behalf
+      behalf. Also ask judges to try reports against the seeded products (barcodes starting
+      `2990000000`), not real ones: a report on a real product is a live warning for real families
+      until the next reseed rejects it — and if the judge deletes the account first, nothing can
+      find it to reject
 - [ ] `AI_DAILY_SPEND_CAP_CENTS` defaults to 200 ($2.00/day) — sized when a scan meant exactly one
       Anthropic call (Path B's `reasonVerdict`). Path C makes it two (extraction, then reasoning),
       and a failed extraction still spends one call before it can even fail. The adaptive flow
@@ -504,6 +520,10 @@ it is the least-worked area. Treat this whole section as the priority block it i
 - [ ] Freeze the code
 
 ## Week of Nov 26 — Judging
+
+- [ ] Check the review queue (`/admin/review-queue`) daily. A judge's reports are rejected by any
+      reseed, but if a judge deletes the account first those reports turn anonymous and the seed can
+      no longer find them — the queue is the only place they'd show up
 
 ---
 
