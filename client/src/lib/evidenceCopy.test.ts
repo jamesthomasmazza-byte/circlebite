@@ -35,7 +35,8 @@ test("onlyUncheckedGaps: true only when unchecked is the whole story", () => {
 
 test("uncheckedNote: leads with the limit when it stands in for the explanation", () => {
   const note = uncheckedNote({ names: ["milk", "egg"], profileLabel: "Sam", leadsCard: true });
-  assert.equal(note, "This hasn't been confirmed safe — we couldn't check 2 of Sam's allergens against this photo: milk, egg.");
+  assert.equal(note, "Not confirmed — we couldn't check 2 of Sam's allergens against this photo: milk, egg.");
+  assert.doesNotMatch(note, /\bsafe\b/i);
 });
 
 test("uncheckedNote: one allergen, no profile label, not leading", () => {

@@ -73,8 +73,9 @@ test("evidenceSource: photo — the backstop 'nothing found' sentence (a raw 'cl
     result([allergen({ allergenName: "Milk", severity: "severe", classification: "clear", matched: false })], "unable_to_confirm"),
     { evidenceSource: "photo" },
   );
-  assert.match(text ?? "", /^This hasn't been confirmed safe/);
+  assert.match(text ?? "", /^Not confirmed — we only checked the text read from your photo/);
   assert.doesNotMatch(text ?? "", /^No listed allergens/);
+  assert.doesNotMatch(text ?? "", /\bsafe\b/i, "never the word safe, even negated (Prof. Yoest, Oct 1)");
 });
 
 test("evidenceSource: photo — an 'unchecked' allergen produces the real downgrade sentence, distinct from the 'clear' backstop", () => {
@@ -82,7 +83,7 @@ test("evidenceSource: photo — an 'unchecked' allergen produces the real downgr
     result([allergen({ allergenName: "Almond", severity: "severe", classification: "unchecked", matched: false })], "unable_to_confirm"),
     { evidenceSource: "photo" },
   );
-  assert.match(text ?? "", /^This hasn't been confirmed safe — some of your listed allergens couldn't be checked against this photo/);
+  assert.match(text ?? "", /^Not confirmed — some of your listed allergens couldn't be checked against this photo/);
 });
 
 test("evidenceSource: photo with an unresolved finding still uses the normal unresolved sentence", () => {
@@ -107,7 +108,7 @@ test("an 'unchecked' allergen never claims a product record was checked — unch
       result([allergen({ allergenName: "Almond", severity: "severe", classification: "unchecked", matched: false })], "unable_to_confirm"),
       { evidenceSource },
     );
-    assert.match(text ?? "", /^This hasn't been confirmed safe — some of your listed allergens couldn't be checked against this photo/);
+    assert.match(text ?? "", /^Not confirmed — some of your listed allergens couldn't be checked against this photo/);
     assert.doesNotMatch(text ?? "", /product record/);
   }
 });

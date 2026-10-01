@@ -178,7 +178,8 @@ test("a dropped allergen (nothing found, deterministic and AI both clear) cannot
   assert.notEqual(result.result, "safe");
   assert.equal(result.result, "unable_to_confirm");
   assert.equal(result.confidence, "low");
-  assert.match(result.explanation ?? "", /hasn't been confirmed safe/);
+  assert.match(result.explanation ?? "", /^Not confirmed —/);
+  assert.doesNotMatch(result.explanation ?? "", /\bsafe\b/i);
 
   const { rows } = await pool.query("SELECT result, source, confidence FROM scans WHERE id = $1", [result.id]);
   assert.equal(rows[0].result, "unable_to_confirm");

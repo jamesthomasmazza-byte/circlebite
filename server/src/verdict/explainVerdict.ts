@@ -19,9 +19,11 @@ export type ExplainVerdictOptions = {
 // The names of which allergens are unchecked live in the client's own grouped block (Scan.tsx),
 // which has the profile label and can list them plainly — this headline sentence stays generic on
 // purpose so it doesn't duplicate that list, and stays accurate even if a caller never renders the
-// grouped block. Leads with the limit, not the reassurance.
+// grouped block. Leads with the limit, not the reassurance: "Not confirmed" comes first, and never
+// the word "safe", even negated (Prof. Yoest's Oct 1 directive — this replaced "This hasn't been
+// confirmed safe", docs/principles.md Oct 1 2026 precedent).
 const PHOTO_SOURCED_SOME_UNCHECKED =
-  "This hasn't been confirmed safe — some of your listed allergens couldn't be checked against " +
+  "Not confirmed — some of your listed allergens couldn't be checked against " +
   'this photo. Always check the label yourself, especially for "may contain" warnings.';
 
 // Dead for any real photoSourced scan with at least one allergen configured — mergeVerdict.ts's
@@ -34,7 +36,7 @@ const PHOTO_SOURCED_SOME_UNCHECKED =
 // every verdict card ("always check the physical label, especially for 'may contain' warnings") so
 // the two don't read as two different promises.
 const PHOTO_SOURCED_NOTHING_FOUND =
-  'This hasn\'t been confirmed safe — we only checked the text read from your photo, not the ' +
+  "Not confirmed — we only checked the text read from your photo, not the " +
   "manufacturer's own data. None of your listed allergens appeared in it, but always check the " +
   'label yourself, especially for "may contain" warnings.';
 

@@ -33,12 +33,13 @@ export function onlyUncheckedGaps(matched: Pick<MatchedAllergen, "classification
 }
 
 /** One grouped line for every unchecked allergen. When it stands in for the explanation it leads
- *  with the limit, as that sentence did — a parent skimming must hit "not confirmed safe" first. The
+ *  with the limit, as that sentence did — a parent skimming must hit "Not confirmed" first, and
+ *  never the word "safe", even negated (Prof. Yoest's Oct 1 directive). The
  *  "check the physical label" advice is left to the disclaimer that follows on every card. */
 export function uncheckedNote(input: { names: string[]; profileLabel: string | null; leadsCard: boolean }): string {
   const n = input.names.length;
   const whose = input.profileLabel ? `${input.profileLabel}'s` : "your";
   // "1 of your allergens" — the plural is right at every count ("one of several").
   const line = `couldn't check ${n} of ${whose} allergens against this photo: ${input.names.join(", ")}.`;
-  return input.leadsCard ? `This hasn't been confirmed safe — we ${line}` : `We ${line}`;
+  return input.leadsCard ? `Not confirmed — we ${line}` : `We ${line}`;
 }
