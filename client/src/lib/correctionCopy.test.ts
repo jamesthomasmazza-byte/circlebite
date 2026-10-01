@@ -2,7 +2,14 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import type { ReviewQueueReport } from "./api";
-import { priorReportNotice, reportCountLine, reportErrorMessage, reportOutcomeMessage, yourReportLine } from "./correctionCopy";
+import {
+  priorReportNotice,
+  reportableTypes,
+  reportCountLine,
+  reportErrorMessage,
+  reportOutcomeMessage,
+  yourReportLine,
+} from "./correctionCopy";
 
 test("reportOutcomeMessage: a first add_caution report never claims other reports agreed", () => {
   // The 2026-09-29 live test: one sesame report, and the confirmation said "enough other reports
@@ -165,4 +172,20 @@ test("priorReportNotice: wrong_product matches its own null-allergen claim", () 
     { correctionType: "wrong_product", allergen: null },
   );
   assert.equal(notice?.blocking, true);
+});
+
+test("reportableTypes: a profile's managers can file removals; anyone else only 'it IS in this product'", () => {
+  // Prof. Yoest's Oct 1 approval — his babysitter is a follower.
+  const managed = [{ id: "owned" }, { id: "co-managed" }];
+  assert.deepEqual(reportableTypes(managed, "owned"), ["flag_wrong", "flag_missing", "wrong_product"]);
+  assert.deepEqual(reportableTypes(managed, "co-managed"), ["flag_wrong", "flag_missing", "wrong_product"]);
+  assert.deepEqual(reportableTypes(managed, "followed"), ["flag_missing"]);
+  assert.deepEqual(reportableTypes(managed, null), ["flag_missing"], "unknown profile: the safe default");
+});
+
+test("reportErrorMessage: a refused removal says who can file it and what this person still can", () => {
+  const message = reportErrorMessage({ status: 403, code: "removal_requires_manager" });
+  assert.match(message, /manage this profile/);
+  assert.match(message, /can still report one that is/);
+  assert.doesNotMatch(message, /try again/i);
 });

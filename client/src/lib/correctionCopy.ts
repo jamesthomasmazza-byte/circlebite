@@ -1,4 +1,4 @@
-import type { CorrectionType, MyReport, ReviewQueueClaim, ScanCorrection } from "./api";
+import type { CorrectionType, MyReport, ProfileSummary, ReviewQueueClaim, ScanCorrection } from "./api";
 
 // Plain functions, no JSX — the wording a family or an admin reads about a correction, kept here
 // so it can be tested (`npm test -w client`) and shared between pages instead of drifting apart.
@@ -41,6 +41,19 @@ export function reportOutcomeMessage(input: {
 }
 
 /**
+ * Which report types this viewer may file on a scan of this profile. Removals (flag_wrong,
+ * wrong_product) are for the profile's owner or a co-manager — the ones listProfiles returns under
+ * `managed`, with a `relationship` — per docs/approvals/2026-10-01-yoest-mvp-statement.md; a
+ * follower may only report an allergen present. The server enforces the same rule
+ * (routes/corrections.ts, 403 removal_requires_manager); this just keeps the form from offering a
+ * report it would refuse. An unknown profile gets the follower's list: the safe default.
+ */
+export function reportableTypes(managedProfiles: Pick<ProfileSummary, "id">[], profileId: string | null): CorrectionType[] {
+  const canFileRemovals = profileId !== null && managedProfiles.some((p) => p.id === profileId);
+  return canFileRemovals ? ["flag_wrong", "flag_missing", "wrong_product"] : ["flag_missing"];
+}
+
+/**
  * What the reporter is told when a report doesn't go through. Each failure the reporter can do
  * something about gets its own sentence; "Try again" is only for the ones where trying again might
  * actually work. A duplicate (409 already_reported) can't succeed on retry — its earlier report is
@@ -50,6 +63,9 @@ export function reportOutcomeMessage(input: {
  * proxy's own size limit, which means the same thing to the reporter as the app's photo_too_large.
  */
 export function reportErrorMessage(error: { status: number; code: string }): string {
+  if (error.status === 403 && error.code === "removal_requires_manager") {
+    return "Only the people who manage this profile can report that an allergen isn't there. You can still report one that is.";
+  }
   if (error.status === 409 && error.code === "already_reported") {
     return "You've already reported this for this product, and that report still stands — there's nothing new to send.";
   }

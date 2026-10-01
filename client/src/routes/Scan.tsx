@@ -26,7 +26,13 @@ import {
   shopperCount,
   sourceLabel,
 } from "../lib/allergenRowCopy";
-import { priorReportNotice, reportErrorMessage, reportOutcomeMessage, yourReportLine } from "../lib/correctionCopy";
+import {
+  priorReportNotice,
+  reportableTypes,
+  reportErrorMessage,
+  reportOutcomeMessage,
+  yourReportLine,
+} from "../lib/correctionCopy";
 import { onlyUncheckedGaps, provenanceLine, uncheckedNote } from "../lib/evidenceCopy";
 
 const CORRECTION_TYPE_LABEL: Record<CorrectionType, string> = {
@@ -101,6 +107,10 @@ export function Scan() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ScanResult | null>(null);
+  // The profile `result` was scanned for — not the "Scanning for" dropdown, which can change after a
+  // scan. What this viewer may report about the result depends on their role on THAT profile.
+  const [resultProfileId, setResultProfileId] = useState<string | null>(null);
+  const [managedProfiles, setManagedProfiles] = useState<ProfileSummary[]>([]);
 
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -166,6 +176,7 @@ export function Scan() {
       .then((res) => {
         const all = [...res.managed, ...res.followed];
         setProfiles(all);
+        setManagedProfiles(res.managed);
         setProfileId((current) => current || all[0]?.id || "");
       })
       .catch(() => setError("Couldn't load your profiles. Try reloading the page."))
@@ -209,6 +220,7 @@ export function Scan() {
     try {
       const scan = await createScan(targetProfileId, rawBarcode.trim());
       setResult(scan);
+      setResultProfileId(targetProfileId);
       // "required" is the next mandatory step, not an offer — go straight into the capture form
       // rather than making the family read a barcode-only card first (docs/verdict-engine.md Path
       // D's decision rules; server/src/verdict/scanPlan.ts is the single source of this rule).
@@ -337,6 +349,7 @@ export function Scan() {
         setPhotoCaptureOpen(false);
         setPhotoFile(null);
         setResult(scan);
+        setResultProfileId(profileId);
       }
     } catch (err) {
       if (err instanceof ApiRequestError && err.status === 400 && err.message === "photo_too_large") {
@@ -460,6 +473,10 @@ export function Scan() {
   // The engine's own verdict unless a corroborated community report escalated it. Both are always
   // on the card: the headline is what to act on, the note under it says what changed it.
   const shown = result && (result.effective ?? { result: result.result, matched_allergens: result.matched_allergens });
+  // Followers only see "it IS in this product" — removals are for the profile's managers (Prof.
+  // Yoest's Oct 1 approval). Offering a report the server will refuse wastes a photo in the aisle.
+  const reportTypes = reportableTypes(managedProfiles, resultProfileId);
+  const canFileRemovals = reportTypes.includes("flag_wrong");
   // Only once the claim is fully chosen — an allergen, or wrong_product, which has none.
   const priorNotice =
     myReports && (reportType === "wrong_product" || reportAllergen)
@@ -718,7 +735,7 @@ export function Scan() {
                     {disagreementNote(m) && (
                       <p role="note">
                         {disagreementNote(m)}
-                        {m.disagreement === "label_looser" && (
+                        {m.disagreement === "label_looser" && canFileRemovals && (
                           <>
                             {" "}
                             <button type="button" onClick={() => openDisagreementReport(m.allergenName)}>
@@ -841,7 +858,7 @@ export function Scan() {
                   )}
                   <fieldset>
                     <legend>What's wrong?</legend>
-                    {(Object.keys(CORRECTION_TYPE_LABEL) as CorrectionType[]).map((type) => (
+                    {reportTypes.map((type) => (
                       <label key={type}>
                         <input
                           type="radio"
@@ -857,6 +874,12 @@ export function Scan() {
                       </label>
                     ))}
                   </fieldset>
+                  {!canFileRemovals && (
+                    <p>
+                      Only the people who manage this profile can report that an allergen isn&rsquo;t there or that
+                      this is the wrong product.
+                    </p>
+                  )}
 
                   {reportType !== "wrong_product" && (
                     <label>
@@ -923,6 +946,9 @@ export function Scan() {
                   onClick={() => {
                     setReportOpen(true);
                     setReportOrigin(null);
+                    // Start on a type this viewer can actually file — the first one offered.
+                    setReportType(reportTypes[0]);
+                    setReportAllergen("");
                   }}
                 >
                   Report a problem with this verdict
