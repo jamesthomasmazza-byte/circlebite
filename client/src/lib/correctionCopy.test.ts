@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import type { ReviewQueueReport } from "./api";
-import { reportCountLine, reportOutcomeMessage, yourReportLine } from "./correctionCopy";
+import { reportCountLine, reportErrorMessage, reportOutcomeMessage, yourReportLine } from "./correctionCopy";
 
 test("reportOutcomeMessage: a first add_caution report never claims other reports agreed", () => {
   // The 2026-09-29 live test: one sesame report, and the confirmation said "enough other reports
@@ -105,4 +105,25 @@ test("reportCountLine: nothing rejected keeps the existing wording", () => {
     reportCountLine({ liveReporterCount: 2, deletedAccountReportCount: 1, reports: reports("pending", "pending", "pending") }),
     "3 reports — 2 from live accounts, 1 from a deleted account.",
   );
+});
+
+test("reportErrorMessage: a duplicate report says so, and never tells the reporter to try again", () => {
+  // The 2026-10-01 production 500 — the same sesame claim reported twice.
+  const message = reportErrorMessage({ status: 409, code: "already_reported" });
+  assert.match(message, /already reported this/);
+  assert.doesNotMatch(message, /try again/i);
+});
+
+test("reportErrorMessage: nginx's 413 reads the same as the app's own photo_too_large", () => {
+  // nginx answers with HTML, so the client only has the status: request_failed_413.
+  assert.equal(
+    reportErrorMessage({ status: 413, code: "request_failed_413" }),
+    reportErrorMessage({ status: 400, code: "photo_too_large" }),
+  );
+  assert.match(reportErrorMessage({ status: 413, code: "request_failed_413" }), /too large/);
+});
+
+test("reportErrorMessage: only an unexplained failure says try again", () => {
+  assert.match(reportErrorMessage({ status: 500, code: "internal_error" }), /Try again/);
+  assert.match(reportErrorMessage({ status: 0, code: "network" }), /Try again/);
 });

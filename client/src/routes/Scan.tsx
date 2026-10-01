@@ -24,7 +24,7 @@ import {
   shopperCount,
   sourceLabel,
 } from "../lib/allergenRowCopy";
-import { reportOutcomeMessage, yourReportLine } from "../lib/correctionCopy";
+import { reportErrorMessage, reportOutcomeMessage, yourReportLine } from "../lib/correctionCopy";
 import { onlyUncheckedGaps, provenanceLine, uncheckedNote } from "../lib/evidenceCopy";
 
 const CORRECTION_TYPE_LABEL: Record<CorrectionType, string> = {
@@ -398,13 +398,9 @@ export function Scan() {
       );
       setReportOpen(false);
     } catch (err) {
-      if (err instanceof ApiRequestError && err.status === 400 && err.message === "photo_too_large") {
-        setReportError("That photo is too large — try a smaller image.");
-      } else if (err instanceof ApiRequestError && err.status === 400 && err.message === "invalid_file_type") {
-        setReportError("That doesn't look like a photo — please attach a JPEG, PNG, or WebP image.");
-      } else {
-        setReportError("Couldn't submit that report. Try again.");
-      }
+      setReportError(
+        reportErrorMessage(err instanceof ApiRequestError ? { status: err.status, code: err.message } : { status: 0, code: "network" }),
+      );
     } finally {
       setReportSubmitting(false);
     }

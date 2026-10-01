@@ -40,6 +40,28 @@ export function reportOutcomeMessage(input: {
   return "Reported — thanks. This is now in the review queue.";
 }
 
+/**
+ * What the reporter is told when a report doesn't go through. Each failure the reporter can do
+ * something about gets its own sentence; "Try again" is only for the ones where trying again might
+ * actually work. A duplicate (409 already_reported) can't succeed on retry — its earlier report is
+ * still there — so telling them to try again would be advice that cannot work.
+ *
+ * 413 comes from nginx, not the app (its body isn't JSON, so the code is request_failed_413): the
+ * proxy's own size limit, which means the same thing to the reporter as the app's photo_too_large.
+ */
+export function reportErrorMessage(error: { status: number; code: string }): string {
+  if (error.status === 409 && error.code === "already_reported") {
+    return "You've already reported this for this product, and that report still stands — there's nothing new to send.";
+  }
+  if (error.status === 413 || (error.status === 400 && error.code === "photo_too_large")) {
+    return "That photo is too large — try a smaller image.";
+  }
+  if (error.status === 400 && error.code === "invalid_file_type") {
+    return "That doesn't look like a photo — please attach a JPEG, PNG, or WebP image.";
+  }
+  return "Couldn't submit that report. Try again.";
+}
+
 const CORRECTION_CLAIM: Record<CorrectionType, string> = {
   flag_wrong: "isn't actually in this product",
   flag_missing: "is in this product, but wasn't flagged",
