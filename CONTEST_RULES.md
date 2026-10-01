@@ -53,8 +53,20 @@ Treated here as a requirement, not a suggestion:
 From Prof. Yoest's approval of the MVP statement (`docs/approvals/2026-10-01-yoest-mvp-statement.md`).
 Requirements, same standing as §3:
 
-- **Escalate: anyone in the circle. Downgrade: the profile's owner only.** A babysitter must not be
-  able to turn "contains" into a clean verdict, even in their own view.
+- **Escalate: anyone in the circle. Downgrade: the people who manage the profile.** Any circle
+  member may report an allergen present (`flag_missing`, `add_caution`). Only the profile's owner
+  (`allergen_profiles.manager_id`) or a co-manager (`profile_managers`) may report one isn't there
+  (`flag_wrong`) or that the product is wrong (`wrong_product`) — the `remove_caution` direction.
+  Followers (`follow_relationships`) cannot: a babysitter must not be able to turn "contains" into a
+  clean verdict, even in their own view. Enforced in `routes/corrections.ts` (403
+  `removal_requires_manager`, before the photo is written); the report form doesn't offer followers
+  the two removal types.
+
+  Prof. Yoest wrote "the parent who owns the profile". Co-managers are included deliberately (JT,
+  Oct 1): a co-manager was explicitly invited and already has full edit rights on the profile
+  (migration 0006), so they can delete the allergen outright. Refusing them a reviewable report of a
+  false positive protects nothing and makes the safe action harder than the drastic one. His
+  babysitter is a follower — a different table, and the case he was describing.
 - **Never label a verdict "Safe".** Use "No listed allergens found" — a clean label can still carry
   cross-contact risk.
 - **Emergency referral**: the in-app disclaimer includes "call 911 for any allergic reaction".

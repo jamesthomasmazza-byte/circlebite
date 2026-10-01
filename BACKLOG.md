@@ -292,13 +292,14 @@ it is the least-worked area. Treat this whole section as the priority block it i
       changes*, and that statement is already in the README promising them. The code does none of
       it yet. He said the judges will look for this, and it is the ethical-AI bonus in his own
       words. Do these ahead of the rest of this section.
-      - **Downgrades are owner-only.** Any circle member may escalate (`add_caution`). Anything
+      - [x] **Downgrades are owner-only.** Any circle member may escalate (`add_caution`). Anything
         with direction `remove_caution` — `flag_wrong`, `wrong_product` — is reserved for the
-        parent who owns the profile. `recordCorrection.ts` computes the direction but never checks
-        who is filing it. His example is the one that matters: a babysitter who clears "contains"
-        to safe puts a child at risk. This is a safety control, not a permissions nicety; it needs
-        a test asserting a non-owner's `remove_caution` is refused, and a look at whether the
-        already-filed corrections on production were filed by profile owners.
+        people who manage the profile: owner or co-manager, deliberately (`CONTEST_RULES.md` §3a,
+        `docs/principles.md` Oct 1 precedent). Done 2026-10-01: a follower's removal is refused
+        with 403 `removal_requires_manager` before the photo is written, with tests for follower,
+        owner and co-manager; the report form only offers followers `flag_missing`. Production had
+        no `remove_caution` rows at all when checked the morning of Oct 1, so nothing already
+        filed needed reviewing.
       - **The word "Safe" goes.** The clean verdict reads "No listed allergens found" everywhere —
         `Scan.tsx:36` and `ScanHistory.tsx:8` both still map `safe: "Safe"`. Design consequence
         worth planning for: the verdict headline is 36px and the replacement is five words rather
