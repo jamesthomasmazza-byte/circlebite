@@ -1,3 +1,5 @@
+import type { PoolClient } from "pg";
+
 import { pool } from "../db/pool.js";
 import { HttpError } from "../lib/httpError.js";
 
@@ -207,55 +209,10 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
     // product identity (see the comment above where identityMismatched is computed). Same
     // treatment, different cause — one is "no reliable identity to key off," the other is "an
     // identity check already flagged this specific evidence as questionable."
-    //
-    // Rejected rows never count toward the threshold: a report an admin rejected corroborates
-    // nothing. Without this, two rejected removals plus one new one reached the remove_caution
-    // threshold of 3 — the admin's rejection didn't stop the claim it rejected.
-    //
-    // Re-files (refiles_rejected_id set) don't count either: otherwise an add_caution re-file would
-    // meet its threshold of 1 by itself and undo the rejection for every family on insert. A re-file
-    // still goes to 'corroborated' with the rest of its claim by the UPDATE below when independent
-    // reporters reach the threshold on their own, or when an admin accepts it.
-    let corroborated = false;
-    if (scan.barcode !== null && !identityMismatched) {
-      const { rows: countRows } = await client.query<{ count: string }>(
-        allergen
-          ? `SELECT count(DISTINCT reported_by) FROM product_corrections
-             WHERE barcode = $1 AND allergen = $2 AND direction = $3
-               AND status <> 'rejected' AND refiles_rejected_id IS NULL`
-          : `SELECT count(DISTINCT reported_by) FROM product_corrections
-             WHERE barcode = $1 AND allergen IS NULL AND direction = $2
-               AND status <> 'rejected' AND refiles_rejected_id IS NULL`,
-        allergen ? [scan.barcode, allergen, direction] : [scan.barcode, direction],
-      );
-      const reporterCount = Number(countRows[0]?.count ?? 0);
-      const threshold = CORROBORATION_THRESHOLD[direction];
-
-      if (reporterCount >= threshold) {
-        if (direction === "remove_caution" && allergen) {
-          const { rows: conflictRows } = await client.query(
-            `SELECT 1 FROM product_corrections
-             WHERE barcode = $1 AND allergen = $2 AND direction = 'add_caution' AND status = 'corroborated'
-             LIMIT 1`,
-            [scan.barcode, allergen],
-          );
-          corroborated = conflictRows.length === 0;
-        } else {
-          corroborated = true;
-        }
-      }
-
-      if (corroborated) {
-        await client.query(
-          allergen
-            ? `UPDATE product_corrections SET status = 'corroborated'
-               WHERE barcode = $1 AND allergen = $2 AND direction = $3 AND status = 'pending'`
-            : `UPDATE product_corrections SET status = 'corroborated'
-               WHERE barcode = $1 AND allergen IS NULL AND direction = $2 AND status = 'pending'`,
-          allergen ? [scan.barcode, allergen, direction] : [scan.barcode, direction],
-        );
-      }
-    }
+    const corroborated =
+      scan.barcode !== null && !identityMismatched
+        ? await corroborateClaimIfThresholdMet(client, { barcode: scan.barcode, allergen, direction })
+        : false;
 
     await client.query("COMMIT");
 
@@ -267,6 +224,62 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
   } finally {
     client.release();
   }
+}
+
+/**
+ * The threshold step for one claim, (barcode, allergen or null for wrong_product, direction): if
+ * enough distinct reporters back it, every pending row in it becomes 'corroborated'. Shared by
+ * recordCorrection (a new report) and reviewQueue.ts's acceptCorrection (an admin accepting a
+ * re-file), so an accept restores a report's vote rather than overriding the threshold — a removal
+ * still needs three people, and the warning still survives a conflicting removal. Runs inside the
+ * caller's transaction.
+ *
+ * Rejected rows never count: a report an admin rejected corroborates nothing. Without this, two
+ * rejected removals plus one new one reached the remove_caution threshold of 3 — the admin's
+ * rejection didn't stop the claim it rejected.
+ *
+ * Re-files (refiles_rejected_id set, migration 0034) don't count until an admin accepts them:
+ * otherwise an add_caution re-file would meet its threshold of 1 by itself and undo the rejection
+ * for every family on insert. An unaccepted re-file still goes to 'corroborated' along with its
+ * claim when independent reporters reach the threshold on their own.
+ */
+export async function corroborateClaimIfThresholdMet(
+  client: PoolClient,
+  claim: { barcode: string; allergen: string | null; direction: Direction },
+): Promise<boolean> {
+  const { barcode, allergen, direction } = claim;
+  const { rows: countRows } = await client.query<{ count: string }>(
+    allergen
+      ? `SELECT count(DISTINCT reported_by) FROM product_corrections
+         WHERE barcode = $1 AND allergen = $2 AND direction = $3
+           AND status <> 'rejected' AND (refiles_rejected_id IS NULL OR accepted_at IS NOT NULL)`
+      : `SELECT count(DISTINCT reported_by) FROM product_corrections
+         WHERE barcode = $1 AND allergen IS NULL AND direction = $2
+           AND status <> 'rejected' AND (refiles_rejected_id IS NULL OR accepted_at IS NOT NULL)`,
+    allergen ? [barcode, allergen, direction] : [barcode, direction],
+  );
+  const reporterCount = Number(countRows[0]?.count ?? 0);
+  if (reporterCount < CORROBORATION_THRESHOLD[direction]) return false;
+
+  if (direction === "remove_caution" && allergen) {
+    const { rows: conflictRows } = await client.query(
+      `SELECT 1 FROM product_corrections
+       WHERE barcode = $1 AND allergen = $2 AND direction = 'add_caution' AND status = 'corroborated'
+       LIMIT 1`,
+      [barcode, allergen],
+    );
+    if (conflictRows.length > 0) return false;
+  }
+
+  await client.query(
+    allergen
+      ? `UPDATE product_corrections SET status = 'corroborated'
+         WHERE barcode = $1 AND allergen = $2 AND direction = $3 AND status = 'pending'`
+      : `UPDATE product_corrections SET status = 'corroborated'
+         WHERE barcode = $1 AND allergen IS NULL AND direction = $2 AND status = 'pending'`,
+    allergen ? [barcode, allergen, direction] : [barcode, direction],
+  );
+  return true;
 }
 
 // The two anti-inflation indexes (migration 0015, scoped to live rows by 0034). Hitting one means

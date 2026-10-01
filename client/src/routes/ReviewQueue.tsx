@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import {
+  acceptCorrection,
   ApiRequestError,
   getReviewQueue,
   rejectCorrection,
@@ -24,6 +25,9 @@ function ReportRow({
   rejectError,
   reasonDraft,
   onReasonChange,
+  onAccept,
+  accepting,
+  acceptError,
 }: {
   claim: ReviewQueueClaim;
   report: ReviewQueueReport;
@@ -32,7 +36,13 @@ function ReportRow({
   rejectError: string | null;
   reasonDraft: string;
   onReasonChange: (value: string) => void;
+  onAccept: () => void;
+  accepting: boolean;
+  acceptError: string | null;
 }) {
+  // A re-file (migration 0034) is held out of corroboration until an admin accepts it — the one
+  // report in a claim whose vote depends on this page.
+  const heldRefile = report.refilesRejectedId !== null && report.acceptedAt === null && report.status === "pending";
   const requiresReason = claim.direction === "add_caution";
   const canSubmit = !rejecting && (!requiresReason || reasonDraft.trim().length > 0);
 
@@ -42,6 +52,14 @@ function ReportRow({
         <strong>{report.reporterLabel}</strong> — {report.correctionType} ({report.target}) — {report.createdAt}
         {report.origin === "disagreement_prompt" && <> — <em>prompted by a label/database disagreement</em></>}
       </p>
+      {report.refilesRejectedId !== null && (
+        <p>
+          <em>Re-filed by the same reporter after their earlier report on this claim was rejected.</em>{" "}
+          {report.acceptedAt !== null
+            ? <>Accepted by {report.acceptedBy?.email ?? "an admin whose account was later deleted"} on {report.acceptedAt}.</>
+            : heldRefile && <>Held — not counted toward corroboration until accepted.</>}
+        </p>
+      )}
       {report.note && <p>&ldquo;{report.note}&rdquo;</p>}
       <p>
         <a href={reviewQueuePhotoUrl(report.id)} target="_blank" rel="noreferrer">
@@ -72,6 +90,14 @@ function ReportRow({
             {rejecting ? "Rejecting…" : "Reject this report"}
           </button>
           {rejectError && <p role="alert">{rejectError}</p>}
+          {heldRefile && (
+            <>
+              <button type="button" onClick={onAccept} disabled={accepting || rejecting}>
+                {accepting ? "Accepting…" : "Accept this re-filed report"}
+              </button>
+              {acceptError && <p role="alert">{acceptError}</p>}
+            </>
+          )}
         </>
       )}
     </li>
@@ -85,6 +111,9 @@ function ClaimSection({
   reasonDrafts,
   onReasonChange,
   onReject,
+  acceptingId,
+  acceptErrors,
+  onAccept,
 }: {
   claim: ReviewQueueClaim;
   rejectingId: string | null;
@@ -92,6 +121,9 @@ function ClaimSection({
   reasonDrafts: Record<string, string>;
   onReasonChange: (reportId: string, value: string) => void;
   onReject: (claim: ReviewQueueClaim, report: ReviewQueueReport) => void;
+  acceptingId: string | null;
+  acceptErrors: Record<string, string | null>;
+  onAccept: (claim: ReviewQueueClaim, report: ReviewQueueReport) => void;
 }) {
   return (
     <section>
@@ -114,6 +146,9 @@ function ClaimSection({
             reasonDraft={reasonDrafts[report.id] ?? ""}
             onReasonChange={(value) => onReasonChange(report.id, value)}
             onReject={() => onReject(claim, report)}
+            accepting={acceptingId === report.id}
+            acceptError={acceptErrors[report.id] ?? null}
+            onAccept={() => onAccept(claim, report)}
           />
         ))}
       </ul>
@@ -127,6 +162,8 @@ export function ReviewQueue() {
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectErrors, setRejectErrors] = useState<Record<string, string | null>>({});
   const [reasonDrafts, setReasonDrafts] = useState<Record<string, string>>({});
+  const [acceptingId, setAcceptingId] = useState<string | null>(null);
+  const [acceptErrors, setAcceptErrors] = useState<Record<string, string | null>>({});
 
   function load() {
     getReviewQueue()
@@ -171,6 +208,31 @@ export function ReviewQueue() {
     }
   }
 
+  async function handleAccept(claim: ReviewQueueClaim, report: ReviewQueueReport) {
+    const confirmed = window.confirm(
+      claim.direction === "add_caution"
+        ? "Accept this re-filed report? It counts again — a warning corroborates on one report, so this shows it to other families right away, including on scans already in their history."
+        : "Accept this re-filed report? It counts toward the three reports a removal needs. Removals still only change the reporter's own view.",
+    );
+    if (!confirmed) return;
+
+    setAcceptingId(report.id);
+    setAcceptErrors((prev) => ({ ...prev, [report.id]: null }));
+    try {
+      await acceptCorrection(report.id);
+      // Full refetch, same reasoning as handleReject: accepting can corroborate the whole claim.
+      load();
+    } catch (err) {
+      setAcceptErrors((prev) => ({
+        ...prev,
+        [report.id]:
+          err instanceof ApiRequestError && err.status === 409 ? "Already handled — reload the page." : "Couldn't accept this report.",
+      }));
+    } finally {
+      setAcceptingId(null);
+    }
+  }
+
   if (error) {
     return (
       <main>
@@ -209,7 +271,16 @@ export function ReviewQueue() {
   const pending = barcoded.filter((c) => c.status === "pending");
   const resolved = barcoded.filter((c) => c.status === "rejected");
 
-  const claimSectionProps = { rejectingId, rejectErrors, reasonDrafts, onReasonChange: handleReasonChange, onReject: handleReject };
+  const claimSectionProps = {
+    rejectingId,
+    rejectErrors,
+    reasonDrafts,
+    onReasonChange: handleReasonChange,
+    onReject: handleReject,
+    acceptingId,
+    acceptErrors,
+    onAccept: handleAccept,
+  };
 
   return (
     <main>

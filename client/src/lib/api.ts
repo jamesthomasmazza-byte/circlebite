@@ -658,6 +658,11 @@ export type ReviewQueueReport = {
   rejectedAt: string | null;
   rejectionReason: string | null;
   origin: CorrectionOrigin;
+  // The rejected report this one re-files (same reporter, same claim) — held out of corroboration
+  // until an admin accepts it.
+  refilesRejectedId: string | null;
+  acceptedBy: { email: string } | null;
+  acceptedAt: string | null;
 };
 
 export type ReviewQueueClaim = {
@@ -688,6 +693,13 @@ export function rejectCorrection(
     method: "POST",
     body: JSON.stringify({ reason }),
   });
+}
+
+// Accepting a re-filed report restores its vote; status says whether that met the claim's threshold.
+export function acceptCorrection(
+  correctionId: string,
+): Promise<{ id: string; status: "pending" | "corroborated"; acceptedBy: { email: string }; acceptedAt: string }> {
+  return apiFetch(`/admin/review-queue/corrections/${correctionId}/accept`, { method: "POST" });
 }
 
 // Photo is a plain <img>/<a> pointing at GET /api/admin/review-queue/corrections/:id/photo — no

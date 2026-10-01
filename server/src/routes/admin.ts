@@ -3,7 +3,7 @@ import { Router } from "express";
 import { assertIsAdmin } from "../authorization/admin.js";
 import { requireAuth } from "../auth/requireAuth.js";
 import { EXTENSION_TO_MIME, resolvePhotoPath } from "../corrections/photoStorage.js";
-import { getCorrectionPhotoPath, loadReviewQueue, rejectCorrection } from "../corrections/reviewQueue.js";
+import { acceptCorrection, getCorrectionPhotoPath, loadReviewQueue, rejectCorrection } from "../corrections/reviewQueue.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { HttpError } from "../lib/httpError.js";
 import { npsReport } from "../nps/npsReport.js";
@@ -57,6 +57,15 @@ adminRouter.post(
 
     const result = await rejectCorrection(req.params.correctionId, req.user!.id, reason ?? null);
     res.json(result);
+  }),
+);
+
+adminRouter.post(
+  "/admin/review-queue/corrections/:correctionId/accept",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    await assertIsAdmin(req.user!.id);
+    res.json(await acceptCorrection(req.params.correctionId, req.user!.id));
   }),
 );
 

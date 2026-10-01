@@ -7,7 +7,7 @@ import { HttpError } from "../lib/httpError.js";
 import { applyCommunityCorrections } from "./applyCommunityCorrections.js";
 import { loadCommunityAdditions } from "./communityAdditions.js";
 import { recordCorrection } from "./recordCorrection.js";
-import { getCorrectionPhotoPath, groupIntoClaims, loadReviewQueue, rejectCorrection } from "./reviewQueue.js";
+import { acceptCorrection, getCorrectionPhotoPath, groupIntoClaims, loadReviewQueue, rejectCorrection } from "./reviewQueue.js";
 
 // Real Postgres for the DB-backed tests, same discipline as recordCorrection.test.ts /
 // communityAdditions.test.ts: real inserts, real cleanup, invented data only (@example.com
@@ -129,6 +129,9 @@ function makeRow(overrides: Partial<Row> = {}): Row {
     rejection_reason: null,
     rejected_by_email: null,
     origin: "user_initiated",
+    refiles_rejected_id: null,
+    accepted_at: null,
+    accepted_by_email: null,
     ...overrides,
   };
 }
@@ -462,4 +465,63 @@ test("getCorrectionPhotoPath resolves a correction's photo even after its scan_i
 
   const photoPath = await getCorrectionPhotoPath(correction.id);
   assert.equal(photoPath, "corrections/orphan-test.jpg");
+});
+
+// Re-file and accept (migrations 0034/0035): a re-file is held out of corroboration until an admin
+// accepts it, and accepting restores its vote without overriding the threshold.
+test("accepting a re-filed add_caution corroborates it, records who accepted it, and shows it in the queue", async () => {
+  const barcode = "3000000000030";
+  const sesame = [{ allergenName: "Sesame", severity: "severe", classification: "clear" }];
+  const report = { reportedBy: USER_A, correctionType: "flag_missing" as const, allergen: "Sesame", note: null, photoPath: "/fake.jpg", origin: "user_initiated" as const };
+
+  const original = await recordCorrection({ scanId: await makeScan(PROFILE_ID, barcode, "safe", sesame), ...report });
+  await rejectCorrection(original.id, ADMIN, "Photo showed a different product.");
+  const refile = await recordCorrection({ scanId: await makeScan(PROFILE_ID, barcode, "safe", sesame), ...report });
+  assert.equal(refile.status, "pending");
+
+  const accepted = await acceptCorrection(refile.id, ADMIN);
+  assert.equal(accepted.status, "corroborated");
+  assert.equal(accepted.acceptedBy.email, "rq-admin@example.com");
+
+  const claim = (await loadReviewQueue()).find((c) => c.barcode === barcode && c.direction === "add_caution");
+  const queued = claim?.reports.find((r) => r.id === refile.id);
+  assert.equal(queued?.refilesRejectedId, original.id);
+  assert.equal(queued?.acceptedBy?.email, "rq-admin@example.com");
+  assert.equal(queued?.status, "corroborated");
+  // Same reporter, same pseudonym as the report it re-files.
+  assert.equal(queued?.reporterLabel, claim?.reports.find((r) => r.id === original.id)?.reporterLabel);
+});
+
+test("accepting a re-filed removal restores its vote but never skips the threshold of 3", async () => {
+  const barcode = "3000000000031";
+  const soy = [{ allergenName: "Soy", severity: "mild", classification: "contains" }];
+  const report = { reportedBy: USER_A, correctionType: "flag_wrong" as const, allergen: "Soy", note: null, photoPath: "/fake.jpg", origin: "user_initiated" as const };
+
+  const original = await recordCorrection({ scanId: await makeScan(PROFILE_ID, barcode, "contains_allergen", soy), ...report });
+  await rejectCorrection(original.id, ADMIN, null);
+  const refile = await recordCorrection({ scanId: await makeScan(PROFILE_ID, barcode, "contains_allergen", soy), ...report });
+
+  const accepted = await acceptCorrection(refile.id, ADMIN);
+  assert.equal(accepted.status, "pending", "one reporter is still one reporter");
+});
+
+test("only a pending, unaccepted re-file can be accepted — 409 not_acceptable otherwise, 404 for no such row", async () => {
+  const barcode = "3000000000032";
+  const milk = [{ allergenName: "Milk", severity: "severe", classification: "clear" }];
+  const report = { reportedBy: USER_A, correctionType: "flag_missing" as const, allergen: "Milk", note: null, photoPath: "/fake.jpg", origin: "user_initiated" as const };
+  const notAcceptable = (err: unknown) => err instanceof HttpError && err.status === 409 && err.code === "not_acceptable";
+
+  // An ordinary report already counts — nothing to accept.
+  const ordinary = await recordCorrection({ scanId: await makeScan(PROFILE_ID, barcode, "safe", milk), ...report });
+  await assert.rejects(() => acceptCorrection(ordinary.id, ADMIN), notAcceptable);
+
+  await rejectCorrection(ordinary.id, ADMIN, "Not on the package.");
+  const refile = await recordCorrection({ scanId: await makeScan(PROFILE_ID, barcode, "safe", milk), ...report });
+  await acceptCorrection(refile.id, ADMIN);
+  await assert.rejects(() => acceptCorrection(refile.id, ADMIN), notAcceptable, "a second accept");
+
+  await assert.rejects(
+    () => acceptCorrection("00000000-0000-0000-0000-000000000000", ADMIN),
+    (err: unknown) => err instanceof HttpError && err.status === 404,
+  );
 });

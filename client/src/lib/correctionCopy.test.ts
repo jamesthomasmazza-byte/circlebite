@@ -72,6 +72,9 @@ function reports(...statuses: ReviewQueueReport["status"][]): ReviewQueueReport[
     rejectedAt: null,
     rejectionReason: null,
     origin: "user_initiated",
+    refilesRejectedId: null,
+    acceptedBy: null,
+    acceptedAt: null,
   }));
 }
 

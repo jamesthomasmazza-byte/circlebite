@@ -1,6 +1,13 @@
 import { HttpError } from "../lib/httpError.js";
 import { pool } from "../db/pool.js";
-import type { CorrectionOrigin, CorrectionStatus, CorrectionType, Direction, Target } from "./recordCorrection.js";
+import {
+  corroborateClaimIfThresholdMet,
+  type CorrectionOrigin,
+  type CorrectionStatus,
+  type CorrectionType,
+  type Direction,
+  type Target,
+} from "./recordCorrection.js";
 
 export type ReviewQueueReportStatus = CorrectionStatus;
 export type ClaimStatus = CorrectionStatus;
@@ -24,6 +31,12 @@ export type ReviewQueueReport = {
   // else. A cluster of disagreement_prompt reports on one claim reads differently to an admin than
   // a cluster of spontaneous ones — see docs/principles.md's Sept 27 2026 precedent.
   origin: CorrectionOrigin;
+  // Set when this report re-files a claim an admin already rejected from the same reporter
+  // (migration 0034) — the id of that rejected report, which sits in the same claim under the same
+  // pseudonym. A re-file is held out of corroboration until an admin accepts it.
+  refilesRejectedId: string | null;
+  acceptedBy: { email: string } | null; // admin accountability, same as rejectedBy
+  acceptedAt: string | null;
 };
 
 export type ReviewQueueClaim = {
@@ -33,9 +46,10 @@ export type ReviewQueueClaim = {
   allergen: string | null; // null only for wrong_product
   direction: Direction;
   status: ClaimStatus;
-  // DISTINCT reported_by among non-rejected rows, excluding NULL — this is the number that
-  // actually drives corroboration (recordCorrection.ts's threshold check is count(DISTINCT
-  // reported_by), which SQL excludes NULLs from). NOT the same as communityAdditions.ts's own
+  // DISTINCT reported_by among non-rejected rows, excluding NULL — the number that drives
+  // corroboration (recordCorrection.ts's threshold check is count(DISTINCT reported_by), which SQL
+  // excludes NULLs from), with one difference: a re-file not yet accepted (migration 0034) is live
+  // here but held out of the threshold. The page marks those reports individually instead. NOT the same as communityAdditions.ts's own
   // family-facing reporterCount, which deliberately uses count(*) so a deleted account's report
   // still counts as evidence for families — that's the right call for that display, but wrong here:
   // an admin judging corroboration *strength* needs to know how many live, re-contactable accounts
@@ -70,6 +84,9 @@ type CorrectionRow = {
   rejection_reason: string | null;
   rejected_by_email: string | null;
   origin: CorrectionOrigin;
+  refiles_rejected_id: string | null;
+  accepted_at: string | null;
+  accepted_by_email: string | null;
 };
 
 /**
@@ -84,9 +101,11 @@ async function fetchCorrectionRows(): Promise<CorrectionRow[]> {
     `SELECT
        pc.id, pc.barcode, pc.allergen, pc.direction, pc.correction_type, pc.target, pc.note,
        pc.status, pc.created_at, pc.reported_by, pc.rejected_by, pc.rejected_at,
-       pc.rejection_reason, pc.origin, rejector.email AS rejected_by_email
+       pc.rejection_reason, pc.origin, rejector.email AS rejected_by_email,
+       pc.refiles_rejected_id, pc.accepted_at, acceptor.email AS accepted_by_email
      FROM product_corrections pc
      LEFT JOIN users rejector ON rejector.id = pc.rejected_by
+     LEFT JOIN users acceptor ON acceptor.id = pc.accepted_by
      ORDER BY pc.created_at ASC`,
   );
   return rows;
@@ -228,6 +247,9 @@ export function groupIntoClaims(
         rejectedAt: row.rejected_at,
         rejectionReason: row.rejection_reason,
         origin: row.origin,
+        refilesRejectedId: row.refiles_rejected_id,
+        acceptedBy: row.accepted_at !== null && row.accepted_by_email !== null ? { email: row.accepted_by_email } : null,
+        acceptedAt: row.accepted_at,
       };
     });
 
@@ -332,6 +354,84 @@ export async function rejectCorrection(
       rejectedBy: { email: adminRows[0].email },
       rejectedAt: updatedRows[0].rejected_at,
       rejectionReason: updatedRows[0].rejection_reason,
+    };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+export type AcceptResult = {
+  id: string;
+  // 'corroborated' if accepting this report's vote met its claim's threshold; 'pending' if not (a
+  // removal still short of three reporters, or one a corroborated warning outranks).
+  status: "pending" | "corroborated";
+  acceptedBy: { email: string };
+  acceptedAt: string;
+};
+
+/**
+ * An admin accepting a re-filed report (migration 0034/0035): the review that lets a re-file's vote
+ * count again, then the same threshold step a new report runs (corroborateClaimIfThresholdMet) — an
+ * accept restores the vote, it never overrides the threshold.
+ *   - 404 if the correction id doesn't exist
+ *   - 409 "not_acceptable" unless it's a pending, not-yet-accepted re-file that could corroborate at
+ *     all — an ordinary report needs no accept (it already counts), and a mismatched-label report
+ *     never corroborates (recordCorrection.ts), so accepting one must not be a way around that.
+ * Transactional with FOR UPDATE, mirroring rejectCorrection, so two admins can't both accept.
+ */
+export async function acceptCorrection(correctionId: string, acceptedBy: string): Promise<AcceptResult> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const { rows: existingRows } = await client.query<{
+      barcode: string | null;
+      allergen: string | null;
+      direction: Direction;
+      status: CorrectionStatus;
+      refiles_rejected_id: string | null;
+      accepted_at: string | null;
+      identity_mismatch_at_report: boolean;
+    }>(
+      `SELECT barcode, allergen, direction, status, refiles_rejected_id, accepted_at, identity_mismatch_at_report
+       FROM product_corrections WHERE id = $1 FOR UPDATE`,
+      [correctionId],
+    );
+    const existing = existingRows[0];
+    if (!existing) throw new HttpError(404, "not_found");
+    if (
+      existing.status !== "pending" ||
+      existing.refiles_rejected_id === null ||
+      existing.accepted_at !== null ||
+      existing.barcode === null ||
+      existing.identity_mismatch_at_report
+    ) {
+      throw new HttpError(409, "not_acceptable");
+    }
+
+    const { rows: updatedRows } = await client.query<{ accepted_at: string }>(
+      "UPDATE product_corrections SET accepted_by = $1, accepted_at = now() WHERE id = $2 RETURNING accepted_at",
+      [acceptedBy, correctionId],
+    );
+    const corroborated = await corroborateClaimIfThresholdMet(client, {
+      barcode: existing.barcode,
+      allergen: existing.allergen,
+      direction: existing.direction,
+    });
+    const { rows: adminRows } = await client.query<{ email: string }>("SELECT email FROM users WHERE id = $1", [
+      acceptedBy,
+    ]);
+
+    await client.query("COMMIT");
+
+    return {
+      id: correctionId,
+      status: corroborated ? "corroborated" : "pending",
+      acceptedBy: { email: adminRows[0].email },
+      acceptedAt: updatedRows[0].accepted_at,
     };
   } catch (err) {
     await client.query("ROLLBACK");
