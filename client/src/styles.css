@@ -788,6 +788,21 @@ th {
   font-weight: 500;
 }
 
+/* The disclaimer and the emergency referral (Prof. Yoest, Oct 1) read as one panel: tight between
+   the two, nothing trailing inside the padding. */
+.verdict-card__disclaimer p {
+  margin-bottom: var(--space-2);
+}
+
+.verdict-card__disclaimer p:last-child {
+  margin-bottom: 0;
+}
+
+/* The same panel once above the scan history list, rather than on every entry. */
+.scan-history__disclaimer {
+  margin-bottom: var(--space-4);
+}
+
 /* ---------- Report — directly under the card it disputes ------------------------------------ */
 
 .verdict-report__open {

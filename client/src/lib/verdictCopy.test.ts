@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { DISCLAIMER, VERDICT_LABEL } from "./verdictCopy";
+import { DISCLAIMER, EMERGENCY, VERDICT_LABEL } from "./verdictCopy";
 
 test("every verdict has a label", () => {
   for (const verdict of ["safe", "contains_allergen", "may_contain_caution", "unable_to_confirm"] as const) {
@@ -20,4 +20,9 @@ test("the clean verdict reads 'No listed allergens found', and no verdict label 
   for (const label of Object.values(VERDICT_LABEL)) {
     assert.doesNotMatch(label, /\bsafe\b/i, label);
   }
+});
+
+test("the emergency referral names 911 and says when to call", () => {
+  // Prof. Yoest's Oct 1 directive, CONTEST_RULES.md §3a.
+  assert.equal(EMERGENCY, "If anyone has an allergic reaction, call 911.");
 });

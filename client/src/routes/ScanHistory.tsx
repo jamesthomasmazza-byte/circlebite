@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 
 import { getScanHistory, type MatchedAllergen, type ScanHistoryEntry } from "../lib/api";
 import { yourReportLine } from "../lib/correctionCopy";
-import { VERDICT_LABEL } from "../lib/verdictCopy";
+import { DISCLAIMER, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
 
 // "unresolved" only appears on a scan that ran the AI reasoning step (docs/verdict-engine.md Path
 // B) — real model uncertainty, distinct from "may contain traces".
@@ -51,6 +51,13 @@ export function ScanHistory() {
         <Link to={id ? `/profiles/${id}` : "/profiles"}>← Back to profile</Link>
       </p>
       <h1>Recent scans</h1>
+      {/* Once for the whole list, not per entry: every verdict below is read under it. */}
+      <div role="note" className="verdict-card__disclaimer scan-history__disclaimer">
+        <p>{DISCLAIMER}</p>
+        <p>
+          <strong>{EMERGENCY}</strong>
+        </p>
+      </div>
 
       {error && <p role="alert">{error}</p>}
 

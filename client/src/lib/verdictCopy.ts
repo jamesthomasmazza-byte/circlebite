@@ -22,3 +22,7 @@ export const VERDICT_LABEL: Record<Verdict, string> = {
 // unconditionally, not just when something matched.
 export const DISCLAIMER =
   "This is a screening aid, not a guarantee — always check the physical label, especially for “may contain” warnings.";
+
+// Prof. Yoest's Oct 1 directive (CONTEST_RULES.md §3a): the emergency referral sits with the
+// disclaimer wherever a verdict is shown — the live card and scan history — never only in settings.
+export const EMERGENCY = "If anyone has an allergic reaction, call 911.";

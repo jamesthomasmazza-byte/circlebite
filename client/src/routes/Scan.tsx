@@ -34,7 +34,7 @@ import {
   yourReportLine,
 } from "../lib/correctionCopy";
 import { onlyUncheckedGaps, provenanceLine, uncheckedNote } from "../lib/evidenceCopy";
-import { DISCLAIMER, VERDICT_LABEL } from "../lib/verdictCopy";
+import { DISCLAIMER, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
 
 const CORRECTION_TYPE_LABEL: Record<CorrectionType, string> = {
   flag_wrong: "This allergen isn't actually in this product",
@@ -821,9 +821,12 @@ export function Scan() {
             </div>
           )}
 
-          <p role="note" className="verdict-card__disclaimer">
-            {DISCLAIMER}
-          </p>
+          <div role="note" className="verdict-card__disclaimer">
+            <p>{DISCLAIMER}</p>
+            <p>
+              <strong>{EMERGENCY}</strong>
+            </p>
+          </div>
           </div>
           </div>
 
