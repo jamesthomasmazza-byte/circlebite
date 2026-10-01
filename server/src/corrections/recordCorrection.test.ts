@@ -188,6 +188,33 @@ test("rejected reports don't count toward the remove_caution threshold", async (
   assert.equal(third.status, "pending");
 });
 
+test("the same reporter filing the same claim again gets a 409 already_reported, and no second row", async () => {
+  const barcode = "1000000000016";
+  const sesame = [{ allergenName: "Sesame", severity: "severe", classification: "clear" }];
+  const input = { reportedBy: USER_A, correctionType: "flag_missing" as const, allergen: "Sesame", note: null, photoPath: "/fake.jpg", origin: "user_initiated" as const };
+
+  await recordCorrection({ scanId: await makeScan(barcode, "safe", sesame), ...input });
+  // A second scan of the same barcode — the duplicate is per product, not per scan.
+  await assert.rejects(
+    async () => recordCorrection({ scanId: await makeScan(barcode, "safe", sesame), ...input }),
+    (err: { status?: number; code?: string }) => err.status === 409 && err.code === "already_reported",
+  );
+
+  const { rows } = await pool.query("SELECT 1 FROM product_corrections WHERE barcode = $1", [barcode]);
+  assert.equal(rows.length, 1);
+});
+
+test("a duplicate wrong_product report is a 409 too — the second anti-inflation index", async () => {
+  const barcode = "1000000000017";
+  const input = { reportedBy: USER_A, correctionType: "wrong_product" as const, allergen: null, note: null, photoPath: "/fake.jpg", origin: "user_initiated" as const };
+
+  await recordCorrection({ scanId: await makeScan(barcode, "contains_allergen", []), ...input });
+  await assert.rejects(
+    async () => recordCorrection({ scanId: await makeScan(barcode, "contains_allergen", []), ...input }),
+    (err: { status?: number; code?: string }) => err.status === 409 && err.code === "already_reported",
+  );
+});
+
 test("wrong_product uses its own corroboration bucket, keyed by barcode alone (allergen is null)", async () => {
   const barcode = "1000000000008";
   const scan1 = await makeScan(barcode, "contains_allergen", []);

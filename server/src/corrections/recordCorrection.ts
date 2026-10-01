@@ -1,4 +1,5 @@
 import { pool } from "../db/pool.js";
+import { HttpError } from "../lib/httpError.js";
 
 export type CorrectionType = "flag_wrong" | "flag_missing" | "wrong_product";
 export type Direction = "add_caution" | "remove_caution";
@@ -234,8 +235,24 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
     return { id: inserted.id, status: corroborated ? "corroborated" : inserted.status, corroborated };
   } catch (err) {
     await client.query("ROLLBACK");
+    if (isDuplicateReport(err)) throw new HttpError(409, "already_reported");
     throw err;
   } finally {
     client.release();
   }
+}
+
+// The two anti-inflation indexes (migration 0015). Hitting one means this person already has a
+// report of this exact claim on this product — a predictable thing for a user to do, not a server
+// fault, so it's a 409 the client can name rather than a 500 telling them to try again. Matched by
+// constraint name, not just the 23505 code, so an unrelated unique violation still surfaces as the
+// bug it would be.
+const DUPLICATE_REPORT_INDEXES = new Set([
+  "product_corrections_no_dup_allergen_report_idx",
+  "product_corrections_no_dup_wrong_product_report_idx",
+]);
+
+function isDuplicateReport(err: unknown): boolean {
+  const pgErr = err as { code?: string; constraint?: string } | null;
+  return pgErr?.code === "23505" && pgErr.constraint !== undefined && DUPLICATE_REPORT_INDEXES.has(pgErr.constraint);
 }

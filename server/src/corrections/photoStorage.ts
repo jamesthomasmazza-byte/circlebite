@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { env } from "../env.js";
@@ -66,6 +66,15 @@ export async function savePhotoBuffer(buffer: Buffer, extension: string): Promis
   const relativePath = path.join("corrections", `${randomUUID()}.${extension}`);
   await writeFile(path.join(env.uploadDir, relativePath), buffer);
   return relativePath;
+}
+
+/**
+ * Removes a photo savePhotoBuffer wrote for a report that then wasn't recorded (a duplicate, or any
+ * other failure after the write) — otherwise every refused report leaves a stray file behind. A file
+ * that's already gone isn't an error.
+ */
+export async function deletePhoto(relativePath: string): Promise<void> {
+  await rm(path.join(env.uploadDir, relativePath), { force: true });
 }
 
 /** Resolves a stored relative photo path back to an absolute filesystem path for reading. */

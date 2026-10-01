@@ -3,7 +3,14 @@ import multer from "multer";
 
 import { assertCanReadProfile } from "../authorization/profiles.js";
 import { requireAuth } from "../auth/requireAuth.js";
-import { EXTENSION_TO_MIME, MAX_PHOTO_BYTES, resolvePhotoPath, savePhotoBuffer, sniffImageType } from "../corrections/photoStorage.js";
+import {
+  deletePhoto,
+  EXTENSION_TO_MIME,
+  MAX_PHOTO_BYTES,
+  resolvePhotoPath,
+  savePhotoBuffer,
+  sniffImageType,
+} from "../corrections/photoStorage.js";
 import { directionForCorrectionType, recordCorrection, type CorrectionType } from "../corrections/recordCorrection.js";
 import { loadUserScanViews, publicCommunityReports, type ScanForView } from "../corrections/userScanView.js";
 import { pool } from "../db/pool.js";
@@ -72,6 +79,11 @@ correctionsRouter.post(
       throw new HttpError(400, "invalid_request");
     }
 
+    // Decided before any file is written: whether this person may file a report in this direction
+    // is a check on the request, and a refused report must never leave a photo on disk.
+    // (Owner-only downgrades — docs/approvals/2026-10-01-yoest-mvp-statement.md — belong here.)
+    const direction = directionForCorrectionType(correctionType);
+
     // Required per docs/legacy-spec.md §6 — not optional, and not something recordCorrection
     // itself enforces (it only knows a photoPath string was supplied), so it's checked here before
     // any file is ever written.
@@ -81,15 +93,22 @@ correctionsRouter.post(
 
     const photoPath = await savePhotoBuffer(req.file.buffer, sniffed.extension);
 
-    const result = await recordCorrection({
-      scanId,
-      reportedBy: req.user!.id,
-      correctionType,
-      allergen: normalizedAllergen,
-      note: typeof note === "string" && note.trim().length > 0 ? note.trim() : null,
-      photoPath,
-      origin,
-    });
+    // A report that isn't recorded — most often a 409 already_reported — takes its photo with it.
+    let result;
+    try {
+      result = await recordCorrection({
+        scanId,
+        reportedBy: req.user!.id,
+        correctionType,
+        allergen: normalizedAllergen,
+        note: typeof note === "string" && note.trim().length > 0 ? note.trim() : null,
+        photoPath,
+        origin,
+      });
+    } catch (err) {
+      await deletePhoto(photoPath);
+      throw err;
+    }
 
     // CONTEST_RULES.md §3: the correction overrides the reporter's own view immediately — so the
     // live card they're still looking at gets the same corrected view their history shows, from
@@ -108,7 +127,7 @@ correctionsRouter.post(
       // than be inferred client-side from the direction (docs/principles.md principle 7). Only a
       // corroborated addition with COMMUNITY_CORRECTIONS on; removals never reach anyone else.
       reaches_other_families:
-        result.corroborated && directionForCorrectionType(correctionType) === "add_caution" && env.communityCorrections,
+        result.corroborated && direction === "add_caution" && env.communityCorrections,
       effective: view?.effective ? { result: view.effective.result, matched_allergens: view.effective.matchedAllergens } : null,
       corrections: view?.corrections ?? [],
       community_reports: publicCommunityReports(view?.communityApplied ?? []),

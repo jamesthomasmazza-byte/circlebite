@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { rm } from "node:fs/promises";
+import { readdir, rm } from "node:fs/promises";
+import path from "node:path";
 import { after, before, test } from "node:test";
 
 import { resolvePhotoPath } from "../corrections/photoStorage.js";
@@ -133,4 +134,19 @@ test("reaches_other_families is true only for a corroborated addition with commu
   } finally {
     env.communityCorrections = previous;
   }
+});
+
+test("a duplicate report is a 409 already_reported, and its photo doesn't stay on disk", async () => {
+  // The 2026-10-01 production 500: the same sesame claim, reported again from a new scan.
+  const matched = [{ allergenName: "Sesame", severity: "severe", classification: "clear" }];
+  const dir = path.join(env.uploadDir, "corrections");
+  await postCorrection(await makeScan("8000000000006", "safe", matched), { correctionType: "flag_missing", allergen: "Sesame" });
+  const filesBefore = await readdir(dir);
+  const secondScanId = await makeScan("8000000000006", "safe", matched);
+
+  await assert.rejects(
+    () => postCorrection(secondScanId, { correctionType: "flag_missing", allergen: "Sesame" }),
+    (err: { status?: number; code?: string }) => err.status === 409 && err.code === "already_reported",
+  );
+  assert.deepEqual((await readdir(dir)).sort(), filesBefore.sort());
 });
