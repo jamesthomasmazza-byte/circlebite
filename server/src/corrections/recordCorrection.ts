@@ -143,12 +143,31 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
       }
     }
 
+    // This person re-filing a claim an admin already rejected from them (migration 0034): linked to
+    // the most recent such rejection, and held out of the corroboration count below — a re-file is
+    // new evidence for an admin to look at, not a new vote. Barcode-less reports have no claim
+    // across scans to re-file, so they never link.
+    let refilesRejectedId: string | null = null;
+    if (scan.barcode !== null) {
+      const { rows: rejectedRows } = await client.query<{ id: string }>(
+        allergen
+          ? `SELECT id FROM product_corrections
+             WHERE barcode = $1 AND allergen = $2 AND direction = $3 AND reported_by = $4 AND status = 'rejected'
+             ORDER BY rejected_at DESC NULLS LAST, created_at DESC LIMIT 1`
+          : `SELECT id FROM product_corrections
+             WHERE barcode = $1 AND allergen IS NULL AND direction = $2 AND reported_by = $3 AND status = 'rejected'
+             ORDER BY rejected_at DESC NULLS LAST, created_at DESC LIMIT 1`,
+        allergen ? [scan.barcode, allergen, direction, reportedBy] : [scan.barcode, direction, reportedBy],
+      );
+      refilesRejectedId = rejectedRows[0]?.id ?? null;
+    }
+
     const { rows: insertRows } = await client.query<{ id: string; status: CorrectionStatus }>(
       `INSERT INTO product_corrections
          (scan_id, barcode, reported_by, correction_type, direction, allergen, target,
           verdict_explanation_id, verdict_at_report, model_at_report, prompt_version_at_report,
-          source_text_at_report, note, photo_path, origin, identity_mismatch_at_report)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+          source_text_at_report, note, photo_path, origin, identity_mismatch_at_report, refiles_rejected_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
        RETURNING id, status`,
       [
         scanId,
@@ -167,6 +186,7 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
         photoPath,
         origin,
         identityMismatched,
+        refilesRejectedId,
       ],
     );
     const inserted = insertRows[0];
@@ -191,14 +211,21 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
     // Rejected rows never count toward the threshold: a report an admin rejected corroborates
     // nothing. Without this, two rejected removals plus one new one reached the remove_caution
     // threshold of 3 — the admin's rejection didn't stop the claim it rejected.
+    //
+    // Re-files (refiles_rejected_id set) don't count either: otherwise an add_caution re-file would
+    // meet its threshold of 1 by itself and undo the rejection for every family on insert. A re-file
+    // still goes to 'corroborated' with the rest of its claim by the UPDATE below when independent
+    // reporters reach the threshold on their own, or when an admin accepts it.
     let corroborated = false;
     if (scan.barcode !== null && !identityMismatched) {
       const { rows: countRows } = await client.query<{ count: string }>(
         allergen
           ? `SELECT count(DISTINCT reported_by) FROM product_corrections
-             WHERE barcode = $1 AND allergen = $2 AND direction = $3 AND status <> 'rejected'`
+             WHERE barcode = $1 AND allergen = $2 AND direction = $3
+               AND status <> 'rejected' AND refiles_rejected_id IS NULL`
           : `SELECT count(DISTINCT reported_by) FROM product_corrections
-             WHERE barcode = $1 AND allergen IS NULL AND direction = $2 AND status <> 'rejected'`,
+             WHERE barcode = $1 AND allergen IS NULL AND direction = $2
+               AND status <> 'rejected' AND refiles_rejected_id IS NULL`,
         allergen ? [scan.barcode, allergen, direction] : [scan.barcode, direction],
       );
       const reporterCount = Number(countRows[0]?.count ?? 0);
@@ -242,8 +269,8 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
   }
 }
 
-// The two anti-inflation indexes (migration 0015). Hitting one means this person already has a
-// report of this exact claim on this product — a predictable thing for a user to do, not a server
+// The two anti-inflation indexes (migration 0015, scoped to live rows by 0034). Hitting one means
+// this person already has a pending or corroborated report of this exact claim on this product — a predictable thing for a user to do, not a server
 // fault, so it's a 409 the client can name rather than a 500 telling them to try again. Matched by
 // constraint name, not just the 23505 code, so an unrelated unique violation still surfaces as the
 // bug it would be.

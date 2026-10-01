@@ -359,3 +359,51 @@ test("origin is persisted as given, never inferred or defaulted by this function
   const { rows } = await pool.query<{ origin: string }>("SELECT origin FROM product_corrections WHERE id = $1", [result.id]);
   assert.equal(rows[0].origin, "disagreement_prompt");
 });
+
+// Synthetic reproduction of the 2026-10-01 lockout — the same row shape as production's (a rejected
+// add_caution for sesame on 5690516025007) with a seeded reporter, never a copy of production data.
+test("a rejected reporter can re-file the claim, and the re-file is held for review rather than corroborating", async () => {
+  const barcode = "5690516025007";
+  const sesame = [{ allergenName: "sesame", severity: "severe", classification: "clear" }];
+  const report = { reportedBy: USER_A, correctionType: "flag_missing" as const, allergen: "sesame", note: null, photoPath: "/fake.jpg", origin: "user_initiated" as const };
+
+  const original = await recordCorrection({ scanId: await makeScan(barcode, "safe", sesame), ...report });
+  assert.equal(original.corroborated, true, "an addition corroborates on its first report");
+  await pool.query("UPDATE product_corrections SET status = 'rejected', rejected_at = now() WHERE id = $1", [original.id]);
+
+  const refile = await recordCorrection({ scanId: await makeScan(barcode, "safe", sesame), ...report });
+  assert.equal(refile.corroborated, false, "a re-file must not undo the admin's rejection by itself");
+  assert.equal(refile.status, "pending");
+  const { rows } = await pool.query<{ refiles_rejected_id: string | null }>(
+    "SELECT refiles_rejected_id FROM product_corrections WHERE id = $1",
+    [refile.id],
+  );
+  assert.equal(rows[0].refiles_rejected_id, original.id);
+
+  // One live report per person per claim still holds — re-filing the re-file is a duplicate.
+  await assert.rejects(
+    async () => recordCorrection({ scanId: await makeScan(barcode, "safe", sesame), ...report }),
+    (err: { status?: number; code?: string }) => err.status === 409 && err.code === "already_reported",
+  );
+
+  // An independent reporter still corroborates on their own (threshold 1, unchanged), and the held
+  // re-file goes along with its claim.
+  const independent = await recordCorrection({ scanId: await makeScan(barcode, "safe", sesame), ...report, reportedBy: USER_B });
+  assert.equal(independent.corroborated, true);
+  const { rows: after } = await pool.query<{ status: string }>("SELECT status FROM product_corrections WHERE id = $1", [refile.id]);
+  assert.equal(after[0].status, "corroborated");
+});
+
+test("re-files don't count toward the remove_caution threshold", async () => {
+  const barcode = "1000000000018";
+  const soy = [{ allergenName: "Soy", severity: "mild", classification: "contains" }];
+  const report = (reportedBy: string) => ({ reportedBy, correctionType: "flag_wrong" as const, allergen: "Soy", note: null, photoPath: "/fake.jpg", origin: "user_initiated" as const });
+
+  const a = await recordCorrection({ scanId: await makeScan(barcode, "contains_allergen", soy), ...report(USER_A) });
+  await pool.query("UPDATE product_corrections SET status = 'rejected', rejected_at = now() WHERE id = $1", [a.id]);
+  await recordCorrection({ scanId: await makeScan(barcode, "contains_allergen", soy), ...report(USER_A) });
+  await recordCorrection({ scanId: await makeScan(barcode, "contains_allergen", soy), ...report(USER_B) });
+  // Three distinct people with a live report would be the threshold — but one of them is a re-file.
+  const third = await recordCorrection({ scanId: await makeScan(barcode, "contains_allergen", soy), ...report(USER_C) });
+  assert.equal(third.corroborated, false);
+});
