@@ -13,7 +13,7 @@ import { asyncHandler } from "../lib/asyncHandler.js";
 import { HttpError } from "../lib/httpError.js";
 import { getProduct } from "../lib/productLookup.js";
 import { getExtractionAllergenProfileId, getScanAllergenProfileId } from "../lib/scanAccess.js";
-import { computeVerdict, hasUsableData } from "../matcher/match.js";
+import { computeVerdict, hasUsableData, type Verdict } from "../matcher/match.js";
 import { loadProfileAllergens } from "../matcher/profileAllergens.js";
 import { combineLabelScan, discardLabelEvidence } from "../verdict/combineScan.js";
 import { explainMissingProductData, explainVerdict } from "../verdict/explainVerdict.js";
@@ -157,7 +157,13 @@ scansRouter.post(
     // photo endpoint itself — off means this field is simply absent, the same "looks like the
     // feature doesn't exist" posture /scans/label's 404 already uses, so the client never renders a
     // prompt or a required-photo step for an endpoint that would just reject the follow-up request.
-    const evidenceDecision = env.labelScan ? decideEvidenceNeeded(product, allergens, verdict) : null;
+    // Decided off the verdict the card headlines, community escalation included — the engine's alone
+    // turned a reported Contains into a capture form with no card (scanPlan.ts). The cast is only
+    // because EffectiveScanResult types result as a string; the community layer sets nothing but
+    // contains_allergen.
+    const evidenceDecision = env.labelScan
+      ? decideEvidenceNeeded(product, allergens, (community?.result as Verdict | undefined) ?? verdict)
+      : null;
 
     // Full detail, unfiltered — this is the live, active-decision response, not history. See the
     // GET handler below for why history gets the opposite treatment. `effective` is null when no

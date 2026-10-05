@@ -8,7 +8,7 @@ import { hasUsableData, type ProductForMatching, type ProfileAllergen, type Verd
  */
 export type EvidenceDecision =
   | { photo: "required"; reason: "missing_data" | "thin_data" }
-  | { photo: "prompted"; reason: "severe_allergen" }
+  | { photo: "prompted"; reason: "severe_allergen" | "missing_data" | "thin_data" }
   | { photo: "none" };
 
 /**
@@ -27,14 +27,25 @@ export type EvidenceDecision =
  * already "don't buy it." This is a deliberate narrowing agreed during planning (2026-09-27), not
  * an oversight — without it, rule 3 fires on every single scan for the app's core user (a family
  * managing a severe allergy), including scans that are already unambiguous.
+ *
+ * `effectiveVerdict` is what the card headlines — the community-escalated verdict when a
+ * corroborated shopper report applied, the engine's otherwise. Never the engine's alone: a barcode
+ * no database knows, that other parents reported contains peanut, once decided "required" off the
+ * engine's unable_to_confirm and hid the warning behind the capture form (judge seed, 2026-10-05).
+ * A Contains verdict on missing or thin data is therefore "prompted", not "required": the warning
+ * renders, and the photo is still offered — the barcode checked nothing, so a label is the only
+ * evidence for the profile's other allergens. That's also why it differs from the severe-allergen
+ * branch below, where the record has already checked them.
  */
 export function decideEvidenceNeeded(
   product: ProductForMatching,
   allergens: ProfileAllergen[],
-  barcodeVerdict: Verdict,
+  effectiveVerdict: Verdict,
 ): EvidenceDecision {
+  const photo = effectiveVerdict === "contains_allergen" ? "prompted" : "required";
+
   if (!hasUsableData(product)) {
-    return { photo: "required", reason: "missing_data" };
+    return { photo, reason: "missing_data" };
   }
 
   // hasUsableData is true here, so at least one of tags/ingredientsText is present — zero tags of
@@ -42,11 +53,11 @@ export function decideEvidenceNeeded(
   // text only, no structured allergen data at all.
   const isThinRecord = product.allergensTags.length === 0 && product.tracesTags.length === 0;
   if (isThinRecord) {
-    return { photo: "required", reason: "thin_data" };
+    return { photo, reason: "thin_data" };
   }
 
   const hasSevereAllergen = allergens.some((a) => a.severity === "severe");
-  if (hasSevereAllergen && barcodeVerdict !== "contains_allergen") {
+  if (hasSevereAllergen && effectiveVerdict !== "contains_allergen") {
     return { photo: "prompted", reason: "severe_allergen" };
   }
 

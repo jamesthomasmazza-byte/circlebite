@@ -52,3 +52,27 @@ test("a severe allergen prompts when the barcode came back may_contain_caution",
 test("a severe allergen skips the prompt when the barcode already says contains_allergen", () => {
   assert.deepEqual(decideEvidenceNeeded(GOOD, WITH_SEVERE, "contains_allergen"), { photo: "none" });
 });
+
+// A Contains verdict on missing or thin data — a corroborated shopper report on a barcode no
+// database has, or thin ingredient text that names the allergen itself — must render, never sit
+// behind the capture form. The photo is still offered: it's the only check on the other allergens.
+test("no product record but an effective contains_allergen prompts instead of requiring (missing_data)", () => {
+  assert.deepEqual(decideEvidenceNeeded(NOT_FOUND, WITH_SEVERE, "contains_allergen"), {
+    photo: "prompted",
+    reason: "missing_data",
+  });
+});
+
+test("thin data with an effective contains_allergen prompts instead of requiring (thin_data)", () => {
+  assert.deepEqual(decideEvidenceNeeded(THIN, MILD_ONLY, "contains_allergen"), {
+    photo: "prompted",
+    reason: "thin_data",
+  });
+});
+
+test("thin data that comes back may_contain_caution is still required", () => {
+  assert.deepEqual(decideEvidenceNeeded(THIN, WITH_SEVERE, "may_contain_caution"), {
+    photo: "required",
+    reason: "thin_data",
+  });
+});
