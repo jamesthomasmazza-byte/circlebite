@@ -25,11 +25,17 @@ Reproduced verbatim. Referenced in `CONTEST_RULES.md` §3.
 
 ## What this binds
 
-- **Downgrades are owner-only.** Any circle member may escalate a verdict (report an allergen
-  present). Reporting an allergen *not* present (`flag_wrong`) or the wrong product
-  (`wrong_product`) — anything with direction `remove_caution` — is reserved for the parent who owns
-  the profile. Today any reader can file one and it clears the allergen in their own view; that must
-  change in the app, not just the README.
+- **Downgrades: owner-only as dictated, widened to owner or co-manager the same day.** Any circle
+  member may escalate a verdict (report an allergen present). Reporting an allergen *not* present
+  (`flag_wrong`) or the wrong product (`wrong_product`) — anything with direction `remove_caution` —
+  is reserved for the parent who owns the profile. As of this email, any reader could file one and
+  it cleared the allergen in their own view. Closed in the app on October 1:
+  `server/src/routes/corrections.ts` refuses a `remove_caution` report from a follower (403
+  `removal_requires_manager`), and the report form offers a follower only `flag_missing`
+  (`reportableTypes`, `client/src/lib/correctionCopy.ts`). Superseded the same day: on October 1 he
+  approved widening downgrades to the owner or a co-manager they invited ("Keep owner or
+  co-manager."), with two conditions — see [the overrule-conditions
+  approval](2026-10-02-yoest-overrule-conditions.md).
 - **No "Safe" verdict label.** The clean verdict reads "No listed allergens found" everywhere it is
   shown — not "Safe".
 - **Emergency referral in the app.** The disclaimer is accompanied by "call 911 for any allergic

@@ -12,13 +12,17 @@ circle scans a barcode and gets a verdict for that child: no listed allergens fo
 unable to confirm. When product data is thin or missing, they photograph the ingredients panel and an
 AI model reads it and cites the exact ingredient behind the verdict. A deterministic matcher runs
 first, and the AI may escalate a verdict but never clear an allergen the matcher found. Any circle
-member can escalate a verdict, but downgrades are reserved for the parent who owns the profile, and
+member can escalate a verdict, but downgrades are reserved for the parent who owns the profile or a
+co-manager they invited, and
 every overrule is logged against the model and prompt version that produced it. Every verdict carries
 an in-app disclaimer that CircleBite is a screening aid, not a substitute for reading the label — a
 clean label can still carry cross-contact risk — and directs users to call 911 for any allergic
 reaction.
 
-*Approved by Prof. Yoest with these two revisions, 2026-10-01 — `docs/approvals/2026-10-01-yoest-mvp-statement.md`.*
+*Approved by Prof. Yoest with these two revisions, 2026-10-01 —
+`docs/approvals/2026-10-01-yoest-mvp-statement.md`. The downgrade rule was widened from owner-only to
+owner-or-co-manager with his approval the same day —
+`docs/approvals/2026-10-02-yoest-overrule-conditions.md`.*
 
 **Only escalations cross family lines.** A corroborated report that an allergen *is* present raises
 the verdict on every profile that allergen matches, but a report that an allergen is *absent* changes
@@ -55,9 +59,8 @@ low confidence.
 
 This matters more in a circle than it would in a single-user app. Someone scanning on a child's
 behalf has no intuition to fall back on, so the verdict has to explain itself — which ingredient
-triggered it, and why. Any circle member can escalate a verdict; only the parent who owns the profile can downgrade one.
-Each overrule is logged against
-the model and prompt version that produced it.
+triggered it, and why. Any circle member can escalate a verdict; only an owner or co-manager can
+downgrade one. Each overrule is logged against the model and prompt version that produced it.
 
 **Target user.** Parents managing a child's food allergies, and the ring of people who feed that
 child when the parent isn't in the room.
