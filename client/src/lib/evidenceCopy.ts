@@ -1,4 +1,4 @@
-import type { MatchedAllergen, ScanResult } from "./api";
+import type { EvidenceDecision, MatchedAllergen, ScanResult } from "./api";
 
 // Copy for what a verdict card says it checked. One rule for all of it: describe the evidence that
 // existed, never which code path ran (BACKLOG.md Week 9 — a card once said "Checked against the
@@ -42,4 +42,17 @@ export function uncheckedNote(input: { names: string[]; profileLabel: string | n
   // "1 of your allergens" — the plural is right at every count ("one of several").
   const line = `couldn't check ${n} of ${whose} allergens against this photo: ${input.names.join(", ")}.`;
   return input.leadsCard ? `Not confirmed — we ${line}` : `We ${line}`;
+}
+
+/** What an offered (not required) label photo is for, said before the button. Missing or thin data
+ *  is only ever "prompted" when the card already says Contains (server/src/verdict/scanPlan.ts) —
+ *  so the copy points the photo at the allergens the barcode couldn't check, and never reads as
+ *  though the warning itself is in doubt. Null for anything that isn't an offer. */
+export function photoOfferCopy(decision: EvidenceDecision | null | undefined, profileLabel: string | null): string | null {
+  if (decision?.photo !== "prompted") return null;
+  if (decision.reason === "severe_allergen") {
+    return "This profile has a severe allergen on file. The barcode data looks fine, but a photo of the label gives a second opinion.";
+  }
+  const whose = profileLabel ? `${profileLabel}'s` : "your";
+  return `The product data couldn't check the rest of ${whose} allergens — a photo of the ingredients panel can.`;
 }

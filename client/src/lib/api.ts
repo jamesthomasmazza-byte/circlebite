@@ -275,7 +275,7 @@ export type CommunityReport = { allergenName: string; reporterCount: number };
 // unneeded. Present on a barcode scan's response only when LABEL_SCAN is enabled server-side.
 export type EvidenceDecision =
   | { photo: "required"; reason: "missing_data" | "thin_data" }
-  | { photo: "prompted"; reason: "severe_allergen" }
+  | { photo: "prompted"; reason: "severe_allergen" | "missing_data" | "thin_data" }
   | { photo: "none" };
 
 export type ScanResult = {

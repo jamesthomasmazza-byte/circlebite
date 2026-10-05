@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { onlyUncheckedGaps, provenanceLine, uncheckedNote } from "./evidenceCopy";
+import { onlyUncheckedGaps, photoOfferCopy, provenanceLine, uncheckedNote } from "./evidenceCopy";
 
 test("provenanceLine: a combined scan with no product record never claims the product database was checked", () => {
   // The 2026-09-28 live case (barcode 2113792886078): "Unknown product", then "Checked against the
@@ -44,4 +44,25 @@ test("uncheckedNote: one allergen, no profile label, not leading", () => {
     uncheckedNote({ names: ["sesame"], profileLabel: null, leadsCard: false }),
     "We couldn't check 1 of your allergens against this photo: sesame.",
   );
+});
+
+test("photoOfferCopy: a Contains card on missing data offers the photo for the other allergens, not the warning", () => {
+  // The 2026-10-05 seed case: a shopper report says Contains on a barcode no database has.
+  const copy = photoOfferCopy({ photo: "prompted", reason: "missing_data" }, "Maya");
+  assert.equal(copy, "The product data couldn't check the rest of Maya's allergens — a photo of the ingredients panel can.");
+  assert.doesNotMatch(copy!, /severe|second opinion|confirm/);
+});
+
+test("photoOfferCopy: thin data reads the same, and falls back to 'your' without a label", () => {
+  assert.match(photoOfferCopy({ photo: "prompted", reason: "thin_data" }, null)!, /rest of your allergens/);
+});
+
+test("photoOfferCopy: the severe-allergen second opinion keeps its own copy", () => {
+  assert.match(photoOfferCopy({ photo: "prompted", reason: "severe_allergen" }, "Maya")!, /severe allergen on file/);
+});
+
+test("photoOfferCopy: nothing for a required photo or no decision", () => {
+  assert.equal(photoOfferCopy({ photo: "required", reason: "missing_data" }, "Maya"), null);
+  assert.equal(photoOfferCopy({ photo: "none" }, "Maya"), null);
+  assert.equal(photoOfferCopy(null, "Maya"), null);
 });

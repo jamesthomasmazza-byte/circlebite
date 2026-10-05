@@ -33,7 +33,7 @@ import {
   reportOutcomeMessage,
   yourReportLine,
 } from "../lib/correctionCopy";
-import { onlyUncheckedGaps, provenanceLine, uncheckedNote } from "../lib/evidenceCopy";
+import { onlyUncheckedGaps, photoOfferCopy, provenanceLine, uncheckedNote } from "../lib/evidenceCopy";
 import { DISCLAIMER, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
 
 const CORRECTION_TYPE_LABEL: Record<CorrectionType, string> = {
@@ -213,7 +213,8 @@ export function Scan() {
       // "required" is the next mandatory step, not an offer — go straight into the capture form
       // rather than making the family read a barcode-only card first (docs/verdict-engine.md Path
       // D's decision rules; server/src/verdict/scanPlan.ts is the single source of this rule).
-      if (scan.evidence_decision?.photo === "required") {
+      // Never over a Contains card, whatever the decision says — see awaitingRequiredPhoto below.
+      if (scan.evidence_decision?.photo === "required" && (scan.effective?.result ?? scan.result) !== "contains_allergen") {
         setPhotoCaptureMode("combine");
         setPhotoCaptureOpen(true);
       }
@@ -462,6 +463,7 @@ export function Scan() {
   // The engine's own verdict unless a corroborated community report escalated it. Both are always
   // on the card: the headline is what to act on, the note under it says what changed it.
   const shown = result && (result.effective ?? { result: result.result, matched_allergens: result.matched_allergens });
+  const resultProfileLabel = profiles.find((p) => p.id === resultProfileId)?.label ?? null;
   // Followers only see "it IS in this product" — removals are for the profile's managers (Prof.
   // Yoest's Oct 1 approval). Offering a report the server will refuse wastes a photo in the aisle.
   const reportTypes = reportableTypes(managedProfiles, resultProfileId);
@@ -474,8 +476,13 @@ export function Scan() {
 
   // "required" and not yet resolved (photo not yet taken, and the family hasn't explicitly said
   // "I don't have this in front of me") — no card renders at all; the capture form IS the screen.
+  // Except over a Contains card: the server no longer decides "required" for one (scanPlan.ts), and
+  // this makes sure a warning is never hidden behind a form even if it did (2026-10-05).
   const awaitingRequiredPhoto =
-    result?.source === "barcode" && result.evidence_decision?.photo === "required" && !requiredPhotoDismissed;
+    result?.source === "barcode" &&
+    result.evidence_decision?.photo === "required" &&
+    !requiredPhotoDismissed &&
+    shown?.result !== "contains_allergen";
 
   // Offered, not required — a "prompted" second opinion (severe allergen), or a required photo the
   // family explicitly deferred. Either way the card already renders in full; this only adds a box
@@ -586,10 +593,7 @@ export function Scan() {
                   </p>
                 ))}
               {photoCaptureMode === "combine" && result?.evidence_decision?.photo === "prompted" && (
-                <p>
-                  This profile has a severe allergen on file. The barcode data looks fine, but a photo of the label
-                  gives a second opinion.
-                </p>
+                <p>{photoOfferCopy(result.evidence_decision, resultProfileLabel)}</p>
               )}
               <label>
                 Photo of the ingredients panel
@@ -770,8 +774,11 @@ export function Scan() {
             <p>
               {result.evidence_decision?.photo === "required" ? (
                 <>We couldn't check this against a photo yet. </>
-              ) : (
+              ) : result.evidence_decision?.photo === "prompted" && result.evidence_decision.reason === "severe_allergen" ? (
                 <>This profile has a severe allergen on file — for extra confidence, </>
+              ) : (
+                // Missing or thin data under a Contains card — the photo is for the other allergens.
+                <>{photoOfferCopy(result.evidence_decision, resultProfileLabel)} </>
               )}
               <button type="button" onClick={openCombinePhotoCapture}>
                 Photograph the ingredients label
