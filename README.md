@@ -20,6 +20,12 @@ reaction.
 
 *Approved by Prof. Yoest with these two revisions, 2026-10-01 — `docs/approvals/2026-10-01-yoest-mvp-statement.md`.*
 
+**Only escalations cross family lines.** A corroborated report that an allergen *is* present raises
+the verdict on every profile that allergen matches, but a report that an allergen is *absent* changes
+only the reporting family's own view and can never clear a warning for anyone else — because sign-up
+is open to any adult, and three throwaway accounts should not be able to clear a peanut warning for
+every family in the app (`server/src/corrections/applyCommunityCorrections.ts`, decided 2026-09-10).
+
 ## Thesis
 
 **The problem.** The person eating the food usually isn't the person reading the label. A parent
