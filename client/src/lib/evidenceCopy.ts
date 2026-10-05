@@ -45,7 +45,7 @@ export function uncheckedNote(input: { names: string[]; profileLabel: string | n
 }
 
 /** What an offered (not required) label photo is for, said before the button. Missing or thin data
- *  is only ever "prompted" when the card already says Contains (server/src/verdict/scanPlan.ts) —
+ *  is only ever "prompted" when the card already says Contains or caution (scanPlan.ts) —
  *  so the copy points the photo at the allergens the barcode couldn't check, and never reads as
  *  though the warning itself is in doubt. Null for anything that isn't an offer. */
 export function photoOfferCopy(decision: EvidenceDecision | null | undefined, profileLabel: string | null): string | null {

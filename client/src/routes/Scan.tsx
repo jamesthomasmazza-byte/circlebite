@@ -42,6 +42,13 @@ const CORRECTION_TYPE_LABEL: Record<CorrectionType, string> = {
   wrong_product: "This is the wrong product entirely",
 };
 
+// Contains and caution both have something to say; safe and unable_to_confirm don't yet. A card
+// with something to say is never hidden behind the capture form. The same question scanPlan.ts's
+// `decided` asks — not its severe-allergen branch, which asks whether the answer is at the ceiling.
+function isDecided(verdict: string): boolean {
+  return verdict === "contains_allergen" || verdict === "may_contain_caution";
+}
+
 // Styling hooks only — which visual treatment a row gets. Each follows exactly the precedence
 // classificationLabel/sourceLabel use for their words, so the look can never disagree with the text.
 // "trace_unsafe" is kept apart from "contains" on purpose: the label only said "may contain", and
@@ -213,8 +220,8 @@ export function Scan() {
       // "required" is the next mandatory step, not an offer — go straight into the capture form
       // rather than making the family read a barcode-only card first (docs/verdict-engine.md Path
       // D's decision rules; server/src/verdict/scanPlan.ts is the single source of this rule).
-      // Never over a Contains card, whatever the decision says — see awaitingRequiredPhoto below.
-      if (scan.evidence_decision?.photo === "required" && (scan.effective?.result ?? scan.result) !== "contains_allergen") {
+      // Never over a decided card, whatever the decision says — see awaitingRequiredPhoto below.
+      if (scan.evidence_decision?.photo === "required" && !isDecided(scan.effective?.result ?? scan.result)) {
         setPhotoCaptureMode("combine");
         setPhotoCaptureOpen(true);
       }
@@ -476,13 +483,14 @@ export function Scan() {
 
   // "required" and not yet resolved (photo not yet taken, and the family hasn't explicitly said
   // "I don't have this in front of me") — no card renders at all; the capture form IS the screen.
-  // Except over a Contains card: the server no longer decides "required" for one (scanPlan.ts), and
-  // this makes sure a warning is never hidden behind a form even if it did (2026-10-05).
+  // Except over a decided card (contains or caution): the server no longer decides "required" for
+  // one (scanPlan.ts), and this makes sure a warning is never hidden behind a form even if it did
+  // (2026-10-05).
   const awaitingRequiredPhoto =
     result?.source === "barcode" &&
     result.evidence_decision?.photo === "required" &&
     !requiredPhotoDismissed &&
-    shown?.result !== "contains_allergen";
+    !(shown && isDecided(shown.result));
 
   // Offered, not required — a "prompted" second opinion (severe allergen), or a required photo the
   // family explicitly deferred. Either way the card already renders in full; this only adds a box

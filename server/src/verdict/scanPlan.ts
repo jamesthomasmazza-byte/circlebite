@@ -32,17 +32,21 @@ export type EvidenceDecision =
  * corroborated shopper report applied, the engine's otherwise. Never the engine's alone: a barcode
  * no database knows, that other parents reported contains peanut, once decided "required" off the
  * engine's unable_to_confirm and hid the warning behind the capture form (judge seed, 2026-10-05).
- * A Contains verdict on missing or thin data is therefore "prompted", not "required": the warning
- * renders, and the photo is still offered — the barcode checked nothing, so a label is the only
- * evidence for the profile's other allergens. That's also why it differs from the severe-allergen
- * branch below, where the record has already checked them.
+ * A decided verdict (contains or caution) on missing or thin data is therefore "prompted", not
+ * "required": the warning renders, and the photo is still offered — the barcode checked nothing,
+ * so a label is the only evidence for the profile's other allergens. That's also why it differs
+ * from the severe-allergen branch below, where the record has already checked them.
  */
 export function decideEvidenceNeeded(
   product: ProductForMatching,
   allergens: ProfileAllergen[],
   effectiveVerdict: Verdict,
 ): EvidenceDecision {
-  const photo = effectiveVerdict === "contains_allergen" ? "prompted" : "required";
+  // "Is this verdict decided?" — contains and caution both are; only unable_to_confirm and safe have
+  // nothing to say yet. Deliberately NOT the same test as the severe-allergen branch below, which
+  // asks whether the answer is already at the ceiling. Don't harmonise them.
+  const decided = effectiveVerdict === "contains_allergen" || effectiveVerdict === "may_contain_caution";
+  const photo = decided ? "prompted" : "required";
 
   if (!hasUsableData(product)) {
     return { photo, reason: "missing_data" };
@@ -57,6 +61,8 @@ export function decideEvidenceNeeded(
   }
 
   const hasSevereAllergen = allergens.some((a) => a.severity === "severe");
+  // "Is the answer already at the ceiling?" — only contains is. A caution can still escalate, so it
+  // keeps the second-opinion offer. Deliberately NOT the `decided` test above. Don't harmonise them.
   if (hasSevereAllergen && effectiveVerdict !== "contains_allergen") {
     return { photo: "prompted", reason: "severe_allergen" };
   }
