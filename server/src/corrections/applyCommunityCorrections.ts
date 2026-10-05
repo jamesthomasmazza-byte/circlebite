@@ -119,8 +119,30 @@ export function applyCommunityCorrections(
 
   if (applied.length === 0) return null;
 
+  // A scan with no per-allergen entries at all checked nothing — the product wasn't found, or had no
+  // data. The report names one allergen; the rest must still be named, as "unchecked", never left
+  // off. Every other card enumerates the profile's allergens, so a card naming one of two implies
+  // the other was fine — on the one card where nothing was checked (2026-10-05). Effective view
+  // only: the scan row keeps the engine's empty list. `uncheckedBecause` lets the card say why,
+  // since "unchecked" otherwise means a photo that didn't show it.
+  if (scan.matchedAllergens.length === 0) {
+    for (const profileAllergen of profileAllergens) {
+      const key = profileAllergen.name.toLowerCase();
+      if (matchedAllergens.some((m) => m.allergenName.toLowerCase() === key)) continue;
+      matchedAllergens.push({
+        allergenName: profileAllergen.name,
+        matched: false,
+        source: null,
+        severity: profileAllergen.severity,
+        classification: "unchecked",
+        uncheckedBecause: "no_product_data",
+      });
+    }
+  }
+
   // Every applied entry is "contains", which dominates the rollup — including over a fail-closed
-  // unable_to_confirm, the one case where the original result is kept by applyUserCorrections.
+  // unable_to_confirm, the one case where the original result is kept by applyUserCorrections, and
+  // over the "unchecked" entries just added (mergeVerdict.ts's rollup puts contains first too).
   return { result: "contains_allergen", matchedAllergens, applied };
 }
 

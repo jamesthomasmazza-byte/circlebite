@@ -79,6 +79,47 @@ test("adds an entry with this profile's own severity when the product wasn't fou
   assert.equal(effective?.matchedAllergens[0].classification, "contains");
 });
 
+test("not found: allergens no report matches are named as unchecked, never clear or absent — rollup stays contains", () => {
+  // The 2026-10-05 judge-seed shape: a shopper report of peanut on a barcode no database has.
+  const s = scan("unable_to_confirm", []);
+  const effective = applyCommunityCorrections(
+    s,
+    [
+      { name: "Peanut", severity: "severe" },
+      { name: "Sesame", severity: "moderate" },
+    ],
+    [addition("Peanut")],
+  );
+  assert.equal(effective?.result, "contains_allergen");
+  assert.deepEqual(
+    effective?.matchedAllergens.map((m) => [m.allergenName, m.classification, m.uncheckedBecause]),
+    [
+      ["Peanut", "contains", undefined],
+      ["Sesame", "unchecked", "no_product_data"],
+    ],
+  );
+  assert.equal(effective?.matchedAllergens[1].severity, "moderate");
+  assert.deepEqual(effective?.applied.map((a) => a.allergenName), ["Peanut"], "sesame is not credited to a shopper");
+  assert.deepEqual(s.matchedAllergens, [], "the engine's own list is untouched");
+});
+
+test("a scan that checked its allergens gets no unchecked entries added", () => {
+  const s = scan("safe", [
+    { allergenName: "Peanut", severity: "severe", classification: "clear" },
+    { allergenName: "Sesame", severity: "moderate", classification: "clear" },
+  ]);
+  const effective = applyCommunityCorrections(
+    s,
+    [
+      { name: "Peanut", severity: "severe" },
+      { name: "Sesame", severity: "moderate" },
+    ],
+    [addition("Peanut")],
+  );
+  assert.equal(effective?.matchedAllergens.find((m) => m.allergenName === "Sesame")?.classification, "clear");
+  assert.ok(!effective?.matchedAllergens.some((m) => m.classification === "unchecked"));
+});
+
 test("an 'unresolved' AI finding is escalated, not left as unable_to_confirm", () => {
   const s = scan("unable_to_confirm", [{ allergenName: "Milk", severity: "severe", classification: "unresolved" }]);
   const effective = applyCommunityCorrections(s, [{ name: "Milk", severity: "severe" }], [addition("Milk")]);
