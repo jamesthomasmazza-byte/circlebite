@@ -277,11 +277,26 @@ test("--force removes non-seeded people's rows on seeded profiles only, then res
   assert.deepEqual(await snapshot(), baseline);
 });
 
+type CardAllergen = {
+  allergenName: string;
+  classification: string;
+  communityReported?: boolean;
+  uncheckedBecause?: string;
+};
+type EffectiveCard = { result: string; matched_allergens: CardAllergen[] };
+
 type RescanBody = {
+  id: string;
   result: string;
-  effective: { result: string } | null;
-  community_reports: { allergenName: string }[];
+  effective: EffectiveCard | null;
+  community_reports: { allergenName: string; reporterCount: number }[];
   evidence_decision: { photo: string; reason?: string } | null;
+};
+
+type HistoryEntry = {
+  id: string;
+  effective: EffectiveCard | null;
+  community_reports: { allergenName: string; reporterCount: number }[];
 };
 
 /** POST /scans as the judge, straight through the route's own handler (no HTTP harness here). */
@@ -295,6 +310,18 @@ function rescan(allergenProfileId: string, barcode: string) {
       json: (body: RescanBody) => resolve(body),
     };
     handler({ body: { allergenProfileId, barcode }, user: { id: PEOPLE.judge.id } }, res, (err: unknown) =>
+      reject(err ?? new Error("next() without a response")),
+    );
+  });
+}
+
+/** GET /profiles/:id/scans as the judge, the same way rescan() reaches POST /scans. */
+function history(profileId: string) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const layer = (scansRouter as any).stack.find((l: any) => l.route?.path === "/profiles/:id/scans" && l.route.methods.get);
+  const handler = layer.route.stack.at(-1).handle;
+  return new Promise<HistoryEntry[]>((resolve, reject) => {
+    handler({ params: { id: profileId }, user: { id: PEOPLE.judge.id } }, { json: resolve }, (err: unknown) =>
       reject(err ?? new Error("next() without a response")),
     );
   });
@@ -342,6 +369,27 @@ test("the seeded shopper report renders Contains for a peanut profile, with the 
         ["Peanut"],
       );
       assert.deepEqual(maya.evidence_decision, { photo: "prompted", reason: "missing_data" });
+
+      // Peanut comes from the shopper report; sesame was checked against nothing. It must say so —
+      // unchecked, never clear — while the rollup still lands on contains. The first card to carry
+      // a Contains and an unchecked together.
+      const byName = new Map(maya.effective!.matched_allergens.map((m) => [m.allergenName, m]));
+      assert.equal(byName.get("Peanut")?.classification, "contains");
+      assert.equal(byName.get("Peanut")?.communityReported, true, "credited to a shopper report");
+      assert.equal(byName.get("Sesame")?.classification, "unchecked");
+      assert.equal(byName.get("Sesame")?.uncheckedBecause, "no_product_data");
+      assert.equal(byName.get("Sesame")?.communityReported, undefined, "sesame is not credited to a shopper");
+
+      // A judge who scans this and then opens history must see the same card: both the scan just
+      // made and the seeded one Priya made, recomputed fresh, match the live response exactly.
+      const mayaHistory = await history(PROFILES.maya.id);
+      const seededScanId = SCANS.find((x) => x.product === "reported" && x.profile === "maya")!.id;
+      for (const id of [maya.id, seededScanId]) {
+        const entry = mayaHistory.find((h) => h.id === id);
+        assert.ok(entry, `history has scan ${id}`);
+        assert.deepEqual(entry.effective, maya.effective, `history card for ${id}`);
+        assert.deepEqual(entry.community_reports, maya.community_reports, `history reports for ${id}`);
+      }
 
       // Tree nut must not pick up a peanut report — still nothing to show but the capture form.
       const noor = await rescan(PROFILES.noor.id, PRODUCTS.reported.barcode);
