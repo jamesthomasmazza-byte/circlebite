@@ -277,35 +277,79 @@ test("--force removes non-seeded people's rows on seeded profiles only, then res
   assert.deepEqual(await snapshot(), baseline);
 });
 
-test("rescanning any seeded history barcode reproduces the verdict history shows — no Open Food Facts, no AI", async () => {
-  // Past the 24h cache TTL, so only the seed marker keeps these from being refetched.
+type RescanBody = {
+  result: string;
+  effective: { result: string } | null;
+  community_reports: { allergenName: string }[];
+  evidence_decision: { photo: string; reason?: string } | null;
+};
+
+/** POST /scans as the judge, straight through the route's own handler (no HTTP harness here). */
+function rescan(allergenProfileId: string, barcode: string) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const layer = (scansRouter as any).stack.find((l: any) => l.route?.path === "/scans" && l.route.methods.post);
+  const handler = layer.route.stack.at(-1).handle;
+  return new Promise<RescanBody>((resolve, reject) => {
+    const res = {
+      status: () => res,
+      json: (body: RescanBody) => resolve(body),
+    };
+    handler({ body: { allergenProfileId, barcode }, user: { id: PEOPLE.judge.id } }, res, (err: unknown) =>
+      reject(err ?? new Error("next() without a response")),
+    );
+  });
+}
+
+/** Runs `body` with the network refused, past the 24h cache TTL — only the seed marker keeps the
+ *  seed barcodes from being refetched. */
+async function withoutNetwork(body: () => Promise<void>) {
   await pool.query("UPDATE products SET fetched_at = now() - interval '3 days' WHERE barcode = ANY($1)", [SEED_BARCODES]);
   const realFetch = globalThis.fetch;
   globalThis.fetch = (async () => {
     throw new Error("network call attempted during a rescan of a seeded barcode");
   }) as typeof fetch;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const layer = (scansRouter as any).stack.find((l: any) => l.route?.path === "/scans" && l.route.methods.post);
-  const handler = layer.route.stack.at(-1).handle;
-  const rescan = (allergenProfileId: string, barcode: string) =>
-    new Promise<{ result: string }>((resolve, reject) => {
-      const res = {
-        status: () => res,
-        json: (body: { result: string }) => resolve(body),
-      };
-      handler({ body: { allergenProfileId, barcode }, user: { id: PEOPLE.judge.id } }, res, (err: unknown) =>
-        reject(err ?? new Error("next() without a response")),
-      );
-    });
-
   try {
+    await body();
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+}
+
+test("rescanning any seeded history barcode reproduces the verdict history shows — no Open Food Facts, no AI", async () => {
+  await withoutNetwork(async () => {
     for (const scan of SCANS) {
       const history = baseline.scans.find((s) => s.id === scan.id)!;
       const live = await rescan(PROFILES[scan.profile].id, PRODUCTS[scan.product].barcode);
       assert.equal(live.result, history.result, `${scan.profile} / ${scan.product}`);
     }
+  });
+});
+
+// The test above compares the engine's `result` only, which is why the seed passed while the
+// screen showed a capture form and no card (2026-10-05). This one checks what the card is built
+// from: the community-effective verdict, and whether the photo step lets the card render.
+test("the seeded shopper report renders Contains for a peanut profile, with the photo offered rather than required", async () => {
+  const previous = { community: env.communityCorrections, labelScan: env.labelScan };
+  env.communityCorrections = true;
+  env.labelScan = true;
+  try {
+    await withoutNetwork(async () => {
+      const maya = await rescan(PROFILES.maya.id, PRODUCTS.reported.barcode);
+      assert.equal(maya.result, "unable_to_confirm", "the engine alone has nothing to check");
+      assert.equal(maya.effective?.result, "contains_allergen");
+      assert.deepEqual(
+        maya.community_reports.map((r) => r.allergenName),
+        ["Peanut"],
+      );
+      assert.deepEqual(maya.evidence_decision, { photo: "prompted", reason: "missing_data" });
+
+      // Tree nut must not pick up a peanut report — still nothing to show but the capture form.
+      const noor = await rescan(PROFILES.noor.id, PRODUCTS.reported.barcode);
+      assert.equal(noor.effective, null);
+      assert.deepEqual(noor.evidence_decision, { photo: "required", reason: "missing_data" });
+    });
   } finally {
-    globalThis.fetch = realFetch;
+    env.communityCorrections = previous.community;
+    env.labelScan = previous.labelScan;
   }
 });
