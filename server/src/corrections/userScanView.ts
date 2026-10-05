@@ -1,6 +1,7 @@
 import { pool } from "../db/pool.js";
 import { env } from "../env.js";
-import type { Severity } from "../matcher/match.js";
+import type { ProfileAllergen } from "../matcher/match.js";
+import { loadProfileAllergens } from "../matcher/profileAllergens.js";
 import { applyCommunityCorrections, type AppliedCommunityAddition, type CommunityAddition } from "./applyCommunityCorrections.js";
 import { applyUserCorrections, type EffectiveScanResult, type MatchedAllergenLike, type UserCorrection } from "./applyCorrections.js";
 import { loadCommunityAdditions } from "./communityAdditions.js";
@@ -70,14 +71,13 @@ export async function loadUserScanViews(
   }
 
   let additionsByBarcode = new Map<string, CommunityAddition[]>();
-  let profileAllergens: { name: string; severity: Severity }[] = [];
+  let profileAllergens: ProfileAllergen[] = [];
   if (env.communityCorrections) {
     const barcodes = [...new Set(scans.map((s) => s.barcode).filter((b): b is string => b !== null))];
     additionsByBarcode = await loadCommunityAdditions(barcodes);
-    ({ rows: profileAllergens } = await pool.query<{ name: string; severity: Severity }>(
-      "SELECT name, severity FROM allergens WHERE allergen_profile_id = $1",
-      [profileId],
-    ));
+    // The same loader the live scan uses, so history recomputes the same card — not a second copy
+    // of the query that could list the allergens in a different order.
+    profileAllergens = await loadProfileAllergens(profileId);
   }
 
   for (const scan of scans) {
