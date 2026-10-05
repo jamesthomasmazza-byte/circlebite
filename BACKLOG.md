@@ -298,6 +298,38 @@ it is the least-worked area. Treat this whole section as the priority block it i
         "The product data alone says Safe." separately from `Scan.tsx`'s and `ScanHistory.tsx`'s
         `safe: "Safe"` entries. The rename below is a sweep for every place the verdict word is
         produced, not a two-line change, and a grep for the literal won't find all of it.
+- [ ] **Prof. Yoest's Oct 1-2 conditions on the overrule widening.**
+      `docs/approvals/2026-10-02-yoest-overrule-conditions.md`. He approved owner-or-co-manager
+      downgrades — "your reading is better than my wording" — and attached two conditions, a judge
+      account, and an operational note. The cross-family sentence is answered (README, 2026-10-05);
+      the judge seed itself is built and verified. What's left:
+      - [ ] **Log every downgrade — who, when, and what evidence.** `product_corrections` already
+        stores `reported_by`, `created_at` and a required photo, so most of the data exists. What
+        doesn't exist is a surface where a parent can *read* their profile's downgrade history.
+        Build the reading surface, and check the row isn't missing anything he'd expect — the
+        evidence photo and the accepted/rejected outcome in particular.
+      - [ ] **Notify the owner when a co-manager downgrades — a new subsystem, not a feature.**
+        There is no notification mechanism in the server at all: no mail dependency (the five
+        deps are express, pg, multer, cookie-parser, dotenv), no notifications table, and circle
+        invites are single-use links the parent shares by hand (migration 0008). Email also sits
+        badly with R6 — every hosted sender is a hosted service, and self-hosted mail from EC2 is
+        blocked on port 25 by default and lands in spam. Plan an in-app notice (notifications
+        table, unread indicator, a list the owner can read), and tell him that's the route and why
+        rather than letting him assume email. Design against his standard, which is the right one:
+        "the owner should never learn about a change to their child's profile by accident."
+      - [ ] **Automated Postgres backups.** His operational note, and he's right that it belongs
+        before real circles depend on the data — Postgres is on the same box as the app, so losing
+        the box currently loses everything. `pg_dump` on a timer with off-box storage; decide where
+        off-box lives without breaking R5/R6, and **test a restore** rather than assuming the dump
+        works. An untested backup is a belief, not a backup.
+      - [ ] **Send the judge credentials to Prof. Yoest and Matthew.** The seed is built and
+        verified on production; delivery isn't done. One-time secret link, never plain email
+        (the Week 10-11 item already says this). Confirm the seeded data contains both a rejected
+        and a corroborated correction, so judges can see the overrule loop without having to
+        create one themselves — that's the thing he said they'd need the account for.
+      - [ ] **Reply with screenshots** of "No listed allergens found" and the 911 referral once
+        both are live on production. He named those as the two safety items judges look for, and
+        asked for a screenshot of each.
 - [x] **Prof. Yoest's two required changes — binding, promised in the README.** All built
       2026-10-01. `docs/approvals/2026-10-01-yoest-mvp-statement.md` approved the MVP statement
       *with two changes*, and that statement is already in the README promising them. He said the
