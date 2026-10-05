@@ -36,12 +36,45 @@ export function onlyUncheckedGaps(matched: Pick<MatchedAllergen, "classification
  *  with the limit, as that sentence did — a parent skimming must hit "Not confirmed" first, and
  *  never the word "safe", even negated (Prof. Yoest's Oct 1 directive). The
  *  "check the physical label" advice is left to the disclaimer that follows on every card. */
-export function uncheckedNote(input: { names: string[]; profileLabel: string | null; leadsCard: boolean }): string {
+export function uncheckedNote(input: {
+  names: string[];
+  profileLabel: string | null;
+  leadsCard: boolean;
+  basis?: UncheckedBasis;
+}): string {
   const n = input.names.length;
   const whose = input.profileLabel ? `${input.profileLabel}'s` : "your";
   // "1 of your allergens" — the plural is right at every count ("one of several").
-  const line = `couldn't check ${n} of ${whose} allergens against this photo: ${input.names.join(", ")}.`;
+  const line = `couldn't check ${n} of ${whose} allergens ${uncheckedWhy(n, input.basis ?? "photo")}: ${input.names.join(", ")}.`;
   return input.leadsCard ? `Not confirmed — we ${line}` : `We ${line}`;
+}
+
+/** "photo": a photographed label that didn't show the allergen. "no_product_data": nothing to check
+ *  it against at all — a barcode with no record, escalated by a shopper report (2026-10-05). */
+export type UncheckedBasis = "photo" | "no_product_data";
+
+/** "no_product_data" only when every unchecked allergen carries it; otherwise the photo wording,
+ *  which claims less about the product record. */
+export function uncheckedBasis(unchecked: Pick<MatchedAllergen, "uncheckedBecause">[]): UncheckedBasis {
+  return unchecked.length > 0 && unchecked.every((m) => m.uncheckedBecause === "no_product_data") ? "no_product_data" : "photo";
+}
+
+// Says why nothing was found, never that nothing is there — a missing record must not read as a
+// clean one.
+function uncheckedWhy(n: number, basis: UncheckedBasis): string {
+  return basis === "no_product_data"
+    ? `— there's no product data on file to check ${n === 1 ? "it" : "them"} against`
+    : "against this photo";
+}
+
+/** Scan history's version: no profile label on that page, and it carries its own "check the
+ *  package" line, since history has no per-card disclaimer to defer to. */
+export function historyUncheckedNote(names: string[], basis: UncheckedBasis): string {
+  const n = names.length;
+  const allergens = `${n} allergen${n === 1 ? "" : "s"}`;
+  return basis === "no_product_data"
+    ? `Couldn't check ${allergens} ${uncheckedWhy(n, basis)}: ${names.join(", ")}. Always check the package.`
+    : `Couldn't check ${allergens} against this photo: ${names.join(", ")}. A photo isn't checked as thoroughly as a barcode — always check the package.`;
 }
 
 /** What an offered (not required) label photo is for, said before the button. Missing or thin data

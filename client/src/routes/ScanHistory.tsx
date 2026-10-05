@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 
 import { getScanHistory, type MatchedAllergen, type ScanHistoryEntry } from "../lib/api";
 import { yourReportLine } from "../lib/correctionCopy";
+import { historyUncheckedNote, uncheckedBasis } from "../lib/evidenceCopy";
 import { DISCLAIMER, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
 
 // "unresolved" only appears on a scan that ran the AI reasoning step (docs/verdict-engine.md Path
@@ -92,13 +93,8 @@ export function ScanHistory() {
                   // only per-scan product info), unlike the live card's "Timmy's allergens" phrasing.
                   const unchecked = shown.matched_allergens.filter((m) => m.classification === "unchecked");
                   if (unchecked.length === 0) return null;
-                  const names = unchecked.map((m) => m.allergenName.toLowerCase()).join(", ");
-                  return (
-                    <p role="note">
-                      Couldn't check {unchecked.length} allergen{unchecked.length === 1 ? "" : "s"} against this
-                      photo: {names}. A photo isn't checked as thoroughly as a barcode — always check the package.
-                    </p>
-                  );
+                  const names = unchecked.map((m) => m.allergenName.toLowerCase());
+                  return <p role="note">{historyUncheckedNote(names, uncheckedBasis(unchecked))}</p>;
                 })()}
                 {!scan.effective && scan.corrections.length > 0 && (
                   // Only reachable when every report here is a rejected removal — those stop

@@ -250,6 +250,10 @@ export type MatchedAllergen = {
   // us" is a different claim from "the label says", and the card must say which one it is.
   communityReported?: boolean;
   communityReporterCount?: number;
+  // Set on an "unchecked" allergen only when there was no product data to check it against — a
+  // community-escalated card on a barcode with no record. Mirrors applyCommunityCorrections.ts.
+  // Absent means the usual "unchecked": a photo that didn't show it.
+  uncheckedBecause?: "no_product_data";
   // Combined scans only (docs/verdict-engine.md Path D). Mirrors
   // server/src/verdict/reconcileEvidence.ts's ReconciledAllergenDetail exactly.
   //

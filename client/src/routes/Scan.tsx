@@ -33,7 +33,7 @@ import {
   reportOutcomeMessage,
   yourReportLine,
 } from "../lib/correctionCopy";
-import { onlyUncheckedGaps, photoOfferCopy, provenanceLine, uncheckedNote } from "../lib/evidenceCopy";
+import { onlyUncheckedGaps, photoOfferCopy, provenanceLine, uncheckedBasis, uncheckedNote } from "../lib/evidenceCopy";
 import { DISCLAIMER, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
 
 const CORRECTION_TYPE_LABEL: Record<CorrectionType, string> = {
@@ -772,6 +772,7 @@ export function Scan() {
               names: unchecked.map((m) => m.allergenName.toLowerCase()),
               profileLabel: profiles.find((p) => p.id === profileId)?.label ?? null,
               leadsCard: onlyUncheckedGaps(shown.matched_allergens),
+              basis: uncheckedBasis(unchecked),
             });
             return <p role="note">{note}</p>;
           })()}
