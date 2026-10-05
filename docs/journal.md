@@ -12,14 +12,14 @@ of a session, not the beginning.
 
 ---
 
-## Status as of 2026-10-01
+## Status as of 2026-10-05
 
 Well ahead of `BACKLOG.md`, which puts this at Weeks 2-3: everything through Week 8 is built and
 deployed, plus Path C (reading a photographed ingredients label), Path D (the adaptive flow), the
-first real styling the project has ever had, and a reworked correction flow. Seven weeks to judging.
-The thin areas are the rest of the UI pass and Prof. Yoest's three required changes.
+first real styling the project has ever had, a reworked correction flow, Prof. Yoest's three required
+changes, and a seeded judge account. Seven weeks to judging. The thin area is the rest of the UI pass.
 
-**Live now:** release `20261001132947`, migrations through 0035, `LABEL_SCAN=on`,
+**Live now:** release of 2026-10-05 (the community-escalation fix below), migrations through 0035, `LABEL_SCAN=on`,
 `COMMUNITY_CORRECTIONS=on`. nginx `client_max_body_size 9m`, set by hand on the box and mirrored in
 `scripts/nginx-circlebite.conf`.
 
@@ -38,17 +38,39 @@ estimated rather than computed), safe-area insets, dark mode. The verdict card h
 one block per allergen, four facts on separate lines, and the contains-vs-may-contain distinction
 carried in icon, rule and weight as well as colour.
 
-**Prof. Yoest's two required changes are promised and not built.** His Oct 1 approval
-(`docs/approvals/2026-10-01-yoest-mvp-statement.md`) is already quoted in the README. None of it is
-enforced in code: downgrades are not owner-only, the verdict still reads "Safe", and there is no 911
-referral anywhere in the client. These are binding, he said judges will look for them, and they are
-the top of Week 9 in `BACKLOG.md`.
+**Prof. Yoest's three required changes are built, deployed, and verified on production.** His Oct 1
+approval (`docs/approvals/2026-10-01-yoest-mvp-statement.md`), quoted in the README, is now enforced in
+code: downgrades belong to the profile's owner or a co-manager — a follower gets 403 and is only ever
+offered "has an allergen"; the clean verdict reads "No listed allergens found" and no user-facing text
+says "safe"; and "If anyone has an allergic reaction, call 911." sits with the disclaimer on every
+verdict card and at the top of scan history.
 
-**Also still open:** the rest of the Week 9 UI pass (`docs/ui-pass-prompts.md`, prompts 3-5 — the
-scan flow with its targeting box and barcode-failure fallback, the remaining screens, accessibility);
-the judge-account seed script, open since Week 1; a deliberate judging-week value for
-`AI_DAILY_SPEND_CAP_CENTS` now that one scan can make three Anthropic calls; and a pending kernel
-restart on the box, to be scheduled deliberately rather than discovered during judging (R10).
+**The judge account is seeded and tested on production, 2026-10-01.** `server/src/db/seedJudge.ts`,
+one command, run twice on the box (the second time as the recovery reseed). Checked from a fresh
+private browser: every circle role, all four verdicts in history, the follower's single report option,
+a live community report on a seed barcode. Rerun it with the same `JUDGE_PASSWORD` just before judging
+week (`docs/server-setup.md` §16).
+
+**A community warning used to be hidden by the adaptive flow — fixed 2026-10-05.** See that day's
+entry. Worth carrying in the status because it is the clearest example of this project's recurring
+failure mode: two correct features, wrong together, with every test passing.
+
+**Prof. Yoest's Oct 1-2 conditions are partly open.** `docs/approvals/2026-10-02-yoest-overrule-conditions.md`.
+Done: the cross-family sentence in the README (only escalations cross family lines, and by
+construction). Open: a readable downgrade history, owner notification when a co-manager downgrades
+(no notification mechanism exists at all — see `BACKLOG.md` for why that is a subsystem, not a
+feature), automated Postgres backups with a tested restore, and delivering the judge credentials.
+
+**Next, in order:**
+1. The Week 9 UI pass, done on a real phone — the scan flow first: the scanner's targeting box and
+   the fallback when a barcode won't read (`docs/ui-pass-prompts.md`, prompt 3). Then prompts 4-5,
+   the remaining screens and accessibility.
+2. Browser-verify the AI paths with a real API key — Path B reasoning, Path C label reading, Path D's
+   combine — end to end on the live card, not just in tests.
+
+**Also still open:** a deliberate judging-week value for `AI_DAILY_SPEND_CAP_CENTS` now that one scan
+can make three Anthropic calls; and a pending kernel restart on the box, to be scheduled deliberately
+rather than discovered during judging (R10).
 
 ---
 
@@ -1666,3 +1688,74 @@ was right to — the value now gets built at run time instead of being written i
 **Next:** rerun the seed just before judging week, so the dates are fresh and today's test scans go.
 Then the rest of the UI pass — starting with scan history, where every community-escalated entry
 repeats its whole explanation block.
+
+---
+
+## 2026-10-05 — A community warning hidden behind a photo form, found by typing a barcode
+
+**Did:** Logged into the judge account as a judge would and scanned the seven seeded barcodes in
+order. Six behaved. The seventh — `2990000000076`, the one the seed exists to demonstrate — opened
+the label-capture form and showed no verdict card at all, when it should have read **Contains**
+because Priya's corroborated report escalates it.
+
+Eight commits, deployed and verified on production.
+
+**The bug.** `routes/scans.ts` passed the *engine's* verdict to `decideEvidenceNeeded`, computed
+before community corrections were applied a few lines above. For a barcode Open Food Facts has
+never heard of, `hasUsableData` is false, so the decision came back `photo: "required"` and the
+client skipped the card entirely. The escalated verdict was computed, serialised into the response
+as `effective`, sent to the browser, and never rendered.
+
+Not a demo problem. A product no database knows, that other parents have reported contains peanut,
+showed a parent an upload form instead of the warning. The community layer exists precisely for
+products no database knows about, and the adaptive flow suppressed it in exactly that case. Path D
+was built Sept 27; the community escalation Sept 10; nothing exercised both at once until a barcode
+was typed into the live app seven weeks later.
+
+**It was wider than first thought.** A thin-data product whose *own* ingredient text produced a
+contains — no community report involved — was hidden the same way. So was a caution. The rule that
+fixes all of it keys on the verdict rather than on where the verdict came from: **a decided verdict
+is never hidden.** Only `unable_to_confirm` and `safe` justify skipping straight to capture, because
+only those have nothing to say yet.
+
+Two lines that look alike now ask different questions, and both carry a comment saying not to
+harmonise them: "is this verdict decided?" (contains or caution) and "is the answer already at the
+ceiling?" (contains alone — a caution still has room to escalate, so the second opinion is still
+worth offering).
+
+**Then the card said less than it knew.** With the warning rendering, Maya's *other* allergen —
+sesame, checked against nothing at all, because there is no product record — wasn't named. Every
+other card in the app enumerates the profile's allergens as rows, so a card listing one of two
+implies the other was fine. Fixed in the community layer only: unmatched profile allergens come back
+`unchecked` with a reason, the stored engine output is untouched, and the accuracy report and kill
+switch are unaffected. Live and history now load allergens through one function in one order, so the
+same scan can't render two ways.
+
+**Learned — the thing worth saying out loud in November.** Four bugs this week, and not one had a
+failing test. A 1 MB proxy limit and an 8 MB server limit are each individually correct; only the
+pair is wrong, and no unit test sees a pair. The permanent lockout needed a rejected row to exist
+first. The pseudonym collision needed two reports from one reporter, impossible until this week's
+work made it possible. And today's test for the caution case actually *asserted the bug* — it said
+thin-data-plus-caution should stay `required`, and passed.
+
+The tests were right about what they tested. 339 of them were green over a screen that showed a
+parent an upload form instead of a peanut warning. What found every one of these was using the app
+the way the person it's for would: a phone in a kitchen, a barcode typed in cold, no idea what was
+supposed to happen. That is the argument for the timed dry run in November being driven by someone
+who is not me.
+
+**Decided:** a rejection unlocks re-filing, but a re-file is evidence for review, not a vote.
+Rejected reports no longer count toward corroboration (they did, silently, until Oct 1). Correction
+photos cap at 2048px rather than Path C's 1568 — different reader, different floor: 1568 is sized
+for the vision model, a correction photo is read by a human admin deciding whether to warn other
+families.
+
+**Hit a wall on:** nothing technical. Lost time running commands on the wrong machine again — git on
+the box, nginx config on the Mac. The rule, now in `docs/server-setup.md`: git and Claude Code are
+always the Mac; psql, nginx, journalctl and anything under /etc or /var are always the box.
+
+**Next:** reseed the judge account to clear today's test scans before the credentials go out, then
+send them to Prof. Yoest and Matthew by one-time link. Then the Week 9 UI pass, starting with the
+scan flow. Scan history is the screen most in need of it — every community-escalated entry repeats
+its whole explanation block, and the no-data card now says "there's no product data" four separate
+times.

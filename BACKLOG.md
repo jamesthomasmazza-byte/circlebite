@@ -298,6 +298,23 @@ it is the least-worked area. Treat this whole section as the priority block it i
         "The product data alone says Safe." separately from `Scan.tsx`'s and `ScanHistory.tsx`'s
         `safe: "Safe"` entries. The rename below is a sweep for every place the verdict word is
         produced, not a two-line change, and a grep for the literal won't find all of it.
+- [ ] **Scan history repeats itself, and the no-data card says one thing four times.** Both found
+      live 2026-10-05, both copy rather than logic, both on screens a judge will open.
+      - Every community-escalated entry in scan history repeats its whole explanation block — the
+        unchecked note, the "originally Unable to confirm — changed because of" block, the reporter
+        line. Three entries already fill a screen; twenty would be unreadable. History is a list, so
+        each row should carry the verdict and what changed it, with the reasoning behind a
+        disclosure.
+      - The no-data verdict card now states "there's no product data" four times: the explanation
+        line, the unchecked note, the photo offer, and the "product data alone says" block. Each is
+        individually justified and together it's the three-second-read problem already fixed twice
+        (2026-09-28, 2026-10-01). Say it once, in the place that earns it.
+- [ ] **An allergen added to a profile after a scan doesn't appear on that scan's history card.**
+      The 2026-10-05 fix covers scans that checked nothing; this is the case where the scan *did*
+      have product data and the profile changed afterwards. Same "rows are the contract" problem,
+      history only. The honest fix is probably not to grow the rows retroactively but to say what a
+      history card is — "this scan checked Maya's allergens as they stood on 3 October" — since the
+      card is a record of what was checked then, not a decision anyone is making now.
 - [ ] **Prof. Yoest's Oct 1-2 conditions on the overrule widening.**
       `docs/approvals/2026-10-02-yoest-overrule-conditions.md`. He approved owner-or-co-manager
       downgrades — "your reading is better than my wording" — and attached two conditions, a judge
