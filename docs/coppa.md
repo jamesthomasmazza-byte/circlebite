@@ -108,6 +108,13 @@ Two reasons to do this now: Apple requires in-app account deletion (App Review G
 - **Exception, decided during implementation:** a profile with a co-manager transfers to the longest-standing one instead of being destroyed — a second adult's ongoing access to a profile they help manage was never actually acceptable collateral damage from someone else deleting their own account. Only a solo-owned profile (no co-manager) is destroyed as described above.
 - Per-profile delete, already likely present — verify it cascades to scan history tied to that profile.
 - Deletion should be real deletion, not a soft-delete flag, for the health data. If you need scan volume for analytics, retain an anonymized counter row with no profile linkage.
+- **Backups (added Oct 2026, `docs/server-setup.md` §17).** Deletion is real in the live database
+  immediately, but a deleted account, profile or scan still exists in the nightly backups taken before
+  it was deleted — in the 7 local sets on the server, and in the private S3 copies — until those expire
+  on their own. Upper bound: **42 days** (35 days for an S3 copy, plus up to 7 for an overwritten
+  version). Backups are private, encrypted at rest in S3, and never read by the app; nothing deleted is
+  ever restored into the live app except by a full disaster restore of a lost server. The privacy
+  policy's deletion language should state this window rather than leave it to be discovered.
 
 ### 2.7 Retention
 
