@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Test shim for pg_restore (scripts/tests/backup-restore.sh). With PG_RESTORE_SHIM_SLEEP set, waits
+# that many seconds before restoring, so a test can kill restore-test.sh mid-restore. Otherwise it
+# is the real pg_restore.
+# Refuses to run outside the harness: if this directory ever lands on PATH by accident (a deploy
+# script, a cron line, someone's shell), it must fail loudly rather than quietly stand in for pg_restore.
+if [ "${CIRCLEBITE_TEST_SHIMS:-}" != 1 ]; then
+  echo "$0: TEST SHIM for 'pg_restore' from scripts/tests/shims — not the real command. It is on PATH by" >&2
+  echo "$0: mistake; only scripts/tests/backup-restore.sh may use it (CIRCLEBITE_TEST_SHIMS=1)." >&2
+  exit 127
+fi
+[ -n "${PG_RESTORE_SHIM_SLEEP:-}" ] && sleep "$PG_RESTORE_SHIM_SLEEP"
+PATH="${SHIM_REAL_PATH:?}" exec pg_restore "$@"

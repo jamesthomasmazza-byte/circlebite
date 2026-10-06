@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Test shim for the AWS CLI (scripts/tests/backup-restore.sh). Handles only the one call backup.sh
+# makes — `aws s3 cp [flags] <file> s3://<bucket>/<key>` — by copying into $SHIM_S3_DIR.
+# AWS_SHIM_MODE=fail simulates an S3 failure (e.g. a detached IAM role).
+# Refuses to run outside the harness: if this directory ever lands on PATH by accident (a deploy
+# script, a cron line, someone's shell), it must fail loudly rather than quietly stand in for aws.
+if [ "${CIRCLEBITE_TEST_SHIMS:-}" != 1 ]; then
+  echo "$0: TEST SHIM for 'aws' from scripts/tests/shims — not the real command. It is on PATH by" >&2
+  echo "$0: mistake; only scripts/tests/backup-restore.sh may use it (CIRCLEBITE_TEST_SHIMS=1)." >&2
+  exit 127
+fi
+set -euo pipefail
+if [ "${AWS_SHIM_MODE:-ok}" = fail ]; then
+  echo "aws shim: simulated failure — An error occurred (AccessDenied) when calling PutObject" >&2
+  exit 1
+fi
+src="${*: -2:1}"
+key="${*: -1}"
+key="${key#s3://}"
+mkdir -p "${SHIM_S3_DIR:?}/$(dirname "$key")"
+cp -- "$src" "${SHIM_S3_DIR:?}/$key"

@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Test shim for date (scripts/tests/backup-restore.sh). With DATE_SHIM set, answers restore-test.sh's
+# scratch-name timestamp call with that value, so a test can force a name collision. Every other
+# call is the real date.
+# Refuses to run outside the harness: if this directory ever lands on PATH by accident (a deploy
+# script, a cron line, someone's shell), it must fail loudly rather than quietly stand in for date.
+if [ "${CIRCLEBITE_TEST_SHIMS:-}" != 1 ]; then
+  echo "$0: TEST SHIM for 'date' from scripts/tests/shims — not the real command. It is on PATH by" >&2
+  echo "$0: mistake; only scripts/tests/backup-restore.sh may use it (CIRCLEBITE_TEST_SHIMS=1)." >&2
+  exit 127
+fi
+if [ -n "${DATE_SHIM:-}" ] && [ "$*" = "-u +%Y%m%d%H%M%S" ]; then
+  echo "$DATE_SHIM"
+  exit 0
+fi
+PATH="${SHIM_REAL_PATH:?}" exec date "$@"

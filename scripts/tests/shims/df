@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Test shim for df (scripts/tests/backup-restore.sh). With DF_SHIM_AVAIL set, prints exactly that as
+# the available-bytes value. Two uses: a non-numeric value proves backup.sh refuses output it can't
+# parse, and a small numeric value forces the low-disk refusal for the backup-status.sh tests.
+# Unset, it is the real df. The parse itself is never proven through this shim — the harness trips
+# the disk guard once against genuine GNU df output, with the reserve raised in a scratch copy.
+# Refuses to run outside the harness: if this directory ever lands on PATH by accident (a deploy
+# script, a cron line, someone's shell), it must fail loudly rather than quietly stand in for df.
+if [ "${CIRCLEBITE_TEST_SHIMS:-}" != 1 ]; then
+  echo "$0: TEST SHIM for 'df' from scripts/tests/shims — not the real command. It is on PATH by" >&2
+  echo "$0: mistake; only scripts/tests/backup-restore.sh may use it (CIRCLEBITE_TEST_SHIMS=1)." >&2
+  exit 127
+fi
+if [ -n "${DF_SHIM_AVAIL:-}" ]; then
+  printf '    Avail\n%s\n' "$DF_SHIM_AVAIL"
+  exit 0
+fi
+PATH="${SHIM_REAL_PATH:?}" exec df "$@"
