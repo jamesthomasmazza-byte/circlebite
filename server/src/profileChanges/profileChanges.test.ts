@@ -323,6 +323,27 @@ test("editing a profile's note, label or trace default is recorded with the full
   assert.deepEqual(edits[1]!.after, { label: "Test Child", notes: null, default_treat_traces_as_unsafe: false });
 });
 
+test("saving an empty note over no note (either way) writes nothing; a real note change still records verbatim", async () => {
+  const owner = await makeUser("Owner");
+  const profile = await makeProfile(owner);
+  const allergenId = await addAllergen(owner, profile, "Peanut", null);
+
+  // The profile page's Save on an untouched form: notes NULL -> "", and back.
+  await asActor(owner, "UPDATE allergen_profiles SET notes = '' WHERE id = $1", [profile]);
+  await asActor(owner, "UPDATE allergen_profiles SET notes = NULL WHERE id = $1", [profile]);
+  await asActor(owner, "UPDATE allergens SET notes = '' WHERE id = $1", [allergenId]);
+  await asActor(owner, "UPDATE allergens SET notes = NULL WHERE id = $1", [allergenId]);
+  assert.deepEqual((await changesFor(profile)).map((c) => c.kind), ["allergen_added"]);
+
+  // A real change from "" is recorded with the stored "" as its before, not rewritten to NULL.
+  await asActor(owner, "UPDATE allergen_profiles SET notes = '' WHERE id = $1", [profile]);
+  await asActor(owner, "UPDATE allergen_profiles SET notes = 'carries EpiPen' WHERE id = $1", [profile]);
+  const edit = (await changesFor(profile)).at(-1)!;
+  assert.equal(edit.kind, "profile_edited");
+  assert.equal(edit.before!.notes, "");
+  assert.equal(edit.after!.notes, "carries EpiPen");
+});
+
 test("an ownership transfer or a bare updated_at bump on a profile writes nothing", async () => {
   const owner = await makeUser("Owner");
   const coManager = await makeUser("Co Sam");
