@@ -26,6 +26,29 @@ Two external dependencies, both read-only from the app's side: Open Food Facts f
 and the Anthropic API for the reasoning path. Everything else — Postgres, the label photos, the
 session store — runs on the project's own instance, per `CONTEST_RULES.md` R6.
 
+## Logic in the database: the profile change history
+
+Everywhere else, behaviour lives in TypeScript, and migrations hold schema only. The one exception
+(Oct 6, 2026) is the profile change history (migrations 0036–0039). It's written by plpgsql
+triggers on `allergens`, `allergen_profiles` and `product_corrections`, and an append-only guard
+protects it. Not in the diagram above.
+
+Why the history doesn't live in the routes: it has to be impossible for it to disagree with what
+happened. A trigger writes each entry from the actual row, in the same transaction as the change,
+for every write path, including ones that don't exist yet and a psql session on the box. An app-level
+helper is only as complete as the list of callers someone remembers to update.
+
+What it costs, so nobody rediscovers it the hard way:
+
+- **A trigger error blocks the parent's edit.** The triggers are written so they can't fail
+  (see 0036's header). If one fails anyway, `server-setup.md` §18.3 disables them in one command.
+- **The app passes its acting user to the database** through `server/src/lib/withActor.ts`
+  (a transaction-local `circlebite.actor_id`). A write made outside `withActor` is still
+  recorded, with no actor ("made outside the app").
+- **Logic hidden from a TypeScript reader.** Grep the migrations as well as `src/` when a row
+  appears that no route wrote. A new plpgsql trigger needs the same case: a guarantee the app
+  layer can't give.
+
 ## Caveats
 
 - **A snapshot, not generated output.** Dated 2026-09-20, at the point the review queue shipped.

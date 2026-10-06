@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { randomBytes, randomUUID } from "node:crypto";
 import { after, test } from "node:test";
 
+import { deleteAccount } from "../account/deleteAccount.js";
 import { pool } from "../db/pool.js";
 
 // Real Postgres, same discipline as deleteAccount.test.ts. These exercise the database triggers
@@ -227,6 +228,62 @@ test("a change made with no actor (psql, the deploy window) is recorded with act
   assert.equal(removed.actor_id, null);
   assert.equal(removed.actor_name, null);
   assert.equal(removed.actor_role, null);
+});
+
+// ---- Append-only (migration 0039) ----
+
+test("an entry can't be updated, deleted or truncated while its profile exists", async () => {
+  const owner = await makeUser("Owner");
+  const profile = await makeProfile(owner);
+  await addAllergen(owner, profile, "Peanut");
+
+  const refused = (err: { code?: string; message?: string }) => {
+    assert.equal(err.code, "42501", `expected the append-only guard, got ${err.code}: ${err.message}`);
+    assert.match(err.message ?? "", /append-only/);
+    return true;
+  };
+  await assert.rejects(
+    pool.query("UPDATE profile_changes SET actor_name = 'Someone else' WHERE allergen_profile_id = $1", [profile]),
+    refused,
+  );
+  await assert.rejects(pool.query("DELETE FROM profile_changes WHERE allergen_profile_id = $1", [profile]), refused);
+  // Inside a transaction that's rolled back, so a guard failure here can't wipe the dev database.
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await assert.rejects(client.query("TRUNCATE profile_changes"), refused);
+  } finally {
+    await client.query("ROLLBACK");
+    client.release();
+  }
+
+  const [entry] = await changesFor(profile);
+  assert.equal(entry!.actor_name, "Owner");
+});
+
+test("deleting the owner's account cascades the history away with the profile", async () => {
+  const owner = await makeUser("Owner");
+  const profile = await makeProfile(owner);
+  await addAllergen(owner, profile, "Peanut");
+
+  await pool.query("DELETE FROM users WHERE id = $1", [owner]);
+
+  assert.equal((await changesFor(profile)).length, 0);
+});
+
+test("a co-manager deleting their account leaves their entries, name included, on the owner's profile", async () => {
+  const owner = await makeUser("Owner");
+  const coManager = await makeUser("Co Sam");
+  const profile = await makeProfile(owner);
+  await pool.query("INSERT INTO profile_managers (allergen_profile_id, user_id) VALUES ($1, $2)", [profile, coManager]);
+  await addAllergen(coManager, profile, "Peanut");
+
+  await deleteAccount(coManager);
+
+  const [entry] = await changesFor(profile);
+  assert.equal(entry!.actor_id, coManager);
+  assert.equal(entry!.actor_name, "Co Sam");
+  assert.equal(entry!.actor_role, "co_manager");
 });
 
 test("deleting a whole profile cascades through its allergens and history without error", async () => {
