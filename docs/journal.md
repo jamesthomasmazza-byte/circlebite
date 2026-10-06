@@ -1759,3 +1759,73 @@ send them to Prof. Yoest and Matthew by one-time link. Then the Week 9 UI pass, 
 scan flow. Scan history is the screen most in need of it — every community-escalated entry repeats
 its whole explanation block, and the no-data card now says "there's no product data" four separate
 times.
+
+## 2026-10-05 — Backups that can tell you they've stopped
+
+**Did:** Built and switched on automated backups, item 4 of Prof. Yoest's Oct 1 conditions: "with
+Postgres on the same box as the app, set up automated backups now, before real circles depend on
+the data." Until tonight, losing the instance lost everything. Every night at 03:30 Eastern the box
+writes a `pg_dump` and a tarball of the correction photos to `~/circlebite/backups` and copies both
+to a private S3 bucket. Every Sunday a restore test loads the newest set into a scratch database,
+checks what came back, and drops it. Nine commits, then the full `docs/server-setup.md` §17 setup
+on the box by hand: first backup written and copied, first restore test PASSED (35 migrations, 3
+photos referenced, all 3 present), status OK on all three lines, S3 copy verified byte-identical
+from the Mac.
+
+The photos are in the backup because pg_dump doesn't cover them, and they are the "what evidence
+they gave" in his downgrade-logging condition. A restored database whose correction rows point at
+missing photos would be a backup of the log with the evidence torn out.
+
+**Decided: PutObject-only isn't protection on its own.** The plan was an instance role that can
+write backups and nothing else, so a compromised box can't erase them. But `PutObject` on an
+existing key *overwrites* it, and without versioning an empty file written over a backup erases it
+as completely as a delete would. So the bucket is versioned too: an overwrite becomes a new version,
+and the old one survives 7 days. Neither half closes the hole alone. The cost is that the box can't
+read its own off-box copies, so checking them is a manual step from the Mac.
+
+**Decided: failure has to be visible, because it can't be announced.** This app has no notification
+mechanism at all, so the realistic failure isn't a backup that errors loudly. It's one that quietly
+stops. Every outcome writes a stamp, and one command reads them. Local and off-box are separate
+stamps, because an S3 outage means "you have a backup, but no off-box copy", not "you have no
+backup". And "never proven restorable" is reported differently from "not proven this week".
+
+**Found by testing — two bugs, both the same shape as the rest of the week.**
+
+The disk guard refuses to back up when the disk is too full, because a full disk takes Postgres
+down with it. It compared `[ "$available" -lt "$needed" ]`. If `df` ever came back as something that
+didn't parse, `available` would be empty, `[ "" -lt N ]` exits 2 — an error, not "false" — and
+`if` treats any nonzero status as false. So the guard would have read "I couldn't measure the disk"
+as "plenty of room" and gone ahead. It never fired; I found it while proving the parse works against
+real GNU `df` output rather than a stand-in. The fix is to check that every measured value is a
+number before comparing, and refuse otherwise.
+
+Set names have one-second resolution. Two backups in the same second, say a manual run right after
+the timer's, would write the same file names, and the second run would overwrite the first file by
+file. The result is a set built from two runs, with the second run's checksums covering its own
+files, so it would still pass its own integrity check. The test harness hit this by running backups
+back to back. Now a run refuses to overwrite a set that already exists.
+
+**Learned.** Both are this week again. The disk guard couldn't tell "unknown" from "no", like the
+sesame row that read as checked when nothing had been checked. The set collision is two things that
+look like one, like the 1 MB and 8 MB upload limits that were each right and only wrong together.
+Neither shows up on the happy path. Both showed up because the testing asked "what does this do when
+the input isn't what I expect?", not "does it work?". That harness is now committed
+(`scripts/tests/backup-restore.sh`, 33 checks). It's manual, not CI, because there's no CI here and
+it needs a real Postgres. It must pass before either script changes, and deliberately breaking two
+of the scripts' checks made exactly those two tests fail.
+
+**Hit a wall on:** the first off-box check. The S3 console won't download more than one object at
+a time, and the browser strips `.gz` from the tarball, so `shasum -c` reported it missing and for a
+minute it looked like a corrupt upload. The bytes were fine; renaming it back passed. Now a
+warning in §17.10.
+
+**Found along the way:** `UPLOAD_DIR` holds 8 photos, but only 3 are referenced. The other 5 are not
+from rejections: a rejected report keeps its row and its photo. They're left over from two windows
+that have already closed. Before Sept 16, deleting a scan cascaded to its corrections. Before Oct 1,
+a failed report kept its photo. That's a fixed ~17.5 MB riding in every tarball. It's in BACKLOG
+with a read-only command to list them.
+
+**Next:** list and clear the orphaned photos. Check the off-box copy once more before judging week.
+Send a fresh judge-credentials link on Monday of judging week (Nov 23), as promised in tonight's
+email. The first link expires after two months or four views, so around Dec 6 at the latest. The
+account doesn't expire.
