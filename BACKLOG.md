@@ -380,14 +380,29 @@ it is the least-worked area. Treat this whole section as the priority block it i
         evidence. Delete by hand only after the listing, and note that copies stay in backups for up
         to 42 days (`docs/coppa.md` §2.6). Not urgent; worth doing before judging so the tarball is
         what it claims to be.
-      - [ ] **Send the judge credentials to Prof. Yoest and Matthew.** The seed is built and
-        verified on production; delivery isn't done. One-time secret link, never plain email
-        (the Week 10-11 item already says this). Confirm the seeded data contains both a rejected
-        and a corroborated correction, so judges can see the overrule loop without having to
-        create one themselves — that's the thing he said they'd need the account for.
-      - [ ] **Reply with screenshots** of "No listed allergens found" and the 911 referral once
+      - [x] **Send the judge credentials to Prof. Yoest and Matthew.** The seed is built and
+        verified on production, and delivery is done (2026-10-05, below). One-time secret link,
+        never plain email (the Week 10-11 item already says this). Confirm the seeded data
+        contains both a rejected and a corroborated correction, so judges can see the overrule
+        loop without having to create one themselves — that's the thing he said they'd need the
+        account for.
+        **Sent 2026-10-05**, to both, as a pwpush link set to expire after **two months or four
+        views, whichever comes first** — around Dec 6 at the latest, sooner if the views are used.
+        The account itself doesn't expire.
+      - [ ] **Send a fresh judge-credentials link on Monday of judging week (Nov 23).** Promised in
+        the Oct 5 credentials email — this line is the only record of it outside that sent email.
+        The first link can run out of views before it runs out of time, and judging is
+        when someone is most likely to open it again. Same terms: pwpush, never plain email. If the
+        account has been reseeded with a new `JUDGE_PASSWORD` since, the new link carries that one.
+        That email should also carry the two asks the Oct 5 email didn't: the invitation to
+        register their own account, and the request to report only against the seeded
+        `2990000000…` barcodes. See the "Judge credentials sent by one-time secret link" item in
+        the judging-week checklist, which stays open until this email goes out.
+      - [x] **Reply with screenshots** of "No listed allergens found" and the 911 referral once
         both are live on production. He named those as the two safety items judges look for, and
-        asked for a screenshot of each.
+        asked for a screenshot of each. **Sent 2026-10-05** to Prof. Yoest, with both screenshots
+        attached, in the same reply that answered his cross-family question and reported status on
+        his two conditions.
 - [x] **Prof. Yoest's two required changes — binding, promised in the README.** All built
       2026-10-01. `docs/approvals/2026-10-01-yoest-mvp-statement.md` approved the MVP statement
       *with two changes*, and that statement is already in the README promising them. He said the
@@ -610,7 +625,10 @@ it is the least-worked area. Treat this whole section as the priority block it i
       behalf. Also ask judges to try reports against the seeded products (barcodes starting
       `2990000000`), not real ones: a report on a real product is a live warning for real families
       until the next reseed rejects it — and if the judge deletes the account first, nothing can
-      find it to reject
+      find it to reject.
+      *Status 2026-10-05:* the link went out (two months / four views), but that email carried
+      neither ask above. Both go in the fresh-link email on Monday Nov 23 — see "Send a fresh
+      judge-credentials link on Monday of judging week" under Prof. Yoest's Oct 1-2 conditions.
 - [ ] `AI_DAILY_SPEND_CAP_CENTS` defaults to 200 ($2.00/day) — sized when a scan meant exactly one
       Anthropic call (Path B's `reasonVerdict`). Path C makes it two (extraction, then reasoning),
       and a failed extraction still spends one call before it can even fail. The adaptive flow
