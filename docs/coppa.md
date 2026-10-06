@@ -106,6 +106,14 @@ Two reasons to do this now: Apple requires in-app account deletion (App Review G
 
 - Settings → "Delete my account" — deletes the account, all profiles it manages, scan history, and follow relationships. Confirmed with a typed confirmation, not just a button.
 - **Exception, decided during implementation:** a profile with a co-manager transfers to the longest-standing one instead of being destroyed — a second adult's ongoing access to a profile they help manage was never actually acceptable collateral damage from someone else deleting their own account. Only a solo-owned profile (no co-manager) is destroyed as described above.
+- **Exception, decided Oct 6, 2026 (JT): a deleted user's display name survives in the change
+  history of profiles they changed.** `profile_changes.actor_name` (migration 0036) is the owner's
+  record of who added, edited or removed an allergen on their child's profile, or disputed a warning
+  for it, and it is kept when that person later deletes their own account; `actor_id` is left
+  pointing at nothing. Accountability to the owner outweighs it here, the same reasoning that keeps
+  an admin's identity on a rejected report, and a display name is not health data. Nothing else of
+  the deleted user's survives in that table, and the history itself is still deleted with the
+  profile (it cascades), so this never outlives the child's profile. Never email (R9).
 - Per-profile delete, already likely present — verify it cascades to scan history tied to that profile.
 - Deletion should be real deletion, not a soft-delete flag, for the health data. If you need scan volume for analytics, retain an anonymized counter row with no profile linkage.
 - **Backups (added Oct 2026, `docs/server-setup.md` §17).** Deletion is real in the live database
