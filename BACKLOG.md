@@ -334,11 +334,52 @@ it is the least-worked area. Treat this whole section as the priority block it i
         table, unread indicator, a list the owner can read), and tell him that's the route and why
         rather than letting him assume email. Design against his standard, which is the right one:
         "the owner should never learn about a change to their child's profile by accident."
-      - [ ] **Automated Postgres backups.** His operational note, and he's right that it belongs
+      - [x] **Automated Postgres backups.** His operational note, and he's right that it belongs
         before real circles depend on the data — Postgres is on the same box as the app, so losing
         the box currently loses everything. `pg_dump` on a timer with off-box storage; decide where
         off-box lives without breaking R5/R6, and **test a restore** rather than assuming the dump
         works. An untested backup is a belief, not a backup.
+        **Done 2026-10-05 — closes item 4 of his Oct 1 conditions.** Running on the box: nightly
+        dump + correction-photo tarball at 03:30 ET, copied to a private versioned S3 bucket via a
+        PutObject-only instance role; weekly restore test into a scratch database. First restore
+        PASSED (35 migrations, 3 photos referenced, all 3 present), `backup-status.sh` OK on all
+        three lines, and the S3 copy verified byte-identical from the Mac. Runbook:
+        `docs/server-setup.md` §17.
+      - [ ] **Orphaned correction photos — 5 of the 8 files in `UPLOAD_DIR` are referenced by no
+        row.** `product_corrections` references 3 photos; the directory holds 8. At ~3.5 MB each the
+        5 orphans are ~17.5 MB of the current 28 MB, and they ride in every nightly tarball (7 local
+        sets, up to 42 days of S3 copies). Checked against the code before writing this
+        (2026-10-05), and it is **not** rejections: rejecting a report is an `UPDATE ... SET status
+        = 'rejected'` (`reviewQueue.ts`, and the judge seed's own path) — the row and its
+        `photo_path` stay, so rejected reports are among the 3 referenced. Nothing in the app
+        deletes a correction row today, and since migration 0020 (Sept 16) deleting a scan, profile
+        or account nulls `scan_id`/`reported_by` instead of removing it. The judge seed's one
+        `DELETE` (its own fixed-id report) rewrites the same fixed path, so it leaves nothing
+        behind.
+        The orphans come from two windows that are already closed:
+        - **Sept 10–16:** `scan_id` was `ON DELETE CASCADE` (migration 0015) — deleting a scan,
+          profile or account deleted its correction rows and left their files.
+        - **Sept 10 – Oct 1:** the photo is written before the row, and until `1a6a638` (Oct 1)
+          nothing removed it when recording failed — a duplicate report hit the unique index as a
+          500 and kept its photo. Since then a failed report deletes its own photo.
+
+        Today the only way to create a new orphan is the process dying between the file write and
+        the insert. So this is a fixed ~17.5 MB, not a growth driver: removing it buys headroom
+        once, while §17.9's threshold (~100 MB of photos, ~28 at 3.5 MB) is reached by real
+        reports.
+        First step, read-only on the box — list each orphan with its timestamp, which says which
+        window it came from:
+        ```bash
+        DB="$(grep DATABASE_URL ~/circlebite/.env | cut -d= -f2-)"
+        comm -13 <(psql "$DB" -XAtc "SELECT DISTINCT photo_path FROM product_corrections" | sort) \
+                 <(cd ~/circlebite/uploads && find corrections -type f | sort) \
+          | while read -r f; do stat -c '%y  %s bytes  %n' ~/circlebite/uploads/"$f"; done
+        ```
+        Then decide: these are photos for reports that were never recorded or whose rows were
+        deleted, so no review, overrule log or app path can reach them — deleting them loses no
+        evidence. Delete by hand only after the listing, and note that copies stay in backups for up
+        to 42 days (`docs/coppa.md` §2.6). Not urgent; worth doing before judging so the tarball is
+        what it claims to be.
       - [ ] **Send the judge credentials to Prof. Yoest and Matthew.** The seed is built and
         verified on production; delivery isn't done. One-time secret link, never plain email
         (the Week 10-11 item already says this). Confirm the seeded data contains both a rejected
