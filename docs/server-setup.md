@@ -731,6 +731,14 @@ free tier — local disk isn't the constraint until ~1 GB of photos.
 The box can't read the bucket (§17.2), so this check is yours. Do it once after setup and once before
 judging week. In the S3 console, download the newest `circlebite/<set>/` (all four files), then:
 
+> **Two console quirks, both seen on the first check (2026-10-05):**
+> - **Download is disabled when more than one object is selected.** Select and download the four
+>   files one at a time.
+> - **The browser strips `.gz` from the tarball.** It lands as `circlebite-<stamp>.uploads.tar`, so
+>   `shasum -c` reports the `.tar.gz` as missing and it looks like a corrupt or failed upload. It
+>   isn't: the bytes are unchanged (it is still gzip data). Rename it back before checking:
+>   `mv circlebite-<stamp>.uploads.tar circlebite-<stamp>.uploads.tar.gz`
+
 ```bash
 cd ~/Downloads && shasum -a 256 -c circlebite-<stamp>.sha256     # every file: OK
 ssh -i ~/.ssh/circlebite-prod.pem ubuntu@circlebite.app "cat ~/circlebite/backups/circlebite-<stamp>.sha256"
