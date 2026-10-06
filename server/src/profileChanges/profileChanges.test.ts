@@ -97,7 +97,7 @@ test("profile_changes has exactly one CHECK on kind, and it admits every kind th
   assert.equal(rows[0]!.conname, "profile_changes_kind_check");
   // Every kind a trigger can write. Extend this alongside any migration that adds one — a kind the
   // constraint rejects fails the trigger and rolls back the parent's edit.
-  for (const kind of ["allergen_added", "allergen_edited", "allergen_removed", "downgrade_reported"]) {
+  for (const kind of ["allergen_added", "allergen_edited", "allergen_removed", "downgrade_reported", "profile_edited"]) {
     assert.ok(rows[0]!.def.includes(`'${kind}'`), `constraint must admit ${kind}: ${rows[0]!.def}`);
   }
 });
@@ -238,6 +238,46 @@ test("deleting a whole profile cascades through its allergens and history withou
   await asActor(owner, "DELETE FROM allergen_profiles WHERE id = $1", [profile]);
 
   assert.equal((await changesFor(profile)).length, 0);
+});
+
+// ---- Profile edits (migration 0038) ----
+
+test("editing a profile's note, label or trace default is recorded with the full before and after", async () => {
+  const owner = await makeUser("Owner");
+  const coManager = await makeUser("Co Sam");
+  const profile = await makeProfile(owner);
+  await pool.query("INSERT INTO profile_managers (allergen_profile_id, user_id) VALUES ($1, $2)", [profile, coManager]);
+  await asActor(owner, "UPDATE allergen_profiles SET notes = 'carries EpiPen 💉' WHERE id = $1", [profile]);
+
+  await asActor(coManager, "UPDATE allergen_profiles SET notes = NULL, default_treat_traces_as_unsafe = false WHERE id = $1", [profile]);
+
+  const edits = (await changesFor(profile)).filter((c) => c.kind === "profile_edited");
+  assert.equal(edits.length, 2);
+  assert.equal(edits[1]!.actor_role, "co_manager");
+  assert.deepEqual(edits[1]!.before, { label: "Test Child", notes: "carries EpiPen 💉", default_treat_traces_as_unsafe: true });
+  assert.deepEqual(edits[1]!.after, { label: "Test Child", notes: null, default_treat_traces_as_unsafe: false });
+});
+
+test("an ownership transfer or a bare updated_at bump on a profile writes nothing", async () => {
+  const owner = await makeUser("Owner");
+  const coManager = await makeUser("Co Sam");
+  const profile = await makeProfile(owner);
+
+  await asActor(owner, "UPDATE allergen_profiles SET updated_at = now() WHERE id = $1", [profile]);
+  await pool.query("UPDATE allergen_profiles SET manager_id = $2 WHERE id = $1", [profile, coManager]);
+
+  assert.equal((await changesFor(profile)).length, 0);
+});
+
+test("a 10k-character profile note still saves and is recorded", async () => {
+  const owner = await makeUser("Owner");
+  const profile = await makeProfile(owner);
+  const longNote = "שלום 🥜 ".repeat(1500);
+
+  await asActor(owner, "UPDATE allergen_profiles SET notes = $2 WHERE id = $1", [profile, longNote]);
+
+  const [edit] = await changesFor(profile);
+  assert.equal(edit!.after!.notes, longNote);
 });
 
 // ---- Downgrades (migration 0037) ----
