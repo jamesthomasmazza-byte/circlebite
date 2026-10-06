@@ -247,14 +247,22 @@ test("an entry can't be updated, deleted or truncated while its profile exists",
     refused,
   );
   await assert.rejects(pool.query("DELETE FROM profile_changes WHERE allergen_profile_id = $1", [profile]), refused);
-  // Inside a transaction that's rolled back, so a guard failure here can't wipe the dev database.
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
-    await assert.rejects(client.query("TRUNCATE profile_changes"), refused);
-  } finally {
-    await client.query("ROLLBACK");
-    client.release();
+  // Inside transactions that are rolled back, so a guard failure here can't wipe the dev database.
+  // A plain TRUNCATE is refused by Postgres itself once profile_change_acks references this table
+  // (migration 0040). TRUNCATE ... CASCADE gets past that — it would empty both tables — and is
+  // the case the guard's own trigger has to stop.
+  for (const [sql, check] of [
+    ["TRUNCATE profile_changes", (err: { code?: string }) => err.code === "0A000" || refused(err)],
+    ["TRUNCATE profile_changes CASCADE", refused],
+  ] as const) {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await assert.rejects(client.query(sql), check);
+    } finally {
+      await client.query("ROLLBACK");
+      client.release();
+    }
   }
 
   const [entry] = await changesFor(profile);
