@@ -9,6 +9,7 @@ import { requireAuth } from "../auth/requireAuth.js";
 import { pool } from "../db/pool.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { HttpError } from "../lib/httpError.js";
+import { withActor } from "../lib/withActor.js";
 
 // Mounted at /api/profiles (see app.ts) — every route below is relative to that, and every path
 // here is deliberately WITHOUT a leading "/profiles" segment. requireAuth below is router-level
@@ -65,49 +66,44 @@ profilesRouter.post(
       allergenInputs = parsed as AllergenInput[];
     }
 
-    const client = await pool.connect();
     try {
-      await client.query("BEGIN");
-
-      const { rows: profileRows } = await client.query<{
-        id: string;
-        label: string;
-        is_self: boolean;
-        notes: string | null;
-        default_treat_traces_as_unsafe: boolean;
-      }>(
-        `INSERT INTO allergen_profiles (manager_id, label, is_self, notes)
-         VALUES ($1, $2, $3, $4)
-         RETURNING id, label, is_self, notes, default_treat_traces_as_unsafe`,
-        [req.user!.id, label.trim(), isSelf ?? false, notes ?? null],
-      );
-      const profile = profileRows[0]!;
-
-      const createdAllergens = [];
-      for (const a of allergenInputs) {
-        const { rows } = await client.query(
-          `INSERT INTO allergens (allergen_profile_id, name, severity, notes, treat_traces_as_unsafe)
-           VALUES ($1, $2, $3, $4, $5)
-           RETURNING id, name, severity, notes, treat_traces_as_unsafe`,
-          [
-            profile.id,
-            a.name,
-            a.severity,
-            a.notes ?? null,
-            a.treatTracesAsUnsafe ?? profile.default_treat_traces_as_unsafe,
-          ],
+      const created = await withActor(req.user!.id, async (client) => {
+        const { rows: profileRows } = await client.query<{
+          id: string;
+          label: string;
+          is_self: boolean;
+          notes: string | null;
+          default_treat_traces_as_unsafe: boolean;
+        }>(
+          `INSERT INTO allergen_profiles (manager_id, label, is_self, notes)
+           VALUES ($1, $2, $3, $4)
+           RETURNING id, label, is_self, notes, default_treat_traces_as_unsafe`,
+          [req.user!.id, label.trim(), isSelf ?? false, notes ?? null],
         );
-        createdAllergens.push(rows[0]);
-      }
+        const profile = profileRows[0]!;
 
-      await client.query("COMMIT");
-      res.status(201).json({ ...profile, allergens: createdAllergens });
+        const createdAllergens = [];
+        for (const a of allergenInputs) {
+          const { rows } = await client.query(
+            `INSERT INTO allergens (allergen_profile_id, name, severity, notes, treat_traces_as_unsafe)
+             VALUES ($1, $2, $3, $4, $5)
+             RETURNING id, name, severity, notes, treat_traces_as_unsafe`,
+            [
+              profile.id,
+              a.name,
+              a.severity,
+              a.notes ?? null,
+              a.treatTracesAsUnsafe ?? profile.default_treat_traces_as_unsafe,
+            ],
+          );
+          createdAllergens.push(rows[0]);
+        }
+        return { ...profile, allergens: createdAllergens };
+      });
+      res.status(201).json(created);
     } catch (err) {
-      await client.query("ROLLBACK");
       if (isUniqueViolation(err)) throw new HttpError(409, "duplicate_allergen");
       throw err;
-    } finally {
-      client.release();
     }
   }),
 );
@@ -182,7 +178,7 @@ profilesRouter.patch(
       throw new HttpError(400, "invalid_request");
     }
 
-    const { rows } = await pool.query(
+    const { rows } = await withActor(req.user!.id, (client) => client.query(
       `UPDATE allergen_profiles
        SET label = COALESCE($2, label),
            notes = CASE WHEN $3::boolean THEN $4 ELSE notes END,
@@ -197,7 +193,7 @@ profilesRouter.patch(
         notes ?? null,
         defaultTreatTracesAsUnsafe ?? null,
       ],
-    );
+    ));
     res.json(rows[0]);
   }),
 );
@@ -224,7 +220,7 @@ profilesRouter.post(
     if (!parsed) throw new HttpError(400, "invalid_request");
 
     try {
-      const { rows } = await pool.query(
+      const { rows } = await withActor(req.user!.id, (client) => client.query(
         `INSERT INTO allergens (allergen_profile_id, name, severity, notes, treat_traces_as_unsafe)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING id, name, severity, notes, treat_traces_as_unsafe`,
@@ -235,7 +231,7 @@ profilesRouter.post(
           parsed.notes ?? null,
           parsed.treatTracesAsUnsafe ?? true,
         ],
-      );
+      ));
       res.status(201).json(rows[0]);
     } catch (err) {
       if (isUniqueViolation(err)) throw new HttpError(409, "duplicate_allergen");
@@ -267,7 +263,7 @@ profilesRouter.patch(
       // The WHERE clause checks allergen_profile_id too, not just id — assertCanManageProfile
       // only proves the caller can manage the profile named in the URL, not that :allergenId
       // actually belongs to it.
-      const { rows } = await pool.query(
+      const { rows } = await withActor(req.user!.id, (client) => client.query(
         `UPDATE allergens
          SET name = COALESCE($3, name),
              severity = COALESCE($4, severity),
@@ -285,7 +281,7 @@ profilesRouter.patch(
           notes ?? null,
           treatTracesAsUnsafe ?? null,
         ],
-      );
+      ));
       if (rows.length === 0) throw new HttpError(404, "not_found");
       res.json(rows[0]);
     } catch (err) {
@@ -303,9 +299,8 @@ profilesRouter.delete(
     const allergenId = req.params.allergenId;
     await assertCanManageProfile(req.user!.id, profileId);
 
-    const { rowCount } = await pool.query(
-      "DELETE FROM allergens WHERE id = $1 AND allergen_profile_id = $2",
-      [allergenId, profileId],
+    const { rowCount } = await withActor(req.user!.id, (client) =>
+      client.query("DELETE FROM allergens WHERE id = $1 AND allergen_profile_id = $2", [allergenId, profileId]),
     );
     if (rowCount === 0) throw new HttpError(404, "not_found");
     res.status(204).end();
