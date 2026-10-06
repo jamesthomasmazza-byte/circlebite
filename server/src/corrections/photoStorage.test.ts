@@ -4,7 +4,7 @@ import path from "node:path";
 import { after, test } from "node:test";
 
 import { env } from "../env.js";
-import { MAX_PHOTO_BYTES, resolvePhotoPath, savePhotoBuffer, sniffImageType } from "./photoStorage.js";
+import { deletePhoto, MAX_PHOTO_BYTES, resolvePhotoPath, savePhotoBuffer, sniffImageType } from "./photoStorage.js";
 
 // Real magic bytes for each format, not invented — the whole point of sniffImageType is that it
 // checks actual file signatures, so the tests have to use real ones.
@@ -58,6 +58,24 @@ test("savePhotoBuffer writes real bytes under UPLOAD_DIR/corrections, and resolv
   } finally {
     await rm(resolvePhotoPath(relativePath), { force: true });
   }
+});
+
+test("resolvePhotoPath refuses any path that resolves outside UPLOAD_DIR, and deletePhoto with it", async () => {
+  for (const escaping of [
+    "../outside.jpg",
+    "corrections/../../outside.jpg",
+    "corrections/../../../etc/passwd",
+    "/etc/passwd",
+    "",
+    ".",
+  ]) {
+    assert.throws(() => resolvePhotoPath(escaping), /outside UPLOAD_DIR/, `should refuse ${JSON.stringify(escaping)}`);
+  }
+  await assert.rejects(deletePhoto("../../outside.jpg"), /outside UPLOAD_DIR/);
+
+  // What savePhotoBuffer writes still resolves, and lands under UPLOAD_DIR.
+  const ok = resolvePhotoPath(path.join("corrections", "abc.jpg"));
+  assert.equal(ok, path.join(path.resolve(env.uploadDir), "corrections", "abc.jpg"));
 });
 
 test("savePhotoBuffer never collides — two saves of the same bytes get different filenames", async () => {

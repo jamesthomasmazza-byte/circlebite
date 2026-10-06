@@ -74,10 +74,22 @@ export async function savePhotoBuffer(buffer: Buffer, extension: string): Promis
  * that's already gone isn't an error.
  */
 export async function deletePhoto(relativePath: string): Promise<void> {
-  await rm(path.join(env.uploadDir, relativePath), { force: true });
+  await rm(resolvePhotoPath(relativePath), { force: true });
 }
 
-/** Resolves a stored relative photo path back to an absolute filesystem path for reading. */
+/**
+ * Resolves a stored relative photo path back to an absolute filesystem path — and refuses one that
+ * lands outside UPLOAD_DIR. path.join normalizes "../" but doesn't contain it, and res.sendFile with
+ * an absolute path won't either. Every stored value today comes from savePhotoBuffer, but the
+ * path reaches here from three routes and from snapshots a trigger copies out of product_corrections
+ * (migration 0037), whatever wrote that row. An escaping path is a data-integrity fault, not a user
+ * error: it throws (a logged 500), rather than quietly serving or deleting something.
+ */
 export function resolvePhotoPath(relativePath: string): string {
-  return path.join(env.uploadDir, relativePath);
+  const root = path.resolve(env.uploadDir);
+  const resolved = path.resolve(root, relativePath);
+  if (path.isAbsolute(relativePath) || !resolved.startsWith(root + path.sep)) {
+    throw new Error(`photo path resolves outside UPLOAD_DIR: ${JSON.stringify(relativePath)}`);
+  }
+  return resolved;
 }
