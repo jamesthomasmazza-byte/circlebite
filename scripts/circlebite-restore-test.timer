@@ -1,0 +1,18 @@
+# Reference copy — the source of truth for what's installed on the box. systemd doesn't read
+# from a git checkout, so this file doesn't do anything by existing here; it's copied manually to
+# /etc/systemd/system/circlebite-restore-test.timer (see docs/server-setup.md §17) and kept in sync
+# by hand whenever it changes.
+#
+# Sundays at 04:00 Eastern — half an hour after that night's backup, so it always tests a fresh
+# set, and well outside demo hours. Persistent=true for the same reason as the backup timer: a
+# missed week should run late, not be skipped.
+
+[Unit]
+Description=Weekly CircleBite restore test, Sundays 04:00 Eastern
+
+[Timer]
+OnCalendar=Sun *-*-* 04:00:00 America/New_York
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,28 @@
+# Reference copy — the source of truth for what's installed on the box. systemd doesn't read
+# from a git checkout, so this file doesn't do anything by existing here; it's copied manually to
+# /etc/systemd/system/circlebite-restore-test.service (see docs/server-setup.md §17) and kept in
+# sync by hand whenever it changes.
+#
+# Started by circlebite-restore-test.timer. Restores the newest backup into a scratch database
+# that it creates and drops itself — never the production database (see the header of
+# scripts/restore-test.sh for how that's guaranteed).
+
+[Unit]
+Description=CircleBite weekly restore test of the newest backup
+After=postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+ExecStart=/home/ubuntu/circlebite/current/scripts/restore-test.sh
+Nice=10
+IOSchedulingClass=idle
+# Bounds a hang; it doesn't replace a default. Type=oneshot has no start timeout at all unless one
+# is set, so a restore stuck on a lock would hold this unit indefinitely and every later Sunday's
+# run would be skipped without an error anywhere. 2h covers the slowest plausible real run with wide
+# margin: up to 30 min waiting on the lock backup.sh shares, then a restore and a full read of the
+# photo tarball — minutes at most at the scale §17 documents. On timeout, systemd's SIGTERM still
+# runs the script's exit trap, which drops the scratch database; anything left over after a hard
+# kill is dropped at the start of the next run.
+TimeoutStartSec=2h
