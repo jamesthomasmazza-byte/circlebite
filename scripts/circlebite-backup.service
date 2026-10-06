@@ -1,0 +1,31 @@
+# Reference copy — the source of truth for what's installed on the box. systemd doesn't read
+# from a git checkout, so this file doesn't do anything by existing here; it's copied manually to
+# /etc/systemd/system/circlebite-backup.service (see docs/server-setup.md §17) and kept in sync by
+# hand whenever it changes.
+#
+# Started by circlebite-backup.timer, not enabled on its own. ExecStart points through the
+# ~/circlebite/current symlink, the same as circlebite.service, so the script itself updates with
+# every deploy and only this unit needs hand-syncing. The script writes only to
+# ~/circlebite/backups, outside the release tree.
+
+[Unit]
+Description=CircleBite nightly backup (pg_dump + correction photos, copied to S3)
+After=postgresql.service network-online.target
+Requires=postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+ExecStart=/home/ubuntu/circlebite/current/scripts/backup.sh
+# Seconds of work on a small database, but it should never compete with the app for CPU or disk.
+Nice=10
+IOSchedulingClass=idle
+# Bounds a hang; it doesn't replace a default. Type=oneshot has no start timeout at all unless one
+# is set, so a stalled S3 upload would hold this unit "activating" indefinitely — and the timer
+# doesn't start a unit that's still running, so every later night would be skipped without an
+# error anywhere. 2h covers the slowest plausible real run with wide margin: up to 30 min waiting
+# on the lock the restore test shares, plus dump, tarball and upload, which take seconds today and
+# minutes even at the ~1 GB photo scale where §17 says to revisit the full-tarball approach. A
+# timeout ends as a failed unit in the journal, and last-local/offsite-success go stale.
+TimeoutStartSec=2h

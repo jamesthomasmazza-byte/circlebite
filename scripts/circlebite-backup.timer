@@ -1,0 +1,24 @@
+# Reference copy — the source of truth for what's installed on the box. systemd doesn't read
+# from a git checkout, so this file doesn't do anything by existing here; it's copied manually to
+# /etc/systemd/system/circlebite-backup.timer (see docs/server-setup.md §17) and kept in sync by
+# hand whenever it changes.
+#
+# 03:30 Eastern, pinned to that timezone whatever the box's own clock zone is (EC2 Ubuntu defaults
+# to UTC). Judges and Prof. Yoest are in DC, so demos happen in Eastern business hours; 03:30 is as
+# far from those as the clock allows, and it stays out of the 01:00–02:59 hours that daylight
+# saving time repeats or skips (DST ends Nov 1, before judging week).
+#
+# Persistent=true: if the box was down at 03:30, the missed run happens at boot. That can mean a
+# daytime dump after a reboot — accepted, because a backup that silently never runs is the failure
+# this exists to prevent, and pg_dump takes only ACCESS SHARE locks (the app's reads and writes
+# never wait on it).
+
+[Unit]
+Description=Nightly CircleBite backup at 03:30 Eastern
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 America/New_York
+Persistent=true
+
+[Install]
+WantedBy=timers.target
