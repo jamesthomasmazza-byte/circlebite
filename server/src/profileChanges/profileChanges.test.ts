@@ -10,6 +10,8 @@ import { pool } from "../db/pool.js";
 // around the routes.
 
 const usersToClean = new Set<string>();
+// Corrections outlive their scan, profile and reporter (migration 0020), so they're cleaned by id.
+const correctionsToClean = new Set<string>();
 
 async function makeUser(displayName: string): Promise<string> {
   const id = randomUUID();
@@ -78,6 +80,7 @@ async function changesFor(profileId: string): Promise<ChangeRow[]> {
 }
 
 after(async () => {
+  await pool.query("DELETE FROM product_corrections WHERE id = ANY($1)", [[...correctionsToClean]]);
   // Deleting the owner cascades their profiles, which cascades allergens and profile_changes.
   await pool.query("DELETE FROM users WHERE id = ANY($1)", [[...usersToClean]]);
   await pool.end();
@@ -94,7 +97,7 @@ test("profile_changes has exactly one CHECK on kind, and it admits every kind th
   assert.equal(rows[0]!.conname, "profile_changes_kind_check");
   // Every kind a trigger can write. Extend this alongside any migration that adds one — a kind the
   // constraint rejects fails the trigger and rolls back the parent's edit.
-  for (const kind of ["allergen_added", "allergen_edited", "allergen_removed"]) {
+  for (const kind of ["allergen_added", "allergen_edited", "allergen_removed", "downgrade_reported"]) {
     assert.ok(rows[0]!.def.includes(`'${kind}'`), `constraint must admit ${kind}: ${rows[0]!.def}`);
   }
 });
@@ -235,6 +238,129 @@ test("deleting a whole profile cascades through its allergens and history withou
   await asActor(owner, "DELETE FROM allergen_profiles WHERE id = $1", [profile]);
 
   assert.equal((await changesFor(profile)).length, 0);
+});
+
+// ---- Downgrades (migration 0037) ----
+
+async function makeScan(profileId: string, productName: string | null = "Crunch Bars"): Promise<string> {
+  const { rows } = await pool.query<{ id: string }>(
+    `INSERT INTO scans (allergen_profile_id, barcode, product_name, product_brand, result, matched_allergens)
+     VALUES ($1, $2, $3, 'Acme', 'contains_allergen', '[]') RETURNING id`,
+    [profileId, `0000${randomBytes(4).toString("hex")}`, productName],
+  );
+  return rows[0]!.id;
+}
+
+async function fileCorrection(
+  scanId: string | null,
+  reportedBy: string | null,
+  correctionType: "flag_wrong" | "flag_missing" | "wrong_product",
+  opts: { allergen?: string | null; note?: string | null; barcode?: string } = {},
+): Promise<string> {
+  const direction = correctionType === "flag_missing" ? "add_caution" : "remove_caution";
+  const allergen = correctionType === "wrong_product" ? null : (opts.allergen ?? "Peanut");
+  const { rows } = await pool.query<{ id: string }>(
+    `INSERT INTO product_corrections
+       (scan_id, barcode, reported_by, correction_type, direction, allergen, target, verdict_at_report, note, photo_path)
+     VALUES ($1, $2, $3, $4, $5, $6, 'off_data', 'contains_allergen', $7, 'evidence.jpg')
+     RETURNING id`,
+    [scanId, opts.barcode ?? `9999${randomBytes(4).toString("hex")}`, reportedBy, correctionType, direction, allergen, opts.note ?? null],
+  );
+  correctionsToClean.add(rows[0]!.id);
+  return rows[0]!.id;
+}
+
+async function downgradesFor(profileId: string) {
+  const { rows } = await pool.query(
+    `SELECT kind, actor_id, actor_name, actor_role, correction_id, correction_type, allergen, product_name,
+            product_brand, verdict_at_report, note, photo_path, scan_created_at
+     FROM profile_changes WHERE allergen_profile_id = $1 AND kind = 'downgrade_reported' ORDER BY created_at, seq`,
+    [profileId],
+  );
+  return rows;
+}
+
+test("a co-manager's downgrade is recorded with who, when and the evidence, snapshotted from the report and scan", async () => {
+  const owner = await makeUser("Owner");
+  const coManager = await makeUser("Co Sam");
+  const profile = await makeProfile(owner);
+  await pool.query("INSERT INTO profile_managers (allergen_profile_id, user_id) VALUES ($1, $2)", [profile, coManager]);
+  const scan = await makeScan(profile);
+
+  const correctionId = await fileCorrection(scan, coManager, "flag_wrong", { note: "label says made in a nut-free facility" });
+
+  const [entry] = await downgradesFor(profile);
+  assert.equal(entry.actor_id, coManager);
+  assert.equal(entry.actor_name, "Co Sam");
+  assert.equal(entry.actor_role, "co_manager");
+  assert.equal(entry.correction_id, correctionId);
+  assert.equal(entry.correction_type, "flag_wrong");
+  assert.equal(entry.allergen, "Peanut");
+  assert.equal(entry.product_name, "Crunch Bars");
+  assert.equal(entry.product_brand, "Acme");
+  assert.equal(entry.verdict_at_report, "contains_allergen");
+  assert.equal(entry.note, "label says made in a nut-free facility");
+  assert.equal(entry.photo_path, "evidence.jpg");
+  assert.ok(entry.scan_created_at instanceof Date);
+});
+
+test("a wrong_product downgrade is recorded with no allergen; an escalation is not recorded at all", async () => {
+  const owner = await makeUser("Owner");
+  const profile = await makeProfile(owner);
+  const scan = await makeScan(profile);
+
+  await fileCorrection(scan, owner, "wrong_product");
+  await fileCorrection(scan, owner, "flag_missing");
+
+  const entries = await downgradesFor(profile);
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].correction_type, "wrong_product");
+  assert.equal(entries[0].allergen, null);
+  assert.equal(entries[0].actor_role, "owner");
+});
+
+test("a downgrade's entry survives its scan being deleted, still saying what it was about", async () => {
+  const owner = await makeUser("Owner");
+  const profile = await makeProfile(owner);
+  const scan = await makeScan(profile);
+  await fileCorrection(scan, owner, "flag_wrong");
+
+  await pool.query("DELETE FROM scans WHERE id = $1", [scan]);
+
+  const [entry] = await downgradesFor(profile);
+  assert.equal(entry.product_name, "Crunch Bars");
+  assert.equal(entry.photo_path, "evidence.jpg");
+});
+
+test("a downgrade with no resolvable scan is still accepted — the trigger writes nothing rather than blocking the report", async () => {
+  const owner = await makeUser("Owner");
+
+  const correctionId = await fileCorrection(null, owner, "flag_wrong");
+
+  const { rows } = await pool.query("SELECT id FROM product_corrections WHERE id = $1", [correctionId]);
+  assert.equal(rows.length, 1, "the report itself went through");
+  // Scoped to this report's own id — there's no profile to scope to, and a global count would
+  // depend on no other test writing a downgrade concurrently.
+  const entries = await pool.query("SELECT 1 FROM profile_changes WHERE correction_id = $1", [correctionId]);
+  assert.equal(entries.rows.length, 0);
+});
+
+test("hostile downgrade content — a 10k note, emoji and RTL text, a reporter whose account is gone — still goes through", async () => {
+  const owner = await makeUser("Owner");
+  const profile = await makeProfile(owner);
+  const scan = await makeScan(profile, "חטיף 🥜 بادام");
+  const longNote = "n".repeat(10_000);
+
+  // reported_by has an FK to users, so a non-user reporter can't exist at insert; NULL (a reporter
+  // whose account is gone) is the realistic hostile case.
+  await fileCorrection(scan, null, "flag_wrong", { note: longNote, allergen: "Sesame 🌱 سمسم" });
+
+  const [entry] = await downgradesFor(profile);
+  assert.equal(entry.note, longNote);
+  assert.equal(entry.allergen, "Sesame 🌱 سمسم");
+  assert.equal(entry.product_name, "חטיף 🥜 بادام");
+  assert.equal(entry.actor_id, null);
+  assert.equal(entry.actor_name, null);
 });
 
 // ---- Hostile input: every one of these must let the edit through, and record it ----
