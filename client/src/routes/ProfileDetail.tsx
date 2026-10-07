@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
 import {
+  acknowledgeProfileChanges,
   addAllergen,
   createFollowInvite,
   createManagerInvite,
@@ -9,19 +10,24 @@ import {
   deleteProfile,
   getCircle,
   getProfile,
+  getProfileChanges,
+  profileChangePhotoUrl,
   removeManager,
   revokeFollow,
   updateAllergen,
   updateProfile,
   type CircleData,
   type ProfileDetail as ProfileDetailData,
+  type ProfileHistoryEntry,
   type Severity,
   type ShareLevel,
 } from "../lib/api";
+import { describeChange } from "../lib/profileChangeCopy";
 
 export function ProfileDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [profile, setProfile] = useState<ProfileDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -75,6 +81,37 @@ export function ProfileDetail() {
     void refreshCircle();
   }, [refreshCircle]);
 
+  // The change history (Prof. Yoest's Oct 1 conditions) — owner and co-managers only; the server
+  // 404s followers. A failed load says so rather than showing an empty, reassuring history.
+  const [history, setHistory] = useState<ProfileHistoryEntry[] | null>(null);
+  const [historyFailed, setHistoryFailed] = useState(false);
+  const [ackError, setAckError] = useState<string | null>(null);
+
+  const refreshHistory = useCallback(async () => {
+    if (!id || !canManage) return;
+    try {
+      setHistory(await getProfileChanges(id));
+      setHistoryFailed(false);
+    } catch {
+      setHistoryFailed(true);
+    }
+  }, [id, canManage]);
+
+  useEffect(() => {
+    void refreshHistory();
+  }, [refreshHistory]);
+
+  // Arriving from the dashboard notice (/profiles/:id#changes): the router doesn't scroll to a hash
+  // on its own, and the section only exists once the history has loaded. "instant", not the
+  // stylesheet's smooth scrolling: a smooth scroll is an animation, and Chrome doesn't run it in a
+  // tab that isn't visible — switch tabs while this loads and the parent lands at the top of the
+  // page with the history out of sight (found in testing, Oct 7). Arriving on an anchor is a jump.
+  useEffect(() => {
+    if (history && location.hash === "#changes") {
+      document.getElementById("changes")?.scrollIntoView({ behavior: "instant", block: "start" });
+    }
+  }, [history, location.hash]);
+
   if (loading) return <p>Loading…</p>;
   // Deliberately the same message whether the profile doesn't exist or just isn't visible to
   // this user — the server already treats those as identical (404 either way).
@@ -95,6 +132,7 @@ export function ProfileDetail() {
     try {
       const updated = await updateProfile(id!, { label: label.trim(), notes: notes.trim() });
       setProfile((p) => (p ? { ...p, label: updated.label, notes: updated.notes } : p));
+      await refreshHistory();
     } catch {
       setSaveError("Couldn't save. Try again.");
     }
@@ -108,6 +146,7 @@ export function ProfileDetail() {
       await addAllergen(id!, { name: newName.trim(), severity: newSeverity, treatTracesAsUnsafe: newTraces });
       setNewName("");
       await refresh();
+      await refreshHistory();
     } catch {
       setAddError("Couldn't add that allergen — it may already be on this profile.");
     }
@@ -116,11 +155,26 @@ export function ProfileDetail() {
   async function handleAllergenSeverity(allergenId: string, severity: Severity) {
     await updateAllergen(id!, allergenId, { severity });
     await refresh();
+    await refreshHistory();
   }
 
   async function handleRemoveAllergen(allergenId: string) {
     await deleteAllergen(id!, allergenId);
     await refresh();
+    await refreshHistory();
+  }
+
+  // Acknowledges exactly the unseen entries on screen — never "everything up to now", which could
+  // swallow one that arrived after this page loaded (migration 0040).
+  async function handleAcknowledge() {
+    setAckError(null);
+    const shown = (history ?? []).filter((e) => e.unseen).map((e) => e.id);
+    try {
+      await acknowledgeProfileChanges(id!, shown);
+      await refreshHistory();
+    } catch {
+      setAckError("Couldn't record that. Try again.");
+    }
   }
 
   async function handleDeleteProfile() {
@@ -236,6 +290,56 @@ export function ProfileDetail() {
           {addError && <p role="alert">{addError}</p>}
           <button type="submit">Add allergen</button>
         </form>
+      )}
+
+      {canManage && (
+        <section id="changes" className="change-history" aria-labelledby="change-history-heading">
+          <h2 id="change-history-heading">Change history</h2>
+          {historyFailed && <p role="alert">Couldn't load this profile's change history. Reload the page to try again.</p>}
+          {history && history.length === 0 && <p>No changes recorded yet.</p>}
+          {history && history.some((e) => e.unseen) && (
+            <p>
+              <button type="button" onClick={handleAcknowledge}>
+                I've seen these
+              </button>
+            </p>
+          )}
+          {ackError && <p role="alert">{ackError}</p>}
+          {history && history.length > 0 && (
+            <ol className="change-history__list">
+              {history.map((e) => {
+                const d = describeChange(e, { label: profile.label, isSelf: profile.is_self });
+                return (
+                  <li key={e.id} className="change-entry" data-unseen={e.unseen ? "true" : undefined}>
+                    <p className="change-entry__meta">
+                      {e.unseen && <strong className="change-entry__new">New · </strong>}
+                      <time dateTime={e.createdAt}>{new Date(e.createdAt).toLocaleString()}</time>
+                    </p>
+                    <p className="change-entry__headline">{d.headline}</p>
+                    {d.details.map((line) => (
+                      <p key={line}>{line}</p>
+                    ))}
+                    {d.check && <p className="change-entry__check">{d.check}</p>}
+                    {e.downgrade?.scannedAt && <p>Scanned {new Date(e.downgrade.scannedAt).toLocaleDateString()}.</p>}
+                    {e.downgrade?.hasPhoto && (
+                      <p>
+                        <a href={profileChangePhotoUrl(id, e.id)} target="_blank" rel="noreferrer">
+                          Label photo sent with the report
+                        </a>
+                      </p>
+                    )}
+                    {d.consequences.map((line) => (
+                      <p key={line} className="change-entry__consequence">
+                        {line}
+                      </p>
+                    ))}
+                    {d.status && <p className="change-entry__status">{d.status}</p>}
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </section>
       )}
 
       {canManage && (

@@ -172,6 +172,49 @@ export function getUnseenChanges(): Promise<UnseenProfileChanges[]> {
   return apiFetch("/me/unseen-changes");
 }
 
+/** An allergen as it was at one moment — the full row, so a removed one is still legible. */
+export type AllergenImage = { name: string; severity: Severity; notes: string | null; treat_traces_as_unsafe: boolean };
+export type ProfileImage = { label: string; notes: string | null; default_treat_traces_as_unsafe: boolean };
+
+/** One entry in a profile's change history (server/src/profileChanges/history.ts). */
+export type ProfileHistoryEntry = {
+  id: string;
+  kind: "allergen_added" | "allergen_edited" | "allergen_removed" | "profile_edited" | "downgrade_reported";
+  createdAt: string;
+  actorName: string | null;
+  actorRole: "owner" | "co_manager" | null;
+  /** False when no acting user was recorded — the change was made outside the app. */
+  actorKnown: boolean;
+  actorIsViewer: boolean;
+  before: AllergenImage | ProfileImage | null;
+  after: AllergenImage | ProfileImage | null;
+  downgrade: {
+    correctionType: "flag_wrong" | "wrong_product" | null;
+    allergen: string | null;
+    productName: string | null;
+    productBrand: string | null;
+    verdictAtReport: string | null;
+    note: string | null;
+    hasPhoto: boolean;
+    scannedAt: string | null;
+    /** Read live: "rejected" means an admin reviewed it and didn't accept it. */
+    currentStatus: "pending" | "corroborated" | "rejected" | null;
+  } | null;
+  unseen: boolean;
+};
+
+export function getProfileChanges(profileId: string): Promise<ProfileHistoryEntry[]> {
+  return apiFetch(`/profiles/${profileId}/changes`);
+}
+
+export function acknowledgeProfileChanges(profileId: string, changeIds: string[]): Promise<{ acknowledged: number }> {
+  return apiFetch(`/profiles/${profileId}/changes/seen`, { method: "POST", body: JSON.stringify({ changeIds }) });
+}
+
+export function profileChangePhotoUrl(profileId: string, changeId: string): string {
+  return `/api/profiles/${profileId}/changes/${changeId}/photo`;
+}
+
 export type ShareLevel = "all" | "severe_only";
 
 export type CircleData = {
