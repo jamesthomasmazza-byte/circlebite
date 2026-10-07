@@ -499,3 +499,52 @@ test("reports against a mismatched label never count toward someone else's thres
   );
   assert.ok(rows.every((r) => r.status === "pending"), "mismatched reports are never marked corroborated");
 });
+
+// Migration 0043: corroboration counts on allergenKey(), not the verbatim allergen. Each family's
+// report carries its own profile's spelling; before the key, none of these pairs ever added up.
+async function twoFamiliesReport(barcode: string, spellingA: string, spellingB: string) {
+  const report = (reportedBy: string, allergen: string) => ({ reportedBy, correctionType: "flag_missing" as const, allergen, note: null, photoPath: "/fake.jpg", origin: "user_initiated" as const });
+  const first = await recordCorrection({ scanId: await familyScan(USER_A, barcode, "safe", []), ...report(USER_A, spellingA) });
+  const second = await recordCorrection({ scanId: await familyScan(USER_B, barcode, "safe", []), ...report(USER_B, spellingB) });
+  const { rows } = await pool.query<{ allergen: string }>("SELECT allergen FROM product_corrections WHERE id = ANY($1) ORDER BY created_at", [[first.id, second.id]]);
+  return { first, second, stored: rows.map((r) => r.allergen) };
+}
+
+test("two families spelling it 'Peanut' and 'peanut' corroborate one claim", async () => {
+  const { first, second, stored } = await twoFamiliesReport("1000000000030", "Peanut", "peanut");
+  assert.equal(first.corroborated, false);
+  assert.equal(second.corroborated, true);
+  assert.deepEqual(stored, ["Peanut", "peanut"], "each report keeps what its reporter wrote");
+});
+
+test("'Peanut' and 'Peanuts' corroborate one claim", async () => {
+  const { second } = await twoFamiliesReport("1000000000031", "Peanut", "Peanuts");
+  assert.equal(second.corroborated, true);
+});
+
+test("a synonym-cluster pair — 'Milk' and 'Dairy' — corroborates one claim", async () => {
+  const { second } = await twoFamiliesReport("1000000000032", "Milk", "Dairy");
+  assert.equal(second.corroborated, true);
+});
+
+test("two genuinely different allergens on the same barcode still don't corroborate each other", async () => {
+  for (const [barcode, a, b] of [
+    ["1000000000033", "Peanut", "Tree nut"],
+    ["1000000000034", "Fish", "Shellfish"],
+    ["1000000000035", "Tree nuts", "Walnut"],
+  ]) {
+    const { first, second } = await twoFamiliesReport(barcode, a, b);
+    assert.equal(first.corroborated, false, `${a} alone`);
+    assert.equal(second.corroborated, false, `${a} + ${b}`);
+  }
+});
+
+test("a re-spelled re-file is still a re-file: 'peanut' after a rejected 'Peanut' is held for review", async () => {
+  const barcode = "1000000000036";
+  const report = (allergen: string) => ({ reportedBy: USER_A, correctionType: "flag_missing" as const, allergen, note: null, photoPath: "/fake.jpg", origin: "user_initiated" as const });
+  const original = await recordCorrection({ scanId: await familyScan(USER_A, barcode, "safe", []), ...report("Peanut") });
+  await pool.query("UPDATE product_corrections SET status = 'rejected', rejected_at = now() WHERE id = $1", [original.id]);
+  const refile = await recordCorrection({ scanId: await familyScan(USER_A, barcode, "safe", []), ...report("peanut") });
+  const { rows } = await pool.query<{ refiles_rejected_id: string | null }>("SELECT refiles_rejected_id FROM product_corrections WHERE id = $1", [refile.id]);
+  assert.equal(rows[0].refiles_rejected_id, original.id);
+});

@@ -1,6 +1,7 @@
 import type { PoolClient } from "pg";
 
 import { pool } from "../db/pool.js";
+import { allergenKey as keyFor } from "../matcher/match.js";
 import { HttpError } from "../lib/httpError.js";
 
 export type CorrectionType = "flag_wrong" | "flag_missing" | "wrong_product";
@@ -28,6 +29,10 @@ export const CORROBORATION_THRESHOLD: Record<Direction, number> = {
 };
 
 export type CorrectionOrigin = "user_initiated" | "disagreement_prompt";
+
+/** One corroboration bucket. allergenKey is matcher/match.ts's allergenKey() of the reported
+ *  allergen (migration 0043) — never the verbatim spelling — or null for wrong_product. */
+export type Claim = { barcode: string; allergenKey: string | null; direction: Direction };
 
 export type RecordCorrectionInput = {
   scanId: string;
@@ -74,8 +79,10 @@ type ScanRow = {
  * — is disputing the underlying product data instead (target "off_data"), the only mode the
  * original prototype had. wrong_product is always off_data.
  *
- * Corroboration is counted per (barcode, allergen, direction) across every reporting family, regardless of
- * target — "the AI got this wrong" and "the database is wrong about this" are the same community
+ * Corroboration is counted per (barcode, allergen key, direction) across every reporting family,
+ * regardless of target. The key, not the verbatim allergen: "Peanut", "peanut" and "Peanuts" from
+ * three families are one claim (migration 0043). And regardless of target, because "the AI got
+ * this wrong" and "the database is wrong about this" are the same community
  * claim about the same allergen once you're counting how many people agree. Except: a correction
  * against a barcode-less Path C scan (scan.barcode IS NULL) never corroborates at all — see the
  * comment at the corroboration block below for why.
@@ -100,6 +107,7 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
   }
 
   const direction = directionForCorrectionType(correctionType);
+  const allergenKey = allergen ? keyFor(allergen) : null;
 
   const client = await pool.connect();
   try {
@@ -149,21 +157,22 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
       }
     }
 
-    // This person re-filing a claim an admin already rejected from them (migration 0034): linked to
+    // This person re-filing a claim an admin already rejected from them (migration 0034) — the same
+    // claim by key, so a re-spelling ("peanut" after a rejected "Peanut") is still a re-file: linked to
     // the most recent such rejection, and held out of the corroboration count below — a re-file is
     // new evidence for an admin to look at, not a new vote. Barcode-less reports have no claim
     // across scans to re-file, so they never link.
     let refilesRejectedId: string | null = null;
     if (scan.barcode !== null) {
       const { rows: rejectedRows } = await client.query<{ id: string }>(
-        allergen
+        allergenKey
           ? `SELECT id FROM product_corrections
-             WHERE barcode = $1 AND allergen = $2 AND direction = $3 AND reported_by = $4 AND status = 'rejected'
+             WHERE barcode = $1 AND allergen_key = $2 AND direction = $3 AND reported_by = $4 AND status = 'rejected'
              ORDER BY rejected_at DESC NULLS LAST, created_at DESC LIMIT 1`
           : `SELECT id FROM product_corrections
              WHERE barcode = $1 AND allergen IS NULL AND direction = $2 AND reported_by = $3 AND status = 'rejected'
              ORDER BY rejected_at DESC NULLS LAST, created_at DESC LIMIT 1`,
-        allergen ? [scan.barcode, allergen, direction, reportedBy] : [scan.barcode, direction, reportedBy],
+        allergenKey ? [scan.barcode, allergenKey, direction, reportedBy] : [scan.barcode, direction, reportedBy],
       );
       refilesRejectedId = rejectedRows[0]?.id ?? null;
     }
@@ -173,9 +182,10 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
          (scan_id, barcode, reported_by, correction_type, direction, allergen, target,
           verdict_explanation_id, verdict_at_report, model_at_report, prompt_version_at_report,
           source_text_at_report, note, photo_path, origin, identity_mismatch_at_report, refiles_rejected_id,
-          profile_owner_at_report)
+          profile_owner_at_report, allergen_key)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
-               (SELECT p.manager_id FROM scans s JOIN allergen_profiles p ON p.id = s.allergen_profile_id WHERE s.id = $1))
+               (SELECT p.manager_id FROM scans s JOIN allergen_profiles p ON p.id = s.allergen_profile_id WHERE s.id = $1),
+               $18)
        RETURNING id, status`,
       [
         scanId,
@@ -195,6 +205,7 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
         origin,
         identityMismatched,
         refilesRejectedId,
+        allergenKey,
       ],
     );
     const inserted = insertRows[0];
@@ -217,7 +228,7 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
     // identity check already flagged this specific evidence as questionable."
     const corroborated =
       scan.barcode !== null && !identityMismatched
-        ? await corroborateClaimIfThresholdMet(client, { barcode: scan.barcode, allergen, direction })
+        ? await corroborateClaimIfThresholdMet(client, { barcode: scan.barcode, allergenKey, direction })
         : false;
 
     await client.query("COMMIT");
@@ -233,7 +244,7 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
 }
 
 /**
- * The threshold step for one claim, (barcode, allergen or null for wrong_product, direction): if
+ * The threshold step for one claim, (barcode, allergen key or null for wrong_product, direction): if
  * enough distinct families back it (countCorroboratingFamilies), every pending row in it becomes
  * 'corroborated'. Shared by
  * recordCorrection (a new report) and reviewQueue.ts's acceptCorrection (an admin accepting a
@@ -256,30 +267,27 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
  * someone else's report ran the threshold, and was then marked 'corroborated' along with the claim
  * — feeding communityAdditions.ts's family-facing count. 0032's gate covers both halves.
  */
-export async function corroborateClaimIfThresholdMet(
-  client: PoolClient,
-  claim: { barcode: string; allergen: string | null; direction: Direction },
-): Promise<boolean> {
-  const { barcode, allergen, direction } = claim;
+export async function corroborateClaimIfThresholdMet(client: PoolClient, claim: Claim): Promise<boolean> {
+  const { barcode, allergenKey, direction } = claim;
   if ((await countCorroboratingFamilies(client, claim)) < CORROBORATION_THRESHOLD[direction]) return false;
 
-  if (direction === "remove_caution" && allergen) {
+  if (direction === "remove_caution" && allergenKey) {
     const { rows: conflictRows } = await client.query(
       `SELECT 1 FROM product_corrections
-       WHERE barcode = $1 AND allergen = $2 AND direction = 'add_caution' AND status = 'corroborated'
+       WHERE barcode = $1 AND allergen_key = $2 AND direction = 'add_caution' AND status = 'corroborated'
        LIMIT 1`,
-      [barcode, allergen],
+      [barcode, allergenKey],
     );
     if (conflictRows.length > 0) return false;
   }
 
   await client.query(
-    allergen
+    allergenKey
       ? `UPDATE product_corrections SET status = 'corroborated'
-         WHERE barcode = $1 AND allergen = $2 AND direction = $3 AND status = 'pending' AND NOT identity_mismatch_at_report`
+         WHERE barcode = $1 AND allergen_key = $2 AND direction = $3 AND status = 'pending' AND NOT identity_mismatch_at_report`
       : `UPDATE product_corrections SET status = 'corroborated'
          WHERE barcode = $1 AND allergen IS NULL AND direction = $2 AND status = 'pending' AND NOT identity_mismatch_at_report`,
-    allergen ? [barcode, allergen, direction] : [barcode, direction],
+    allergenKey ? [barcode, allergenKey, direction] : [barcode, direction],
   );
   return true;
 }
@@ -296,17 +304,14 @@ export async function corroborateClaimIfThresholdMet(
  * labels don't count (corroborateClaimIfThresholdMet has why). Exported so the judge seed can prove
  * its demo claim is corroborated by the rule itself, not by a status it wrote.
  */
-export async function countCorroboratingFamilies(
-  client: PoolClient,
-  claim: { barcode: string; allergen: string | null; direction: Direction },
-): Promise<number> {
-  const { barcode, allergen, direction } = claim;
+export async function countCorroboratingFamilies(client: PoolClient, claim: Claim): Promise<number> {
+  const { barcode, allergenKey, direction } = claim;
   const { rows } = await client.query<{ count: string }>(
     `SELECT count(DISTINCT COALESCE(profile_owner_at_report, reported_by)) FROM product_corrections
-     WHERE barcode = $1 AND ${allergen ? "allergen = $3" : "allergen IS NULL"} AND direction = $2
+     WHERE barcode = $1 AND ${allergenKey ? "allergen_key = $3" : "allergen IS NULL"} AND direction = $2
        AND status <> 'rejected' AND (refiles_rejected_id IS NULL OR accepted_at IS NOT NULL)
        AND NOT identity_mismatch_at_report`,
-    allergen ? [barcode, direction, allergen] : [barcode, direction],
+    allergenKey ? [barcode, direction, allergenKey] : [barcode, direction],
   );
   return Number(rows[0]?.count ?? 0);
 }

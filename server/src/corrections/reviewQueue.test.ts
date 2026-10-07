@@ -4,6 +4,7 @@ import { after, before, test } from "node:test";
 import { assertIsAdmin } from "../authorization/admin.js";
 import { pool } from "../db/pool.js";
 import { HttpError } from "../lib/httpError.js";
+import { allergenKey } from "../matcher/match.js";
 import { applyCommunityCorrections } from "./applyCommunityCorrections.js";
 import { loadCommunityAdditions } from "./communityAdditions.js";
 import { recordCorrection } from "./recordCorrection.js";
@@ -117,10 +118,13 @@ type Row = Parameters<typeof groupIntoClaims>[0][number];
 let rowCounter = 0;
 function makeRow(overrides: Partial<Row> = {}): Row {
   rowCounter += 1;
+  // The key recordCorrection.ts would have written for this allergen, unless a test sets its own.
+  const allergen = overrides.allergen === undefined ? "Peanut" : overrides.allergen;
   return {
     id: `row-${rowCounter}`,
     barcode: "9000000000001",
-    allergen: "Peanut",
+    allergen,
+    allergen_key: allergen === null ? null : allergenKey(allergen),
     direction: "add_caution",
     correction_type: "flag_missing",
     target: "off_data",
@@ -184,8 +188,15 @@ test("groupIntoClaims: wrong_product's null-allergen rows group together and don
   assert.equal(wrongProductClaim?.reports.length, 2);
 });
 
-test("groupIntoClaims: grouping is case-sensitive — 'Sesame' and 'sesame' are two separate claims, matching recordCorrection.ts's own bucket", () => {
-  const claims = groupIntoClaims([makeRow({ allergen: "Sesame" }), makeRow({ allergen: "sesame" })], new Map());
+test("groupIntoClaims: groups by allergen key — 'Sesame' and 'sesame' are one claim, matching recordCorrection.ts's own bucket", () => {
+  const claims = groupIntoClaims([makeRow({ allergen: "Sesame" }), makeRow({ allergen: "sesame" }), makeRow({ allergen: "Sesame" })], new Map());
+  assert.equal(claims.length, 1);
+  assert.equal(claims[0].reports.length, 3);
+  assert.equal(claims[0].allergen, "Sesame / sesame", "every spelling reporters used, once each");
+});
+
+test("groupIntoClaims: different allergen keys stay separate claims", () => {
+  const claims = groupIntoClaims([makeRow({ allergen: "Peanut" }), makeRow({ allergen: "Tree nut" })], new Map());
   assert.equal(claims.length, 2);
 });
 

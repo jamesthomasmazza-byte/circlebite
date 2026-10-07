@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 
 import { pool } from "../db/pool.js";
+import { allergenKey } from "../matcher/match.js";
 import { aggregateEscalations, aiAccuracyReport, SMALL_SAMPLE_THRESHOLD } from "./aiAccuracyReport.js";
 
 // Pure aggregation math — no DB needed, fast, exercises the threshold/grouping logic directly.
@@ -124,9 +125,9 @@ async function makeCorrection(
 ) {
   await pool.query(
     `INSERT INTO product_corrections
-       (scan_id, barcode, reported_by, correction_type, direction, allergen, target, verdict_at_report, photo_path, status)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, 'contains_allergen', '/fake.jpg', $8)`,
-    [scanId, barcode, USER_A, opts.correctionType, opts.direction, opts.allergen, opts.target, opts.status ?? "pending"],
+       (scan_id, barcode, reported_by, correction_type, direction, allergen, target, verdict_at_report, photo_path, status, allergen_key)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, 'contains_allergen', '/fake.jpg', $8, $9)`,
+    [scanId, barcode, USER_A, opts.correctionType, opts.direction, opts.allergen, opts.target, opts.status ?? "pending", opts.allergen === null ? null : allergenKey(opts.allergen)],
   );
 }
 

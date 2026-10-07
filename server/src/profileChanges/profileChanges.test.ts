@@ -4,6 +4,7 @@ import { after, test } from "node:test";
 
 import { deleteAccount } from "../account/deleteAccount.js";
 import { pool } from "../db/pool.js";
+import { allergenKey } from "../matcher/match.js";
 
 // Real Postgres, same discipline as deleteAccount.test.ts. These exercise the database triggers
 // directly (migration 0036 onward) — the guarantee under test is that the history is written by the
@@ -407,10 +408,10 @@ async function fileCorrection(
   const allergen = correctionType === "wrong_product" ? null : (opts.allergen ?? "Peanut");
   const { rows } = await pool.query<{ id: string }>(
     `INSERT INTO product_corrections
-       (scan_id, barcode, reported_by, correction_type, direction, allergen, target, verdict_at_report, note, photo_path)
-     VALUES ($1, $2, $3, $4, $5, $6, 'off_data', 'contains_allergen', $7, 'evidence.jpg')
+       (scan_id, barcode, reported_by, correction_type, direction, allergen, target, verdict_at_report, note, photo_path, allergen_key)
+     VALUES ($1, $2, $3, $4, $5, $6, 'off_data', 'contains_allergen', $7, 'evidence.jpg', $8)
      RETURNING id`,
-    [scanId, opts.barcode ?? `9999${randomBytes(4).toString("hex")}`, reportedBy, correctionType, direction, allergen, opts.note ?? null],
+    [scanId, opts.barcode ?? `9999${randomBytes(4).toString("hex")}`, reportedBy, correctionType, direction, allergen, opts.note ?? null, allergen === null ? null : allergenKey(allergen)],
   );
   correctionsToClean.add(rows[0]!.id);
   return rows[0]!.id;

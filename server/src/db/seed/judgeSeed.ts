@@ -5,6 +5,7 @@ import type { PoolClient } from "pg";
 
 import { CORROBORATION_THRESHOLD, corroborateClaimIfThresholdMet } from "../../corrections/recordCorrection.js";
 import { env } from "../../env.js";
+import { allergenKey } from "../../matcher/match.js";
 import { SEED_PRODUCT_MARKER } from "../../lib/productLookup.js";
 import { SEED_EMAIL_DOMAIN } from "../../lib/seedMarker.js";
 import { computeVerdict } from "../../matcher/match.js";
@@ -299,9 +300,9 @@ async function createSeed(client: PoolClient, options: { judgePasswordHash: stri
     const reportedScan = SCANS.find((s) => s.id === report.scan)!;
     await client.query(
       `INSERT INTO product_corrections
-         (id, scan_id, barcode, reported_by, profile_owner_at_report, correction_type, direction, allergen, target,
-          verdict_at_report, note, photo_path, status, origin, created_at)
-       VALUES ($1, $2, $3, $4, $5, 'flag_missing', 'add_caution', $6, 'off_data', 'unable_to_confirm', $7, $8,
+         (id, scan_id, barcode, reported_by, profile_owner_at_report, correction_type, direction, allergen, allergen_key,
+          target, verdict_at_report, note, photo_path, status, origin, created_at)
+       VALUES ($1, $2, $3, $4, $5, 'flag_missing', 'add_caution', $6, $10, 'off_data', 'unable_to_confirm', $7, $8,
                'pending', 'user_initiated', now() - make_interval(days => $9))`,
       [
         report.id,
@@ -313,13 +314,15 @@ async function createSeed(client: PoolClient, options: { judgePasswordHash: stri
         report.note,
         report.photoPath,
         reportedScan.daysAgo,
+        allergenKey(report.allergen),
       ],
     );
   }
   const claims = new Map(
     COMMUNITY_REPORTS.map((r) => {
       const barcode = PRODUCTS[r.product].barcode;
-      return [`${barcode}|${r.allergen}`, { barcode, allergen: r.allergen, direction: "add_caution" as const }];
+      const key = allergenKey(r.allergen);
+      return [`${barcode}|${key}`, { barcode, allergenKey: key, direction: "add_caution" as const }];
     }),
   );
   for (const claim of claims.values()) {

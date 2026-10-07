@@ -72,8 +72,8 @@ before(async () => {
     [profileId],
   );
   const { rows: corrRows } = await pool.query<{ id: string }>(
-    `INSERT INTO product_corrections (scan_id, barcode, reported_by, correction_type, direction, allergen, target, verdict_at_report, photo_path)
-     VALUES ($1, '000111', $2, 'flag_wrong', 'remove_caution', 'Sesame', 'off_data', 'contains_allergen', $3) RETURNING id`,
+    `INSERT INTO product_corrections (scan_id, barcode, reported_by, correction_type, direction, allergen, allergen_key, target, verdict_at_report, photo_path)
+     VALUES ($1, '000111', $2, 'flag_wrong', 'remove_caution', 'Sesame', 'sesame', 'off_data', 'contains_allergen', $3) RETURNING id`,
     [scanRows[0]!.id, CO_MANAGER, photoPath],
   );
   correctionsToClean.push(corrRows[0]!.id);

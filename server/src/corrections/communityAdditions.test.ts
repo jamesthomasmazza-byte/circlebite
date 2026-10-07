@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 
 import { pool } from "../db/pool.js";
+import { allergenKey } from "../matcher/match.js";
 import { loadCommunityAdditions } from "./communityAdditions.js";
 
 // Real Postgres, same discipline as recordCorrection.test.ts: real inserts, real cleanup. Ids and
@@ -27,9 +28,9 @@ async function insertCorrection(
 ): Promise<string> {
   const { rows } = await pool.query<{ id: string }>(
     `INSERT INTO product_corrections
-       (scan_id, barcode, reported_by, correction_type, direction, allergen, target, verdict_at_report, photo_path, status)
-     VALUES ($1, $2, $3, $4, $5, $6, 'off_data', 'safe', 'test.jpg', $7) RETURNING id`,
-    [scanId, barcode, reportedBy, correctionType, direction, allergen, status],
+       (scan_id, barcode, reported_by, correction_type, direction, allergen, target, verdict_at_report, photo_path, status, allergen_key)
+     VALUES ($1, $2, $3, $4, $5, $6, 'off_data', 'safe', 'test.jpg', $7, $8) RETURNING id`,
+    [scanId, barcode, reportedBy, correctionType, direction, allergen, status, allergen === null ? null : allergenKey(allergen)],
   );
   return rows[0].id;
 }

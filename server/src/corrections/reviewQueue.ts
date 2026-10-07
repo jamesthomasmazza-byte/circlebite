@@ -43,7 +43,9 @@ export type ReviewQueueClaim = {
   // Null for a claim built from a barcode-less Path C scan's correction (docs/verdict-engine.md) —
   // see groupIntoClaims below for why every such row is always its own singleton claim.
   barcode: string | null;
-  allergen: string | null; // null only for wrong_product
+  // Every distinct spelling the claim's reports used, joined with " / " ("Peanut / peanuts"); null
+  // only for wrong_product.
+  allergen: string | null;
   direction: Direction;
   status: ClaimStatus;
   // DISTINCT reported_by among non-rejected rows, excluding NULL — the number that drives
@@ -72,6 +74,7 @@ type CorrectionRow = {
   id: string;
   barcode: string | null;
   allergen: string | null;
+  allergen_key: string | null;
   direction: Direction;
   correction_type: CorrectionType;
   target: Target;
@@ -99,7 +102,7 @@ type CorrectionRow = {
 async function fetchCorrectionRows(): Promise<CorrectionRow[]> {
   const { rows } = await pool.query<CorrectionRow>(
     `SELECT
-       pc.id, pc.barcode, pc.allergen, pc.direction, pc.correction_type, pc.target, pc.note,
+       pc.id, pc.barcode, pc.allergen, pc.allergen_key, pc.direction, pc.correction_type, pc.target, pc.note,
        pc.status, pc.created_at, pc.reported_by, pc.rejected_by, pc.rejected_at,
        pc.rejection_reason, pc.origin, rejector.email AS rejected_by_email,
        pc.refiles_rejected_id, pc.accepted_at, acceptor.email AS accepted_by_email
@@ -174,18 +177,13 @@ function hasSharedProfile(reporterIds: string[], memberships: Map<string, Set<st
 }
 
 /**
- * Pure — rows + membership map -> claims. Grouping key is barcode + direction + (RAW allergen, or
- * null for wrong_product) — exact string, NOT lower(allergen). This deliberately matches
- * recordCorrection.ts's actual corroboration bucket, which is case-sensitive: its threshold query
- * is `allergen = $2` and the unique index (migration 0015) is `(barcode, allergen, direction,
- * reported_by)` with no lower() either — "Sesame" and "sesame" are two independent corroboration
- * buckets there, each needing its own threshold met. communityAdditions.ts's own read-side query
- * groups by `lower(allergen)` instead, for display/propagation purposes — a real, pre-existing
- * case-sensitivity mismatch between the write-side bucket and the read-side display in this
- * codebase. The review queue has to key off the write-side (recordCorrection.ts's) bucket, since
- * that's what actually determines whether a specific report's status is 'pending' or
- * 'corroborated' — grouping by lower(allergen) here would silently merge two claims the engine
- * itself tracks and corroborates independently.
+ * Pure — rows + membership map -> claims. Grouping key is barcode + direction + (allergen_key, or
+ * null for wrong_product) — exactly recordCorrection.ts's corroboration bucket, since that's what
+ * determines whether a report is 'pending' or 'corroborated'. The key (migration 0043) folds
+ * spellings together — "Sesame" and "sesame", "Peanut" and "Peanuts", "Milk" and "Dairy" are one
+ * claim — and communityAdditions.ts groups on the same key, so the queue, the threshold and what
+ * families see agree. The claim's `allergen` lists each distinct spelling its reports used, in
+ * the order they arrived, so an admin sees what reporters actually wrote.
  *
  * Exception: a row with barcode === null (a barcode-less Path C scan's correction) is always its
  * own singleton claim, keyed by its own row id rather than [barcode, direction, allergen] — falling
@@ -211,20 +209,22 @@ export function groupIntoClaims(
 ): ReviewQueueClaim[] {
   const buckets = new Map<
     string,
-    { barcode: string | null; allergen: string | null; direction: Direction; rows: CorrectionRow[] }
+    { barcode: string | null; direction: Direction; rows: CorrectionRow[] }
   >();
 
   for (const row of rows) {
     // row.id makes this key unique per row, so a null-barcode row can never land in the same
     // bucket as another one — see the doc comment above.
-    const key = row.barcode === null ? JSON.stringify(["no-barcode", row.id]) : JSON.stringify([row.barcode, row.direction, row.allergen]);
+    const key = row.barcode === null ? JSON.stringify(["no-barcode", row.id]) : JSON.stringify([row.barcode, row.direction, row.allergen_key]);
     const bucket = buckets.get(key);
     if (bucket) bucket.rows.push(row);
-    else buckets.set(key, { barcode: row.barcode, allergen: row.allergen, direction: row.direction, rows: [row] });
+    else buckets.set(key, { barcode: row.barcode, direction: row.direction, rows: [row] });
   }
 
   const claims: ReviewQueueClaim[] = [];
-  for (const { barcode, allergen, direction, rows: claimRows } of buckets.values()) {
+  for (const { barcode, direction, rows: claimRows } of buckets.values()) {
+    const spellings = [...new Set(claimRows.map((r) => r.allergen).filter((a): a is string => a !== null))];
+    const allergen = spellings.length > 0 ? spellings.join(" / ") : null;
     // One letter per reporter, not per row: since migration 0034 a reporter can have a rejected
     // report and its re-file in the same claim, and lettering them separately would make one person
     // read as two independent reporters backing the claim.
@@ -389,14 +389,14 @@ export async function acceptCorrection(correctionId: string, acceptedBy: string)
 
     const { rows: existingRows } = await client.query<{
       barcode: string | null;
-      allergen: string | null;
+      allergen_key: string | null;
       direction: Direction;
       status: CorrectionStatus;
       refiles_rejected_id: string | null;
       accepted_at: string | null;
       identity_mismatch_at_report: boolean;
     }>(
-      `SELECT barcode, allergen, direction, status, refiles_rejected_id, accepted_at, identity_mismatch_at_report
+      `SELECT barcode, allergen_key, direction, status, refiles_rejected_id, accepted_at, identity_mismatch_at_report
        FROM product_corrections WHERE id = $1 FOR UPDATE`,
       [correctionId],
     );
@@ -418,7 +418,7 @@ export async function acceptCorrection(correctionId: string, acceptedBy: string)
     );
     const corroborated = await corroborateClaimIfThresholdMet(client, {
       barcode: existing.barcode,
-      allergen: existing.allergen,
+      allergenKey: existing.allergen_key,
       direction: existing.direction,
     });
     const { rows: adminRows } = await client.query<{ email: string }>("SELECT email FROM users WHERE id = $1", [

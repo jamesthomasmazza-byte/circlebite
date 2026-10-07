@@ -56,9 +56,9 @@ async function addScanWithCorrection(profileId: string, barcode: string, reporte
   const scanId = scanRows[0].id;
   const { rows: correctionRows } = await pool.query<{ id: string }>(
     `INSERT INTO product_corrections
-       (scan_id, barcode, reported_by, correction_type, direction, allergen, target, verdict_at_report,
+       (scan_id, barcode, reported_by, correction_type, direction, allergen, allergen_key, target, verdict_at_report,
         photo_path, status)
-     VALUES ($1, $2, $3, 'flag_missing', 'add_caution', 'Milk', 'off_data', 'safe', 'test.jpg', 'corroborated')
+     VALUES ($1, $2, $3, 'flag_missing', 'add_caution', 'Milk', 'milk', 'off_data', 'safe', 'test.jpg', 'corroborated')
      RETURNING id`,
     [scanId, barcode, reportedBy],
   );

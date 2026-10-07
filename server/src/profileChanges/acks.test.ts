@@ -103,8 +103,8 @@ test("a downgrade alone is flagged as a downgrade, not a profile change", async 
     [profile],
   );
   const { rows: corr } = await pool.query<{ id: string }>(
-    `INSERT INTO product_corrections (scan_id, barcode, reported_by, correction_type, direction, allergen, target, verdict_at_report, photo_path)
-     VALUES ($1, '123', $2, 'flag_wrong', 'remove_caution', 'Peanut', 'off_data', 'contains_allergen', 'x.jpg') RETURNING id`,
+    `INSERT INTO product_corrections (scan_id, barcode, reported_by, correction_type, direction, allergen, allergen_key, target, verdict_at_report, photo_path)
+     VALUES ($1, '123', $2, 'flag_wrong', 'remove_caution', 'Peanut', 'peanut', 'off_data', 'contains_allergen', 'x.jpg') RETURNING id`,
     [rows[0]!.id, coManager],
   );
   try {
