@@ -2,7 +2,8 @@
 // non-seeded people off seeded profiles). See docs/server-setup.md for the exact production steps
 // and seed/judgeSeed.ts for what a run does.
 //
-// The judge password (CONTEST_RULES.md R8 — never in the repo, never in a file or a log):
+// The judge password, one for all four judge accounts (CONTEST_RULES.md R8 — never in the repo,
+// never in a file or a log):
 //   - JUDGE_PASSWORD set: used, and only confirmed as used — never echoed back. Set it with
 //     `read -s JUDGE_PASSWORD && export JUDGE_PASSWORD` so it never lands in shell history.
 //   - unset: a strong one is generated and printed once, to this terminal only.
@@ -10,7 +11,7 @@
 import { randomBytes } from "node:crypto";
 
 import { hashPassword } from "../auth/password.js";
-import { PEOPLE } from "./seed/seedData.js";
+import { JUDGE_CASTS, PEOPLE } from "./seed/seedData.js";
 import { runJudgeSeed, SeedConflictError } from "./seed/judgeSeed.js";
 import { pool } from "./pool.js";
 
@@ -49,8 +50,12 @@ async function main(): Promise<void> {
     console.log(
       `Seeded ${summary.accounts} accounts, ${summary.profiles} profiles, ${summary.scans} scans, ${summary.npsRows} NPS rows.`,
     );
-    console.log(`Judge login: ${PEOPLE.judge.email}`);
-    console.log(supplied !== undefined ? "Judge password: JUDGE_PASSWORD was used." : `Judge password (shown once): ${password}`);
+    console.log(`Judge logins: ${JUDGE_CASTS.map((c) => PEOPLE[c.judge].email).join(", ")}`);
+    console.log(
+      supplied !== undefined
+        ? "Judge password (the same for all four): JUDGE_PASSWORD was used."
+        : `Judge password (the same for all four, shown once): ${password}`,
+    );
   } catch (err) {
     if (err instanceof SeedConflictError) {
       const c = err.conflicts;

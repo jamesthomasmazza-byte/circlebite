@@ -398,6 +398,10 @@ it is the least-worked area. Treat this whole section as the priority block it i
         register their own account, and the request to report only against the seeded
         `2990000000…` barcodes. See the "Judge credentials sent by one-time secret link" item in
         the judging-week checklist, which stays open until this email goes out.
+        **Since 2026-10-07 the seed makes four judge accounts, `judge1@` … `judge4@`, one shared
+        password** — the `judge@` login in the Oct 5 link stops working at the first production
+        reseed after that change deploys. This email carries all four logins; if production is
+        reseeded before Nov 23, the four logins have to go out then instead, by the same route.
       - [x] **Reply with screenshots** of "No listed allergens found" and the 911 referral once
         both are live on production. He named those as the two safety items judges look for, and
         asked for a screenshot of each. **Sent 2026-10-05** to Prof. Yoest, with both screenshots

@@ -22,8 +22,8 @@ import {
   SEED_BARCODES,
 } from "./seedData.js";
 
-// The judge seed: invented families, every circle role, scan history, two families' community
-// reports, and the NPS rows — rerunnable and idempotent. It finds its own rows by ONE marker, the reserved seed
+// The judge seed: four judge accounts, each with its own invented families, every circle role and
+// scan history (seedData.ts); two shared reporting families' community reports; and the NPS rows — rerunnable and idempotent. It finds its own rows by ONE marker, the reserved seed
 // email domain (lib/seedMarker.ts; signup refuses it), plus the fixed ids and barcodes in
 // seedData.ts. It never selects anything by guessing.
 //
@@ -197,13 +197,14 @@ export async function seedJudge(
 }
 
 async function createSeed(client: PoolClient, options: { judgePasswordHash: string; otherPasswordHash: string }) {
-  for (const [key, person] of Object.entries(PEOPLE)) {
-    // Only the judge can sign in. The other three get an unusable hash of random bytes nobody ever
-    // sees — they exist to be the judge's circle, not to be logged into.
+  for (const person of Object.values(PEOPLE)) {
+    // Only the judges can sign in — all four with the one judge password. Everyone else gets an
+    // unusable hash of random bytes nobody ever sees: they exist to be a judge's circle, or a
+    // reporting family, not to be logged into.
     await client.query(
       `INSERT INTO users (id, email, password_hash, display_name, age_attested_adult, age_attested_at, is_admin)
        VALUES ($1, $2, $3, $4, true, now(), false)`,
-      [person.id, person.email, key === "judge" ? options.judgePasswordHash : options.otherPasswordHash, person.displayName],
+      [person.id, person.email, person.isJudge ? options.judgePasswordHash : options.otherPasswordHash, person.displayName],
     );
   }
 

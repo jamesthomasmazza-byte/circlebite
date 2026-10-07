@@ -14,7 +14,7 @@ import { SEED_EMAIL_DOMAIN } from "../../lib/seedMarker.js";
 import { scansRouter } from "../../routes/scans.js";
 import { pool } from "../pool.js";
 import { JUDGE_CORRECTION_REJECTION_REASON, runJudgeSeed, SeedConflictError, SeedNotCorroboratedError } from "./judgeSeed.js";
-import { COMMUNITY_REPORTS, NPS_ROWS, PEOPLE, PRODUCTS, PROFILES, SCANS, SEED_BARCODES } from "./seedData.js";
+import { COMMUNITY_REPORTS, JUDGE_CASTS, JUDGE_COUNT, NPS_ROWS, PEOPLE, PRODUCTS, PROFILES, SCANS, SEED_BARCODES } from "./seedData.js";
 
 // Real Postgres. This file owns the seed domain and the seed barcodes for the length of the run, so
 // it clears any seed already on the local dev database — expected for a dev database.
@@ -29,6 +29,13 @@ const JUDGE_TEST_SCAN = "7e570000-0000-0000-0000-000000000006";
 const JUDGE_TEST_CORRECTION = "7e570000-0000-0000-0000-000000000007";
 // Any barcode outside the seed set stands in for "a real product" here — this one isn't a real GTIN.
 const STAND_IN_REAL_BARCODE = "1000000000095";
+
+// Judge 1's world, for the tests that exercise one judge; the others are built from the same template.
+const CAST = JUDGE_CASTS[0];
+const JUDGE = PEOPLE[CAST.judge];
+const PRIYA = PEOPLE[CAST.priya];
+const MAYA = PROFILES[CAST.maya];
+const NOOR = PROFILES[CAST.noor];
 
 // Generated per run, never written down — the seed itself never sees a literal either (R8).
 const judgePassword = randomBytes(18).toString("base64url");
@@ -114,20 +121,32 @@ test("every seed barcode is a GTIN-13 with a deliberately invalid check digit �
 
 let baseline: Awaited<ReturnType<typeof snapshot>>;
 
-test("fresh seed: the judge can sign in and holds every circle role, with history across all four verdicts", async () => {
+test("fresh seed: four judges can sign in, each holding every circle role, with history across all four verdicts", async () => {
   await seed();
   baseline = await snapshot();
 
-  const { rows: judgeRows } = await pool.query<{ password_hash: string; is_admin: boolean }>(
-    "SELECT password_hash, is_admin FROM users WHERE id = $1",
-    [PEOPLE.judge.id],
-  );
-  assert.equal(await verifyPassword(judgePassword, judgeRows[0].password_hash), true);
-  assert.equal(judgeRows[0].is_admin, false, "the judge is not an admin (Sept 11 precedent)");
+  assert.equal(JUDGE_CASTS.length, 4);
+  for (const cast of JUDGE_CASTS) {
+    const judge = PEOPLE[cast.judge];
+    assert.equal(judge.email, `judge${cast.n}@${SEED_EMAIL_DOMAIN}`);
+    const { rows: judgeRows } = await pool.query<{ password_hash: string; is_admin: boolean }>(
+      "SELECT password_hash, is_admin FROM users WHERE id = $1",
+      [judge.id],
+    );
+    assert.equal(await verifyPassword(judgePassword, judgeRows[0].password_hash), true, judge.email);
+    assert.equal(judgeRows[0].is_admin, false, "no judge is an admin (Sept 11 precedent)");
 
-  assert.equal((await getProfileAccess(PEOPLE.judge.id, PROFILES.maya.id))?.level, "owner");
-  assert.equal((await getProfileAccess(PEOPLE.judge.id, PROFILES.leo.id))?.level, "co_manager");
-  assert.equal((await getProfileAccess(PEOPLE.judge.id, PROFILES.noor.id))?.level, "follower");
+    assert.equal((await getProfileAccess(judge.id, PROFILES[cast.maya].id))?.level, "owner");
+    assert.equal((await getProfileAccess(judge.id, PROFILES[cast.leo].id))?.level, "co_manager");
+    assert.equal((await getProfileAccess(judge.id, PROFILES[cast.noor].id))?.level, "follower");
+  }
+
+  // Nobody else can sign in with the judge password.
+  const { rows: others } = await pool.query<{ email: string; password_hash: string }>(
+    "SELECT email, password_hash FROM users WHERE email LIKE $1 AND NOT (id = ANY($2))",
+    [`%@${SEED_EMAIL_DOMAIN}`, JUDGE_CASTS.map((c) => PEOPLE[c.judge].id)],
+  );
+  for (const other of others) assert.equal(await verifyPassword(judgePassword, other.password_hash), false, other.email);
 
   // At least one severe allergen, and one treating traces as unsafe.
   assert.ok(baseline.allergens.some((a) => a.severity === "severe"));
@@ -157,7 +176,36 @@ test("fresh seed: the judge can sign in and holds every circle role, with histor
 // broke silently once already in principle: the seed wrote status 'corroborated' by hand, so raising
 // the threshold to two families would have left a seeded "corroborated" claim the rule never granted.
 // This asserts the rule itself, against the rows the seed wrote.
-test("the seeded escalation is corroborated by the real threshold — two families, neither in the judge's circle", async () => {
+// History, the unreviewed-changes banner, acknowledgements and downgrades are all read through
+// profile access (getProfileAccess) on the judge's own profiles — so a judge who can reach no other
+// cast's child, and shares no circle edge with another cast, can see none of another judge's activity.
+test("four judges, four worlds: no judge can reach another judge's children or share a circle with them", async () => {
+  assert.equal(JUDGE_COUNT, JUDGE_CASTS.length);
+  for (const cast of JUDGE_CASTS) {
+    for (const other of JUDGE_CASTS) {
+      if (other === cast) continue;
+      for (const child of [other.maya, other.leo, other.noor]) {
+        assert.equal(await getProfileAccess(PEOPLE[cast.judge].id, PROFILES[child].id), null, `${cast.judge} → ${child}`);
+      }
+    }
+  }
+
+  // Every circle edge and scan stays inside one cast.
+  const castOf = new Map<string, number>();
+  for (const cast of JUDGE_CASTS) {
+    for (const key of [cast.judge, cast.priya, cast.sam, cast.elena]) castOf.set(PEOPLE[key].id, cast.n);
+    for (const key of [cast.maya, cast.leo, cast.noor]) castOf.set(PROFILES[key].id, cast.n);
+  }
+  for (const edge of [...baseline.coManagers.map((r) => [r.allergen_profile_id, r.user_id]), ...baseline.followers.map((r) => [r.allergen_profile_id, r.follower_id])]) {
+    assert.equal(castOf.get(edge[0]), castOf.get(edge[1]), `circle edge ${edge.join(" → ")}`);
+  }
+  for (const scan of baseline.scans) {
+    if (!castOf.has(scan.allergen_profile_id)) continue; // a reporting family's own scan
+    assert.equal(castOf.get(scan.scanner_id), castOf.get(scan.allergen_profile_id), `scan ${scan.id}`);
+  }
+});
+
+test("the seeded escalation is corroborated by the real threshold — two families, in no judge's circle", async () => {
   const barcode = PRODUCTS.reported.barcode;
   const client = await pool.connect();
   try {
@@ -172,11 +220,13 @@ test("the seeded escalation is corroborated by the real threshold — two famili
   assert.ok(baseline.reports.length > 0);
   assert.ok(baseline.reports.every((r) => r.status === "corroborated"));
 
-  // Cross-family from the judge's side: no report came from a family the judge belongs to.
+  // Cross-family from every judge's side: no report came from a family any judge belongs to.
   for (const report of baseline.reports) {
     const { rows } = await pool.query<{ id: string }>("SELECT id FROM allergen_profiles WHERE manager_id = $1", [report.profile_owner_at_report]);
     for (const { id } of rows) {
-      assert.equal(await getProfileAccess(PEOPLE.judge.id, id), null, "the judge is in no reporting family's circle");
+      for (const cast of JUDGE_CASTS) {
+        assert.equal(await getProfileAccess(PEOPLE[cast.judge].id, id), null, `${cast.judge} is in no reporting family's circle`);
+      }
     }
   }
 
@@ -203,9 +253,9 @@ test("reseeding over a seeded database ends in exactly the same state", async ()
 });
 
 test("after the judge deletes their own account, Maya transfers to Priya — and a reseed restores everything", async () => {
-  await deleteAccount(PEOPLE.judge.id);
-  const { rows } = await pool.query<{ manager_id: string }>("SELECT manager_id FROM allergen_profiles WHERE id = $1", [PROFILES.maya.id]);
-  assert.equal(rows[0].manager_id, PEOPLE.priya.id, "the co-managed profile survived, now Priya's (coppa.md §2.6)");
+  await deleteAccount(JUDGE.id);
+  const { rows } = await pool.query<{ manager_id: string }>("SELECT manager_id FROM allergen_profiles WHERE id = $1", [MAYA.id]);
+  assert.equal(rows[0].manager_id, PRIYA.id, "the co-managed profile survived, now Priya's (coppa.md §2.6)");
 
   await seed();
   assert.deepEqual(await snapshot(), baseline);
@@ -215,13 +265,13 @@ test("a correction the judge filed is rejected by a reseed, not deleted — and 
   await pool.query(
     `INSERT INTO scans (id, scanner_id, allergen_profile_id, barcode, result, matched_allergens)
      VALUES ($1, $2, $3, $4, 'safe', '[]')`,
-    [JUDGE_TEST_SCAN, PEOPLE.judge.id, PROFILES.maya.id, STAND_IN_REAL_BARCODE],
+    [JUDGE_TEST_SCAN, JUDGE.id, MAYA.id, STAND_IN_REAL_BARCODE],
   );
   await pool.query(
     `INSERT INTO product_corrections
        (id, scan_id, barcode, reported_by, correction_type, direction, allergen, target, verdict_at_report, note, photo_path, status)
      VALUES ($1, $2, $3, $4, 'flag_missing', 'add_caution', 'Peanut', 'off_data', 'safe', 'judge testing', 'corrections/none.jpg', 'corroborated')`,
-    [JUDGE_TEST_CORRECTION, JUDGE_TEST_SCAN, STAND_IN_REAL_BARCODE, PEOPLE.judge.id],
+    [JUDGE_TEST_CORRECTION, JUDGE_TEST_SCAN, STAND_IN_REAL_BARCODE, JUDGE.id],
   );
 
   const summary = await seed();
@@ -289,12 +339,12 @@ test("guard: a non-seeded person on a seeded profile aborts the seed, and nothin
   await pool.query(
     `INSERT INTO follow_relationships (allergen_profile_id, follower_id, invited_by, token_hash, status, share_level)
      VALUES ($1, $2, $3, 'seed-guard-test-token', 'accepted', 'all')`,
-    [PROFILES.maya.id, OUTSIDER, PEOPLE.judge.id],
+    [MAYA.id, OUTSIDER, JUDGE.id],
   );
   await pool.query(
     `INSERT INTO scans (scanner_id, allergen_profile_id, barcode, result, matched_allergens)
      VALUES ($1, $2, $3, 'safe', '[]')`,
-    [OUTSIDER, PROFILES.maya.id, PRODUCTS.crackers.barcode],
+    [OUTSIDER, MAYA.id, PRODUCTS.crackers.barcode],
   );
   const before = await snapshot();
 
@@ -347,7 +397,7 @@ type HistoryEntry = {
 };
 
 /** POST /scans as the judge (or `userId`), straight through the route's own handler (no HTTP harness here). */
-function rescan(allergenProfileId: string, barcode: string, userId = PEOPLE.judge.id) {
+function rescan(allergenProfileId: string, barcode: string, userId = JUDGE.id) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const layer = (scansRouter as any).stack.find((l: any) => l.route?.path === "/scans" && l.route.methods.post);
   const handler = layer.route.stack.at(-1).handle;
@@ -368,7 +418,7 @@ function history(profileId: string) {
   const layer = (scansRouter as any).stack.find((l: any) => l.route?.path === "/profiles/:id/scans" && l.route.methods.get);
   const handler = layer.route.stack.at(-1).handle;
   return new Promise<HistoryEntry[]>((resolve, reject) => {
-    handler({ params: { id: profileId }, user: { id: PEOPLE.judge.id } }, { json: resolve }, (err: unknown) =>
+    handler({ params: { id: profileId }, user: { id: JUDGE.id } }, { json: resolve }, (err: unknown) =>
       reject(err ?? new Error("next() without a response")),
     );
   });
@@ -409,7 +459,7 @@ test("the seeded shopper report renders Contains for a peanut profile, with the 
   env.labelScan = true;
   try {
     await withoutNetwork(async () => {
-      const maya = await rescan(PROFILES.maya.id, PRODUCTS.reported.barcode);
+      const maya = await rescan(MAYA.id, PRODUCTS.reported.barcode);
       assert.equal(maya.result, "unable_to_confirm", "the engine alone has nothing to check");
       assert.equal(maya.effective?.result, "contains_allergen");
       assert.deepEqual(
@@ -430,8 +480,8 @@ test("the seeded shopper report renders Contains for a peanut profile, with the 
 
       // A judge who scans this and then opens history must see the same card: both the scan just
       // made and the seeded one Priya made, recomputed fresh, match the live response exactly.
-      const mayaHistory = await history(PROFILES.maya.id);
-      const seededScanId = SCANS.find((x) => x.product === "reported" && x.profile === "maya")!.id;
+      const mayaHistory = await history(MAYA.id);
+      const seededScanId = SCANS.find((x) => x.product === "reported" && x.profile === CAST.maya)!.id;
       for (const id of [maya.id, seededScanId]) {
         const entry = mayaHistory.find((h) => h.id === id);
         assert.ok(entry, `history has scan ${id}`);
@@ -439,8 +489,15 @@ test("the seeded shopper report renders Contains for a peanut profile, with the 
         assert.deepEqual(entry.community_reports, maya.community_reports, `history reports for ${id}`);
       }
 
+      // Every judge sees the same two-family warning on their own Maya — the one thing the casts share.
+      for (const cast of JUDGE_CASTS) {
+        const theirs = await rescan(PROFILES[cast.maya].id, PRODUCTS.reported.barcode, PEOPLE[cast.judge].id);
+        assert.equal(theirs.effective?.result, "contains_allergen", cast.judge);
+        assert.deepEqual(theirs.community_reports, [{ allergenName: "Peanut", reporterCount: COMMUNITY_REPORTS.length }], cast.judge);
+      }
+
       // Tree nut must not pick up a peanut report — still nothing to show but the capture form.
-      const noor = await rescan(PROFILES.noor.id, PRODUCTS.reported.barcode);
+      const noor = await rescan(NOOR.id, PRODUCTS.reported.barcode);
       assert.equal(noor.effective, null);
       assert.deepEqual(noor.evidence_decision, { photo: "required", reason: "missing_data" });
     });

@@ -13,97 +13,142 @@ function seedId(namespace: number, n: number): string {
   return `5eed${String(namespace).padStart(4, "0")}-0000-0000-0000-${String(n).padStart(12, "0")}`;
 }
 
-// ---- People --------------------------------------------------------------------------------------
+// ---- Four judges, four separate worlds ---------------------------------------------------------------
+// judge1..judge4, so four judges can test at once without seeing each other's history, banner,
+// acknowledgements or downgrades. Each judge gets a whole cast of their own — the people around them
+// and the three children — built from one template (judgeCast below), so no judge can reach another's
+// children by any role. Only the products, the reporting families and their reports are shared: the
+// reported warning is meant to be the same cross-family claim for everyone.
+//
+// Ids: cast n's rows are the template's ids offset by (n - 1) * CAST_ID_STRIDE in each namespace, so
+// judge 1's are the ids the single-judge seed used. The reporting families' ids sit just past the
+// template's in the same namespaces, below the stride.
 
-export type PersonKey = "judge" | "priya" | "sam" | "elena" | "tomas" | "grace";
+export const JUDGE_COUNT = 4;
+const CAST_ID_STRIDE = 100;
 
-export const PEOPLE: Record<PersonKey, { id: string; email: string; displayName: string }> = {
-  judge: { id: seedId(1, 1), email: `judge@${SEED_EMAIL_DOMAIN}`, displayName: "Judge" },
-  priya: { id: seedId(1, 2), email: `priya.nair@${SEED_EMAIL_DOMAIN}`, displayName: "Priya Nair" },
-  sam: { id: seedId(1, 3), email: `sam.okafor@${SEED_EMAIL_DOMAIN}`, displayName: "Sam Okafor" },
-  elena: { id: seedId(1, 4), email: `elena.varga@${SEED_EMAIL_DOMAIN}`, displayName: "Elena Varga" },
-  // The two reporting families (COMMUNITY_REPORTS below) — outside every circle the judge is in, so
-  // the escalation a judge sees on PRODUCTS.reported genuinely comes from other households.
-  tomas: { id: seedId(1, 5), email: `tomas.reyes@${SEED_EMAIL_DOMAIN}`, displayName: "Tomás Reyes" },
-  grace: { id: seedId(1, 6), email: `grace.lin@${SEED_EMAIL_DOMAIN}`, displayName: "Grace Lin" },
-};
-
-// ---- Profiles (invented children) and their allergens ----------------------------------------------
-
-export type ProfileKey = "maya" | "leo" | "noor" | "ana" | "ben";
-
+export type Person = { id: string; email: string; displayName: string; isJudge: boolean };
 type SeedAllergen = { id: string; name: string; severity: Severity; treatTracesAsUnsafe: boolean };
+export type SeedProfile = { id: string; label: string; owner: string; allergens: SeedAllergen[] };
+type CoManager = { id: string; profile: string; person: string; addedBy: string };
+type Follower = { id: string; profile: string; person: string; invitedBy: string; shareLevel: "all" | "severe_only" };
+type SeedScan = { id: string; profile: string; scanner: string; product: ProductKey; daysAgo: number };
 
-export const PROFILES: Record<ProfileKey, { id: string; label: string; owner: PersonKey; allergens: SeedAllergen[] }> = {
+/** One judge's cast, as keys into PEOPLE and PROFILES — e.g. { judge: "judge2", maya: "maya2", ... }. */
+export type JudgeCast = { n: number; judge: string; priya: string; sam: string; elena: string; maya: string; leo: string; noor: string };
+
+export const JUDGE_CASTS: JudgeCast[] = Array.from({ length: JUDGE_COUNT }, (_, i) => {
+  const n = i + 1;
+  return { n, judge: `judge${n}`, priya: `priya${n}`, sam: `sam${n}`, elena: `elena${n}`, maya: `maya${n}`, leo: `leo${n}`, noor: `noor${n}` };
+});
+
+export const PEOPLE: Record<string, Person> = {};
+export const PROFILES: Record<string, SeedProfile> = {};
+export const CO_MANAGERS: CoManager[] = [];
+export const FOLLOWERS: Follower[] = [];
+export const SCANS: SeedScan[] = [];
+
+for (const cast of JUDGE_CASTS) {
+  const { n } = cast;
+  const id = (namespace: number, k: number) => seedId(namespace, (n - 1) * CAST_ID_STRIDE + k);
+
+  // ---- People. Only the judge can sign in (judgeSeed.ts). ----
+  PEOPLE[cast.judge] = { id: id(1, 1), email: `judge${n}@${SEED_EMAIL_DOMAIN}`, displayName: `Judge ${n}`, isJudge: true };
+  PEOPLE[cast.priya] = { id: id(1, 2), email: `priya.nair.${n}@${SEED_EMAIL_DOMAIN}`, displayName: "Priya Nair", isJudge: false };
+  PEOPLE[cast.sam] = { id: id(1, 3), email: `sam.okafor.${n}@${SEED_EMAIL_DOMAIN}`, displayName: "Sam Okafor", isJudge: false };
+  PEOPLE[cast.elena] = { id: id(1, 4), email: `elena.varga.${n}@${SEED_EMAIL_DOMAIN}`, displayName: "Elena Varga", isJudge: false };
+
+  // ---- Profiles (invented children) and their allergens. ----
   // The judge's own. Covers both trace settings: peanut traces count as "contains", sesame traces
   // only as "may contain", so Maya's history can show a caution verdict too.
-  maya: {
-    id: seedId(2, 1),
+  PROFILES[cast.maya] = {
+    id: id(2, 1),
     label: "Maya",
-    owner: "judge",
+    owner: cast.judge,
     allergens: [
-      { id: seedId(3, 1), name: "Peanut", severity: "severe", treatTracesAsUnsafe: true },
-      { id: seedId(3, 2), name: "Sesame", severity: "moderate", treatTracesAsUnsafe: false },
+      { id: id(3, 1), name: "Peanut", severity: "severe", treatTracesAsUnsafe: true },
+      { id: id(3, 2), name: "Sesame", severity: "moderate", treatTracesAsUnsafe: false },
     ],
-  },
-  leo: {
-    id: seedId(2, 2),
+  };
+  PROFILES[cast.leo] = {
+    id: id(2, 2),
     label: "Leo",
-    owner: "sam",
+    owner: cast.sam,
     allergens: [
-      { id: seedId(3, 3), name: "Milk", severity: "severe", treatTracesAsUnsafe: true },
-      { id: seedId(3, 4), name: "Egg", severity: "mild", treatTracesAsUnsafe: true },
+      { id: id(3, 3), name: "Milk", severity: "severe", treatTracesAsUnsafe: true },
+      { id: id(3, 4), name: "Egg", severity: "mild", treatTracesAsUnsafe: true },
     ],
-  },
-  noor: {
-    id: seedId(2, 3),
+  };
+  PROFILES[cast.noor] = {
+    id: id(2, 3),
     label: "Noor",
-    owner: "elena",
+    owner: cast.elena,
     allergens: [
-      { id: seedId(3, 5), name: "Tree nut", severity: "severe", treatTracesAsUnsafe: true },
-      { id: seedId(3, 6), name: "Wheat", severity: "moderate", treatTracesAsUnsafe: true },
+      { id: id(3, 5), name: "Tree nut", severity: "severe", treatTracesAsUnsafe: true },
+      { id: id(3, 6), name: "Wheat", severity: "moderate", treatTracesAsUnsafe: true },
     ],
-  },
-  // The reporting families' children. Peanut on both, spelled the same: corroboration matches the
-  // reported allergen's text exactly (recordCorrection.ts), so "Peanuts" would be a separate claim.
-  ana: {
-    id: seedId(2, 4),
-    label: "Ana",
-    owner: "tomas",
-    allergens: [{ id: seedId(3, 7), name: "Peanut", severity: "severe", treatTracesAsUnsafe: true }],
-  },
-  ben: {
-    id: seedId(2, 5),
-    label: "Ben",
-    owner: "grace",
-    allergens: [
-      { id: seedId(3, 8), name: "Peanut", severity: "moderate", treatTracesAsUnsafe: false },
-      { id: seedId(3, 9), name: "Egg", severity: "mild", treatTracesAsUnsafe: true },
-    ],
-  },
+  };
+
+  // ---- Circle edges: every role, from the judge's side. ----
+  // Owner of Maya, co-manager of Leo, follower of Noor — so the judge meets each role's experience,
+  // including the follower's escalate-only report form (Oct 1 rule). Maya has a co-manager (Priya),
+  // so if the judge deletes the account, Maya transfers to her instead of being destroyed
+  // (docs/coppa.md §2.6).
+  CO_MANAGERS.push(
+    { id: id(4, 1), profile: cast.maya, person: cast.priya, addedBy: cast.judge },
+    { id: id(4, 2), profile: cast.leo, person: cast.judge, addedBy: cast.sam },
+  );
+  FOLLOWERS.push(
+    { id: id(5, 1), profile: cast.noor, person: cast.judge, invitedBy: cast.elena, shareLevel: "all" },
+    { id: id(5, 2), profile: cast.noor, person: cast.priya, invitedBy: cast.elena, shareLevel: "severe_only" },
+  );
+
+  // ---- Scan history. ----
+  // matched_allergens and result are computed by the real matcher at seed time (judgeSeed.ts), never
+  // written by hand, so history shows exactly what a rescan would. No verdict_explanations rows: these
+  // never touched the AI, and the AI accuracy page only counts scans that did.
+  SCANS.push(
+    { id: id(6, 1), profile: cast.maya, scanner: cast.judge, product: "crackers", daysAgo: 13 },
+    { id: id(6, 2), profile: cast.maya, scanner: cast.judge, product: "peanutBar", daysAgo: 11 },
+    { id: id(6, 3), profile: cast.maya, scanner: cast.priya, product: "oatBiscuits", daysAgo: 8 },
+    { id: id(6, 4), profile: cast.maya, scanner: cast.judge, product: "unknown", daysAgo: 6 },
+    { id: id(6, 5), profile: cast.maya, scanner: cast.priya, product: "reported", daysAgo: 4 },
+    { id: id(6, 6), profile: cast.leo, scanner: cast.sam, product: "yogurtDrink", daysAgo: 10 },
+    { id: id(6, 7), profile: cast.leo, scanner: cast.sam, product: "crackers", daysAgo: 5 },
+    { id: id(6, 8), profile: cast.noor, scanner: cast.elena, product: "granola", daysAgo: 7 },
+  );
+}
+
+// ---- The reporting families, shared by every judge ------------------------------------------------
+// The two families behind COMMUNITY_REPORTS — outside every judge's circle, so the escalation a judge
+// sees on PRODUCTS.reported genuinely comes from other households, and it's the same claim for all
+// four. Each files from their own child's scan, so each counts as their own family.
+
+PEOPLE.tomas = { id: seedId(1, 5), email: `tomas.reyes@${SEED_EMAIL_DOMAIN}`, displayName: "Tomás Reyes", isJudge: false };
+PEOPLE.grace = { id: seedId(1, 6), email: `grace.lin@${SEED_EMAIL_DOMAIN}`, displayName: "Grace Lin", isJudge: false };
+
+// Peanut on both, spelled the same: corroboration matches the reported allergen's text exactly
+// (recordCorrection.ts), so "Peanuts" would be a separate claim.
+PROFILES.ana = {
+  id: seedId(2, 4),
+  label: "Ana",
+  owner: "tomas",
+  allergens: [{ id: seedId(3, 7), name: "Peanut", severity: "severe", treatTracesAsUnsafe: true }],
+};
+PROFILES.ben = {
+  id: seedId(2, 5),
+  label: "Ben",
+  owner: "grace",
+  allergens: [
+    { id: seedId(3, 8), name: "Peanut", severity: "moderate", treatTracesAsUnsafe: false },
+    { id: seedId(3, 9), name: "Egg", severity: "mild", treatTracesAsUnsafe: true },
+  ],
 };
 
-// ---- Circle edges: every role, from the judge's side ------------------------------------------------
-// Owner of Maya, co-manager of Leo, follower of Noor — so the judge meets each role's experience,
-// including the follower's escalate-only report form (Oct 1 rule). Maya has a co-manager (Priya),
-// so if the judge deletes the account, Maya transfers to her instead of being destroyed
-// (docs/coppa.md §2.6).
-
-export const CO_MANAGERS: { id: string; profile: ProfileKey; person: PersonKey; addedBy: PersonKey }[] = [
-  { id: seedId(4, 1), profile: "maya", person: "priya", addedBy: "judge" },
-  { id: seedId(4, 2), profile: "leo", person: "judge", addedBy: "sam" },
-];
-
-export const FOLLOWERS: {
-  id: string;
-  profile: ProfileKey;
-  person: PersonKey;
-  invitedBy: PersonKey;
-  shareLevel: "all" | "severe_only";
-}[] = [
-  { id: seedId(5, 1), profile: "noor", person: "judge", invitedBy: "elena", shareLevel: "all" },
-  { id: seedId(5, 2), profile: "noor", person: "priya", invitedBy: "elena", shareLevel: "severe_only" },
-];
+SCANS.push(
+  { id: seedId(6, 9), profile: "ana", scanner: "tomas", product: "reported", daysAgo: 9 },
+  { id: seedId(6, 10), profile: "ben", scanner: "grace", product: "reported", daysAgo: 6 },
+);
 
 // ---- Products ----------------------------------------------------------------------------------------
 // Every barcode is a 13-digit GTIN with a deliberately WRONG check digit (judgeSeed.test.ts proves
@@ -183,25 +228,6 @@ export const PRODUCTS: Record<ProductKey, SeedProduct> = {
   reported: { barcode: "2990000000076", found: false, name: null, brand: null, ingredientsText: null, allergensTags: [], tracesTags: [] },
 };
 
-// ---- Scan history --------------------------------------------------------------------------------------
-// matched_allergens and result are computed by the real matcher at seed time (judgeSeed.ts), never
-// written by hand, so history shows exactly what a rescan would. No verdict_explanations rows: these
-// never touched the AI, and the AI accuracy page only counts scans that did.
-
-export const SCANS: { id: string; profile: ProfileKey; scanner: PersonKey; product: ProductKey; daysAgo: number }[] = [
-  { id: seedId(6, 1), profile: "maya", scanner: "judge", product: "crackers", daysAgo: 13 },
-  { id: seedId(6, 2), profile: "maya", scanner: "judge", product: "peanutBar", daysAgo: 11 },
-  { id: seedId(6, 3), profile: "maya", scanner: "priya", product: "oatBiscuits", daysAgo: 8 },
-  { id: seedId(6, 4), profile: "maya", scanner: "judge", product: "unknown", daysAgo: 6 },
-  { id: seedId(6, 5), profile: "maya", scanner: "priya", product: "reported", daysAgo: 4 },
-  { id: seedId(6, 6), profile: "leo", scanner: "sam", product: "yogurtDrink", daysAgo: 10 },
-  { id: seedId(6, 7), profile: "leo", scanner: "sam", product: "crackers", daysAgo: 5 },
-  { id: seedId(6, 8), profile: "noor", scanner: "elena", product: "granola", daysAgo: 7 },
-  // The reporting families' own scans of PRODUCTS.reported — what their reports are filed against.
-  { id: seedId(6, 9), profile: "ana", scanner: "tomas", product: "reported", daysAgo: 9 },
-  { id: seedId(6, 10), profile: "ben", scanner: "grace", product: "reported", daysAgo: 6 },
-];
-
 // ---- The seeded community reports ------------------------------------------------------------------
 // Two families, because a warning reaches other families only once two have reported it
 // (recordCorrection.ts, CORROBORATION_THRESHOLD — one report until 2026-10-07). Each reporter files
@@ -212,7 +238,7 @@ export const SCANS: { id: string; profile: ProfileKey; scanner: PersonKey; produ
 export type SeedCommunityReport = {
   id: string;
   scan: string;
-  reporter: PersonKey;
+  reporter: string;
   product: ProductKey;
   allergen: string;
   note: string;

@@ -414,13 +414,17 @@ psql "$DB" -c "UPDATE password_reset_tokens SET used_at = now()
                AND used_at IS NULL;"
 ```
 
-## 16. Seed the judge account and demo data
+## 16. Seed the judge accounts and demo data
 
-One command creates the judge account and everything it needs to show: invented families, every
-circle role, scan history across all four verdicts, a community warning reported by two families
-outside the judge's circle, and the NPS rows. It is
-also the **recovery path** — if a judge deletes the account mid-week, run it again and everything is
-back. Rerunnable: a second run over a seeded database ends in exactly the same state.
+One command creates four judge accounts — `judge1@demo.circlebite.test` through
+`judge4@demo.circlebite.test`, one password for all four — and everything they need to show. Each
+judge has a world of their own: their own invented families, every circle role, and scan history
+across all four verdicts, so four judges testing at once never see each other's history, banner,
+acknowledgements or downgrades. Shared by all four: a community warning reported by two families
+outside every judge's circle, and the NPS rows. It is also the **recovery path** — if a judge deletes
+their account mid-week, run it again and everything is back. A reseed resets all four judges' worlds,
+not just one, so warn the others first. Rerunnable: a second run over a seeded database ends in
+exactly the same state.
 
 What it touches, and only this (details in `server/src/db/seed/judgeSeed.ts`):
 
@@ -436,7 +440,7 @@ What it touches, and only this (details in `server/src/db/seed/judgeSeed.ts`):
 - Never your account, never any other real account or its profiles, never a real product's row.
 - Signs a logged-in judge out (their sessions are deleted with the account).
 
-It makes no AI calls and spends no AI budget. The judge is **not** an admin (`docs/principles.md`,
+It makes no AI calls and spends no AI budget. No judge is an admin (`docs/principles.md`,
 Sept 11 2026 precedent).
 
 **Run it** from the live release, after a deploy that includes it. The password never goes on the
@@ -445,7 +449,7 @@ command line, into shell history, or into a file:
 ```bash
 cd ~/circlebite/current
 
-# Optional: choose the judge password. read -s keeps it off the screen and out of shell history.
+# Optional: choose the judge password (one for all four accounts). read -s keeps it off the screen and out of shell history.
 # Skip both lines to have a strong one generated and printed once instead.
 read -s JUDGE_PASSWORD && export JUDGE_PASSWORD
 
@@ -457,7 +461,7 @@ unset JUDGE_PASSWORD
 Never `JUDGE_PASSWORD=... node ...` inline — that lands in shell history. With `JUDGE_PASSWORD` set,
 the output only confirms it was used; without it, the generated password is printed **once** — copy
 it into the one-time secret link and nowhere else. Run a recovery reseed with the same
-`JUDGE_PASSWORD` and the judges' credentials keep working.
+`JUDGE_PASSWORD` and the judges' credentials keep working. The output lists the four logins.
 
 **If it refuses.** A judge may invite a real address to try the invite flow. By default the seed
 won't delete a real person's access to a seeded child, or their scans of one — it changes nothing
