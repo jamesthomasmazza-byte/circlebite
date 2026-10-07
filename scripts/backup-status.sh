@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Is the newest backup older than it should be? One line per half, then what's broken — this app
 # has nowhere to send an alert, so a backup that quietly stops is only caught by someone asking.
-#   ssh -i ~/.ssh/circlebite-prod.pem ubuntu@circlebite.app ~/circlebite/current/scripts/backup-status.sh
+#   ssh -i ~/.ssh/circlebite-prod.pem ubuntu@circlebite.app /home/ubuntu/circlebite/current/scripts/backup-status.sh
+#   (absolute remote path: an unquoted ~ there is expanded by YOUR shell, not the box's)
 # Exits nonzero if anything is stale or missing.
 #
 # READ-ONLY, and must stay that way: docs/server-setup.md §17 offers linking this into

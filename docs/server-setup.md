@@ -674,8 +674,13 @@ This app has no way to send an alert, so a backup that quietly stops is the real
 the only thing that catches it is asking. From the Mac, one line:
 
 ```bash
-ssh -i ~/.ssh/circlebite-prod.pem ubuntu@circlebite.app ~/circlebite/current/scripts/backup-status.sh
+ssh -i ~/.ssh/circlebite-prod.pem ubuntu@circlebite.app /home/ubuntu/circlebite/current/scripts/backup-status.sh
 ```
+
+The remote path is absolute on purpose. An unquoted `~/circlebite/...` there is expanded by the
+**Mac's** shell before ssh runs, so the box is asked for `/Users/<you>/circlebite/...` and answers
+"No such file or directory" — which reads like a missing script, not a quoting problem. (The `-i
+~/.ssh/...` key path is meant to expand locally; that one is right.)
 
 One line each for **local** (dump + photos on the box), **offsite** (the S3 copy), and **restore**
 (newest set proven restorable). Local and offsite are stale after 26h, restore after 8 days. When
