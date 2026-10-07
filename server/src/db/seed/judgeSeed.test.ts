@@ -8,12 +8,13 @@ import { deleteAccount } from "../../account/deleteAccount.js";
 import { hashPassword, verifyPassword } from "../../auth/password.js";
 import { getProfileAccess } from "../../authorization/profiles.js";
 import { loadCommunityAdditions } from "../../corrections/communityAdditions.js";
+import { CORROBORATION_THRESHOLD, countCorroboratingFamilies } from "../../corrections/recordCorrection.js";
 import { env } from "../../env.js";
 import { SEED_EMAIL_DOMAIN } from "../../lib/seedMarker.js";
 import { scansRouter } from "../../routes/scans.js";
 import { pool } from "../pool.js";
-import { JUDGE_CORRECTION_REJECTION_REASON, runJudgeSeed, SeedConflictError } from "./judgeSeed.js";
-import { COMMUNITY_REPORT, NPS_ROWS, PEOPLE, PRODUCTS, PROFILES, SCANS, SEED_BARCODES } from "./seedData.js";
+import { JUDGE_CORRECTION_REJECTION_REASON, runJudgeSeed, SeedConflictError, SeedNotCorroboratedError } from "./judgeSeed.js";
+import { COMMUNITY_REPORTS, NPS_ROWS, PEOPLE, PRODUCTS, PROFILES, SCANS, SEED_BARCODES } from "./seedData.js";
 
 // Real Postgres. This file owns the seed domain and the seed barcodes for the length of the run, so
 // it clears any seed already on the local dev database — expected for a dev database.
@@ -40,7 +41,7 @@ function seed(force = false) {
 
 /** Removes every seed row, the way a never-seeded database looks. Test-only. */
 async function clearSeed() {
-  await pool.query("DELETE FROM product_corrections WHERE id = $1", [COMMUNITY_REPORT.id]);
+  await pool.query("DELETE FROM product_corrections WHERE id = ANY($1)", [COMMUNITY_REPORTS.map((r) => r.id)]);
   await pool.query("DELETE FROM nps_responses WHERE id = ANY($1)", [NPS_ROWS.map((r) => r.id)]);
   await pool.query("DELETE FROM users WHERE email LIKE $1", [`%@${SEED_EMAIL_DOMAIN}`]);
   await pool.query("DELETE FROM products WHERE barcode = ANY($1)", [SEED_BARCODES]);
@@ -71,9 +72,11 @@ async function snapshot() {
        JOIN allergen_profiles p ON p.id = s.allergen_profile_id WHERE p.manager_id = ANY($1) ORDER BY s.id`,
       [userIds],
     ),
-    report: await q("SELECT id, scan_id, barcode, reported_by, allergen, direction, status, photo_path FROM product_corrections WHERE id = $1", [
-      COMMUNITY_REPORT.id,
-    ]),
+    reports: await q(
+      `SELECT id, scan_id, barcode, reported_by, profile_owner_at_report, allergen, direction, status, photo_path
+       FROM product_corrections WHERE id = ANY($1) ORDER BY id`,
+      [COMMUNITY_REPORTS.map((r) => r.id)],
+    ),
     nps: await q("SELECT id, user_id, score, reason, source FROM nps_responses WHERE id = ANY($1) ORDER BY id", [NPS_ROWS.map((r) => r.id)]),
     products: await q(
       "SELECT barcode, found, name, brand, ingredients_text, allergens_tags, traces_tags, raw_data FROM products WHERE barcode = ANY($1) ORDER BY barcode",
@@ -93,7 +96,7 @@ after(async () => {
   await pool.query("DELETE FROM nps_responses WHERE id = $1", [OUTSIDER_NPS]);
   await pool.query("DELETE FROM users WHERE id = $1", [OUTSIDER]);
   await clearSeed();
-  await rm(path.join(env.uploadDir, COMMUNITY_REPORT.photoPath), { force: true });
+  await Promise.all(COMMUNITY_REPORTS.map((r) => rm(path.join(env.uploadDir, r.photoPath), { force: true })));
   await pool.end();
 });
 
@@ -148,6 +151,50 @@ test("fresh seed: the judge can sign in and holds every circle role, with histor
 
   assert.equal(baseline.nps.length, 24);
   assert.ok(baseline.nps.every((r) => r.source === "seed" && r.user_id === null));
+});
+
+// The demo escalation on PRODUCTS.reported is the cross-family example judges are pointed at. It
+// broke silently once already in principle: the seed wrote status 'corroborated' by hand, so raising
+// the threshold to two families would have left a seeded "corroborated" claim the rule never granted.
+// This asserts the rule itself, against the rows the seed wrote.
+test("the seeded escalation is corroborated by the real threshold — two families, neither in the judge's circle", async () => {
+  const barcode = PRODUCTS.reported.barcode;
+  const client = await pool.connect();
+  try {
+    const families = await countCorroboratingFamilies(client, { barcode, allergen: "Peanut", direction: "add_caution" });
+    assert.ok(
+      families >= CORROBORATION_THRESHOLD.add_caution,
+      `${families} reporting families, threshold ${CORROBORATION_THRESHOLD.add_caution}`,
+    );
+  } finally {
+    client.release();
+  }
+  assert.ok(baseline.reports.length > 0);
+  assert.ok(baseline.reports.every((r) => r.status === "corroborated"));
+
+  // Cross-family from the judge's side: no report came from a family the judge belongs to.
+  for (const report of baseline.reports) {
+    const { rows } = await pool.query<{ id: string }>("SELECT id FROM allergen_profiles WHERE manager_id = $1", [report.profile_owner_at_report]);
+    for (const { id } of rows) {
+      assert.equal(await getProfileAccess(PEOPLE.judge.id, id), null, "the judge is in no reporting family's circle");
+    }
+  }
+
+  const additions = (await loadCommunityAdditions([barcode])).get(barcode) ?? [];
+  assert.equal(additions.length, 1);
+  assert.equal(additions[0].reporterCount, COMMUNITY_REPORTS.length);
+});
+
+test("a seed whose reports fall short of the threshold fails loudly, and changes nothing", async () => {
+  const before = await snapshot();
+  const previous = CORROBORATION_THRESHOLD.add_caution;
+  CORROBORATION_THRESHOLD.add_caution = COMMUNITY_REPORTS.length + 1;
+  try {
+    await assert.rejects(seed(), SeedNotCorroboratedError);
+  } finally {
+    CORROBORATION_THRESHOLD.add_caution = previous;
+  }
+  assert.deepEqual(await snapshot(), before, "rolled back");
 });
 
 test("reseeding over a seeded database ends in exactly the same state", async () => {
@@ -299,8 +346,8 @@ type HistoryEntry = {
   community_reports: { allergenName: string; reporterCount: number }[];
 };
 
-/** POST /scans as the judge, straight through the route's own handler (no HTTP harness here). */
-function rescan(allergenProfileId: string, barcode: string) {
+/** POST /scans as the judge (or `userId`), straight through the route's own handler (no HTTP harness here). */
+function rescan(allergenProfileId: string, barcode: string, userId = PEOPLE.judge.id) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const layer = (scansRouter as any).stack.find((l: any) => l.route?.path === "/scans" && l.route.methods.post);
   const handler = layer.route.stack.at(-1).handle;
@@ -309,7 +356,7 @@ function rescan(allergenProfileId: string, barcode: string) {
       status: () => res,
       json: (body: RescanBody) => resolve(body),
     };
-    handler({ body: { allergenProfileId, barcode }, user: { id: PEOPLE.judge.id } }, res, (err: unknown) =>
+    handler({ body: { allergenProfileId, barcode }, user: { id: userId } }, res, (err: unknown) =>
       reject(err ?? new Error("next() without a response")),
     );
   });
@@ -346,7 +393,8 @@ test("rescanning any seeded history barcode reproduces the verdict history shows
   await withoutNetwork(async () => {
     for (const scan of SCANS) {
       const history = baseline.scans.find((s) => s.id === scan.id)!;
-      const live = await rescan(PROFILES[scan.profile].id, PRODUCTS[scan.product].barcode);
+      // As the profile's owner — the reporting families' children aren't the judge's to scan.
+      const live = await rescan(PROFILES[scan.profile].id, PRODUCTS[scan.product].barcode, PEOPLE[PROFILES[scan.profile].owner].id);
       assert.equal(live.result, history.result, `${scan.profile} / ${scan.product}`);
     }
   });

@@ -3,6 +3,7 @@ import path from "node:path";
 
 import type { PoolClient } from "pg";
 
+import { CORROBORATION_THRESHOLD, corroborateClaimIfThresholdMet } from "../../corrections/recordCorrection.js";
 import { env } from "../../env.js";
 import { SEED_PRODUCT_MARKER } from "../../lib/productLookup.js";
 import { SEED_EMAIL_DOMAIN } from "../../lib/seedMarker.js";
@@ -10,7 +11,7 @@ import { computeVerdict } from "../../matcher/match.js";
 import { pool } from "../pool.js";
 import {
   CO_MANAGERS,
-  COMMUNITY_REPORT,
+  COMMUNITY_REPORTS,
   FOLLOWERS,
   NPS_ROWS,
   PEOPLE,
@@ -21,8 +22,8 @@ import {
   SEED_BARCODES,
 } from "./seedData.js";
 
-// The judge seed: invented families, every circle role, scan history, one community report, and the
-// NPS rows — rerunnable and idempotent. It finds its own rows by ONE marker, the reserved seed
+// The judge seed: invented families, every circle role, scan history, two families' community
+// reports, and the NPS rows — rerunnable and idempotent. It finds its own rows by ONE marker, the reserved seed
 // email domain (lib/seedMarker.ts; signup refuses it), plus the fixed ids and barcodes in
 // seedData.ts. It never selects anything by guessing.
 //
@@ -56,6 +57,17 @@ export type SeedConflicts = {
    *  not-found for it). Overwritten under force — it's a cache row, not anybody's data. */
   products: number;
 };
+
+/** The seeded community reports didn't meet the real corroboration threshold — the demo escalation
+ *  would not fire. Thrown inside the transaction, so nothing is changed. */
+export class SeedNotCorroboratedError extends Error {
+  constructor() {
+    super(
+      `the seeded community reports no longer meet the add_caution threshold (${CORROBORATION_THRESHOLD.add_caution} families) — ` +
+        "add reporting families in seedData.ts",
+    );
+  }
+}
 
 export class SeedConflictError extends Error {
   constructor(public readonly conflicts: SeedConflicts) {
@@ -145,12 +157,12 @@ export async function seedJudge(
   const { rowCount: judgeCorrectionsRejected } = await client.query(
     `UPDATE product_corrections
        SET status = 'rejected', rejected_by = NULL, rejected_at = now(), rejection_reason = $3
-     WHERE reported_by = ANY($1) AND status <> 'rejected' AND id <> $2`,
-    [seededUserIds, COMMUNITY_REPORT.id, JUDGE_CORRECTION_REJECTION_REASON],
+     WHERE reported_by = ANY($1) AND status <> 'rejected' AND NOT (id = ANY($2))`,
+    [seededUserIds, COMMUNITY_REPORTS.map((r) => r.id), JUDGE_CORRECTION_REJECTION_REASON],
   );
 
   // 3. The seed's own correction and NPS rows, and seeded accounts' NPS responses.
-  await client.query("DELETE FROM product_corrections WHERE id = $1", [COMMUNITY_REPORT.id]);
+  await client.query("DELETE FROM product_corrections WHERE id = ANY($1)", [COMMUNITY_REPORTS.map((r) => r.id)]);
   await client.query("DELETE FROM nps_responses WHERE id = ANY($1) OR user_id = ANY($2)", [
     NPS_ROWS.map((r) => r.id),
     seededUserIds,
@@ -278,25 +290,40 @@ async function createSeed(client: PoolClient, options: { judgePasswordHash: stri
     );
   }
 
-  // Corroborated on its first report, as any add_caution is (threshold 1, recordCorrection.ts).
-  const reportedScan = SCANS.find((s) => s.id === COMMUNITY_REPORT.scan)!;
-  await client.query(
-    `INSERT INTO product_corrections
-       (id, scan_id, barcode, reported_by, correction_type, direction, allergen, target,
-        verdict_at_report, note, photo_path, status, origin, created_at)
-     VALUES ($1, $2, $3, $4, 'flag_missing', 'add_caution', $5, 'off_data', 'unable_to_confirm', $6, $7,
-             'corroborated', 'user_initiated', now() - make_interval(days => $8))`,
-    [
-      COMMUNITY_REPORT.id,
-      COMMUNITY_REPORT.scan,
-      PRODUCTS[COMMUNITY_REPORT.product].barcode,
-      PEOPLE[COMMUNITY_REPORT.reporter].id,
-      COMMUNITY_REPORT.allergen,
-      COMMUNITY_REPORT.note,
-      COMMUNITY_REPORT.photoPath,
-      reportedScan.daysAgo,
-    ],
+  // Inserted pending, then put through the same threshold step a real report runs
+  // (recordCorrection.ts) — the seed never writes 'corroborated' itself. If the threshold ever rises
+  // past what these reports meet, the seed fails here instead of leaving a demo that silently shows
+  // no escalation, or a status the rule wouldn't have granted.
+  for (const report of COMMUNITY_REPORTS) {
+    const reportedScan = SCANS.find((s) => s.id === report.scan)!;
+    await client.query(
+      `INSERT INTO product_corrections
+         (id, scan_id, barcode, reported_by, profile_owner_at_report, correction_type, direction, allergen, target,
+          verdict_at_report, note, photo_path, status, origin, created_at)
+       VALUES ($1, $2, $3, $4, $5, 'flag_missing', 'add_caution', $6, 'off_data', 'unable_to_confirm', $7, $8,
+               'pending', 'user_initiated', now() - make_interval(days => $9))`,
+      [
+        report.id,
+        report.scan,
+        PRODUCTS[report.product].barcode,
+        PEOPLE[report.reporter].id,
+        PEOPLE[PROFILES[reportedScan.profile].owner].id,
+        report.allergen,
+        report.note,
+        report.photoPath,
+        reportedScan.daysAgo,
+      ],
+    );
+  }
+  const claims = new Map(
+    COMMUNITY_REPORTS.map((r) => {
+      const barcode = PRODUCTS[r.product].barcode;
+      return [`${barcode}|${r.allergen}`, { barcode, allergen: r.allergen, direction: "add_caution" as const }];
+    }),
   );
+  for (const claim of claims.values()) {
+    if (!(await corroborateClaimIfThresholdMet(client, claim))) throw new SeedNotCorroboratedError();
+  }
 
   for (const row of NPS_ROWS) {
     await client.query("INSERT INTO nps_responses (id, user_id, score, reason, source) VALUES ($1, NULL, $2, $3, 'seed')", [
@@ -307,11 +334,13 @@ async function createSeed(client: PoolClient, options: { judgePasswordHash: stri
   }
 }
 
-/** Writes (overwrites) the seeded report's placeholder photo. Called after the transaction commits. */
-export async function writeSeedPhoto(): Promise<void> {
-  const fullPath = path.join(env.uploadDir, COMMUNITY_REPORT.photoPath);
-  await mkdir(path.dirname(fullPath), { recursive: true });
-  await writeFile(fullPath, PLACEHOLDER_PHOTO_PNG);
+/** Writes (overwrites) the seeded reports' placeholder photos. Called after the transaction commits. */
+export async function writeSeedPhotos(): Promise<void> {
+  for (const report of COMMUNITY_REPORTS) {
+    const fullPath = path.join(env.uploadDir, report.photoPath);
+    await mkdir(path.dirname(fullPath), { recursive: true });
+    await writeFile(fullPath, PLACEHOLDER_PHOTO_PNG);
+  }
 }
 
 /** The whole run in one transaction, then the photo. Used by the CLI (seedJudge.ts) and the tests. */
@@ -332,6 +361,6 @@ export async function runJudgeSeed(options: {
   } finally {
     client.release();
   }
-  await writeSeedPhoto();
+  await writeSeedPhotos();
   return summary;
 }

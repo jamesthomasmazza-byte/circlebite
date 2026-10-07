@@ -15,18 +15,22 @@ function seedId(namespace: number, n: number): string {
 
 // ---- People --------------------------------------------------------------------------------------
 
-export type PersonKey = "judge" | "priya" | "sam" | "elena";
+export type PersonKey = "judge" | "priya" | "sam" | "elena" | "tomas" | "grace";
 
 export const PEOPLE: Record<PersonKey, { id: string; email: string; displayName: string }> = {
   judge: { id: seedId(1, 1), email: `judge@${SEED_EMAIL_DOMAIN}`, displayName: "Judge" },
   priya: { id: seedId(1, 2), email: `priya.nair@${SEED_EMAIL_DOMAIN}`, displayName: "Priya Nair" },
   sam: { id: seedId(1, 3), email: `sam.okafor@${SEED_EMAIL_DOMAIN}`, displayName: "Sam Okafor" },
   elena: { id: seedId(1, 4), email: `elena.varga@${SEED_EMAIL_DOMAIN}`, displayName: "Elena Varga" },
+  // The two reporting families (COMMUNITY_REPORTS below) — outside every circle the judge is in, so
+  // the escalation a judge sees on PRODUCTS.reported genuinely comes from other households.
+  tomas: { id: seedId(1, 5), email: `tomas.reyes@${SEED_EMAIL_DOMAIN}`, displayName: "Tomás Reyes" },
+  grace: { id: seedId(1, 6), email: `grace.lin@${SEED_EMAIL_DOMAIN}`, displayName: "Grace Lin" },
 };
 
 // ---- Profiles (invented children) and their allergens ----------------------------------------------
 
-export type ProfileKey = "maya" | "leo" | "noor";
+export type ProfileKey = "maya" | "leo" | "noor" | "ana" | "ben";
 
 type SeedAllergen = { id: string; name: string; severity: Severity; treatTracesAsUnsafe: boolean };
 
@@ -58,6 +62,23 @@ export const PROFILES: Record<ProfileKey, { id: string; label: string; owner: Pe
     allergens: [
       { id: seedId(3, 5), name: "Tree nut", severity: "severe", treatTracesAsUnsafe: true },
       { id: seedId(3, 6), name: "Wheat", severity: "moderate", treatTracesAsUnsafe: true },
+    ],
+  },
+  // The reporting families' children. Peanut on both, spelled the same: corroboration matches the
+  // reported allergen's text exactly (recordCorrection.ts), so "Peanuts" would be a separate claim.
+  ana: {
+    id: seedId(2, 4),
+    label: "Ana",
+    owner: "tomas",
+    allergens: [{ id: seedId(3, 7), name: "Peanut", severity: "severe", treatTracesAsUnsafe: true }],
+  },
+  ben: {
+    id: seedId(2, 5),
+    label: "Ben",
+    owner: "grace",
+    allergens: [
+      { id: seedId(3, 8), name: "Peanut", severity: "moderate", treatTracesAsUnsafe: false },
+      { id: seedId(3, 9), name: "Egg", severity: "mild", treatTracesAsUnsafe: true },
     ],
   },
 };
@@ -157,8 +178,8 @@ export const PRODUCTS: Record<ProductKey, SeedProduct> = {
     allergensTags: ["almonds"],
     tracesTags: [],
   },
-  // Not found, and carries the seeded community report: the engine says "Unable to confirm" and
-  // Priya's corroborated report escalates it to "Contains" for anyone with peanut on their list.
+  // Not found, and carries the seeded community reports: the engine says "Unable to confirm", and
+  // two families' corroborated reports escalate it to "Contains" for anyone with peanut on their list.
   reported: { barcode: "2990000000076", found: false, name: null, brand: null, ingredientsText: null, allergensTags: [], tracesTags: [] },
 };
 
@@ -176,23 +197,51 @@ export const SCANS: { id: string; profile: ProfileKey; scanner: PersonKey; produ
   { id: seedId(6, 6), profile: "leo", scanner: "sam", product: "yogurtDrink", daysAgo: 10 },
   { id: seedId(6, 7), profile: "leo", scanner: "sam", product: "crackers", daysAgo: 5 },
   { id: seedId(6, 8), profile: "noor", scanner: "elena", product: "granola", daysAgo: 7 },
+  // The reporting families' own scans of PRODUCTS.reported — what their reports are filed against.
+  { id: seedId(6, 9), profile: "ana", scanner: "tomas", product: "reported", daysAgo: 9 },
+  { id: seedId(6, 10), profile: "ben", scanner: "grace", product: "reported", daysAgo: 6 },
 ];
 
-// ---- The one seeded community report ---------------------------------------------------------------
-// Live only for PRODUCTS.reported's barcode, which no real product can have.
+// ---- The seeded community reports ------------------------------------------------------------------
+// Two families, because a warning reaches other families only once two have reported it
+// (recordCorrection.ts, CORROBORATION_THRESHOLD — one report until 2026-10-07). Each reporter files
+// from their own child's scan, so each counts as their own family. The seed inserts them pending and
+// runs the real threshold step; it never writes 'corroborated' itself (judgeSeed.ts). Live only for
+// PRODUCTS.reported's barcode, which no real product can have.
 
-export const COMMUNITY_REPORT = {
-  id: seedId(7, 1),
-  scan: seedId(6, 5),
-  reporter: "priya" as PersonKey,
-  product: "reported" as ProductKey,
-  allergen: "Peanut",
-  note: "Seeded example: the package lists peanut, and the product database has no record of it.",
-  // Fixed path, overwritten on every run, under UPLOAD_DIR like every real correction photo.
-  photoPath: "corrections/5eed0007-community-report.png",
+export type SeedCommunityReport = {
+  id: string;
+  scan: string;
+  reporter: PersonKey;
+  product: ProductKey;
+  allergen: string;
+  note: string;
+  /** Fixed path, overwritten on every run, under UPLOAD_DIR like every real correction photo. */
+  photoPath: string;
 };
 
-// A 1x1 grey PNG — the placeholder for the seeded report's required photo. A real PNG, so the
+export const COMMUNITY_REPORTS: SeedCommunityReport[] = [
+  {
+    id: seedId(7, 1),
+    scan: seedId(6, 9),
+    reporter: "tomas",
+    product: "reported",
+    allergen: "Peanut",
+    note: "Seeded example: the package lists peanut, and the product database has no record of it.",
+    photoPath: "corrections/5eed0007-community-report.png",
+  },
+  {
+    id: seedId(7, 2),
+    scan: seedId(6, 10),
+    reporter: "grace",
+    product: "reported",
+    allergen: "Peanut",
+    note: "Seeded example: peanut is in the ingredients list on the back of the box.",
+    photoPath: "corrections/5eed0007-community-report-2.png",
+  },
+];
+
+// A 1x1 grey PNG — the placeholder for the seeded reports' required photos. A real PNG, so the
 // admin review queue's photo link serves an actual image.
 export const PLACEHOLDER_PHOTO_PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",

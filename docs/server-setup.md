@@ -417,7 +417,8 @@ psql "$DB" -c "UPDATE password_reset_tokens SET used_at = now()
 ## 16. Seed the judge account and demo data
 
 One command creates the judge account and everything it needs to show: invented families, every
-circle role, scan history across all four verdicts, one community report, and the NPS rows. It is
+circle role, scan history across all four verdicts, a community warning reported by two families
+outside the judge's circle, and the NPS rows. It is
 also the **recovery path** — if a judge deletes the account mid-week, run it again and everything is
 back. Rerunnable: a second run over a seeded database ends in exactly the same state.
 
@@ -429,7 +430,9 @@ What it touches, and only this (details in `server/src/db/seed/judgeSeed.ts`):
   deleted, with the reason "Judge test data — cleared by reseed" — that stops any live warning
   immediately and keeps the overrule log. NPS responses they filed are deleted.
 - Fixed seed barcodes (GTINs with deliberately invalid check digits — no real product has them) in
-  the `products` cache, and the seed's own NPS and correction rows by fixed id.
+  the `products` cache, and the seed's own NPS and correction rows by fixed id. The seeded warning is
+  corroborated by the same threshold step a real report runs; if the threshold ever outgrows the
+  seeded reports, the seed refuses and changes nothing rather than seeding a demo that doesn't fire.
 - Never your account, never any other real account or its profiles, never a real product's row.
 - Signs a logged-in judge out (their sessions are deleted with the account).
 
