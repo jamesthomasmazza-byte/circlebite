@@ -319,8 +319,10 @@ it is the least-worked area. Treat this whole section as the priority block it i
       allergen keys nullable; 0044 requires them. `release.sh` migrates before it swaps the symlink,
       so a constraint shipped with 0043 would be live against the old release for a few seconds, and
       a parent's report in that window would 500. Push up to the commit before 0044, deploy, confirm
-      healthy, then push 0044 and deploy again. If 0044 refuses ("row(s) name an allergen but have no
-      allergen key"), run `SELECT product_corrections_backfill_allergen_keys();` and deploy again.
+      healthy, then push 0044 and deploy again. 0044 first fills any keys that window left missing,
+      itself. It refuses only if a row is still unkeyed after that — unexpected, so find out why
+      rather than forcing it. A refusal aborts release.sh before the symlink swap (checked
+      2026-10-07), so the running release stays up.
 - [ ] **A held removal waits on someone working the review queue.** A removal blocked by a
       confirmed warning stays pending, and its parent is told "a reviewer sees both" — true while JT
       reviews daily through judging, but a promise with no timer behind it if this ever runs

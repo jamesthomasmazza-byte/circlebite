@@ -6,9 +6,17 @@
 -- it swaps the symlink, so this constraint must not exist while the release that doesn't write the
 -- keys is still serving. Deploy 0043 and the code that writes the keys first; this one after.
 --
--- Fails loudly if any row is missing a key — never skips or quietly fills it. Such a row was
--- written by the previous release in the seconds between 0043 migrating and the symlink swap. The
--- fix is the frozen backfill 0043 left behind, which fills only missing keys; then deploy again.
+-- Rows written in that window — by the previous release, after 0043's own backfill ran — have no
+-- keys, and that is expected, not an error: the deploy itself creates them. So this runs 0043's
+-- backfill first (deterministic, idempotent, fills only missing keys, and tested against
+-- allergenFoldKey/allergenFamilyKey). The same holds for anyone applying these migrations later
+-- with real traffic in between.
+--
+-- Then it refuses, loudly, only if a row STILL has no key — something the backfill couldn't fill,
+-- which nothing expected can produce and is worth stopping a deploy for. Failing here aborts
+-- release.sh before the symlink swap (its `set -euo pipefail`), so the running release is untouched.
+
+SELECT product_corrections_backfill_allergen_keys();
 
 DO $$
 DECLARE
@@ -18,8 +26,8 @@ BEGIN
     FROM product_corrections
    WHERE allergen IS NOT NULL AND (allergen_fold_key IS NULL OR allergen_family_key IS NULL);
   IF v_missing > 0 THEN
-    RAISE EXCEPTION '% product_corrections row(s) name an allergen but have no allergen key', v_missing
-      USING HINT = 'Run SELECT product_corrections_backfill_allergen_keys(); then deploy again (migration 0044).';
+    RAISE EXCEPTION '% product_corrections row(s) name an allergen but still have no allergen key after the backfill', v_missing
+      USING HINT = 'product_corrections_backfill_allergen_keys() (migration 0043) left them unfilled — find out why before requiring keys.';
   END IF;
 END
 $$;

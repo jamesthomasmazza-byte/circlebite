@@ -112,26 +112,35 @@ test("0043's kept backfill function fills only missing keys, never rewrites a ke
   });
 });
 
-test("0044 refuses to run while any allergen report is missing a key, naming the fix — then requires keys", async () => {
+test("0044 fills the keys a deploy leaves missing, then requires them", async () => {
   await inTempCopy(async (client) => {
+    // Written by the previous release between 0043 migrating and the symlink swap.
     const unkeyed = (await insert(client, "Peanut", "pending")).rows[0].id;
 
-    await client.query("SAVEPOINT before_0044");
-    await assert.rejects(client.query(await migration("0044_product_corrections_require_allergen_keys.sql")), (err: { message: string; hint?: string }) => {
-      assert.match(err.message, /1 product_corrections row\(s\) name an allergen but have no allergen key/);
-      assert.match(err.hint ?? "", /product_corrections_backfill_allergen_keys\(\)/);
-      return true;
-    });
-    await client.query("ROLLBACK TO SAVEPOINT before_0044");
-
-    await client.query("SELECT product_corrections_backfill_allergen_keys()");
     await client.query(await migration("0044_product_corrections_require_allergen_keys.sql"));
-    const { rows } = await client.query("SELECT allergen_fold_key FROM product_corrections WHERE id = $1", [unkeyed]);
-    assert.equal(rows[0].allergen_fold_key, "peanut");
+    const { rows } = await client.query("SELECT allergen_fold_key, allergen_family_key, status FROM product_corrections WHERE id = $1", [unkeyed]);
+    assert.deepEqual(rows[0], { allergen_fold_key: "peanut", allergen_family_key: "cluster:peanut", status: "pending" });
 
     await client.query("SAVEPOINT after_0044");
     await assert.rejects(insert(client, "Sesame", "pending"), /product_corrections_allergen_keys_present/);
     await client.query("ROLLBACK TO SAVEPOINT after_0044");
     await insert(client, null, "pending"); // wrong_product: no allergen, no keys
+  });
+});
+
+test("0044 refuses, loudly, if a row still has no key after the backfill — and adds no constraint", async () => {
+  await inTempCopy(async (client) => {
+    await insert(client, "Peanut", "pending");
+    // A backfill that fills nothing — the unexpected case 0044 exists to stop on. Replaced inside
+    // this rolled-back transaction only.
+    await client.query(
+      "CREATE OR REPLACE FUNCTION product_corrections_backfill_allergen_keys() RETURNS integer LANGUAGE sql AS 'SELECT 0'",
+    );
+
+    await assert.rejects(client.query(await migration("0044_product_corrections_require_allergen_keys.sql")), (err: { message: string; hint?: string }) => {
+      assert.match(err.message, /1 product_corrections row\(s\) name an allergen but still have no allergen key after the backfill/);
+      assert.match(err.hint ?? "", /left them unfilled/);
+      return true;
+    });
   });
 });
