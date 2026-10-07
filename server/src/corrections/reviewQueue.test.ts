@@ -40,6 +40,8 @@ const ALL_USER_IDS = [
 
 const PROFILE_ID = "11111111-0000-0000-0000-000000000001";
 const CIRCLE_PROFILE_ID = "11111111-0000-0000-0000-000000000002";
+// USER_B's own child — a second family, since corroboration counts profile owners.
+const PROFILE_B = "11111111-0000-0000-0000-000000000003";
 
 async function makeScan(
   profileId: string,
@@ -72,6 +74,10 @@ before(async () => {
   await pool.query("INSERT INTO allergen_profiles (id, manager_id, label) VALUES ($1, $2, 'RQ Test Profile')", [
     PROFILE_ID,
     USER_A,
+  ]);
+  await pool.query("INSERT INTO allergen_profiles (id, manager_id, label) VALUES ($1, $2, 'RQ Test Profile B')", [
+    PROFILE_B,
+    USER_B,
   ]);
   await pool.query("INSERT INTO allergen_profiles (id, manager_id, label) VALUES ($1, $2, 'RQ Circle Profile')", [
     CIRCLE_PROFILE_ID,
@@ -320,22 +326,14 @@ test("sameCircleWarning end to end: true for co-managers and accepted followers 
   assert.equal(await reportPair("3000000000023", CIRCLE_OWNER, CIRCLE_STRANGER), false);
 });
 
-test("rejecting the sole corroborated add_caution report stops it escalating to another profile on the next read", async () => {
+test("rejecting every report in a corroborated add_caution claim stops it escalating to another profile on the next read", async () => {
   const barcode = "3000000000001";
-  const scanId = await makeScan(PROFILE_ID, barcode, "safe", [
-    { allergenName: "Peanut", severity: "severe", classification: "clear" },
-  ]);
+  const peanut = [{ allergenName: "Peanut", severity: "severe", classification: "clear" }];
+  const report = (reportedBy: string) => ({ reportedBy, correctionType: "flag_missing" as const, allergen: "Peanut", note: null, photoPath: "/fake.jpg", origin: "user_initiated" as const });
 
-  const recorded = await recordCorrection({
-    scanId,
-    reportedBy: USER_A,
-    correctionType: "flag_missing",
-    allergen: "Peanut",
-    note: null,
-    photoPath: "/fake.jpg",
-    origin: "user_initiated",
-  });
-  assert.equal(recorded.corroborated, true);
+  const first = await recordCorrection({ scanId: await makeScan(PROFILE_ID, barcode, "safe", peanut), ...report(USER_A) });
+  const recorded = await recordCorrection({ scanId: await makeScan(PROFILE_B, barcode, "safe", peanut), ...report(USER_B) });
+  assert.equal(recorded.corroborated, true, "two families");
 
   const secondFamilyAllergens = [{ name: "Peanut", severity: "severe" as const }];
   const secondFamilyScan = {
@@ -348,6 +346,7 @@ test("rejecting the sole corroborated add_caution report stops it escalating to 
   const beforeEffective = applyCommunityCorrections(secondFamilyScan, secondFamilyAllergens, beforeAdditions);
   assert.equal(beforeEffective?.result, "contains_allergen");
 
+  await rejectCorrection(first.id, ADMIN, "Reporter admitted this was a mislabel.");
   await rejectCorrection(recorded.id, ADMIN, "Reporter admitted this was a mislabel.");
 
   const afterAdditions = (await loadCommunityAdditions([barcode])).get(barcode) ?? [];
@@ -358,19 +357,23 @@ test("rejecting the sole corroborated add_caution report stops it escalating to 
 
 test("rejecting one of several corroborated add_caution reports for the same claim leaves the claim applied", async () => {
   const barcode = "3000000000002";
-  const scan1 = await makeScan(PROFILE_ID, barcode, "safe", [{ allergenName: "Egg", severity: "moderate", classification: "clear" }]);
-  const scan2 = await makeScan(PROFILE_ID, barcode, "safe", [{ allergenName: "Egg", severity: "moderate", classification: "clear" }]);
+  const egg = [{ allergenName: "Egg", severity: "moderate", classification: "clear" }];
+  const scan1 = await makeScan(PROFILE_ID, barcode, "safe", egg);
+  const scan2 = await makeScan(PROFILE_B, barcode, "safe", egg);
+  const scan3 = await makeScan(CIRCLE_PROFILE_ID, barcode, "safe", egg);
 
   const first = await recordCorrection({ scanId: scan1, reportedBy: USER_A, correctionType: "flag_missing", allergen: "Egg", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
   const second = await recordCorrection({ scanId: scan2, reportedBy: USER_B, correctionType: "flag_missing", allergen: "Egg", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
-  assert.equal(first.corroborated, true);
+  const third = await recordCorrection({ scanId: scan3, reportedBy: CIRCLE_OWNER, correctionType: "flag_missing", allergen: "Egg", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
+  assert.equal(first.corroborated, false, "one family");
   assert.equal(second.corroborated, true);
+  assert.equal(third.corroborated, true);
 
   await rejectCorrection(first.id, ADMIN, "Duplicate of a stronger report.");
 
   const additions = (await loadCommunityAdditions([barcode])).get(barcode) ?? [];
   assert.equal(additions.length, 1);
-  assert.equal(additions[0].reporterCount, 1);
+  assert.equal(additions[0].reporterCount, 2);
 });
 
 test("rejectCorrection requires a reason for add_caution, not for remove_caution", async () => {
@@ -476,6 +479,8 @@ test("accepting a re-filed add_caution corroborates it, records who accepted it,
 
   const original = await recordCorrection({ scanId: await makeScan(PROFILE_ID, barcode, "safe", sesame), ...report });
   await rejectCorrection(original.id, ADMIN, "Photo showed a different product.");
+  // A second family's report, one short of the threshold until the re-file's vote is restored.
+  await recordCorrection({ scanId: await makeScan(PROFILE_B, barcode, "safe", sesame), ...report, reportedBy: USER_B });
   const refile = await recordCorrection({ scanId: await makeScan(PROFILE_ID, barcode, "safe", sesame), ...report });
   assert.equal(refile.status, "pending");
 

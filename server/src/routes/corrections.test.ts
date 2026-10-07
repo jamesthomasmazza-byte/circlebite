@@ -19,6 +19,9 @@ const REPORTER = "aaaaaaaa-0000-0000-0000-0000000000c1";
 const CO_MANAGER = "aaaaaaaa-0000-0000-0000-0000000000c2";
 const FOLLOWER = "aaaaaaaa-0000-0000-0000-0000000000c3";
 const PROFILE_ID = "bbbbbbbb-0000-0000-0000-0000000000c1";
+// A second family, outside REPORTER's circle, whose own report makes an addition corroborate.
+const OTHER_OWNER = "aaaaaaaa-0000-0000-0000-0000000000c4";
+const OTHER_PROFILE = "bbbbbbbb-0000-0000-0000-0000000000c4";
 const JPEG_MAGIC = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
 
 type Captured = { status: number; body: Record<string, unknown> };
@@ -49,13 +52,20 @@ function postCorrection(scanId: string, body: Record<string, unknown>, userId = 
   });
 }
 
-async function makeScan(barcode: string, result: string, matched: object[]): Promise<string> {
+async function makeScan(barcode: string, result: string, matched: object[], profileId = PROFILE_ID): Promise<string> {
   const { rows } = await pool.query<{ id: string }>(
     `INSERT INTO scans (allergen_profile_id, barcode, result, matched_allergens, ingredients_text)
      VALUES ($1, $2, $3, $4, 'test ingredients') RETURNING id`,
-    [PROFILE_ID, barcode, result, JSON.stringify(matched)],
+    [profileId, barcode, result, JSON.stringify(matched)],
   );
   return rows[0].id;
+}
+
+/** The other family's report of the same addition — the first of the two families it takes. */
+async function otherFamilyReports(barcode: string, allergen: string) {
+  const matched = [{ allergenName: allergen, severity: "severe", classification: "clear" }];
+  const { status } = await postCorrection(await makeScan(barcode, "safe", matched, OTHER_PROFILE), { correctionType: "flag_missing", allergen }, OTHER_OWNER);
+  assert.equal(status, 201);
 }
 
 before(async () => {
@@ -63,12 +73,15 @@ before(async () => {
     `INSERT INTO users (id, email, password_hash, display_name, age_attested_adult, age_attested_at)
      VALUES ($1, 'corr-route-test@example.com', 'x', 'A', true, now()),
             ($2, 'corr-route-comanager@example.com', 'x', 'Co-manager', true, now()),
-            ($3, 'corr-route-follower@example.com', 'x', 'Follower', true, now())`,
-    [REPORTER, CO_MANAGER, FOLLOWER],
+            ($3, 'corr-route-follower@example.com', 'x', 'Follower', true, now()),
+            ($4, 'corr-route-other-family@example.com', 'x', 'Other family', true, now())`,
+    [REPORTER, CO_MANAGER, FOLLOWER, OTHER_OWNER],
   );
-  await pool.query("INSERT INTO allergen_profiles (id, manager_id, label) VALUES ($1, $2, 'Test Profile')", [
+  await pool.query("INSERT INTO allergen_profiles (id, manager_id, label) VALUES ($1, $2, 'Test Profile'), ($3, $4, 'Other family')", [
     PROFILE_ID,
     REPORTER,
+    OTHER_PROFILE,
+    OTHER_OWNER,
   ]);
   await pool.query("INSERT INTO profile_managers (allergen_profile_id, user_id, added_by) VALUES ($1, $2, $3)", [
     PROFILE_ID,
@@ -84,16 +97,17 @@ before(async () => {
 
 after(async () => {
   const { rows } = await pool.query<{ photo_path: string }>(
-    "DELETE FROM product_corrections WHERE scan_id IN (SELECT id FROM scans WHERE allergen_profile_id = $1) RETURNING photo_path",
-    [PROFILE_ID],
+    "DELETE FROM product_corrections WHERE scan_id IN (SELECT id FROM scans WHERE allergen_profile_id = ANY($1)) RETURNING photo_path",
+    [[PROFILE_ID, OTHER_PROFILE]],
   );
   await Promise.all(rows.map((r) => rm(resolvePhotoPath(r.photo_path), { force: true })));
-  await pool.query("DELETE FROM users WHERE id = ANY($1)", [[REPORTER, CO_MANAGER, FOLLOWER]]);
+  await pool.query("DELETE FROM users WHERE id = ANY($1)", [[REPORTER, CO_MANAGER, FOLLOWER, OTHER_OWNER]]);
   await pool.end();
 });
 
 test("reporting an allergen missing returns the reporter's corrected view, not just the report status", async () => {
   // The 2026-09-29 live test: a Safe card, sesame reported missing, and the card kept saying Safe.
+  // The first family's report — pending under the threshold of 2, and the card changes anyway.
   const scanId = await makeScan("8000000000001", "safe", [
     { allergenName: "Sesame", severity: "severe", classification: "clear" },
   ]);
@@ -101,14 +115,14 @@ test("reporting an allergen missing returns the reporter's corrected view, not j
   const { status, body } = await postCorrection(scanId, { correctionType: "flag_missing", allergen: "Sesame" });
 
   assert.equal(status, 201);
-  assert.equal(body.corroborated, true);
+  assert.equal(body.corroborated, false);
   const effective = body.effective as { result: string; matched_allergens: { allergenName: string; classification: string }[] };
   assert.equal(effective.result, "contains_allergen");
   assert.equal(effective.matched_allergens.find((m) => m.allergenName === "Sesame")?.classification, "contains");
   const corrections = body.corrections as { correctionType: string; status: string }[];
   assert.equal(corrections.length, 1);
   assert.equal(corrections[0].correctionType, "flag_missing");
-  assert.equal(corrections[0].status, "corroborated");
+  assert.equal(corrections[0].status, "pending");
   assert.deepEqual(body.community_reports, []);
 
   // The engine's own verdict on the row is untouched — the override is a view, never a rewrite.
@@ -133,11 +147,17 @@ test("reaches_other_families is true only for a corroborated addition with commu
   const previous = env.communityCorrections;
   try {
     env.communityCorrections = false;
+    await otherFamilyReports("8000000000003", "Sesame");
     const off = await postCorrection(await makeScan("8000000000003", "safe", matched), { correctionType: "flag_missing", allergen: "Sesame" });
     assert.equal(off.body.corroborated, true);
     assert.equal(off.body.reaches_other_families, false, "switched off: the warning is only on the reporter's view");
 
     env.communityCorrections = true;
+    const alone = await postCorrection(await makeScan("8000000000011", "safe", matched), { correctionType: "flag_missing", allergen: "Sesame" });
+    assert.equal(alone.body.corroborated, false);
+    assert.equal(alone.body.reaches_other_families, false, "one family: the warning is only on the reporter's view");
+
+    await otherFamilyReports("8000000000004", "Sesame");
     const on = await postCorrection(await makeScan("8000000000004", "safe", matched), { correctionType: "flag_missing", allergen: "Sesame" });
     assert.equal(on.body.reaches_other_families, true);
 
@@ -251,5 +271,8 @@ test("a follower can still report an allergen present", async () => {
     FOLLOWER,
   );
   assert.equal(status, 201);
-  assert.equal(body.corroborated, true);
+  // Reported for the owner's child, so it counts as the owner's family — one, below the threshold —
+  // and the follower's own card still shows it.
+  assert.equal(body.corroborated, false);
+  assert.equal((body.effective as { result: string }).result, "contains_allergen");
 });

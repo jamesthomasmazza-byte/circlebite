@@ -16,10 +16,14 @@ export function directionForCorrectionType(correctionType: CorrectionType): Dire
 }
 
 // The deliberate asymmetry from docs/legacy-spec.md §6 and docs/principles.md principle 1 (false
-// caution beats false safety): one report is enough to add a warning, three are needed to remove
-// one.
-const CORROBORATION_THRESHOLD: Record<Direction, number> = {
-  add_caution: 1,
+// caution beats false safety): fewer families to add a warning than to remove one. Counted in
+// families, not reporters (countCorroboratingFamilies). add_caution was 1 until 2026-10-07: one
+// report — one account, since signup is open to any adult — put a warning in front of every family
+// in the app. Two families means a second household holding the same package saw it too. The
+// reporter's own view doesn't wait for either threshold (applyUserCorrections filters on
+// reported_by).
+export const CORROBORATION_THRESHOLD: Record<Direction, number> = {
+  add_caution: 2,
   remove_caution: 3,
 };
 
@@ -70,7 +74,7 @@ type ScanRow = {
  * — is disputing the underlying product data instead (target "off_data"), the only mode the
  * original prototype had. wrong_product is always off_data.
  *
- * Corroboration is counted per (barcode, allergen, direction) across every reporter, regardless of
+ * Corroboration is counted per (barcode, allergen, direction) across every reporting family, regardless of
  * target — "the AI got this wrong" and "the database is wrong about this" are the same community
  * claim about the same allergen once you're counting how many people agree. Except: a correction
  * against a barcode-less Path C scan (scan.barcode IS NULL) never corroborates at all — see the
@@ -230,7 +234,8 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
 
 /**
  * The threshold step for one claim, (barcode, allergen or null for wrong_product, direction): if
- * enough distinct reporters back it, every pending row in it becomes 'corroborated'. Shared by
+ * enough distinct families back it (countCorroboratingFamilies), every pending row in it becomes
+ * 'corroborated'. Shared by
  * recordCorrection (a new report) and reviewQueue.ts's acceptCorrection (an admin accepting a
  * re-file), so an accept restores a report's vote rather than overriding the threshold — a removal
  * still needs three people, and the warning still survives a conflicting removal. Runs inside the
@@ -241,13 +246,13 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
  * rejection didn't stop the claim it rejected.
  *
  * Re-files (refiles_rejected_id set, migration 0034) don't count until an admin accepts them:
- * otherwise an add_caution re-file would meet its threshold of 1 by itself and undo the rejection
- * for every family on insert. An unaccepted re-file still goes to 'corroborated' along with its
+ * otherwise a re-file would count as a fresh vote and could undo the rejection for every family
+ * on insert. An unaccepted re-file still goes to 'corroborated' along with its
  * claim when independent reporters reach the threshold on their own.
  *
  * A report filed against a mismatched label (identity_mismatch_at_report, migration 0032) neither
  * counts nor is flipped. recordCorrection already skips this step when the new report is the
- * mismatched one; without these two clauses the same report still counted as a reporter whenever
+ * mismatched one; without these two clauses the same report still counted as a family whenever
  * someone else's report ran the threshold, and was then marked 'corroborated' along with the claim
  * — feeding communityAdditions.ts's family-facing count. 0032's gate covers both halves.
  */
@@ -256,20 +261,7 @@ export async function corroborateClaimIfThresholdMet(
   claim: { barcode: string; allergen: string | null; direction: Direction },
 ): Promise<boolean> {
   const { barcode, allergen, direction } = claim;
-  const { rows: countRows } = await client.query<{ count: string }>(
-    allergen
-      ? `SELECT count(DISTINCT reported_by) FROM product_corrections
-         WHERE barcode = $1 AND allergen = $2 AND direction = $3
-           AND status <> 'rejected' AND (refiles_rejected_id IS NULL OR accepted_at IS NOT NULL)
-           AND NOT identity_mismatch_at_report`
-      : `SELECT count(DISTINCT reported_by) FROM product_corrections
-         WHERE barcode = $1 AND allergen IS NULL AND direction = $2
-           AND status <> 'rejected' AND (refiles_rejected_id IS NULL OR accepted_at IS NOT NULL)
-           AND NOT identity_mismatch_at_report`,
-    allergen ? [barcode, allergen, direction] : [barcode, direction],
-  );
-  const reporterCount = Number(countRows[0]?.count ?? 0);
-  if (reporterCount < CORROBORATION_THRESHOLD[direction]) return false;
+  if ((await countCorroboratingFamilies(client, claim)) < CORROBORATION_THRESHOLD[direction]) return false;
 
   if (direction === "remove_caution" && allergen) {
     const { rows: conflictRows } = await client.query(
@@ -290,6 +282,33 @@ export async function corroborateClaimIfThresholdMet(
     allergen ? [barcode, allergen, direction] : [barcode, direction],
   );
   return true;
+}
+
+/**
+ * How many distinct families back one claim — the number CORROBORATION_THRESHOLD is compared with.
+ * A family is the owner of the profile the report was filed from (profile_owner_at_report, migration
+ * 0042): an owner and a co-manager of the same child are one household, and a follower scanning for
+ * that child is holding that household's package. Falls back to the reporter when the owner's
+ * account is gone. A row with neither (both accounts deleted) counts for nothing, as it did when
+ * this counted reporters.
+ *
+ * Same row filters as the threshold has always had — rejected, unaccepted re-files and mismatched
+ * labels don't count (corroborateClaimIfThresholdMet has why). Exported so the judge seed can prove
+ * its demo claim is corroborated by the rule itself, not by a status it wrote.
+ */
+export async function countCorroboratingFamilies(
+  client: PoolClient,
+  claim: { barcode: string; allergen: string | null; direction: Direction },
+): Promise<number> {
+  const { barcode, allergen, direction } = claim;
+  const { rows } = await client.query<{ count: string }>(
+    `SELECT count(DISTINCT COALESCE(profile_owner_at_report, reported_by)) FROM product_corrections
+     WHERE barcode = $1 AND ${allergen ? "allergen = $3" : "allergen IS NULL"} AND direction = $2
+       AND status <> 'rejected' AND (refiles_rejected_id IS NULL OR accepted_at IS NOT NULL)
+       AND NOT identity_mismatch_at_report`,
+    allergen ? [barcode, direction, allergen] : [barcode, direction],
+  );
+  return Number(rows[0]?.count ?? 0);
 }
 
 // The two anti-inflation indexes (migration 0015, scoped to live rows by 0034). Hitting one means

@@ -49,9 +49,10 @@ export function allergensOverlap(a: string, b: string): boolean {
 /**
  * Week 8 part 2: corroborated community corrections reach profiles other than the reporter's.
  *
- * Additions only, by JT's decision on 2026-09-10. A corroborated add_caution (threshold 1, per
- * docs/legacy-spec.md §6) escalates the matching allergen on this profile to "contains". A
- * corroborated remove_caution (threshold 3) is deliberately NOT read here — it still changes only
+ * Additions only, by JT's decision on 2026-09-10. A corroborated add_caution (two families, per
+ * recordCorrection.ts's CORROBORATION_THRESHOLD — one report until 2026-10-07) escalates the
+ * matching allergen on this profile to "contains". A corroborated remove_caution (threshold 3) is
+ * deliberately NOT read here — it still changes only
  * the reporter's own view (applyUserCorrections). Signup is open to any adult, so three throwaway
  * accounts could otherwise clear a peanut warning for every family in the app; removals wait for a
  * review queue. See the precedent row in docs/principles.md.

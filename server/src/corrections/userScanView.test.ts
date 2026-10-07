@@ -15,6 +15,10 @@ const REPORTER = "aaaaaaaa-0000-0000-0000-0000000000a1";
 const OTHER = "aaaaaaaa-0000-0000-0000-0000000000a2";
 const REPORTER_PROFILE = "bbbbbbbb-0000-0000-0000-0000000000a1";
 const OTHER_PROFILE = "bbbbbbbb-0000-0000-0000-0000000000a2";
+// A second reporting family, and a co-manager of REPORTER_PROFILE — the reporter's own family.
+const SECOND_FAMILY = "aaaaaaaa-0000-0000-0000-0000000000a3";
+const SECOND_FAMILY_PROFILE = "bbbbbbbb-0000-0000-0000-0000000000a3";
+const CO_MANAGER = "aaaaaaaa-0000-0000-0000-0000000000a4";
 
 const SAFE_SESAME = [{ allergenName: "Sesame", severity: "severe", classification: "clear" }];
 
@@ -35,27 +39,34 @@ before(async () => {
   await pool.query(
     `INSERT INTO users (id, email, password_hash, display_name, age_attested_adult, age_attested_at) VALUES
        ($1, 'view-test-a@example.com', 'x', 'A', true, now()),
-       ($2, 'view-test-b@example.com', 'x', 'B', true, now())`,
-    [REPORTER, OTHER],
+       ($2, 'view-test-b@example.com', 'x', 'B', true, now()),
+       ($3, 'view-test-c@example.com', 'x', 'C', true, now()),
+       ($4, 'view-test-d@example.com', 'x', 'D', true, now())`,
+    [REPORTER, OTHER, SECOND_FAMILY, CO_MANAGER],
   );
   await pool.query(
-    `INSERT INTO allergen_profiles (id, manager_id, label) VALUES ($1, $2, 'Test A'), ($3, $4, 'Test B')`,
-    [REPORTER_PROFILE, REPORTER, OTHER_PROFILE, OTHER],
+    `INSERT INTO allergen_profiles (id, manager_id, label) VALUES ($1, $2, 'Test A'), ($3, $4, 'Test B'), ($5, $6, 'Test C')`,
+    [REPORTER_PROFILE, REPORTER, OTHER_PROFILE, OTHER, SECOND_FAMILY_PROFILE, SECOND_FAMILY],
   );
   await pool.query(
     `INSERT INTO allergens (allergen_profile_id, name, severity, treat_traces_as_unsafe)
-     VALUES ($1, 'Sesame', 'severe', false), ($2, 'Sesame', 'severe', false)`,
-    [REPORTER_PROFILE, OTHER_PROFILE],
+     VALUES ($1, 'Sesame', 'severe', false), ($2, 'Sesame', 'severe', false), ($3, 'Sesame', 'severe', false)`,
+    [REPORTER_PROFILE, OTHER_PROFILE, SECOND_FAMILY_PROFILE],
   );
+  await pool.query("INSERT INTO profile_managers (allergen_profile_id, user_id, added_by) VALUES ($1, $2, $3)", [
+    REPORTER_PROFILE,
+    CO_MANAGER,
+    REPORTER,
+  ]);
 });
 
 after(async () => {
   // Corrections first — scan_id is ON DELETE SET NULL, see recordCorrection.test.ts's after().
   await pool.query(
     "DELETE FROM product_corrections WHERE scan_id IN (SELECT id FROM scans WHERE allergen_profile_id = ANY($1))",
-    [[REPORTER_PROFILE, OTHER_PROFILE]],
+    [[REPORTER_PROFILE, OTHER_PROFILE, SECOND_FAMILY_PROFILE]],
   );
-  await pool.query("DELETE FROM users WHERE id = ANY($1)", [[REPORTER, OTHER]]);
+  await pool.query("DELETE FROM users WHERE id = ANY($1)", [[REPORTER, OTHER, SECOND_FAMILY, CO_MANAGER]]);
   await pool.end();
 });
 
@@ -77,7 +88,8 @@ test("the reporter's own add_caution flips their view to contains_allergen strai
   assert.equal(view.effective?.matchedAllergens.find((m) => m.allergenName === "Sesame")?.classification, "contains");
   assert.equal(view.corrections.length, 1);
   assert.equal(view.corrections[0].correctionType, "flag_missing");
-  assert.equal(view.corrections[0].status, "corroborated");
+  // One family can't corroborate an addition (threshold 2) — and their own card doesn't wait for it.
+  assert.equal(view.corrections[0].status, "pending");
   // The original is untouched — the caller ships it alongside.
   assert.equal(scan.result, "safe");
 });
@@ -101,6 +113,7 @@ test("the reporter's own remove_caution changes only their view, even though it 
 test("community additions reach another profile only with the switch on, and apply on top of that user's own view", async () => {
   const reported = await makeScan(REPORTER_PROFILE, "7000000000004", "safe");
   await report(reported.id, REPORTER, "flag_missing", "Sesame");
+  await report((await makeScan(SECOND_FAMILY_PROFILE, "7000000000004", "safe")).id, SECOND_FAMILY, "flag_missing", "Sesame");
   const othersScan = await makeScan(OTHER_PROFILE, "7000000000004", "safe");
 
   const previous = env.communityCorrections;
@@ -121,6 +134,23 @@ test("community additions reach another profile only with the switch on, and app
     const mine = (await loadUserScanViews([reported], REPORTER_PROFILE, REPORTER)).get(reported.id)!;
     assert.equal(mine.effective?.result, "contains_allergen");
     assert.deepEqual(mine.communityApplied, []);
+  } finally {
+    env.communityCorrections = previous;
+  }
+});
+
+test("an owner and a co-manager of the same child are one family: their addition reaches no other profile", async () => {
+  const barcode = "7000000000006";
+  await report((await makeScan(REPORTER_PROFILE, barcode, "safe")).id, REPORTER, "flag_missing", "Sesame");
+  const coManagers = await report((await makeScan(REPORTER_PROFILE, barcode, "safe")).id, CO_MANAGER, "flag_missing", "Sesame");
+  assert.equal(coManagers.corroborated, false, "two reporters, one family");
+
+  const othersScan = await makeScan(OTHER_PROFILE, barcode, "safe");
+  const previous = env.communityCorrections;
+  try {
+    env.communityCorrections = true;
+    const theirs = (await loadUserScanViews([othersScan], OTHER_PROFILE, OTHER)).get(othersScan.id)!;
+    assert.equal(theirs.effective, null);
   } finally {
     env.communityCorrections = previous;
   }

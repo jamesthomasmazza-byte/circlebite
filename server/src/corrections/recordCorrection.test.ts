@@ -12,19 +12,35 @@ const USER_A = "aaaaaaaa-0000-0000-0000-000000000001";
 const USER_B = "aaaaaaaa-0000-0000-0000-000000000002";
 const USER_C = "aaaaaaaa-0000-0000-0000-000000000003";
 const PROFILE_ID = "bbbbbbbb-0000-0000-0000-000000000001";
+// B's and C's own children — corroboration counts families (the scanned profile's owner), so a
+// claim needs scans of different families' profiles to reach a threshold.
+const PROFILE_B = "bbbbbbbb-0000-0000-0000-000000000002";
+const PROFILE_C = "bbbbbbbb-0000-0000-0000-000000000003";
+const OWN_PROFILE: Record<string, string> = { [USER_A]: PROFILE_ID, [USER_B]: PROFILE_B, [USER_C]: PROFILE_C };
 
 async function makeScan(
   barcode: string | null,
   result: string,
   matchedAllergens: { allergenName: string; severity: string; classification: string; aiEscalated?: boolean }[],
   ingredientsText = "test ingredients",
+  profileId = PROFILE_ID,
 ): Promise<string> {
   const { rows } = await pool.query<{ id: string }>(
     `INSERT INTO scans (allergen_profile_id, barcode, result, matched_allergens, ingredients_text)
      VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-    [PROFILE_ID, barcode, result, JSON.stringify(matchedAllergens), ingredientsText],
+    [profileId, barcode, result, JSON.stringify(matchedAllergens), ingredientsText],
   );
   return rows[0].id;
+}
+
+/** A scan of `user`'s own child — a report on it counts as that user's family. */
+function familyScan(
+  user: string,
+  barcode: string | null,
+  result: string,
+  matchedAllergens: { allergenName: string; severity: string; classification: string; aiEscalated?: boolean }[],
+): Promise<string> {
+  return makeScan(barcode, result, matchedAllergens, "test ingredients", OWN_PROFILE[user]);
 }
 
 async function makeVerdictExplanation(scanId: string, model = "claude-haiku-4-5-20251001", promptVersion = "path-b-v1") {
@@ -54,10 +70,10 @@ before(async () => {
        ($3, 'corr-test-c@example.com', 'x', 'C', true, now())`,
     [USER_A, USER_B, USER_C],
   );
-  await pool.query("INSERT INTO allergen_profiles (id, manager_id, label) VALUES ($1, $2, 'Test Profile')", [
-    PROFILE_ID,
-    USER_A,
-  ]);
+  await pool.query(
+    "INSERT INTO allergen_profiles (id, manager_id, label) VALUES ($1, $2, 'Test Profile'), ($3, $4, 'Test B'), ($5, $6, 'Test C')",
+    [PROFILE_ID, USER_A, PROFILE_B, USER_B, PROFILE_C, USER_C],
+  );
 });
 
 after(async () => {
@@ -66,8 +82,8 @@ after(async () => {
   // cascade) would leave every correction this file created behind, orphaned, breaking the fixed
   // barcodes on the next run. Delete them explicitly, before the cascade removes the scans they key
   // off of.
-  await pool.query("DELETE FROM product_corrections WHERE scan_id IN (SELECT id FROM scans WHERE allergen_profile_id = $1)", [
-    PROFILE_ID,
+  await pool.query("DELETE FROM product_corrections WHERE scan_id IN (SELECT id FROM scans WHERE allergen_profile_id = ANY($1))", [
+    [PROFILE_ID, PROFILE_B, PROFILE_C],
   ]);
   await pool.query("DELETE FROM users WHERE id = ANY($1)", [[USER_A, USER_B, USER_C]]);
   await pool.end();
@@ -156,18 +172,40 @@ test("records the scanned profile's owner as the reporting family, whoever filed
   assert.equal(rows[0].profile_owner_at_report, USER_A);
 });
 
-test("add_caution corroborates on the first report — threshold of 1", async () => {
-  const scanId = await makeScan("1000000000006", "safe", [{ allergenName: "Egg", severity: "moderate", classification: "clear" }]);
-  const result = await recordCorrection({ scanId, reportedBy: USER_A, correctionType: "flag_missing", allergen: "Egg", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
-  assert.equal(result.corroborated, true);
-  assert.equal(result.status, "corroborated");
+test("add_caution stays pending on one family's report and corroborates on a second family's — threshold of 2", async () => {
+  const barcode = "1000000000006";
+  const egg = [{ allergenName: "Egg", severity: "moderate", classification: "clear" }];
+  const report = (reportedBy: string) => ({ reportedBy, correctionType: "flag_missing" as const, allergen: "Egg", note: null, photoPath: "/fake.jpg", origin: "user_initiated" as const });
+
+  const first = await recordCorrection({ scanId: await familyScan(USER_A, barcode, "safe", egg), ...report(USER_A) });
+  assert.equal(first.corroborated, false);
+  assert.equal(first.status, "pending");
+
+  const second = await recordCorrection({ scanId: await familyScan(USER_B, barcode, "safe", egg), ...report(USER_B) });
+  assert.equal(second.corroborated, true);
+  assert.equal(second.status, "corroborated");
+  const { rows } = await pool.query("SELECT status FROM product_corrections WHERE id = $1", [first.id]);
+  assert.equal(rows[0].status, "corroborated", "the first family's report goes with its claim");
+});
+
+test("two reporters from one family are one family: a co-manager's report on the owner's child doesn't corroborate the owner's", async () => {
+  // USER_B and USER_C both reporting on scans of USER_A's child — the owner's co-manager and a
+  // follower, holding the same household's package. Three people, one family.
+  const barcode = "1000000000021";
+  const egg = [{ allergenName: "Egg", severity: "moderate", classification: "clear" }];
+  const report = (reportedBy: string) => ({ reportedBy, correctionType: "flag_missing" as const, allergen: "Egg", note: null, photoPath: "/fake.jpg", origin: "user_initiated" as const });
+
+  for (const user of [USER_A, USER_B, USER_C]) {
+    const result = await recordCorrection({ scanId: await makeScan(barcode, "safe", egg), ...report(user) });
+    assert.equal(result.corroborated, false, `${user} reporting on A's child`);
+  }
 });
 
 test("remove_caution stays pending until the third distinct reporter — threshold of 3", async () => {
   const barcode = "1000000000007";
-  const scan1 = await makeScan(barcode, "contains_allergen", [{ allergenName: "Soy", severity: "mild", classification: "contains" }]);
-  const scan2 = await makeScan(barcode, "contains_allergen", [{ allergenName: "Soy", severity: "mild", classification: "contains" }]);
-  const scan3 = await makeScan(barcode, "contains_allergen", [{ allergenName: "Soy", severity: "mild", classification: "contains" }]);
+  const scan1 = await familyScan(USER_A, barcode, "contains_allergen", [{ allergenName: "Soy", severity: "mild", classification: "contains" }]);
+  const scan2 = await familyScan(USER_B, barcode, "contains_allergen", [{ allergenName: "Soy", severity: "mild", classification: "contains" }]);
+  const scan3 = await familyScan(USER_C, barcode, "contains_allergen", [{ allergenName: "Soy", severity: "mild", classification: "contains" }]);
 
   const first = await recordCorrection({ scanId: scan1, reportedBy: USER_A, correctionType: "flag_wrong", allergen: "Soy", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
   assert.equal(first.corroborated, false);
@@ -188,12 +226,12 @@ test("rejected reports don't count toward the remove_caution threshold", async (
   const barcode = "1000000000015";
   const soy = [{ allergenName: "Soy", severity: "mild", classification: "contains" }];
 
-  const first = await recordCorrection({ scanId: await makeScan(barcode, "contains_allergen", soy), reportedBy: USER_A, correctionType: "flag_wrong", allergen: "Soy", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
-  const second = await recordCorrection({ scanId: await makeScan(barcode, "contains_allergen", soy), reportedBy: USER_B, correctionType: "flag_wrong", allergen: "Soy", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
+  const first = await recordCorrection({ scanId: await familyScan(USER_A, barcode, "contains_allergen", soy), reportedBy: USER_A, correctionType: "flag_wrong", allergen: "Soy", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
+  const second = await recordCorrection({ scanId: await familyScan(USER_B, barcode, "contains_allergen", soy), reportedBy: USER_B, correctionType: "flag_wrong", allergen: "Soy", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
   await pool.query("UPDATE product_corrections SET status = 'rejected' WHERE id = ANY($1)", [[first.id, second.id]]);
 
   // Three distinct reporters on the claim, but two were rejected — only one live report.
-  const third = await recordCorrection({ scanId: await makeScan(barcode, "contains_allergen", soy), reportedBy: USER_C, correctionType: "flag_wrong", allergen: "Soy", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
+  const third = await recordCorrection({ scanId: await familyScan(USER_C, barcode, "contains_allergen", soy), reportedBy: USER_C, correctionType: "flag_wrong", allergen: "Soy", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
   assert.equal(third.corroborated, false);
   assert.equal(third.status, "pending");
 });
@@ -227,9 +265,9 @@ test("a duplicate wrong_product report is a 409 too — the second anti-inflatio
 
 test("wrong_product uses its own corroboration bucket, keyed by barcode alone (allergen is null)", async () => {
   const barcode = "1000000000008";
-  const scan1 = await makeScan(barcode, "contains_allergen", []);
-  const scan2 = await makeScan(barcode, "contains_allergen", []);
-  const scan3 = await makeScan(barcode, "contains_allergen", []);
+  const scan1 = await familyScan(USER_A, barcode, "contains_allergen", []);
+  const scan2 = await familyScan(USER_B, barcode, "contains_allergen", []);
+  const scan3 = await familyScan(USER_C, barcode, "contains_allergen", []);
 
   await recordCorrection({ scanId: scan1, reportedBy: USER_A, correctionType: "wrong_product", allergen: null, note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
   await recordCorrection({ scanId: scan2, reportedBy: USER_B, correctionType: "wrong_product", allergen: null, note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
@@ -241,14 +279,16 @@ test("wrong_product uses its own corroboration bucket, keyed by barcode alone (a
 test("a remove_caution bucket never corroborates while a corroborated add_caution exists for the same allergen — the warning survives", async () => {
   const barcode = "1000000000009";
 
-  // First, corroborate an add_caution for Peanut (threshold 1).
-  const addScan = await makeScan(barcode, "safe", [{ allergenName: "Peanut", severity: "severe", classification: "clear" }]);
-  await recordCorrection({ scanId: addScan, reportedBy: USER_A, correctionType: "flag_missing", allergen: "Peanut", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
+  // First, corroborate an add_caution for Peanut (threshold 2 — two families).
+  for (const user of [USER_A, USER_B]) {
+    const addScan = await familyScan(user, barcode, "safe", [{ allergenName: "Peanut", severity: "severe", classification: "clear" }]);
+    await recordCorrection({ scanId: addScan, reportedBy: user, correctionType: "flag_missing", allergen: "Peanut", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
+  }
 
-  // Now try to remove it with 3 reporters — should never corroborate, despite hitting the count.
-  const removeScan1 = await makeScan(barcode, "contains_allergen", [{ allergenName: "Peanut", severity: "severe", classification: "contains" }]);
-  const removeScan2 = await makeScan(barcode, "contains_allergen", [{ allergenName: "Peanut", severity: "severe", classification: "contains" }]);
-  const removeScan3 = await makeScan(barcode, "contains_allergen", [{ allergenName: "Peanut", severity: "severe", classification: "contains" }]);
+  // Now try to remove it with 3 families — should never corroborate, despite hitting the count.
+  const removeScan1 = await familyScan(USER_A, barcode, "contains_allergen", [{ allergenName: "Peanut", severity: "severe", classification: "contains" }]);
+  const removeScan2 = await familyScan(USER_B, barcode, "contains_allergen", [{ allergenName: "Peanut", severity: "severe", classification: "contains" }]);
+  const removeScan3 = await familyScan(USER_C, barcode, "contains_allergen", [{ allergenName: "Peanut", severity: "severe", classification: "contains" }]);
 
   await recordCorrection({ scanId: removeScan1, reportedBy: USER_A, correctionType: "flag_wrong", allergen: "Peanut", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
   await recordCorrection({ scanId: removeScan2, reportedBy: USER_B, correctionType: "flag_wrong", allergen: "Peanut", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
@@ -262,13 +302,12 @@ test("a remove_caution bucket never corroborates while a corroborated add_cautio
   assert.ok(rows.every((r) => r.status === "pending"));
 });
 
-test("a barcode-less (Path C) scan's correction never corroborates, even past the add_caution threshold of 1", async () => {
+test("a barcode-less (Path C) scan's correction is recorded with no barcode and stays pending", async () => {
   const scanId = await makeScan(null, "safe", [{ allergenName: "Egg", severity: "moderate", classification: "clear" }]);
   const result = await recordCorrection({ scanId, reportedBy: USER_A, correctionType: "flag_missing", allergen: "Egg", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
 
-  // add_caution normally corroborates on the very first report (see the threshold-of-1 test
-  // above) — proving it does NOT here is the actual assertion that the corroboration step is
-  // skipped for a null barcode, not just coincidentally under some other threshold.
+  // One family is under the add_caution threshold anyway; the next test is the proof that the step
+  // is skipped, with two families that would otherwise meet it.
   assert.equal(result.corroborated, false);
   assert.equal(result.status, "pending");
 
@@ -284,8 +323,8 @@ test("two different barcode-less corrections on the same allergen/direction don'
   // still merge these two unrelated scans' reports into one claim if it used the naive key. This
   // test only proves recordCorrection's own side: two independent users' null-barcode reports on
   // "Peanut"/add_caution must not corroborate together the way two real-barcode reports would.
-  const scanA = await makeScan(null, "safe", [{ allergenName: "Peanut", severity: "severe", classification: "clear" }]);
-  const scanB = await makeScan(null, "safe", [{ allergenName: "Peanut", severity: "severe", classification: "clear" }]);
+  const scanA = await familyScan(USER_A, null, "safe", [{ allergenName: "Peanut", severity: "severe", classification: "clear" }]);
+  const scanB = await familyScan(USER_B, null, "safe", [{ allergenName: "Peanut", severity: "severe", classification: "clear" }]);
 
   const first = await recordCorrection({ scanId: scanA, reportedBy: USER_A, correctionType: "flag_missing", allergen: "Peanut", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
   const second = await recordCorrection({ scanId: scanB, reportedBy: USER_B, correctionType: "flag_missing", allergen: "Peanut", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
@@ -307,15 +346,17 @@ test("a different allergen on the same barcode gets its own independent corrobor
   assert.equal(soyResult.corroborated, false);
 });
 
-test("a correction against a scan whose label evidence mismatched never corroborates, even past the add_caution threshold of 1", async () => {
+test("a correction against a scan whose label evidence mismatched never corroborates, even as the second family", async () => {
   const barcode = "1000000000012";
-  const scanId = await makeScan(barcode, "safe", [{ allergenName: "Egg", severity: "moderate", classification: "clear" }]);
+  const egg = [{ allergenName: "Egg", severity: "moderate", classification: "clear" }];
+  await recordCorrection({ scanId: await familyScan(USER_B, barcode, "safe", egg), reportedBy: USER_B, correctionType: "flag_missing", allergen: "Egg", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
+  const scanId = await makeScan(barcode, "safe", egg);
   await makeLabelExtraction(scanId, false);
 
   const result = await recordCorrection({ scanId, reportedBy: USER_A, correctionType: "flag_missing", allergen: "Egg", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
 
-  // Same proof shape as the barcode-less test above: add_caution normally corroborates on the very
-  // first report, so it not doing so here is the actual assertion that the mismatch gate fired.
+  // A clean report from this family would be the second and corroborate — it not doing so here is
+  // the actual assertion that the mismatch gate fired.
   assert.equal(result.corroborated, false);
   assert.equal(result.status, "pending");
 
@@ -326,7 +367,9 @@ test("a correction against a scan whose label evidence mismatched never corrobor
 
 test("a correction against an ordinary scan (no label mismatch) records identity_mismatch_at_report as false and corroborates normally", async () => {
   const barcode = "1000000000013";
-  const scanId = await makeScan(barcode, "safe", [{ allergenName: "Egg", severity: "moderate", classification: "clear" }]);
+  const egg = [{ allergenName: "Egg", severity: "moderate", classification: "clear" }];
+  await recordCorrection({ scanId: await familyScan(USER_B, barcode, "safe", egg), reportedBy: USER_B, correctionType: "flag_missing", allergen: "Egg", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
+  const scanId = await makeScan(barcode, "safe", egg);
   await makeLabelExtraction(scanId, true); // matched, not mismatched
 
   const result = await recordCorrection({ scanId, reportedBy: USER_A, correctionType: "flag_missing", allergen: "Egg", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
@@ -343,7 +386,9 @@ test("a scan with two label_extractions rows (an old mismatched attempt, then a 
   // skipping corroboration here even though the scan's current state matched is the deliberately
   // conservative choice.
   const barcode = "1000000000014";
-  const scanId = await makeScan(barcode, "safe", [{ allergenName: "Egg", severity: "moderate", classification: "clear" }]);
+  const egg = [{ allergenName: "Egg", severity: "moderate", classification: "clear" }];
+  await recordCorrection({ scanId: await familyScan(USER_B, barcode, "safe", egg), reportedBy: USER_B, correctionType: "flag_missing", allergen: "Egg", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
+  const scanId = await makeScan(barcode, "safe", egg);
   await makeLabelExtraction(scanId, false);
   await makeLabelExtraction(scanId, true);
 
@@ -378,8 +423,10 @@ test("a rejected reporter can re-file the claim, and the re-file is held for rev
   const report = { reportedBy: USER_A, correctionType: "flag_missing" as const, allergen: "sesame", note: null, photoPath: "/fake.jpg", origin: "user_initiated" as const };
 
   const original = await recordCorrection({ scanId: await makeScan(barcode, "safe", sesame), ...report });
-  assert.equal(original.corroborated, true, "an addition corroborates on its first report");
+  assert.equal(original.corroborated, false, "one family is below the addition threshold");
   await pool.query("UPDATE product_corrections SET status = 'rejected', rejected_at = now() WHERE id = $1", [original.id]);
+  // A second family's report on the claim: with A's re-file counted as a vote it would corroborate.
+  await recordCorrection({ scanId: await familyScan(USER_B, barcode, "safe", sesame), ...report, reportedBy: USER_B });
 
   const refile = await recordCorrection({ scanId: await makeScan(barcode, "safe", sesame), ...report });
   assert.equal(refile.corroborated, false, "a re-file must not undo the admin's rejection by itself");
@@ -396,9 +443,9 @@ test("a rejected reporter can re-file the claim, and the re-file is held for rev
     (err: { status?: number; code?: string }) => err.status === 409 && err.code === "already_reported",
   );
 
-  // An independent reporter still corroborates on their own (threshold 1, unchanged), and the held
-  // re-file goes along with its claim.
-  const independent = await recordCorrection({ scanId: await makeScan(barcode, "safe", sesame), ...report, reportedBy: USER_B });
+  // A second independent family still corroborates with B's (threshold 2), and the held re-file goes
+  // along with its claim.
+  const independent = await recordCorrection({ scanId: await familyScan(USER_C, barcode, "safe", sesame), ...report, reportedBy: USER_C });
   assert.equal(independent.corroborated, true);
   const { rows: after } = await pool.query<{ status: string }>("SELECT status FROM product_corrections WHERE id = $1", [refile.id]);
   assert.equal(after[0].status, "corroborated");
@@ -409,12 +456,12 @@ test("re-files don't count toward the remove_caution threshold", async () => {
   const soy = [{ allergenName: "Soy", severity: "mild", classification: "contains" }];
   const report = (reportedBy: string) => ({ reportedBy, correctionType: "flag_wrong" as const, allergen: "Soy", note: null, photoPath: "/fake.jpg", origin: "user_initiated" as const });
 
-  const a = await recordCorrection({ scanId: await makeScan(barcode, "contains_allergen", soy), ...report(USER_A) });
+  const a = await recordCorrection({ scanId: await familyScan(USER_A, barcode, "contains_allergen", soy), ...report(USER_A) });
   await pool.query("UPDATE product_corrections SET status = 'rejected', rejected_at = now() WHERE id = $1", [a.id]);
-  await recordCorrection({ scanId: await makeScan(barcode, "contains_allergen", soy), ...report(USER_A) });
-  await recordCorrection({ scanId: await makeScan(barcode, "contains_allergen", soy), ...report(USER_B) });
-  // Three distinct people with a live report would be the threshold — but one of them is a re-file.
-  const third = await recordCorrection({ scanId: await makeScan(barcode, "contains_allergen", soy), ...report(USER_C) });
+  await recordCorrection({ scanId: await familyScan(USER_A, barcode, "contains_allergen", soy), ...report(USER_A) });
+  await recordCorrection({ scanId: await familyScan(USER_B, barcode, "contains_allergen", soy), ...report(USER_B) });
+  // Three distinct families with a live report would be the threshold — but one of them is a re-file.
+  const third = await recordCorrection({ scanId: await familyScan(USER_C, barcode, "contains_allergen", soy), ...report(USER_C) });
   assert.equal(third.corroborated, false);
 });
 
@@ -426,21 +473,24 @@ test("reports against a mismatched label never count toward someone else's thres
   // Two removals filed against scans whose label didn't match the barcode's product (migration 0032).
   const mismatchedIds: string[] = [];
   for (const user of [USER_A, USER_B]) {
-    const scanId = await makeScan(barcode, "contains_allergen", soy);
+    const scanId = await familyScan(user, barcode, "contains_allergen", soy);
     await makeLabelExtraction(scanId, false);
     mismatchedIds.push((await recordCorrection({ scanId, ...report(user) })).id);
   }
 
-  // A third, clean report: three distinct reporters, but only one whose evidence counts.
-  const third = await recordCorrection({ scanId: await makeScan(barcode, "contains_allergen", soy), ...report(USER_C) });
+  // A third, clean report: three distinct families, but only one whose evidence counts.
+  const third = await recordCorrection({ scanId: await familyScan(USER_C, barcode, "contains_allergen", soy), ...report(USER_C) });
   assert.equal(third.corroborated, false);
 
-  // And when a claim does corroborate (add_caution, threshold 1), a mismatched row in it stays pending.
+  // And when a claim does corroborate (add_caution, threshold 2), a mismatched row in it stays
+  // pending — and didn't count: B's clean report alone leaves the claim one family short.
   const milk = [{ allergenName: "Milk", severity: "severe", classification: "clear" }];
-  const mismatchedScan = await makeScan(barcode, "safe", milk);
+  const mismatchedScan = await familyScan(USER_A, barcode, "safe", milk);
   await makeLabelExtraction(mismatchedScan, false);
   const mismatchedAdd = await recordCorrection({ scanId: mismatchedScan, reportedBy: USER_A, correctionType: "flag_missing", allergen: "Milk", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
-  const cleanAdd = await recordCorrection({ scanId: await makeScan(barcode, "safe", milk), reportedBy: USER_B, correctionType: "flag_missing", allergen: "Milk", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
+  const cleanB = await recordCorrection({ scanId: await familyScan(USER_B, barcode, "safe", milk), reportedBy: USER_B, correctionType: "flag_missing", allergen: "Milk", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
+  assert.equal(cleanB.corroborated, false, "the mismatched report is not the second family");
+  const cleanAdd = await recordCorrection({ scanId: await familyScan(USER_C, barcode, "safe", milk), reportedBy: USER_C, correctionType: "flag_missing", allergen: "Milk", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
   assert.equal(cleanAdd.corroborated, true);
 
   const { rows } = await pool.query<{ id: string; status: string }>(
