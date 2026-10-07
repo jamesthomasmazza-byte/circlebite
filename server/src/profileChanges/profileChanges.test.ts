@@ -232,7 +232,7 @@ test("a change made with no actor (psql, the deploy window) is recorded with act
 
 // ---- Append-only (migration 0039) ----
 
-test("an entry can't be updated, deleted or truncated while its profile exists", async () => {
+test("an entry can't be updated or deleted while its profile exists", async () => {
   const owner = await makeUser("Owner");
   const profile = await makeProfile(owner);
   await addAllergen(owner, profile, "Peanut");
@@ -247,26 +247,46 @@ test("an entry can't be updated, deleted or truncated while its profile exists",
     refused,
   );
   await assert.rejects(pool.query("DELETE FROM profile_changes WHERE allergen_profile_id = $1", [profile]), refused);
-  // Inside transactions that are rolled back, so a guard failure here can't wipe the dev database.
-  // A plain TRUNCATE is refused by Postgres itself once profile_change_acks references this table
-  // (migration 0040). TRUNCATE ... CASCADE gets past that — it would empty both tables — and is
-  // the case the guard's own trigger has to stop.
-  for (const [sql, check] of [
-    ["TRUNCATE profile_changes", (err: { code?: string }) => err.code === "0A000" || refused(err)],
-    ["TRUNCATE profile_changes CASCADE", refused],
-  ] as const) {
-    const client = await pool.connect();
-    try {
-      await client.query("BEGIN");
-      await assert.rejects(client.query(sql), check);
-    } finally {
-      await client.query("ROLLBACK");
-      client.release();
-    }
-  }
-
   const [entry] = await changesFor(profile);
   assert.equal(entry!.actor_name, "Owner");
+});
+
+// TRUNCATE is tested WITHOUT truncating the real table. Even inside a transaction that rolls back,
+// TRUNCATE queues for an ACCESS EXCLUSIVE lock, and test files run concurrently: on Oct 6 a rolled-
+// back TRUNCATE here deadlocked the whole suite against acks.test.ts's deliberately long-open
+// transaction, through a wait Postgres can't see (it ran through the client). Never take a
+// table-wide lock on a shared table in a test.
+test("TRUNCATE is refused: the guard is attached to profile_changes, and its function refuses", async () => {
+  const { rows } = await pool.query<{ tgname: string; tgenabled: string; proname: string; truncate: boolean; before: boolean }>(
+    `SELECT t.tgname, t.tgenabled, p.proname,
+            (t.tgtype & 32) <> 0 AS truncate, (t.tgtype & 2) <> 0 AS before
+     FROM pg_trigger t JOIN pg_proc p ON p.oid = t.tgfoid
+     WHERE t.tgrelid = 'profile_changes'::regclass AND NOT t.tgisinternal
+     ORDER BY t.tgname`,
+  );
+  assert.deepEqual(rows, [
+    { tgname: "profile_changes_append_only", tgenabled: "O", proname: "profile_changes_refuse_change", truncate: false, before: true },
+    { tgname: "profile_changes_no_truncate", tgenabled: "O", proname: "profile_changes_refuse_truncate", truncate: true, before: true },
+  ]);
+
+  // The same function on a session-private temp table: proves it refuses, without a lock anyone
+  // else could ever queue behind.
+  const client = await pool.connect();
+  try {
+    await client.query("CREATE TEMP TABLE truncate_guard_probe (x int)");
+    await client.query(
+      `CREATE TRIGGER probe_no_truncate BEFORE TRUNCATE ON truncate_guard_probe
+       FOR EACH STATEMENT EXECUTE FUNCTION profile_changes_refuse_truncate()`,
+    );
+    await assert.rejects(client.query("TRUNCATE truncate_guard_probe"), (err: { code?: string; message?: string }) => {
+      assert.equal(err.code, "42501");
+      assert.match(err.message ?? "", /append-only/);
+      return true;
+    });
+  } finally {
+    await client.query("DROP TABLE IF EXISTS truncate_guard_probe");
+    client.release();
+  }
 });
 
 test("deleting the owner's account cascades the history away with the profile", async () => {

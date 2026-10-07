@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "tsc -p tsconfig.json && vite build",
     "preview": "vite preview",
-    "test": "node --import tsx --test src"
+    "test": "node --import tsx --test --test-timeout=30000 --test-force-exit src"
   },
   "dependencies": {
     "@zxing/browser": "^0.1.5",

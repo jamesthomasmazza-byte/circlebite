@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
 import type { Server } from "node:http";
+import path from "node:path";
 import type { AddressInfo } from "node:net";
 import { after, before, test } from "node:test";
 
 import { createApp } from "../app.js";
 import { createSession, SESSION_COOKIE_NAME } from "../auth/session.js";
-import { deletePhoto, savePhotoBuffer } from "../corrections/photoStorage.js";
+import { deletePhoto, resolvePhotoPath } from "../corrections/photoStorage.js";
 import { pool } from "../db/pool.js";
 import { withActor } from "../lib/withActor.js";
 
@@ -59,7 +61,12 @@ before(async () => {
     c.query("INSERT INTO allergens (allergen_profile_id, name, severity, treat_traces_as_unsafe) VALUES ($1, 'Peanut', 'mild', true)", [profileId]),
   );
   await withActor(CO_MANAGER, (c) => c.query("DELETE FROM allergens WHERE allergen_profile_id = $1", [profileId]));
-  photoPath = await savePhotoBuffer(JPEG, "jpg");
+  // Its own directory under UPLOAD_DIR, not savePhotoBuffer's corrections/: test files run
+  // concurrently, and corrections.test.ts snapshots corrections/ to prove a refused report leaves
+  // no file behind — a photo of ours appearing there mid-snapshot fails it.
+  photoPath = path.join("profile-changes-test", `${randomUUID()}.jpg`);
+  await mkdir(path.dirname(resolvePhotoPath(photoPath)), { recursive: true });
+  await writeFile(resolvePhotoPath(photoPath), JPEG);
   const { rows: scanRows } = await pool.query<{ id: string }>(
     "INSERT INTO scans (allergen_profile_id, barcode, product_name, result, matched_allergens) VALUES ($1, '000111', 'Crunch Bars', 'contains_allergen', '[]') RETURNING id",
     [profileId],
