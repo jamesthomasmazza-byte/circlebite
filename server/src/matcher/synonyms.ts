@@ -7,6 +7,10 @@
  * match a product that only contains cashews.
  */
 export type SynonymCluster = {
+  /** Stable identity, never derived from aliases: correction keys are built from it
+   *  (match.ts, allergenFamilyKey) and stored on every report, so reordering or extending
+   *  aliases must not change it. Rename one only with a migration that rewrites stored keys. */
+  id: string;
   aliases: string[];
   keywords: string[];
 };
@@ -45,35 +49,36 @@ const FISH_SPECIES = ["fish", "cod", "salmon", "tuna", "anchovy", "anchovies", "
 const MOLLUSCS = ["oyster", "oysters", "mussel", "mussels", "clam", "clams", "scallop", "scallops", "squid", "octopus"];
 
 export const SYNONYM_CLUSTERS: SynonymCluster[] = [
-  { aliases: DAIRY, keywords: DAIRY },
-  { aliases: GLUTEN, keywords: GLUTEN },
-  { aliases: CRUSTACEAN, keywords: CRUSTACEAN },
+  { id: "dairy", aliases: DAIRY, keywords: DAIRY },
+  { id: "gluten", aliases: GLUTEN, keywords: GLUTEN },
+  { id: "crustacean", aliases: CRUSTACEAN, keywords: CRUSTACEAN },
   // Peanut is deliberately its own cluster, never merged with tree nuts — a real safety error to
   // conflate them, per legacy-spec.md.
-  { aliases: ["peanut", "peanuts", "groundnut", "groundnuts"], keywords: ["peanut", "peanuts", "groundnut", "groundnuts"] },
+  { id: "peanut", aliases: ["peanut", "peanuts", "groundnut", "groundnuts"], keywords: ["peanut", "peanuts", "groundnut", "groundnuts"] },
   // The umbrella: "Tree Nuts" on a profile matches any of them.
-  { aliases: ["tree nut", "tree nuts"], keywords: TREE_NUTS },
+  { id: "tree-nut", aliases: ["tree nut", "tree nuts"], keywords: TREE_NUTS },
   // Each nut is also its own narrow entry: "Walnut" on a profile matches only walnut.
-  { aliases: ["almond", "almonds"], keywords: ["almond", "almonds"] },
-  { aliases: ["hazelnut", "hazelnuts"], keywords: ["hazelnut", "hazelnuts"] },
-  { aliases: ["walnut", "walnuts"], keywords: ["walnut", "walnuts"] },
-  { aliases: ["cashew", "cashews"], keywords: ["cashew", "cashews"] },
-  { aliases: ["pecan", "pecans"], keywords: ["pecan", "pecans"] },
-  { aliases: ["pistachio", "pistachios"], keywords: ["pistachio", "pistachios"] },
-  { aliases: ["brazil nut", "brazil nuts"], keywords: ["brazil nut", "brazil nuts"] },
-  { aliases: ["macadamia", "macadamias"], keywords: ["macadamia", "macadamias"] },
-  { aliases: ["egg", "eggs"], keywords: ["egg", "eggs", "eggnog", "albumin", "ovalbumin"] },
-  { aliases: ["soy", "soya"], keywords: ["soy", "soya", "soybean", "soybeans", "soymilk", "edamame", "tofu"] },
+  { id: "almond", aliases: ["almond", "almonds"], keywords: ["almond", "almonds"] },
+  { id: "hazelnut", aliases: ["hazelnut", "hazelnuts"], keywords: ["hazelnut", "hazelnuts"] },
+  { id: "walnut", aliases: ["walnut", "walnuts"], keywords: ["walnut", "walnuts"] },
+  { id: "cashew", aliases: ["cashew", "cashews"], keywords: ["cashew", "cashews"] },
+  { id: "pecan", aliases: ["pecan", "pecans"], keywords: ["pecan", "pecans"] },
+  { id: "pistachio", aliases: ["pistachio", "pistachios"], keywords: ["pistachio", "pistachios"] },
+  { id: "brazil-nut", aliases: ["brazil nut", "brazil nuts"], keywords: ["brazil nut", "brazil nuts"] },
+  { id: "macadamia", aliases: ["macadamia", "macadamias"], keywords: ["macadamia", "macadamias"] },
+  { id: "egg", aliases: ["egg", "eggs"], keywords: ["egg", "eggs", "eggnog", "albumin", "ovalbumin"] },
+  { id: "soy", aliases: ["soy", "soya"], keywords: ["soy", "soya", "soybean", "soybeans", "soymilk", "edamame", "tofu"] },
   // "fish" itself is included as a keyword too, not just an alias: unlike most allergens, a
   // product almost never contains the literal word "fish" in its ingredient text (labels name
   // the species), so a profile allergen literally named "Fish" needs this cluster to reach the
   // named species — the literal-fallback rule alone wouldn't get there.
-  { aliases: ["fish"], keywords: FISH_SPECIES },
-  { aliases: ["molluscs", "mollusks", "mollusc", "mollusk"], keywords: MOLLUSCS },
-  { aliases: ["sesame"], keywords: ["sesame", "tahini"] },
-  { aliases: ["celery", "celeriac"], keywords: ["celery", "celeriac"] },
-  { aliases: ["lupin", "lupine"], keywords: ["lupin", "lupine"] },
+  { id: "fish", aliases: ["fish"], keywords: FISH_SPECIES },
+  { id: "mollusc", aliases: ["molluscs", "mollusks", "mollusc", "mollusk"], keywords: MOLLUSCS },
+  { id: "sesame", aliases: ["sesame"], keywords: ["sesame", "tahini"] },
+  { id: "celery", aliases: ["celery", "celeriac"], keywords: ["celery", "celeriac"] },
+  { id: "lupin", aliases: ["lupin", "lupine"], keywords: ["lupin", "lupine"] },
   {
+    id: "sulphite",
     aliases: ["sulphite", "sulphites", "sulfite", "sulfites"],
     // bisulfite/metabisulfite (sodium/potassium bisulfite, sodium/potassium metabisulfite) are
     // extremely common real preservatives that are themselves sulfites — "bisulfite" has "sulfite"
