@@ -127,13 +127,13 @@ for (const cast of JUDGE_CASTS) {
 PEOPLE.tomas = { id: seedId(1, 5), email: `tomas.reyes@${SEED_EMAIL_DOMAIN}`, displayName: "Tomás Reyes", isJudge: false };
 PEOPLE.grace = { id: seedId(1, 6), email: `grace.lin@${SEED_EMAIL_DOMAIN}`, displayName: "Grace Lin", isJudge: false };
 
-// Peanut on both, spelled the same: corroboration matches the reported allergen's text exactly
-// (recordCorrection.ts), so "Peanuts" would be a separate claim.
+// Peanut on both, spelled differently on purpose: corroboration groups by allergenKey() (migration
+// 0043), so "Peanuts" and "Peanut" are one claim — the demo depends on it, and its test proves it.
 PROFILES.ana = {
   id: seedId(2, 4),
   label: "Ana",
   owner: "tomas",
-  allergens: [{ id: seedId(3, 7), name: "Peanut", severity: "severe", treatTracesAsUnsafe: true }],
+  allergens: [{ id: seedId(3, 7), name: "Peanuts", severity: "severe", treatTracesAsUnsafe: true }],
 };
 PROFILES.ben = {
   id: seedId(2, 5),
@@ -252,7 +252,7 @@ export const COMMUNITY_REPORTS: SeedCommunityReport[] = [
     scan: seedId(6, 9),
     reporter: "tomas",
     product: "reported",
-    allergen: "Peanut",
+    allergen: "Peanuts",
     note: "Seeded example: the package lists peanut, and the product database has no record of it.",
     photoPath: "corrections/5eed0007-community-report.png",
   },
