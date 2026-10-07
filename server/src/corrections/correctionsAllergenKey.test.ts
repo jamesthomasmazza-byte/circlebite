@@ -10,7 +10,7 @@ import { pool } from "../db/pool.js";
 import { allergenFamilyKey, allergenFoldKey } from "../matcher/match.js";
 import { SYNONYM_CLUSTERS } from "../matcher/synonyms.js";
 
-// Migration 0043, run from its own file against a session-private TEMP copy of
+// Migrations 0043 and 0044, run from their own files against a session-private TEMP copy of
 // product_corrections — a temp table shadows the real one by name for this connection only, so the
 // real table is never altered or locked (the ea106fa rule: no test takes a table-wide lock on a
 // shared table). Each test runs in a transaction it rolls back, which also undoes 0043's
@@ -27,6 +27,7 @@ async function inTempCopy(body: (client: PoolClient) => Promise<void>) {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+    // LIKE without INCLUDING CONSTRAINTS: no CHECKs, so 0044 can be run against it fresh.
     await client.query("CREATE TEMP TABLE product_corrections (LIKE public.product_corrections INCLUDING DEFAULTS) ON COMMIT DROP");
     await client.query("INSERT INTO product_corrections SELECT * FROM public.product_corrections");
     await body(client);
@@ -108,5 +109,29 @@ test("0043's kept backfill function fills only missing keys, never rewrites a ke
       (await client.query("SELECT allergen_fold_key, allergen_family_key, status FROM product_corrections WHERE id = $1", [id])).rows[0];
     assert.deepEqual(await read(keyed), { allergen_fold_key: "kept-fold", allergen_family_key: "kept-family", status: "corroborated" });
     assert.deepEqual(await read(unkeyed), { allergen_fold_key: "whey", allergen_family_key: "cluster:dairy", status: "pending" });
+  });
+});
+
+test("0044 refuses to run while any allergen report is missing a key, naming the fix — then requires keys", async () => {
+  await inTempCopy(async (client) => {
+    const unkeyed = (await insert(client, "Peanut", "pending")).rows[0].id;
+
+    await client.query("SAVEPOINT before_0044");
+    await assert.rejects(client.query(await migration("0044_product_corrections_require_allergen_keys.sql")), (err: { message: string; hint?: string }) => {
+      assert.match(err.message, /1 product_corrections row\(s\) name an allergen but have no allergen key/);
+      assert.match(err.hint ?? "", /product_corrections_backfill_allergen_keys\(\)/);
+      return true;
+    });
+    await client.query("ROLLBACK TO SAVEPOINT before_0044");
+
+    await client.query("SELECT product_corrections_backfill_allergen_keys()");
+    await client.query(await migration("0044_product_corrections_require_allergen_keys.sql"));
+    const { rows } = await client.query("SELECT allergen_fold_key FROM product_corrections WHERE id = $1", [unkeyed]);
+    assert.equal(rows[0].allergen_fold_key, "peanut");
+
+    await client.query("SAVEPOINT after_0044");
+    await assert.rejects(insert(client, "Sesame", "pending"), /product_corrections_allergen_keys_present/);
+    await client.query("ROLLBACK TO SAVEPOINT after_0044");
+    await insert(client, null, "pending"); // wrong_product: no allergen, no keys
   });
 });
