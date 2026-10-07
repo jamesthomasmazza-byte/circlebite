@@ -146,6 +146,16 @@ test("denormalizes verdict and source text at report time, per the N17 self-suff
   assert.equal(rows[0].note, "not actually milk");
 });
 
+test("records the scanned profile's owner as the reporting family, whoever filed the report", async () => {
+  // USER_B reporting on a scan of USER_A's profile: a co-manager or follower holding A's child's package.
+  const scanId = await makeScan("1000000000020", "safe", [{ allergenName: "Egg", severity: "moderate", classification: "clear" }]);
+  const result = await recordCorrection({ scanId, reportedBy: USER_B, correctionType: "flag_missing", allergen: "Egg", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
+
+  const { rows } = await pool.query("SELECT reported_by, profile_owner_at_report FROM product_corrections WHERE id = $1", [result.id]);
+  assert.equal(rows[0].reported_by, USER_B);
+  assert.equal(rows[0].profile_owner_at_report, USER_A);
+});
+
 test("add_caution corroborates on the first report — threshold of 1", async () => {
   const scanId = await makeScan("1000000000006", "safe", [{ allergenName: "Egg", severity: "moderate", classification: "clear" }]);
   const result = await recordCorrection({ scanId, reportedBy: USER_A, correctionType: "flag_missing", allergen: "Egg", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
