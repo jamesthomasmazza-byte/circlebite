@@ -63,7 +63,19 @@ test("the owner's own change isn't unseen; a co-manager's is, until the owner ac
   assert.deepEqual(await loadUnseenChanges(owner), []);
 
   await addAllergen(coManager, profile, "Sesame");
-  assert.deepEqual(await loadUnseenChanges(owner), [{ profileId: profile, label: "Test Child", count: 1 }]);
+  assert.deepEqual(await loadUnseenChanges(owner), [
+    {
+      profileId: profile,
+      label: "Test Child",
+      isSelf: false,
+      count: 1,
+      actorNames: ["Co Sam"],
+      outsideApp: false,
+      unnamedActor: false,
+      hasDowngrade: false,
+      hasProfileChange: true,
+    },
+  ]);
   // The co-manager never gets a banner.
   assert.deepEqual(await loadUnseenChanges(coManager), []);
 
@@ -72,13 +84,37 @@ test("the owner's own change isn't unseen; a co-manager's is, until the owner ac
   assert.equal(await acknowledgeChanges(owner, profile, await changeIds(profile)), 0, "repeating an ack is a no-op");
 });
 
-test("a change made outside the app counts as unseen for the owner", async () => {
+test("a change made outside the app counts as unseen for the owner, and is flagged as such", async () => {
   const { owner, profile } = await makeCircle();
   await pool.query(
     "INSERT INTO allergens (allergen_profile_id, name, severity, treat_traces_as_unsafe) VALUES ($1, 'Milk', 'mild', true)",
     [profile],
   );
-  assert.equal((await loadUnseenChanges(owner))[0]?.count, 1);
+  const [unseen] = await loadUnseenChanges(owner);
+  assert.equal(unseen?.count, 1);
+  assert.equal(unseen?.outsideApp, true);
+  assert.deepEqual(unseen?.actorNames, []);
+});
+
+test("a downgrade alone is flagged as a downgrade, not a profile change", async () => {
+  const { owner, coManager, profile } = await makeCircle();
+  const { rows } = await pool.query<{ id: string }>(
+    "INSERT INTO scans (allergen_profile_id, barcode, result, matched_allergens) VALUES ($1, '123', 'contains_allergen', '[]') RETURNING id",
+    [profile],
+  );
+  const { rows: corr } = await pool.query<{ id: string }>(
+    `INSERT INTO product_corrections (scan_id, barcode, reported_by, correction_type, direction, allergen, target, verdict_at_report, photo_path)
+     VALUES ($1, '123', $2, 'flag_wrong', 'remove_caution', 'Peanut', 'off_data', 'contains_allergen', 'x.jpg') RETURNING id`,
+    [rows[0]!.id, coManager],
+  );
+  try {
+    const [unseen] = await loadUnseenChanges(owner);
+    assert.equal(unseen?.hasDowngrade, true);
+    assert.equal(unseen?.hasProfileChange, false);
+    assert.deepEqual(unseen?.actorNames, ["Co Sam"]);
+  } finally {
+    await pool.query("DELETE FROM product_corrections WHERE id = $1", [corr[0]!.id]);
+  }
 });
 
 test("a change that commits after the owner looked, with an earlier timestamp, is still unseen after they acknowledge", async () => {
@@ -136,5 +172,7 @@ test("when the owner deletes their account, the co-manager who inherits the prof
 
   // coManager is the longest-standing co-manager, so now owns it: Third's change is unseen for
   // them, their own isn't.
-  assert.deepEqual(await loadUnseenChanges(coManager), [{ profileId: profile, label: "Test Child", count: 1 }]);
+  const [inherited] = await loadUnseenChanges(coManager);
+  assert.equal(inherited?.count, 1);
+  assert.deepEqual(inherited?.actorNames, ["Third"]);
 });

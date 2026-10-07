@@ -152,7 +152,17 @@ test("the downgrade's photo is served from the entry after its scan is gone; bad
 
 test("only the owner can acknowledge; the banner count follows the acks", async () => {
   assert.deepEqual((await request(OWNER, "GET", "/me/unseen-changes")).json(), [
-    { profileId, label: "Test Child", count: 2 },
+    {
+      profileId,
+      label: "Test Child",
+      isSelf: false,
+      count: 2,
+      actorNames: ["Co Sam"],
+      outsideApp: false,
+      unnamedActor: false,
+      hasDowngrade: true,
+      hasProfileChange: true,
+    },
   ]);
   assert.deepEqual((await request(CO_MANAGER, "GET", "/me/unseen-changes")).json(), []);
 

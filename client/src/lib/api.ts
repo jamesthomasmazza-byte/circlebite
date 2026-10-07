@@ -152,6 +152,26 @@ export function deleteAllergen(profileId: string, allergenId: string): Promise<v
   return apiFetch(`/profiles/${profileId}/allergens/${allergenId}`, { method: "DELETE" });
 }
 
+/** One profile the signed-in user owns with history entries someone else made that they haven't
+ *  acknowledged (server/src/profileChanges/acks.ts). Display names only, never email. */
+export type UnseenProfileChanges = {
+  profileId: string;
+  label: string;
+  isSelf: boolean;
+  count: number;
+  actorNames: string[];
+  outsideApp: boolean;
+  unnamedActor: boolean;
+  /** A downgrade report — changed only the reporter's own view of one scan, not the profile. */
+  hasDowngrade: boolean;
+  /** Changed the profile itself: its allergens, label or note. */
+  hasProfileChange: boolean;
+};
+
+export function getUnseenChanges(): Promise<UnseenProfileChanges[]> {
+  return apiFetch("/me/unseen-changes");
+}
+
 export type ShareLevel = "all" | "severe_only";
 
 export type CircleData = {

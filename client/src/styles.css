@@ -821,6 +821,34 @@ th {
   margin-top: 0;
 }
 
+/* ---------- Changes to review — the owner's dashboard notice --------------------------------- */
+/* Caution tint and rule: "look at this", not a verdict. Every pair it uses is already in
+   styles.contrast.test.ts (text on caution-bg, caution-line on caution-bg and on bg). No
+   dismiss button: it goes when the owner has acknowledged the entries, nowhere else. */
+
+.change-notice {
+  margin-block: var(--space-4) var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-caution-line);
+  border-left: 6px solid var(--color-caution-line);
+  border-radius: var(--radius-md);
+  background: var(--color-caution-bg);
+  color: var(--color-text);
+}
+
+.change-notice h2 {
+  margin-top: 0;
+}
+
+.change-notice ul {
+  margin: 0;
+  padding-left: var(--space-4);
+}
+
+.change-notice li + li {
+  margin-top: var(--space-2);
+}
+
 /* ---------- Motion --------------------------------------------------------------------------- */
 
 /* Nothing here animates yet. If something does later, it goes inside no-preference only. */
