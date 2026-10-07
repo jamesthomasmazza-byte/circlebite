@@ -35,13 +35,38 @@ function stripTrailingS(word: string): string {
   return word.length > 1 && word.endsWith("s") ? word.slice(0, -1) : word;
 }
 
+function normalizeAllergenName(allergenName: string): string {
+  return allergenName.trim().toLowerCase();
+}
+
+function clusterFor(normalized: string) {
+  return SYNONYM_CLUSTERS.find((c) => c.aliases.includes(normalized));
+}
+
 /** Unknown allergen name: literal match on the name itself, trailing "s" stripped first. */
 function keywordsFor(allergenName: string): string[] {
-  const normalized = allergenName.trim().toLowerCase();
-  const cluster = SYNONYM_CLUSTERS.find((c) => c.aliases.includes(normalized));
+  const normalized = normalizeAllergenName(allergenName);
+  const cluster = clusterFor(normalized);
   if (cluster) return cluster.keywords;
   const singular = stripTrailingS(normalized);
   return singular === normalized ? [normalized] : [normalized, singular];
+}
+
+/**
+ * One key per allergen, however a profile spells it — the same normalisation keywordsFor applies
+ * (trim, lowercase, synonym cluster, trailing "s"), returned as a key rather than a keyword list:
+ * a cluster's first alias, or the singular of an unknown name. "Peanut", "peanut" and "Peanuts" are
+ * one key; so are "Milk" and "Dairy"; "Peanut" and "Tree nut" are not.
+ *
+ * For grouping, not matching: corroboration counts reports by this key (recordCorrection.ts), since
+ * profile allergen names are free text and two families rarely type them identically. It is only as
+ * fine as the clusters — "Wheat" and "Barley" share a key, as the matcher already treats them.
+ * migrations/0043 backfilled existing rows with a SQL copy of this as it stood then; a change here
+ * applies to new reports only.
+ */
+export function allergenKey(allergenName: string): string {
+  const normalized = normalizeAllergenName(allergenName);
+  return clusterFor(normalized)?.aliases[0] ?? stripTrailingS(normalized);
 }
 
 /** The matched characters as they appear in `text`, or null. */
