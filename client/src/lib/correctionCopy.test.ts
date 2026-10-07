@@ -11,9 +11,9 @@ import {
   yourReportLine,
 } from "./correctionCopy";
 
-test("reportOutcomeMessage: a first add_caution report never claims other reports agreed", () => {
+test("reportOutcomeMessage: a corroborating add_caution report never claims other reports agreed", () => {
   // The 2026-09-29 live test: one sesame report, and the confirmation said "enough other reports
-  // agreed" — there were none. An addition corroborates on its first report (threshold 1).
+  // agreed" — there were none. An addition can corroborate on the report that completes the pair.
   const message = reportOutcomeMessage({ correctionType: "flag_missing", corroborated: true, reachesOtherFamilies: true, hasBarcode: true });
   assert.doesNotMatch(message, /other reports/);
   assert.match(message, /now shows for other families/);
@@ -33,6 +33,14 @@ test("reportOutcomeMessage: a corroborated removal says others agreed, and that 
     assert.match(message, /only changes your own view/);
     assert.match(message, /other families keep seeing it/);
   }
+});
+
+test("reportOutcomeMessage: a pending addition says it's on the reporter's own view, never other families'", () => {
+  // One family's report, below the threshold of 2 — but the reporter's own card has already changed.
+  const message = reportOutcomeMessage({ correctionType: "flag_missing", corroborated: false, reachesOtherFamilies: false, hasBarcode: true });
+  assert.match(message, /your own view/);
+  assert.match(message, /review queue/);
+  assert.doesNotMatch(message, /other families/);
 });
 
 test("reportOutcomeMessage: pending and barcode-less reports keep their existing wording", () => {

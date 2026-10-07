@@ -184,7 +184,7 @@ export function ReviewQueue() {
 
     const confirmed = window.confirm(
       isAddCaution
-        ? "Reject this report? This immediately stops showing this warning to other families — including on scans already in their history, not just new ones. The reporter keeps seeing it on their own view."
+        ? "Reject this report? It stops backing this warning immediately. Other families stop seeing the warning once no corroborated report backs it — including on scans already in their history, not just new ones. The reporter keeps seeing it on their own view."
         : "Reject this report? This puts the warning back on the reporter's own view — removals don't propagate to other families yet.",
     );
     if (!confirmed) return;
@@ -211,7 +211,7 @@ export function ReviewQueue() {
   async function handleAccept(claim: ReviewQueueClaim, report: ReviewQueueReport) {
     const confirmed = window.confirm(
       claim.direction === "add_caution"
-        ? "Accept this re-filed report? It counts again — a warning corroborates on one report, so this shows it to other families right away, including on scans already in their history."
+        ? "Accept this re-filed report? It counts again — if that makes two families backing this warning, it shows to other families right away, including on scans already in their history."
         : "Accept this re-filed report? It counts toward the three reports a removal needs. Removals still only change the reporter's own view.",
     );
     if (!confirmed) return;
@@ -334,8 +334,8 @@ export function ReviewQueue() {
       )}
 
       <h2>Needs attention</h2>
-      <p>Still accumulating reports toward the threshold — always the "reported as not present" direction, since
-        the other direction corroborates on its first report.</p>
+      <p>Still accumulating reports toward the threshold — two families to show a warning to others, three to
+        corroborate a removal. An owner, their co-managers and followers reporting on the same child are one family.</p>
       {pending.length === 0 ? (
         <p>Nothing pending.</p>
       ) : (

@@ -5,10 +5,12 @@ import type { CorrectionType, MyReport, ProfileSummary, ReviewQueueClaim, ScanCo
 
 /**
  * What the reporter is told right after filing a correction. Says what actually happened, not what
- * the corroboration flag suggests in general: an add_caution (flag_missing) corroborates on its
- * FIRST report — threshold 1, recordCorrection.ts — so "enough other reports agreed" would be false
- * there. Only a remove_caution (threshold 3) needs others to agree, and even corroborated it still
- * only changes the reporter's own view (docs/principles.md, Sept 10 2026 precedent).
+ * the corroboration flag suggests in general. An add_caution (flag_missing) corroborates once a
+ * second family reports it (threshold 2, recordCorrection.ts); until then it is pending, but it has
+ * already changed the reporter's own card, and the message says so rather than only "in the review
+ * queue". A corroborated addition never says "enough other reports agreed" — it may be the one
+ * report that completed the pair. A remove_caution (threshold 3), even corroborated, still only
+ * changes the reporter's own view (docs/principles.md, Sept 10 2026 precedent).
  *
  * "Shows for other families" only when the server says it does (reachesOtherFamilies) — with
  * COMMUNITY_CORRECTIONS switched off, a corroborated addition changes the reporter's own view and
@@ -36,6 +38,9 @@ export function reportOutcomeMessage(input: {
       "Reported — thanks. This is recorded against your own view; without a barcode we can't check it " +
       "against anyone else's report of the same product."
     );
+  }
+  if (input.correctionType === "flag_missing") {
+    return "Reported — this warning now shows on your own view, and it's in the review queue.";
   }
   return "Reported — thanks. This is now in the review queue.";
 }
