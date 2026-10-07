@@ -548,3 +548,39 @@ test("a re-spelled re-file is still a re-file: 'peanut' after a rejected 'Peanut
   const { rows } = await pool.query<{ refiles_rejected_id: string | null }>("SELECT refiles_rejected_id FROM product_corrections WHERE id = $1", [refile.id]);
   assert.equal(rows[0].refiles_rejected_id, original.id);
 });
+
+// Removals count on the spelling key, never the synonym cluster: clearing must be about the same thing.
+function removal(reportedBy: string, allergen: string) {
+  return { reportedBy, correctionType: "flag_wrong" as const, allergen, note: null, photoPath: "/fake.jpg", origin: "user_initiated" as const };
+}
+const containsMilk = [{ allergenName: "Milk", severity: "severe", classification: "contains" }];
+
+test("three families reporting 'Milk', 'Lactose' and 'Whey' absent don't add up to clearing a milk caution", async () => {
+  const barcode = "1000000000040";
+  const results = [];
+  for (const [user, allergen] of [[USER_A, "Milk"], [USER_B, "Lactose"], [USER_C, "Whey"]]) {
+    results.push(await recordCorrection({ scanId: await familyScan(user, barcode, "contains_allergen", containsMilk), ...removal(user, allergen) }));
+  }
+  assert.deepEqual(results.map((r) => r.corroborated), [false, false, false]);
+});
+
+test("a removal still folds spelling: 'Milk', 'milk' and 'Milks' from three families corroborate", async () => {
+  const barcode = "1000000000041";
+  let last;
+  for (const [user, allergen] of [[USER_A, "Milk"], [USER_B, "milk"], [USER_C, "Milks"]]) {
+    last = await recordCorrection({ scanId: await familyScan(user, barcode, "contains_allergen", containsMilk), ...removal(user, allergen) });
+  }
+  assert.equal(last?.corroborated, true);
+});
+
+test("a corroborated warning blocks a removal anywhere in its allergen family — a 'Whey' warning survives 'Milk' removals", async () => {
+  const barcode = "1000000000042";
+  for (const user of [USER_A, USER_B]) {
+    await recordCorrection({ scanId: await familyScan(user, barcode, "safe", []), reportedBy: user, correctionType: "flag_missing", allergen: "Whey", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
+  }
+  let last;
+  for (const user of [USER_A, USER_B, USER_C]) {
+    last = await recordCorrection({ scanId: await familyScan(user, barcode, "contains_allergen", containsMilk), ...removal(user, "Milk") });
+  }
+  assert.equal(last?.corroborated, false, "three families, but the dairy warning survives");
+});

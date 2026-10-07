@@ -1,7 +1,7 @@
 import type { PoolClient } from "pg";
 
 import { pool } from "../db/pool.js";
-import { allergenKey as keyFor } from "../matcher/match.js";
+import { allergenFamilyKey, allergenFoldKey } from "../matcher/match.js";
 import { HttpError } from "../lib/httpError.js";
 
 export type CorrectionType = "flag_wrong" | "flag_missing" | "wrong_product";
@@ -30,9 +30,27 @@ export const CORROBORATION_THRESHOLD: Record<Direction, number> = {
 
 export type CorrectionOrigin = "user_initiated" | "disagreement_prompt";
 
-/** One corroboration bucket. allergenKey is matcher/match.ts's allergenKey() of the reported
- *  allergen (migration 0043) — never the verbatim spelling — or null for wrong_product. */
-export type Claim = { barcode: string; allergenKey: string | null; direction: Direction };
+/** One corroboration bucket. `key` is the reported allergen's key for this direction (claimKey) —
+ *  never the verbatim spelling — or null for wrong_product. */
+export type Claim = { barcode: string; key: string | null; direction: Direction };
+
+/**
+ * Which stored key a direction's claims are counted on (migration 0043). An addition counts on the
+ * family key, which folds synonym clusters: escalation is safe to over-merge, so "Milk" and "Whey"
+ * from two families corroborate a warning. A removal counts on the spelling key, which doesn't:
+ * three families reporting "Milk", "Lactose" and "Whey" absent have reported three different
+ * things, and must not add up to clearing a milk caution — the matcher's own rule, escalate but
+ * never clear, applied to the community.
+ */
+export function claimKeyColumn(direction: Direction): "allergen_family_key" | "allergen_fold_key" {
+  return direction === "add_caution" ? "allergen_family_key" : "allergen_fold_key";
+}
+
+/** The key an allergen claim in this direction is counted on — what claimKeyColumn holds. */
+export function claimKey(allergen: string | null, direction: Direction): string | null {
+  if (allergen === null) return null;
+  return direction === "add_caution" ? allergenFamilyKey(allergen) : allergenFoldKey(allergen);
+}
 
 export type RecordCorrectionInput = {
   scanId: string;
@@ -80,8 +98,9 @@ type ScanRow = {
  * original prototype had. wrong_product is always off_data.
  *
  * Corroboration is counted per (barcode, allergen key, direction) across every reporting family,
- * regardless of target. The key, not the verbatim allergen: "Peanut", "peanut" and "Peanuts" from
- * three families are one claim (migration 0043). And regardless of target, because "the AI got
+ * regardless of target. The key, not the verbatim allergen (claimKey, migration 0043): "Peanut",
+ * "peanut" and "Peanuts" from three families are one claim in either direction, and "Milk" and
+ * "Whey" are one claim only as additions. And regardless of target, because "the AI got
  * this wrong" and "the database is wrong about this" are the same community
  * claim about the same allergen once you're counting how many people agree. Except: a correction
  * against a barcode-less Path C scan (scan.barcode IS NULL) never corroborates at all — see the
@@ -107,7 +126,7 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
   }
 
   const direction = directionForCorrectionType(correctionType);
-  const allergenKey = allergen ? keyFor(allergen) : null;
+  const key = claimKey(allergen, direction);
 
   const client = await pool.connect();
   try {
@@ -165,14 +184,14 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
     let refilesRejectedId: string | null = null;
     if (scan.barcode !== null) {
       const { rows: rejectedRows } = await client.query<{ id: string }>(
-        allergenKey
+        key
           ? `SELECT id FROM product_corrections
-             WHERE barcode = $1 AND allergen_key = $2 AND direction = $3 AND reported_by = $4 AND status = 'rejected'
+             WHERE barcode = $1 AND ${claimKeyColumn(direction)} = $2 AND direction = $3 AND reported_by = $4 AND status = 'rejected'
              ORDER BY rejected_at DESC NULLS LAST, created_at DESC LIMIT 1`
           : `SELECT id FROM product_corrections
              WHERE barcode = $1 AND allergen IS NULL AND direction = $2 AND reported_by = $3 AND status = 'rejected'
              ORDER BY rejected_at DESC NULLS LAST, created_at DESC LIMIT 1`,
-        allergenKey ? [scan.barcode, allergenKey, direction, reportedBy] : [scan.barcode, direction, reportedBy],
+        key ? [scan.barcode, key, direction, reportedBy] : [scan.barcode, direction, reportedBy],
       );
       refilesRejectedId = rejectedRows[0]?.id ?? null;
     }
@@ -182,10 +201,10 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
          (scan_id, barcode, reported_by, correction_type, direction, allergen, target,
           verdict_explanation_id, verdict_at_report, model_at_report, prompt_version_at_report,
           source_text_at_report, note, photo_path, origin, identity_mismatch_at_report, refiles_rejected_id,
-          profile_owner_at_report, allergen_key)
+          profile_owner_at_report, allergen_fold_key, allergen_family_key)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
                (SELECT p.manager_id FROM scans s JOIN allergen_profiles p ON p.id = s.allergen_profile_id WHERE s.id = $1),
-               $18)
+               $18, $19)
        RETURNING id, status`,
       [
         scanId,
@@ -205,7 +224,10 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
         origin,
         identityMismatched,
         refilesRejectedId,
-        allergenKey,
+        // Both keys on every row, whichever direction it is: a removal's family key is what the
+        // warning-survives check below compares against.
+        allergen && allergenFoldKey(allergen),
+        allergen && allergenFamilyKey(allergen),
       ],
     );
     const inserted = insertRows[0];
@@ -228,7 +250,7 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
     // identity check already flagged this specific evidence as questionable."
     const corroborated =
       scan.barcode !== null && !identityMismatched
-        ? await corroborateClaimIfThresholdMet(client, { barcode: scan.barcode, allergenKey, direction })
+        ? await corroborateClaimIfThresholdMet(client, { barcode: scan.barcode, key, direction })
         : false;
 
     await client.query("COMMIT");
@@ -268,26 +290,33 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
  * — feeding communityAdditions.ts's family-facing count. 0032's gate covers both halves.
  */
 export async function corroborateClaimIfThresholdMet(client: PoolClient, claim: Claim): Promise<boolean> {
-  const { barcode, allergenKey, direction } = claim;
+  const { barcode, key, direction } = claim;
   if ((await countCorroboratingFamilies(client, claim)) < CORROBORATION_THRESHOLD[direction]) return false;
 
-  if (direction === "remove_caution" && allergenKey) {
+  // The warning survives: a removal never corroborates against a corroborated addition of the same
+  // allergen FAMILY — compared on the removal rows' own family keys, so a "Milk" removal is blocked
+  // by a corroborated "Whey" warning. Broader than the removal's own (spelling) bucket on purpose:
+  // over-blocking a removal is the safe direction.
+  if (direction === "remove_caution" && key) {
     const { rows: conflictRows } = await client.query(
-      `SELECT 1 FROM product_corrections
-       WHERE barcode = $1 AND allergen_key = $2 AND direction = 'add_caution' AND status = 'corroborated'
+      `SELECT 1 FROM product_corrections a
+       WHERE a.barcode = $1 AND a.direction = 'add_caution' AND a.status = 'corroborated'
+         AND a.allergen_family_key IN (
+           SELECT r.allergen_family_key FROM product_corrections r
+           WHERE r.barcode = $1 AND r.direction = 'remove_caution' AND r.allergen_fold_key = $2)
        LIMIT 1`,
-      [barcode, allergenKey],
+      [barcode, key],
     );
     if (conflictRows.length > 0) return false;
   }
 
   await client.query(
-    allergenKey
+    key
       ? `UPDATE product_corrections SET status = 'corroborated'
-         WHERE barcode = $1 AND allergen_key = $2 AND direction = $3 AND status = 'pending' AND NOT identity_mismatch_at_report`
+         WHERE barcode = $1 AND ${claimKeyColumn(direction)} = $2 AND direction = $3 AND status = 'pending' AND NOT identity_mismatch_at_report`
       : `UPDATE product_corrections SET status = 'corroborated'
          WHERE barcode = $1 AND allergen IS NULL AND direction = $2 AND status = 'pending' AND NOT identity_mismatch_at_report`,
-    allergenKey ? [barcode, allergenKey, direction] : [barcode, direction],
+    key ? [barcode, key, direction] : [barcode, direction],
   );
   return true;
 }
@@ -305,13 +334,13 @@ export async function corroborateClaimIfThresholdMet(client: PoolClient, claim: 
  * its demo claim is corroborated by the rule itself, not by a status it wrote.
  */
 export async function countCorroboratingFamilies(client: PoolClient, claim: Claim): Promise<number> {
-  const { barcode, allergenKey, direction } = claim;
+  const { barcode, key, direction } = claim;
   const { rows } = await client.query<{ count: string }>(
     `SELECT count(DISTINCT COALESCE(profile_owner_at_report, reported_by)) FROM product_corrections
-     WHERE barcode = $1 AND ${allergenKey ? "allergen_key = $3" : "allergen IS NULL"} AND direction = $2
+     WHERE barcode = $1 AND ${key ? `${claimKeyColumn(direction)} = $3` : "allergen IS NULL"} AND direction = $2
        AND status <> 'rejected' AND (refiles_rejected_id IS NULL OR accepted_at IS NOT NULL)
        AND NOT identity_mismatch_at_report`,
-    allergenKey ? [barcode, direction, allergenKey] : [barcode, direction],
+    key ? [barcode, direction, key] : [barcode, direction],
   );
   return Number(rows[0]?.count ?? 0);
 }

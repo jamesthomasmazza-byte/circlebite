@@ -53,20 +53,32 @@ function keywordsFor(allergenName: string): string[] {
 }
 
 /**
- * One key per allergen, however a profile spells it — the same normalisation keywordsFor applies
- * (trim, lowercase, synonym cluster, trailing "s"), returned as a key rather than a keyword list:
- * a cluster's first alias, or the singular of an unknown name. "Peanut", "peanut" and "Peanuts" are
- * one key; so are "Milk" and "Dairy"; "Peanut" and "Tree nut" are not.
- *
- * For grouping, not matching: corroboration counts reports by this key (recordCorrection.ts), since
- * profile allergen names are free text and two families rarely type them identically. It is only as
- * fine as the clusters — "Wheat" and "Barley" share a key, as the matcher already treats them.
- * migrations/0043 backfilled existing rows with a SQL copy of this as it stood then; a change here
- * applies to new reports only.
+ * The spelling key: trim, lowercase, trailing "s" — "Peanut", "peanut" and "Peanuts" are one key;
+ * "Milk" and "Lactose" are not. What a removal (remove_caution) is counted on: a claim that an
+ * allergen ISN'T there must be about the same thing, so the synonym clusters — which exist to
+ * escalate — never merge one. Lactose-free isn't whey-free.
  */
-export function allergenKey(allergenName: string): string {
-  const normalized = normalizeAllergenName(allergenName);
-  return clusterFor(normalized)?.aliases[0] ?? stripTrailingS(normalized);
+export function allergenFoldKey(allergenName: string): string {
+  return stripTrailingS(normalizeAllergenName(allergenName));
+}
+
+/**
+ * The allergen-family key: the spelling key, plus the synonym cluster the matcher already uses —
+ * "Milk", "Dairy" and "Whey" are one key, as are "Peanut" and "Groundnut". What an addition
+ * (add_caution) is counted on: escalation is safe to over-merge, so two families reporting the
+ * same allergen family corroborate, however each profile spells it.
+ *
+ * A cluster's key is "cluster:" + its explicit `id` (synonyms.ts) — never an alias, so editing an
+ * aliases array can't change stored keys. Anything else is "name:" + its spelling key, so no
+ * free-text name, even one typed as "cluster:dairy", can land on a cluster's key. It is only
+ * as fine as the clusters: "Wheat" and "Barley" share one, as the matcher already treats them.
+ *
+ * Both keys are stored on every correction (migration 0043, which backfilled existing rows from a
+ * frozen SQL copy of these two functions); a change here applies to new reports only.
+ */
+export function allergenFamilyKey(allergenName: string): string {
+  const cluster = clusterFor(normalizeAllergenName(allergenName));
+  return cluster ? `cluster:${cluster.id}` : `name:${allergenFoldKey(allergenName)}`;
 }
 
 /** The matched characters as they appear in `text`, or null. */

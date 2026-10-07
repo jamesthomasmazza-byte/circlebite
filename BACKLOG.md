@@ -315,6 +315,17 @@ it is the least-worked area. Treat this whole section as the priority block it i
       history only. The honest fix is probably not to grow the rows retroactively but to say what a
       history card is — "this scan checked Maya's allergens as they stood on 3 October" — since the
       card is a record of what was checked then, not a decision anyone is making now.
+- [ ] **Ship migration 0044 in the deploy after 0043, never the same one.** 0043 adds the two
+      allergen keys nullable; 0044 requires them. `release.sh` migrates before it swaps the symlink,
+      so a constraint shipped with 0043 would be live against the old release for a few seconds, and
+      a parent's report in that window would 500. Push up to the commit before 0044, deploy, confirm
+      healthy, then push 0044 and deploy again. If 0044 refuses ("row(s) name an allergen but have no
+      allergen key"), run `SELECT product_corrections_backfill_allergen_keys();` and deploy again.
+- [ ] **Allergen hierarchy for corroboration.** Walnut is a tree nut, so a "contains walnut" report
+      should count toward a tree-nut warning claim — but not the reverse, since "contains tree nuts"
+      doesn't say which nut. That's a hierarchy, not a synonym cluster, and neither allergen key
+      (migration 0043) can express it: today "Walnut" and "Tree nuts" are separate claims in both
+      directions. Not for now (JT, 2026-10-07).
 - [ ] **Prof. Yoest's Oct 1-2 conditions on the overrule widening.**
       `docs/approvals/2026-10-02-yoest-overrule-conditions.md`. He approved owner-or-co-manager
       downgrades — "your reading is better than my wording" — and attached two conditions, a judge

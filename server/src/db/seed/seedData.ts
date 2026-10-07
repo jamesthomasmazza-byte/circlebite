@@ -127,8 +127,9 @@ for (const cast of JUDGE_CASTS) {
 PEOPLE.tomas = { id: seedId(1, 5), email: `tomas.reyes@${SEED_EMAIL_DOMAIN}`, displayName: "Tomás Reyes", isJudge: false };
 PEOPLE.grace = { id: seedId(1, 6), email: `grace.lin@${SEED_EMAIL_DOMAIN}`, displayName: "Grace Lin", isJudge: false };
 
-// Peanut on both, spelled differently on purpose: corroboration groups by allergenKey() (migration
-// 0043), so "Peanuts" and "Peanut" are one claim — the demo depends on it, and its test proves it.
+// Peanut on both, spelled differently on purpose: additions corroborate on the allergen family key
+// (migration 0043), so "Peanuts" and "Peanut" are one claim — the demo depends on it, and its test
+// proves it.
 PROFILES.ana = {
   id: seedId(2, 4),
   label: "Ana",

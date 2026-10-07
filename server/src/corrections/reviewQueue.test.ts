@@ -4,7 +4,7 @@ import { after, before, test } from "node:test";
 import { assertIsAdmin } from "../authorization/admin.js";
 import { pool } from "../db/pool.js";
 import { HttpError } from "../lib/httpError.js";
-import { allergenKey } from "../matcher/match.js";
+import { allergenFamilyKey, allergenFoldKey } from "../matcher/match.js";
 import { applyCommunityCorrections } from "./applyCommunityCorrections.js";
 import { loadCommunityAdditions } from "./communityAdditions.js";
 import { recordCorrection } from "./recordCorrection.js";
@@ -118,13 +118,14 @@ type Row = Parameters<typeof groupIntoClaims>[0][number];
 let rowCounter = 0;
 function makeRow(overrides: Partial<Row> = {}): Row {
   rowCounter += 1;
-  // The key recordCorrection.ts would have written for this allergen, unless a test sets its own.
+  // The keys recordCorrection.ts would have written for this allergen, unless a test sets its own.
   const allergen = overrides.allergen === undefined ? "Peanut" : overrides.allergen;
   return {
     id: `row-${rowCounter}`,
     barcode: "9000000000001",
     allergen,
-    allergen_key: allergen === null ? null : allergenKey(allergen),
+    allergen_fold_key: allergen && allergenFoldKey(allergen),
+    allergen_family_key: allergen && allergenFamilyKey(allergen),
     direction: "add_caution",
     correction_type: "flag_missing",
     target: "off_data",
@@ -193,6 +194,16 @@ test("groupIntoClaims: groups by allergen key — 'Sesame' and 'sesame' are one 
   assert.equal(claims.length, 1);
   assert.equal(claims[0].reports.length, 3);
   assert.equal(claims[0].allergen, "Sesame / sesame", "every spelling reporters used, once each");
+});
+
+test("groupIntoClaims: a synonym pair is one claim as an addition, two as a removal — each with its own count", () => {
+  const additions = groupIntoClaims([makeRow({ allergen: "Milk" }), makeRow({ allergen: "Whey" })], new Map());
+  assert.equal(additions.length, 1);
+  assert.equal(additions[0].allergen, "Milk / Whey");
+
+  const removal = { direction: "remove_caution" as const, correction_type: "flag_wrong" as const, status: "pending" as const };
+  const removals = groupIntoClaims([makeRow({ allergen: "Milk", ...removal }), makeRow({ allergen: "Lactose", ...removal }), makeRow({ allergen: "milk", ...removal })], new Map());
+  assert.deepEqual(removals.map((c) => [c.allergen, c.reports.length]), [["Milk / milk", 2], ["Lactose", 1]]);
 });
 
 test("groupIntoClaims: different allergen keys stay separate claims", () => {

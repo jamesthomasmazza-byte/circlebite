@@ -8,8 +8,7 @@ import { deleteAccount } from "../../account/deleteAccount.js";
 import { hashPassword, verifyPassword } from "../../auth/password.js";
 import { getProfileAccess } from "../../authorization/profiles.js";
 import { loadCommunityAdditions } from "../../corrections/communityAdditions.js";
-import { CORROBORATION_THRESHOLD, countCorroboratingFamilies } from "../../corrections/recordCorrection.js";
-import { allergenKey } from "../../matcher/match.js";
+import { claimKey, CORROBORATION_THRESHOLD, countCorroboratingFamilies } from "../../corrections/recordCorrection.js";
 import { env } from "../../env.js";
 import { SEED_EMAIL_DOMAIN } from "../../lib/seedMarker.js";
 import { scansRouter } from "../../routes/scans.js";
@@ -210,7 +209,7 @@ test("the seeded escalation is corroborated by the real threshold — two famili
   const barcode = PRODUCTS.reported.barcode;
   const client = await pool.connect();
   try {
-    const families = await countCorroboratingFamilies(client, { barcode, allergenKey: allergenKey("Peanut"), direction: "add_caution" });
+    const families = await countCorroboratingFamilies(client, { barcode, key: claimKey("Peanut", "add_caution"), direction: "add_caution" });
     assert.ok(
       families >= CORROBORATION_THRESHOLD.add_caution,
       `${families} reporting families, threshold ${CORROBORATION_THRESHOLD.add_caution}`,
@@ -270,8 +269,8 @@ test("a correction the judge filed is rejected by a reseed, not deleted — and 
   );
   await pool.query(
     `INSERT INTO product_corrections
-       (id, scan_id, barcode, reported_by, correction_type, direction, allergen, allergen_key, target, verdict_at_report, note, photo_path, status)
-     VALUES ($1, $2, $3, $4, 'flag_missing', 'add_caution', 'Peanut', 'peanut', 'off_data', 'safe', 'judge testing', 'corrections/none.jpg', 'corroborated')`,
+       (id, scan_id, barcode, reported_by, correction_type, direction, allergen, allergen_fold_key, allergen_family_key, target, verdict_at_report, note, photo_path, status)
+     VALUES ($1, $2, $3, $4, 'flag_missing', 'add_caution', 'Peanut', 'peanut', 'cluster:peanut', 'off_data', 'safe', 'judge testing', 'corrections/none.jpg', 'corroborated')`,
     [JUDGE_TEST_CORRECTION, JUDGE_TEST_SCAN, STAND_IN_REAL_BARCODE, JUDGE.id],
   );
 
@@ -312,8 +311,8 @@ test("a non-seeded person's account, profile, scans, corrections and feedback ar
   );
   await pool.query(
     `INSERT INTO product_corrections
-       (id, scan_id, barcode, reported_by, correction_type, direction, allergen, allergen_key, target, verdict_at_report, photo_path, status)
-     VALUES ($1, $2, $3, $4, 'flag_missing', 'add_caution', 'Milk', 'milk', 'off_data', 'unable_to_confirm', 'corrections/none.jpg', 'corroborated')`,
+       (id, scan_id, barcode, reported_by, correction_type, direction, allergen, allergen_fold_key, allergen_family_key, target, verdict_at_report, photo_path, status)
+     VALUES ($1, $2, $3, $4, 'flag_missing', 'add_caution', 'Milk', 'milk', 'cluster:dairy', 'off_data', 'unable_to_confirm', 'corrections/none.jpg', 'corroborated')`,
     [OUTSIDER_CORRECTION, OUTSIDER_SCAN, PRODUCTS.unknown.barcode, OUTSIDER],
   );
   await pool.query("INSERT INTO nps_responses (id, user_id, score, reason) VALUES ($1, $2, 9, 'real feedback')", [OUTSIDER_NPS, OUTSIDER]);

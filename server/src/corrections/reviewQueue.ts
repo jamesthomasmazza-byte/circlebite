@@ -1,6 +1,7 @@
 import { HttpError } from "../lib/httpError.js";
 import { pool } from "../db/pool.js";
 import {
+  claimKeyColumn,
   corroborateClaimIfThresholdMet,
   type CorrectionOrigin,
   type CorrectionStatus,
@@ -48,10 +49,12 @@ export type ReviewQueueClaim = {
   allergen: string | null;
   direction: Direction;
   status: ClaimStatus;
-  // DISTINCT reported_by among non-rejected rows, excluding NULL — the number that drives
-  // corroboration (recordCorrection.ts's threshold check is count(DISTINCT reported_by), which SQL
-  // excludes NULLs from), with one difference: a re-file not yet accepted (migration 0034) is live
-  // here but held out of the threshold. The page marks those reports individually instead. NOT the same as communityAdditions.ts's own
+  // DISTINCT reported_by among non-rejected rows, excluding NULL — live accounts backing the claim.
+  // NOT the number the threshold compares: since 2026-10-07 that counts families
+  // (recordCorrection.ts, countCorroboratingFamilies), so an owner and co-manager are two here and
+  // one there; sameCircleWarning below is what flags that. A re-file not yet accepted (migration
+  // 0034) is live here but held out of the threshold; the page marks those reports individually.
+  // Also NOT the same as communityAdditions.ts's own
   // family-facing reporterCount, which deliberately uses count(*) so a deleted account's report
   // still counts as evidence for families — that's the right call for that display, but wrong here:
   // an admin judging corroboration *strength* needs to know how many live, re-contactable accounts
@@ -74,7 +77,8 @@ type CorrectionRow = {
   id: string;
   barcode: string | null;
   allergen: string | null;
-  allergen_key: string | null;
+  allergen_fold_key: string | null;
+  allergen_family_key: string | null;
   direction: Direction;
   correction_type: CorrectionType;
   target: Target;
@@ -102,7 +106,7 @@ type CorrectionRow = {
 async function fetchCorrectionRows(): Promise<CorrectionRow[]> {
   const { rows } = await pool.query<CorrectionRow>(
     `SELECT
-       pc.id, pc.barcode, pc.allergen, pc.allergen_key, pc.direction, pc.correction_type, pc.target, pc.note,
+       pc.id, pc.barcode, pc.allergen, pc.allergen_fold_key, pc.allergen_family_key, pc.direction, pc.correction_type, pc.target, pc.note,
        pc.status, pc.created_at, pc.reported_by, pc.rejected_by, pc.rejected_at,
        pc.rejection_reason, pc.origin, rejector.email AS rejected_by_email,
        pc.refiles_rejected_id, pc.accepted_at, acceptor.email AS accepted_by_email
@@ -177,12 +181,13 @@ function hasSharedProfile(reporterIds: string[], memberships: Map<string, Set<st
 }
 
 /**
- * Pure — rows + membership map -> claims. Grouping key is barcode + direction + (allergen_key, or
- * null for wrong_product) — exactly recordCorrection.ts's corroboration bucket, since that's what
- * determines whether a report is 'pending' or 'corroborated'. The key (migration 0043) folds
- * spellings together — "Sesame" and "sesame", "Peanut" and "Peanuts", "Milk" and "Dairy" are one
- * claim — and communityAdditions.ts groups on the same key, so the queue, the threshold and what
- * families see agree. The claim's `allergen` lists each distinct spelling its reports used, in
+ * Pure — rows + membership map -> claims. Grouping key is barcode + direction + (the direction's
+ * claim key, or null for wrong_product) — exactly recordCorrection.ts's corroboration bucket, since
+ * that's what determines whether a report is 'pending' or 'corroborated'. Additions group on the
+ * family key ("Milk" and "Dairy" are one warning claim), removals on the spelling key ("Milk" and
+ * "Lactose" reported absent are two claims, each with its own count) — claimKeyColumn has why.
+ * "Sesame" and "sesame" are one claim either way. communityAdditions.ts groups additions on the
+ * same family key, so the queue, the threshold and what families see agree. The claim's `allergen` lists each distinct spelling its reports used, in
  * the order they arrived, so an admin sees what reporters actually wrote.
  *
  * Exception: a row with barcode === null (a barcode-less Path C scan's correction) is always its
@@ -203,6 +208,14 @@ function hasSharedProfile(reporterIds: string[], memberships: Map<string, Set<st
  * created_at ASC globally, so each claim's rows array is already in that order) — stable across a
  * reject, since rejecting a row never changes its position in this array.
  */
+/** The row's claim key for its direction; null for wrong_product (no allergen). A row that names an
+ *  allergen but has no key yet (written by the previous release mid-deploy, before 0044) is its own
+ *  claim — never merged into another allergen's. */
+function claimGroupKey(row: CorrectionRow): string | null {
+  if (row.allergen === null) return null;
+  return row[claimKeyColumn(row.direction)] ?? `unkeyed:${row.id}`;
+}
+
 export function groupIntoClaims(
   rows: CorrectionRow[],
   circleMemberships: Map<string, Set<string>>,
@@ -215,7 +228,10 @@ export function groupIntoClaims(
   for (const row of rows) {
     // row.id makes this key unique per row, so a null-barcode row can never land in the same
     // bucket as another one — see the doc comment above.
-    const key = row.barcode === null ? JSON.stringify(["no-barcode", row.id]) : JSON.stringify([row.barcode, row.direction, row.allergen_key]);
+    const key =
+      row.barcode === null
+        ? JSON.stringify(["no-barcode", row.id])
+        : JSON.stringify([row.barcode, row.direction, claimGroupKey(row)]);
     const bucket = buckets.get(key);
     if (bucket) bucket.rows.push(row);
     else buckets.set(key, { barcode: row.barcode, direction: row.direction, rows: [row] });
@@ -389,14 +405,15 @@ export async function acceptCorrection(correctionId: string, acceptedBy: string)
 
     const { rows: existingRows } = await client.query<{
       barcode: string | null;
-      allergen_key: string | null;
+      allergen_fold_key: string | null;
+      allergen_family_key: string | null;
       direction: Direction;
       status: CorrectionStatus;
       refiles_rejected_id: string | null;
       accepted_at: string | null;
       identity_mismatch_at_report: boolean;
     }>(
-      `SELECT barcode, allergen_key, direction, status, refiles_rejected_id, accepted_at, identity_mismatch_at_report
+      `SELECT barcode, allergen_fold_key, allergen_family_key, direction, status, refiles_rejected_id, accepted_at, identity_mismatch_at_report
        FROM product_corrections WHERE id = $1 FOR UPDATE`,
       [correctionId],
     );
@@ -418,7 +435,7 @@ export async function acceptCorrection(correctionId: string, acceptedBy: string)
     );
     const corroborated = await corroborateClaimIfThresholdMet(client, {
       barcode: existing.barcode,
-      allergenKey: existing.allergen_key,
+      key: existing[claimKeyColumn(existing.direction)],
       direction: existing.direction,
     });
     const { rows: adminRows } = await client.query<{ email: string }>("SELECT email FROM users WHERE id = $1", [

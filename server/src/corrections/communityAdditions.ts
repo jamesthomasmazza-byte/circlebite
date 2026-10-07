@@ -2,11 +2,12 @@ import { pool } from "../db/pool.js";
 import type { CommunityAddition } from "./applyCommunityCorrections.js";
 
 /**
- * Corroborated add_caution corrections for a set of barcodes, one entry per (barcode, allergen key)
- * — the same key corroboration counts on (migration 0043), so "Sesame", "sesame" and "Sesames" from
- * three reporters are one claim with one count, not three claims of one. `allergen` is one of the
- * spellings used; any of them matches the same profiles, since the key is built from the matcher's
- * own normalisation. One query for a whole scan-history page rather than one per row.
+ * Corroborated add_caution corrections for a set of barcodes, one entry per (barcode, allergen
+ * family key) — the key additions corroborate on (migration 0043), so "Sesame", "sesame" and
+ * "Sesames" from three reporters are one claim with one count, not three claims of one. `allergen`
+ * is one of the spellings used; any of them matches the same profiles, since the key is built from
+ * the matcher's own normalisation. A row without a key (written by the previous release during a
+ * deploy, before 0044 requires one) is its own group by id, never merged into another allergen's. One query for a whole scan-history page rather than one per row.
  *
  * Only status = 'corroborated' — 'rejected' is the per-report undo (docs/server-setup.md §11) and
  * 'pending' hasn't met the threshold. Only add_caution — removals don't propagate to other
@@ -30,7 +31,7 @@ export async function loadCommunityAdditions(barcodes: string[]): Promise<Map<st
        AND direction = 'add_caution'
        AND status = 'corroborated'
        AND allergen IS NOT NULL
-     GROUP BY barcode, allergen_key`,
+     GROUP BY barcode, COALESCE(allergen_family_key, 'unkeyed:' || id::text)`,
     [barcodes],
   );
 

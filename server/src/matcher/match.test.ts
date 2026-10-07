@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { allergenKey, matchAllergen, type ProductForMatching } from "./match.js";
+import { allergenFamilyKey, allergenFoldKey, matchAllergen, type ProductForMatching } from "./match.js";
 import { SYNONYM_CLUSTERS } from "./synonyms.js";
 
 function productWithIngredients(ingredientsText: string): ProductForMatching {
@@ -89,25 +89,54 @@ test("regression: a product with none of these terms is still a clean miss", () 
   assert.equal(matchAllergen("Sulfite", productWithIngredients(text)).matched, false);
 });
 
-test("allergenKey: case, surrounding space and a trailing s don't change the key", () => {
-  assert.equal(allergenKey("Peanut"), allergenKey("peanut"));
-  assert.equal(allergenKey("Peanut"), allergenKey("  PEANUTS "));
-  // An allergen no cluster knows: literal name, singular.
-  assert.equal(allergenKey("Kiwi"), allergenKey("kiwis"));
-  assert.equal(allergenKey("Kiwis"), "kiwi");
+test("allergenFoldKey and allergenFamilyKey: case, surrounding space and a trailing s don't change either key", () => {
+  for (const key of [allergenFoldKey, allergenFamilyKey]) {
+    assert.equal(key("Peanut"), key("peanut"));
+    assert.equal(key("Peanut"), key("  PEANUTS "));
+    // An allergen no cluster knows: literal name, singular.
+    assert.equal(key("Kiwi"), key("kiwis"));
+  }
+  assert.equal(allergenFoldKey("Kiwis"), "kiwi");
 });
 
-test("allergenKey: every alias in a synonym cluster shares one key", () => {
-  assert.equal(allergenKey("Milk"), allergenKey("Dairy"));
-  assert.equal(allergenKey("Groundnuts"), allergenKey("Peanut"));
+test("allergenFamilyKey: every alias in a synonym cluster shares one key, the cluster's id", () => {
+  assert.equal(allergenFamilyKey("Milk"), allergenFamilyKey("Dairy"));
+  assert.equal(allergenFamilyKey("Groundnuts"), allergenFamilyKey("Peanut"));
   for (const cluster of SYNONYM_CLUSTERS) {
-    for (const alias of cluster.aliases) assert.equal(allergenKey(alias), cluster.aliases[0], alias);
+    for (const alias of cluster.aliases) assert.equal(allergenFamilyKey(alias), `cluster:${cluster.id}`, alias);
   }
 });
 
-test("allergenKey: different allergens keep different keys", () => {
-  assert.notEqual(allergenKey("Peanut"), allergenKey("Tree nut"));
-  assert.notEqual(allergenKey("Tree nuts"), allergenKey("Walnut"), "the umbrella and a single nut are separate claims");
-  assert.notEqual(allergenKey("Fish"), allergenKey("Shellfish"));
-  assert.notEqual(allergenKey("Kiwi"), allergenKey("Kiwano"));
+test("allergenFoldKey never merges a synonym cluster — a removal must be about the same thing", () => {
+  assert.notEqual(allergenFoldKey("Milk"), allergenFoldKey("Lactose"));
+  assert.notEqual(allergenFoldKey("Milk"), allergenFoldKey("Whey"));
+  assert.notEqual(allergenFoldKey("Peanut"), allergenFoldKey("Groundnut"));
+});
+
+test("cluster ids are unique, and no free-text name can land on a cluster's family key", () => {
+  const ids = SYNONYM_CLUSTERS.map((c) => c.id);
+  assert.equal(new Set(ids).size, ids.length);
+  assert.equal(allergenFamilyKey("Kiwi"), "name:kiwi");
+  assert.equal(allergenFamilyKey("cluster:dairy"), "name:cluster:dairy");
+  assert.notEqual(allergenFamilyKey("cluster:dairy"), allergenFamilyKey("Dairy"));
+});
+
+test("reordering a cluster's aliases doesn't change its family key", () => {
+  const dairy = SYNONYM_CLUSTERS.find((c) => c.id === "dairy")!;
+  const before = allergenFamilyKey("Whey");
+  dairy.aliases.reverse();
+  try {
+    assert.equal(allergenFamilyKey("Whey"), before);
+  } finally {
+    dairy.aliases.reverse();
+  }
+});
+
+test("different allergens keep different keys of both kinds", () => {
+  for (const key of [allergenFoldKey, allergenFamilyKey]) {
+    assert.notEqual(key("Peanut"), key("Tree nut"));
+    assert.notEqual(key("Tree nuts"), key("Walnut"), "the umbrella and a single nut are separate claims");
+    assert.notEqual(key("Fish"), key("Shellfish"));
+    assert.notEqual(key("Kiwi"), key("Kiwano"));
+  }
 });
