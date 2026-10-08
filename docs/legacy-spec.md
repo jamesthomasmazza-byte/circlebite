@@ -142,7 +142,8 @@ Note the fail-closed shape already present: an empty product record produces *un
 **Community corrections adjust the verdict.** Corroborated `remove_caution` reports strip that
 allergen from the matched list and the verdict is recomputed from the same rules. A corroborated
 `wrong_product` report clears everything. The UI shows a transparency note naming what was cleared
-and why — do not silently change a verdict.
+and why — do not silently change a verdict. *(Prototype behaviour. The rebuild does not let removals
+reach other families at all — see §7.)*
 
 ## 5. Circle and invites
 
@@ -181,14 +182,15 @@ Status moves pending → corroborated or rejected. **The thresholds are delibera
 report to *add* a warning, three to *remove* one.** A community report of unknown provenance resolves
 to "direct ingredient," not "trace." When an addition and a removal conflict, the warning survives.
 This follows from `principles.md` §1 — false caution beats false safety — and is not a detail to
-simplify away.
+simplify away. *(Prototype thresholds. The rebuild counts families, not reports, and needs two to add
+a warning — see §7.)*
 
 **Confirmations** are the positive signal: a user affirming the verdict was right for a given barcode
 and allergen. Unique per user so one person can't inflate the count.
 
 ## 7. What changes in the rebuild
 
-Not a straight port. Four deliberate differences:
+Not a straight port. Five deliberate differences:
 
 **Authorization moves into application code.** See §2. No RLS layer exists here.
 
@@ -199,6 +201,20 @@ whole engine. See `docs/verdict-engine.md`.
 rebuild treats it as a claim to be checked against the physical package. See `verdict-engine.md` §1,
 Path D. The `product_last_updated` field already stored in `scans` is the staleness signal that
 decides when to ask for a label photo.
+
+**Corrections reach other families more narrowly.** Three changes to §4 and §6, each with its
+decision in `principles.md`:
+
+- *Only escalations cross family lines* (Sept 10, 2026). A corroborated removal or wrong-product report
+  changes only the reporter's own view, never anyone else's — signup is open, so three throwaway
+  accounts could otherwise clear a warning for every family.
+- *Removals are for the profile's managers* (Oct 1, 2026, Prof. Yoest's approval). Any circle member
+  may report an allergen present; only the owner or a co-manager may report one absent or the
+  product wrong.
+- *Thresholds count families, two to add* (Oct 7, 2026). Two families to add a warning, three to
+  remove one, where a family is the owner of the profile a report was filed from. Additions match
+  spellings and synonym clusters; removals match spellings only (`principles.md`, the Oct 8 row on
+  three notions of the same allergen).
 
 **Deferred until after judging** (`CONTEST_RULES.md` §7): the iOS/Capacitor wrapper, the admin
 analytics dashboard beyond an AI accuracy page, and deep scan history. Everything else in this
