@@ -46,6 +46,13 @@ The harms are not symmetric. Wrongly warning someone costs an unnecessary avoida
 
 **Where it decided things:** the fourth verdict state exists at all. `unable_to_confirm` distinguishes "barcode unknown" from "no ingredient data." A submitted label photo can never move a verdict toward safe — four independent barriers enforce it.
 
+**Missing data is never stated as a fact (Oct 8, 2026).** Caution is fine; confidence isn't. When data is missing, a *verdict* resolves toward caution, and that is principle 1 doing its job: "Unable to confirm", or an allergen shown as not checked, is cautious and correct. What must never happen is a *sentence* that turns the gap into a definite claim. "Someone outside the app changed this" asserts who acted when nobody recorded it. "We don't have this barcode on file" asserts what the database holds when the lookup never finished. The test: could the record behind the wording also be explained by "we don't know"? If so, the wording must say we don't know.
+
+Don't misapply this to the verdict engine. It is not "avoid the scarier answer". On a verdict, missing data should still produce the cautious result. The rule is about what the words claim, not which way the verdict leans. Three cases where wording claimed a fact the data didn't hold:
+- **The corroboration count (fixed Oct 7, migration 0043).** It counted reports by the allergen name as typed, so "Peanuts" and "Peanut" from two families became two claims of one report each. With no record linking the spellings, the card said "reported by 1 shopper".
+- **"We don't have this barcode on file" (found Oct 8).** The same sentence shows for a genuine not-found and for a lookup that failed or timed out, and the failure is cached for a day. See BACKLOG, "A failed product lookup is shown as…". Until that is fixed, the "Where it decided things" line above holds only for genuine not-founds.
+- **A change with no recorded actor (found Oct 8).** The owner's banner and the history say "someone outside the app". On every deploy that is already false for edits made in the app during the release swap. See BACKLOG, "A change with no recorded actor…".
+
 ### 3. The answer is for one specific person
 
 Specificity is the product. Every verdict is scoped to a named individual with their own allergens, severities and cross-contact tolerances. The moment we merge people into one answer, we've rebuilt the generic score we exist to replace.
@@ -155,3 +162,4 @@ Claude references this when a tradeoff is genuinely ambiguous, instead of asking
 | Aug 15, 2026 | Created. Principles reconstructed from decisions made Aug 5–15, 2026 — not invented. |
 | Aug 15, 2026 | **Principle 5 rewritten after JT pushed back** that "collect the minimum" constrains future monetization. He was half right, and the original wording was the problem. It conflated two different things and contradicted the switching-cost argument, which treats accumulated household context as a switching cost — i.e. an asset to grow, not minimise. Now split explicitly: household-owned data grows, our collection about users stays minimal. The legal and COPPA protection is unchanged; the false constraint on the moat is removed. |
 | Oct 8, 2026 | Added the rule that a decision made in conversation lands in the repo in the same session, after two Oct 7 decisions didn't. |
+| Oct 8, 2026 | Principle 2: missing data is never stated as a fact. Wording only; the verdict engine still resolves toward caution. Written after three cases where wording turned missing data into a confident claim. |
