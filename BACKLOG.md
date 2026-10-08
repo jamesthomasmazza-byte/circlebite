@@ -336,6 +336,12 @@ it is the least-worked area. Treat this whole section as the priority block it i
       reviews daily through judging, but a promise with no timer behind it if this ever runs
       unattended. Before that: an age on held claims in the queue, or an alert when one sits too long.
       Not now (JT, 2026-10-08).
+- [ ] **Invert legacy-spec.md's scope clause.** §7 says everything it doesn't list as a difference
+      is in scope — a denylist kept by hand, which went stale on corrections (fixed 2026-10-08) and
+      will again. Invert it: nothing in `docs/legacy-spec.md` binds unless restated in
+      `docs/principles.md` or `docs/verdict-engine.md`. Needs a pass first confirming those two cover
+      what legacy-spec's remaining sections still require, so nothing in force is dropped by the
+      inversion. Not this week (JT, 2026-10-08); the header note added the same day covers it until then.
 - [ ] **Allergen hierarchy for corroboration.** Walnut is a tree nut, so a "contains walnut" report
       should count toward a tree-nut warning claim — but not the reverse, since "contains tree nuts"
       doesn't say which nut. That's a hierarchy, not a synonym cluster, and neither allergen key
