@@ -647,6 +647,13 @@ it is the least-worked area. Treat this whole section as the priority block it i
         offers only "This product has an allergen the card didn't flag"
       - `2990000000076` for Maya: Contains, Peanut "reported by 1 shopper", product data alone says
         Unable to confirm, 911 line present
+
+      *Superseded 2026-10-08:* the list above is what the Oct 1 seed showed, kept as the record.
+      Since the Oct 7 reseed there are four judges (`judge1`–`judge4@demo.circlebite.test`) and two
+      reporting families, so re-verifying `2990000000076` for Maya expects Peanut "reported by 2
+      shoppers", plus "We couldn't check 1 of Maya's allergens — there's no product data on file to
+      check it against: sesame." (`judgeSeed.test.ts` asserts both). The card only escalates with
+      `COMMUNITY_CORRECTIONS=on`.
 - [ ] Scan history repeats the whole "Originally Unable to confirm — changed because of…" block on
       every community-escalated entry, so with several of them the page gets long fast (seen on the
       judge account, 2026-10-01: three scans of the same seeded barcode, three identical blocks).
