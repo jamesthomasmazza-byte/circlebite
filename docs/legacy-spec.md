@@ -1,5 +1,10 @@
 # Legacy spec — what the prototype does
 
+> **Read this first.** Everything below describes the prototype, not this codebase. Any statement in
+> it may have been superseded by a later decision. §7 lists the known differences, but that list is
+> maintained by hand and may be incomplete — check `docs/principles.md`, `docs/verdict-engine.md`
+> and the code before treating anything here as current.
+
 A written description of the earlier CircleBite prototype (built on Lovable, disclosed to and cleared
 by Prof. Yoest on 2026-09-08). This is **design reference, re-implemented from scratch** — the
 arrangement he approved. No code from that project is copied into this repository.
