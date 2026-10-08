@@ -442,8 +442,22 @@ it is the least-worked area. Treat this whole section as the priority block it i
         the judging-week checklist, which stays open until this email goes out.
         **Since 2026-10-07 the seed makes four judge accounts, `judge1@` … `judge4@`, one shared
         password** — the `judge@` login in the Oct 5 link stops working at the first production
-        reseed after that change deploys. This email carries all four logins; if production is
-        reseeded before Nov 23, the four logins have to go out then instead, by the same route.
+        reseed after that change deploys. This email carries all four logins. Production was
+        reseeded on 2026-10-08, and JT decided the same day that the logins wait for this email
+        rather than going out early. Blocked by the item below.
+      - [ ] **Four distinct judge passwords — blocks the Nov 23 credentials email.** JT,
+        2026-10-08. `seedJudge.ts` sets one password for all four judges (it printed "Judge
+        password (the same for all four)" on the 2026-10-08 production reseed, and `78771c2` says
+        "one shared password"). That defeats the isolation four accounts exist for: judge 2 typing
+        `judge1@` by mistake lands in judge 1's world on the first try. Fix before the email:
+        - `seedJudge.ts` sets four distinct passwords, one per judge account, each generated or
+          supplied without touching the command line, shell history or a file (R8).
+        - `docs/server-setup.md` §16 exports a single `JUDGE_PASSWORD` and has to change with it.
+        - The reseed before the Nov 23 email runs the fixed seed, and each judge's link carries only
+          their own login.
+
+        **The Oct 5 login is dead.** The 2026-10-08 reseed deleted `judge@demo.circlebite.test`, so
+        anyone holding the Oct 5 link has no access until the Nov 23 link goes out.
       - [x] **Reply with screenshots** of "No listed allergens found" and the 911 referral once
         both are live on production. He named those as the two safety items judges look for, and
         asked for a screenshot of each. **Sent 2026-10-05** to Prof. Yoest, with both screenshots
