@@ -357,6 +357,16 @@ it is the least-worked area. Treat this whole section as the priority block it i
       tell unknown from no, resolving to the scarier answer. One difference to keep: on a verdict,
       principle 1 makes the cautious answer the right one when data is missing. Here nothing about
       safety rests on the wording, so an alarming claim buys nothing.
+- [ ] **A failed product lookup is shown as "We don't have this barcode on file", and cached for a
+      day.** Found 2026-10-08. `fetchProduct` (`server/src/lib/openFoodFacts.ts`) collapses a
+      network error, timeout, non-2xx or bad JSON into the same `NOT_FOUND` as a genuine not-found.
+      `getProduct` caches it for `CACHE_TTL_MS` (24 h), and `explainMissingProductData` then tells the
+      parent the barcode isn't on file. The verdict, Unable to confirm, is right (principle 1). The
+      sentence states a fact about the product database that nobody checked. Keep failing closed,
+      but keep "lookup failed" distinct from "not found": say the lookup didn't complete, and don't
+      cache a failure as a not-found. Principle 2's "Where it decided things" line ("distinguishes
+      barcode unknown from no ingredient data") is true only for genuine not-founds until this is
+      fixed. Not triaged.
 - [ ] **Ship migration 0044 in the deploy after 0043, never the same one.** 0043 adds the two
       allergen keys nullable; 0044 requires them. `release.sh` migrates before it swaps the symlink,
       so a constraint shipped with 0043 would be live against the old release for a few seconds, and
