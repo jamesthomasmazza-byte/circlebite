@@ -323,6 +323,16 @@ it is the least-worked area. Treat this whole section as the priority block it i
       history only. The honest fix is probably not to grow the rows retroactively but to say what a
       history card is — "this scan checked Maya's allergens as they stood on 3 October" — since the
       card is a record of what was checked then, not a decision anyone is making now.
+- [ ] **The "Changes to review" banner doesn't say whether it means a person or a profile.** Seen
+      verifying the 2026-10-08 production deploy: "Timmy changed James Mazza's profile — 2 updates
+      you haven't reviewed." Timmy is the co-manager's account name, and also the name of a profile
+      that account owns, so the sentence doesn't say which one is meant. The history entries on the
+      profile page already make it clear ("timmy (co-manager) removed Ownertest"). The banner drops
+      the role. Carry the role into the banner the way `entryActor` does. Also make the casing match:
+      `unseenActors` (`client/src/lib/profileChangeCopy.ts`) capitalizes the first letter of the
+      joined names, so the account "timmy" shows as "Timmy" in the banner and "timmy" in the
+      history. This matters more in the banner than in the history: the banner is read by someone who
+      wasn't looking for it, while someone reading the history already went looking.
 - [ ] **Ship migration 0044 in the deploy after 0043, never the same one.** 0043 adds the two
       allergen keys nullable; 0044 requires them. `release.sh` migrates before it swaps the symlink,
       so a constraint shipped with 0043 would be live against the old release for a few seconds, and
