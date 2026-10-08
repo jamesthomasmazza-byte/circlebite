@@ -333,6 +333,10 @@ it is the least-worked area. Treat this whole section as the priority block it i
       joined names, so the account "timmy" shows as "Timmy" in the banner and "timmy" in the
       history. This matters more in the banner than in the history: the banner is read by someone who
       wasn't looking for it, while someone reading the history already went looking.
+      Lower priority than the seeded "Someone outside the app" banner (JT, 2026-10-08): that one is
+      on every judge's first screen after login, while this one needs a real co-manager edit. That
+      one is fixed in `1818677` and reaches production with the reseed under the Nov 23 credentials
+      item.
 - [ ] **Ship migration 0044 in the deploy after 0043, never the same one.** 0043 adds the two
       allergen keys nullable; 0044 requires them. `release.sh` migrates before it swaps the symlink,
       so a constraint shipped with 0043 would be live against the old release for a few seconds, and
@@ -455,6 +459,11 @@ it is the least-worked area. Treat this whole section as the priority block it i
         - `docs/server-setup.md` §16 exports a single `JUDGE_PASSWORD` and has to change with it.
         - The reseed before the Nov 23 email runs the fixed seed, and each judge's link carries only
           their own login.
+        - That reseed also has to run from a release that includes `1818677`. Until then, every
+          judge's first screen after login reads "Someone outside the app changed Maya's profile — 2
+          updates you haven't reviewed" (found 2026-10-08 after the production reseed). The seed
+          wrote its allergens with no actor. After the reseed, check that judge1's dashboard has no
+          "Changes to review" banner.
 
         **The Oct 5 login is dead.** The 2026-10-08 reseed deleted `judge@demo.circlebite.test`, so
         anyone holding the Oct 5 link has no access until the Nov 23 link goes out.
