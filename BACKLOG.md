@@ -703,6 +703,25 @@ it is the least-worked area. Treat this whole section as the priority block it i
       refreshes the scan dates (seeded history is dated relative to the run, and would otherwise
       read as two months old) and clears test activity on the judge account — including JT's two
       extra `2990000000076` scans in Maya's history from the 2026-10-01 verification.
+- [ ] **Hazard: production's demo warning stands only because its status is grandfathered.**
+      Checked 2026-10-08. Production has **one** seeded peanut report on `2990000000076`, corroborated
+      2026-10-01 under the old threshold of 1. Its product rows were last seeded 2026-10-05. Deploys
+      run migrations, never the seed, so the Oct 7 seed (two reporting families, four judges) has
+      never run there. Nothing re-checks a `corroborated` status after the threshold rises, so the
+      card still escalates. It reads "reported by 1 shopper", which contradicts the two-family rule
+      the README states. And that one shopper is Priya, Maya's own co-manager (seed as of
+      `3923698`), so it isn't the cross-family warning the demo exists to show. Before the next
+      production reseed:
+      - **Reseed from the current release only** (`~/circlebite/current`, cloned from main). From
+        `4b3c0e2` onward the seed files two families and rolls back with `SeedNotCorroboratedError`
+        if they fall short, so it fails loudly. A seed from `2520115` through `4e622f2` is the
+        dangerous one: threshold 2, one report, no guard. It commits a claim that stays `pending`,
+        and Maya's `2990000000076` then shows plain Unable to confirm with no error anywhere.
+      - **The current seed changes the judge login.** It deletes every account on the seed domain,
+        including `judge@demo.circlebite.test`, and creates `judge1`–`judge4@demo.circlebite.test`.
+        The credentials sent on 2026-10-05 predate that, so "the same `JUDGE_PASSWORD` keeps them
+        working" (item above) is no longer true. The fresh-link email on Nov 23 has to carry the new
+        logins, and the reseed has to happen before it goes out.
 - [ ] Check the review queue (`/admin/review-queue`) daily. A judge's reports are rejected by any
       reseed, but if a judge deletes the account first those reports turn anonymous and the seed can
       no longer find them — the queue is the only place they'd show up
