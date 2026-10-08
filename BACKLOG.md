@@ -717,7 +717,10 @@ it is the least-worked area. Treat this whole section as the priority block it i
       refreshes the scan dates (seeded history is dated relative to the run, and would otherwise
       read as two months old) and clears test activity on the judge account — including JT's two
       extra `2990000000076` scans in Maya's history from the 2026-10-01 verification.
-- [ ] **Hazard: production's demo warning stands only because its status is grandfathered.**
+- [x] **Hazard: production's demo warning stands only because its status is grandfathered.**
+      *Done 2026-10-08:* JT reseeded production from release `c46660c`. Judge 1's Maya on
+      `2990000000076` now reads "reported by 2 shoppers" on both lines, with the unchecked-sesame
+      note (JT, live card). The from-current-release rule below still holds for every future reseed.
       Checked 2026-10-08. Production has **one** seeded peanut report on `2990000000076`, corroborated
       2026-10-01 under the old threshold of 1. Its product rows were last seeded 2026-10-05. Deploys
       run migrations, never the seed, so the Oct 7 seed (two reporting families, four judges) has
