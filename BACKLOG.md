@@ -663,7 +663,7 @@ it is the least-worked area. Treat this whole section as the priority block it i
         Unable to confirm, 911 line present
 
       *Superseded 2026-10-08:* the list above is what the Oct 1 seed showed, kept as the record.
-      Since the Oct 7 reseed there are four judges (`judge1`–`judge4@demo.circlebite.test`) and two
+      Since the Oct 7 seed change there are four judges (`judge1`–`judge4@demo.circlebite.test`) and two
       reporting families, so re-verifying `2990000000076` for Maya expects Peanut "reported by 2
       shoppers", plus "We couldn't check 1 of Maya's allergens — there's no product data on file to
       check it against: sesame." (`judgeSeed.test.ts` asserts both). The card only escalates with
