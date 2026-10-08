@@ -389,6 +389,14 @@ it is the least-worked area. Treat this whole section as the priority block it i
         404, a 404 must stay "not found", or every scan of an unknown barcode would call Open Food
         Facts again and never cache. Confirm the status for a known-unknown barcode before writing
         the branch, rather than assuming it.
+        *Checked 2026-10-08 16:51 UTC*, with the app's own request (same URL, `fields`, and
+        `OFF_USER_AGENT` format) for `2990000000076`:
+        `HTTP/2 404`, `content-type: application/json; charset=utf-8`, body
+        `{"code":"2990000000076","status":0,"status_verbose":"product not found"}`.
+        So an unknown barcode is a 404 with a JSON body. Treat 404 as "not found", and read the
+        body's `status: 0` to confirm it, rather than counting every non-2xx as a failure. Not
+        checked: whether a barcode with a *valid* check digit that OFF doesn't know answers the
+        same way. This one's check digit is deliberately invalid.
 - [ ] **Ship migration 0044 in the deploy after 0043, never the same one.** 0043 adds the two
       allergen keys nullable; 0044 requires them. `release.sh` migrates before it swaps the symlink,
       so a constraint shipped with 0043 would be live against the old release for a few seconds, and
