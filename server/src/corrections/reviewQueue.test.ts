@@ -3,12 +3,14 @@ import { after, before, test } from "node:test";
 
 import { assertIsAdmin } from "../authorization/admin.js";
 import { pool } from "../db/pool.js";
+import { env } from "../env.js";
 import { HttpError } from "../lib/httpError.js";
 import { allergenFamilyKey, allergenFoldKey } from "../matcher/match.js";
 import { applyCommunityCorrections } from "./applyCommunityCorrections.js";
 import { loadCommunityAdditions } from "./communityAdditions.js";
 import { recordCorrection } from "./recordCorrection.js";
 import { acceptCorrection, getCorrectionPhotoPath, groupIntoClaims, loadReviewQueue, rejectCorrection } from "./reviewQueue.js";
+import { loadUserScanViews, publicCommunityReports } from "./userScanView.js";
 
 // Real Postgres for the DB-backed tests, same discipline as recordCorrection.test.ts /
 // communityAdditions.test.ts: real inserts, real cleanup, invented data only (@example.com
@@ -225,6 +227,13 @@ test("groupIntoClaims: a pending removal under a confirmed warning in its family
   assert.deepEqual(held("9000000000001", "Milk"), ["Whey", "whey"]);
   assert.deepEqual(held("9000000000001", "Egg"), []);
   assert.deepEqual(held("9000000000002", "Milk"), []);
+
+  // A wrong-product report is linked to every confirmed warning on its product.
+  const wrongProduct = groupIntoClaims(
+    [makeRow({ allergen: "Whey" }), makeRow({ allergen: "Peanut" }), makeRow({ allergen: null, correction_type: "wrong_product", direction: "remove_caution", status: "pending" })],
+    new Map(),
+  ).find((c) => c.allergen === null);
+  assert.deepEqual(wrongProduct?.heldByWarning, ["Whey", "Peanut"]);
   assert.ok(claims.filter((c) => c.direction === "add_caution").every((c) => c.heldByWarning.length === 0));
 });
 
@@ -593,4 +602,43 @@ test("the queue's held flag matches the real block: three families' Milk removal
   const claim = (await loadReviewQueue()).find((c) => c.barcode === barcode && c.direction === "remove_caution");
   assert.equal(claim?.status, "pending");
   assert.deepEqual(claim?.heldByWarning, ["Whey"]);
+});
+
+// The case that made the queue's link and the parent's note diverge: a "Tree nuts" warning keeps a
+// "Walnut" caution on the parent's card (allergensOverlap — tree nuts doesn't say which nut), but
+// the two are different allergen families, so the corroboration block doesn't fire. The parent is
+// still told a reviewer sees both, so the queue must link them.
+test("a Walnut removal under a confirmed Tree nuts warning: the parent's card names Walnut as held, and the queue links the pair", async () => {
+  const barcode = "3000000000041";
+  const WALNUT_PROFILE = "11111111-0000-0000-0000-000000000004";
+  await pool.query("INSERT INTO allergen_profiles (id, manager_id, label) VALUES ($1, $2, 'RQ Walnut Profile')", [WALNUT_PROFILE, CIRCLE_STRANGER]);
+  await pool.query("INSERT INTO allergens (allergen_profile_id, name, severity, treat_traces_as_unsafe) VALUES ($1, 'Walnut', 'severe', true)", [
+    WALNUT_PROFILE,
+  ]);
+
+  const warning = (reportedBy: string) => ({ reportedBy, correctionType: "flag_missing" as const, allergen: "Tree nuts", note: null, photoPath: "/fake.jpg", origin: "user_initiated" as const });
+  await recordCorrection({ scanId: await makeScan(PROFILE_ID, barcode, "safe"), ...warning(USER_A) });
+  const confirmed = await recordCorrection({ scanId: await makeScan(PROFILE_B, barcode, "safe"), ...warning(USER_B) });
+  assert.equal(confirmed.corroborated, true);
+
+  const walnut = [{ allergenName: "Walnut", severity: "severe", classification: "contains" }];
+  const scanId = await makeScan(WALNUT_PROFILE, barcode, "contains_allergen", walnut);
+  const removal = await recordCorrection({ scanId, reportedBy: CIRCLE_STRANGER, correctionType: "flag_wrong", allergen: "Walnut", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
+  assert.equal(removal.status, "pending");
+
+  // Parent: the card names Walnut as confirmed — the input heldRemovalNotes turns into "held".
+  const previous = env.communityCorrections;
+  try {
+    env.communityCorrections = true;
+    const { rows } = await pool.query("SELECT id, barcode, result, matched_allergens FROM scans WHERE id = $1", [scanId]);
+    const view = (await loadUserScanViews(rows, WALNUT_PROFILE, CIRCLE_STRANGER)).get(scanId)!;
+    assert.equal(view.effective?.result, "contains_allergen");
+    assert.deepEqual(publicCommunityReports(view.communityApplied), [{ allergenName: "Walnut", reporterCount: 2 }]);
+  } finally {
+    env.communityCorrections = previous;
+  }
+
+  // Reviewer: the same pair, linked.
+  const claim = (await loadReviewQueue()).find((c) => c.barcode === barcode && c.direction === "remove_caution");
+  assert.deepEqual(claim?.heldByWarning, ["Tree nuts"]);
 });

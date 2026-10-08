@@ -1,5 +1,6 @@
 import { HttpError } from "../lib/httpError.js";
 import { pool } from "../db/pool.js";
+import { allergensOverlap } from "./applyCommunityCorrections.js";
 import {
   claimKeyColumn,
   corroborateClaimIfThresholdMet,
@@ -70,11 +71,18 @@ export type ReviewQueueClaim = {
   // membership against, so it can never trigger this. No identities included; only this boolean
   // ever leaves this module.
   sameCircleWarning: boolean;
-  // A pending removal that can't corroborate because a confirmed warning in the same allergen family
-  // stands on this product (recordCorrection.ts's warning-survives check — the same rule, over the
-  // same family keys). The warning's spellings as its reporters wrote them, which reviewers already
-  // see on that claim. Empty for everything else. The parent sees the same fact on their card in
-  // their own allergen name (client correctionCopy.ts, heldRemovalNotes).
+  // A removal held by a confirmed warning on this product: the warning's spellings as its reporters
+  // wrote them, which reviewers already see on that claim. Empty for everything else.
+  //
+  // Defined by what the parent is told, not by the corroboration block: it fires on exactly the
+  // condition that puts "your request is held … a reviewer sees both" on the parent's card
+  // (client correctionCopy.ts, heldRemovalNotes) — a confirmed warning the card names for the
+  // allergen they asked to remove, which applyCommunityCorrections decides with allergensOverlap.
+  // So a "Walnut" removal under a confirmed "Tree nuts" warning is linked here even though
+  // recordCorrection.ts's warning-survives check (family keys) doesn't block it. Broader than that
+  // block on purpose — more linked pairs for reviewers is the safe direction, and it makes "a
+  // reviewer sees both" true by definition. A wrong_product removal is linked to every confirmed
+  // warning on the product, a superset of what its note names (the queue doesn't hold the profile).
   heldByWarning: string[];
   reports: ReviewQueueReport[]; // full list, every status, including deleted-account reports
 };
@@ -290,13 +298,17 @@ export function groupIntoClaims(
         ? "pending"
         : "rejected";
 
-    const familyKeys = new Set(claimRows.map((r) => r.allergen_family_key).filter((k): k is string => k !== null));
     const heldByWarning =
-      direction === "remove_caution" && status === "pending" && barcode !== null
+      direction === "remove_caution" && status !== "rejected" && barcode !== null
         ? [
             ...new Set(
               confirmedWarnings
-                .filter((w) => w.barcode === barcode && w.allergen_family_key !== null && familyKeys.has(w.allergen_family_key))
+                .filter(
+                  (w) =>
+                    w.barcode === barcode &&
+                    (allergen === null ||
+                      liveRows.some((r) => r.allergen !== null && allergensOverlap(w.allergen!, r.allergen))),
+                )
                 .map((w) => w.allergen!),
             ),
           ]
