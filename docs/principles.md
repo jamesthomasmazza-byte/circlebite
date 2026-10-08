@@ -142,6 +142,10 @@ Claude references this when a tradeoff is genuinely ambiguous, instead of asking
 
 **Add to the precedent table whenever a real tradeoff is resolved.** The table is the part that ages well; the prose is just the reasoning behind it.
 
+**A decision made in conversation lands in the repo in the same session (Oct 8, 2026).** Decisions passed to Claude Code in a prompt go in as a precedent row here, a BACKLOG item, or a doc change before the session ends. A cleared context can't see a prompt, and neither can JT in November. Two Oct 7 decisions didn't land:
+- **Four separate judge passwords.** Commit `78771c2`'s own message says "one shared password", and nobody noticed for a day.
+- **The two-family corroboration threshold.** The code changed, but this doc still said "1 to add".
+
 ---
 
 ## Revision log
@@ -150,3 +154,4 @@ Claude references this when a tradeoff is genuinely ambiguous, instead of asking
 |---|---|
 | Aug 15, 2026 | Created. Principles reconstructed from decisions made Aug 5–15, 2026 — not invented. |
 | Aug 15, 2026 | **Principle 5 rewritten after JT pushed back** that "collect the minimum" constrains future monetization. He was half right, and the original wording was the problem. It conflated two different things and contradicted the switching-cost argument, which treats accumulated household context as a switching cost — i.e. an asset to grow, not minimise. Now split explicitly: household-owned data grows, our collection about users stays minimal. The legal and COPPA protection is unchanged; the false constraint on the moat is removed. |
+| Oct 8, 2026 | Added the rule that a decision made in conversation lands in the repo in the same session, after two Oct 7 decisions didn't. |
