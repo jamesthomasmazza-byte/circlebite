@@ -337,6 +337,23 @@ it is the least-worked area. Treat this whole section as the priority block it i
       on every judge's first screen after login, while this one needs a real co-manager edit. That
       one is fixed in `1818677` and reaches production with the reseed under the Nov 23 credentials
       item.
+- [ ] **A change with no recorded actor is shown as made by "someone outside the app".** Not now
+      (JT, 2026-10-08). `1818677` fixed the seed, which was the source seen in production. But the
+      banner (`unseenActors`) and the history entry (`entryActor`), both in
+      `client/src/lib/profileChangeCopy.ts`, still turn `actor_id IS NULL` into a claim about who
+      acted. "Someone outside the app" asserts something the row doesn't record. Any future write
+      outside `withActor` produces the same alarming sentence on an owner's dashboard. And it is
+      already false in one documented case: migration 0036 says an in-app edit during a deploy
+      window, served by the previous release, is recorded with no actor. What the row actually
+      supports: the change was recorded without saying who made it. Reword both places to say
+      that, and the comments that repeat "made outside the app" (`acks.ts`, `history.ts`,
+      `api.ts`, `withActor.ts`, migration 0036, `docs/architecture.md`). Keep the entry in the
+      banner, since an unattributed change is still one the owner should see. Only the claim about
+      who changes.
+      Same shape as the corroboration count and the `076` "not on file" message: a check that can't
+      tell unknown from no, resolving to the scarier answer. One difference to keep: on a verdict,
+      principle 1 makes the cautious answer the right one when data is missing. Here nothing about
+      safety rests on the wording, so an alarming claim buys nothing.
 - [ ] **Ship migration 0044 in the deploy after 0043, never the same one.** 0043 adds the two
       allergen keys nullable; 0044 requires them. `release.sh` migrates before it swaps the symlink,
       so a constraint shipped with 0043 would be live against the old release for a few seconds, and
