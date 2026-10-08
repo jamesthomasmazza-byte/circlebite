@@ -342,9 +342,12 @@ it is the least-worked area. Treat this whole section as the priority block it i
       banner (`unseenActors`) and the history entry (`entryActor`), both in
       `client/src/lib/profileChangeCopy.ts`, still turn `actor_id IS NULL` into a claim about who
       acted. "Someone outside the app" asserts something the row doesn't record. Any future write
-      outside `withActor` produces the same alarming sentence on an owner's dashboard. And it is
-      already false in one documented case: migration 0036 says an in-app edit during a deploy
-      window, served by the previous release, is recorded with no actor. What the row actually
+      outside `withActor` produces the same alarming sentence on an owner's dashboard. **It is
+      already false in production use, not only in theory.** `release.sh` migrates before it swaps
+      the symlink, so for a few seconds on every deploy since 0036 the previous release is still
+      serving. An edit a parent makes in the app in that window is recorded with no actor, as
+      migration 0036 itself documents, and the owner is then told someone outside the app made it.
+      The label is wrong in that case by construction. What the row actually
       supports: the change was recorded without saying who made it. Reword both places to say
       that, and the comments that repeat "made outside the app" (`acks.ts`, `history.ts`,
       `api.ts`, `withActor.ts`, migration 0036, `docs/architecture.md`). Keep the entry in the
