@@ -366,7 +366,29 @@ it is the least-worked area. Treat this whole section as the priority block it i
       but keep "lookup failed" distinct from "not found": say the lookup didn't complete, and don't
       cache a failure as a not-found. Principle 2's "Where it decided things" line ("distinguishes
       barcode unknown from no ingredient data") is true only for genuine not-founds until this is
-      fixed. Not triaged.
+      fixed.
+      **Do before Nov 23 (JT, 2026-10-08).** During judging, a slow or erroring Open Food Facts
+      would tell a judge the barcode isn't on file for 24 hours, with nothing suggesting a retry, so
+      it reads as the app being broken. In real use, one transient failure hides a product's data
+      for a day. Worse than the first description: once a real product's row passes the TTL, a
+      failed refresh **overwrites good cached data** with not-found.
+      *Sized 2026-10-08: small, about half a day with tests.*
+      - `openFoodFacts.ts`: split the failure path from `NOT_FOUND`. A lookup result says "found",
+        "not found" or "failed", and timeout, network error, 5xx and bad JSON are "failed".
+      - `productLookup.ts`: never write a failed result to `products`. If a cached row exists, even
+        one past the TTL, serve it, since stale data beats none. Otherwise return the failure.
+      - `explainVerdict.ts`: a third sentence for "failed", saying the product database couldn't be
+        reached and to try again in a moment. The verdict stays Unable to confirm.
+      - Callers: `routes/scans.ts` passes the result through. `labelScan.ts` only checks
+        `hasUsableData`, unchanged. Scan history doesn't re-derive this sentence (only the live
+        response carries it), so no history change.
+      - Tests: `productLookup.test.ts` already stubs `fetch`. Add a timeout that leaves no cache
+        row, a failed refresh that keeps the old row, and a not-found that is still cached.
+      - **The one thing to check against the real API first:** how Open Food Facts answers an
+        unknown barcode. Today `!res.ok` counts as not-found. If unknown barcodes come back as HTTP
+        404, a 404 must stay "not found", or every scan of an unknown barcode would call Open Food
+        Facts again and never cache. Confirm the status for a known-unknown barcode before writing
+        the branch, rather than assuming it.
 - [ ] **Ship migration 0044 in the deploy after 0043, never the same one.** 0043 adds the two
       allergen keys nullable; 0044 requires them. `release.sh` migrates before it swaps the symlink,
       so a constraint shipped with 0043 would be live against the old release for a few seconds, and
