@@ -214,6 +214,11 @@ async function createSeed(client: PoolClient, options: { judgePasswordHash: stri
       "INSERT INTO allergen_profiles (id, manager_id, label, is_self) VALUES ($1, $2, $3, false)",
       [profile.id, PEOPLE[profile.owner].id, profile.label],
     );
+    // The history trigger (migration 0036) records each allergen below. With no actor set it would
+    // record "made outside the app", and the judge's first screen would say someone outside the app
+    // changed Maya's profile. The owner set up their own child's profile, as withActor would record
+    // it, so the owner's banner has nothing to show. Transaction-local, like withActor's.
+    await client.query("SELECT set_config('circlebite.actor_id', $1, true)", [PEOPLE[profile.owner].id]);
     for (const a of profile.allergens) {
       await client.query(
         `INSERT INTO allergens (id, allergen_profile_id, name, severity, treat_traces_as_unsafe)
@@ -222,6 +227,8 @@ async function createSeed(client: PoolClient, options: { judgePasswordHash: stri
       );
     }
   }
+  // Nothing after this is any one owner's act.
+  await client.query("SELECT set_config('circlebite.actor_id', '', true)");
 
   for (const m of CO_MANAGERS) {
     await client.query(

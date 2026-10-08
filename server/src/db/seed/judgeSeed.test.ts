@@ -12,6 +12,7 @@ import { claimKey, CORROBORATION_THRESHOLD, countCorroboratingFamilies } from ".
 import { env } from "../../env.js";
 import { SEED_EMAIL_DOMAIN } from "../../lib/seedMarker.js";
 import { scansRouter } from "../../routes/scans.js";
+import { loadUnseenChanges } from "../../profileChanges/acks.js";
 import { pool } from "../pool.js";
 import { JUDGE_CORRECTION_REJECTION_REASON, runJudgeSeed, SeedConflictError, SeedNotCorroboratedError } from "./judgeSeed.js";
 import { COMMUNITY_REPORTS, JUDGE_CASTS, JUDGE_COUNT, NPS_ROWS, PEOPLE, PRODUCTS, PROFILES, SCANS, SEED_BARCODES } from "./seedData.js";
@@ -179,6 +180,24 @@ test("fresh seed: four judges can sign in, each holding every circle role, with 
 // History, the unreviewed-changes banner, acknowledgements and downgrades are all read through
 // profile access (getProfileAccess) on the judge's own profiles — so a judge who can reach no other
 // cast's child, and shares no circle edge with another cast, can see none of another judge's activity.
+// Found on production 2026-10-08: the seed wrote its allergens with no actor, so every judge's first
+// screen said "Someone outside the app changed Maya's profile". Seeded history is the owner's own.
+test("a judge logs in to no unreviewed changes: seeded history is recorded as each profile's owner", async () => {
+  for (const cast of JUDGE_CASTS) {
+    assert.deepEqual(await loadUnseenChanges(PEOPLE[cast.judge].id), [], cast.judge);
+  }
+  const ownerId = new Map(Object.values(PROFILES).map((p) => [p.id, PEOPLE[p.owner].id]));
+  const { rows } = await pool.query<{ allergen_profile_id: string; actor_id: string | null; actor_role: string | null }>(
+    "SELECT allergen_profile_id, actor_id, actor_role FROM profile_changes WHERE allergen_profile_id = ANY($1)",
+    [[...ownerId.keys()]],
+  );
+  assert.ok(rows.length > 0, "the seed's allergens are in the history");
+  for (const r of rows) {
+    assert.equal(r.actor_id, ownerId.get(r.allergen_profile_id), r.allergen_profile_id);
+    assert.equal(r.actor_role, "owner", r.allergen_profile_id);
+  }
+});
+
 test("four judges, four worlds: no judge can reach another judge's children or share a circle with them", async () => {
   assert.equal(JUDGE_COUNT, JUDGE_CASTS.length);
   for (const cast of JUDGE_CASTS) {
