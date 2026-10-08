@@ -201,7 +201,8 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
       `docs/legacy-spec.md` §6, with "the warning survives" conflict handling; verified against real
       Postgres, not just unit-level. **Not built yet:** an actual browsable review queue page — the
       threshold mechanism and status field exist and work, but there's no UI listing pending
-      corrections across the app.
+      corrections across the app. *Superseded 2026-10-07: two families to add, three to remove,
+      counted in families — `docs/principles.md`.*
 - [x] **Corroborated additions reach other profiles** — a corroborated "this allergen is in here"
       report escalates that allergen to "contains" on any profile that has it (spelling and synonym
       differences handled by the matcher), labeled as a shopper report, never as label data. Behind
@@ -214,7 +215,8 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
       (`docs/server-setup.md` §11), admin-gated the same way as the AI accuracy page
       (`assertIsAdmin`, 404 not 403). Claims grouped by (barcode, allergen, direction)
       case-sensitively, matching `recordCorrection.ts`'s own corroboration bucket rather than
-      `communityAdditions.ts`'s case-insensitive display grouping. Rejecting a corroborated
+      `communityAdditions.ts`'s case-insensitive display grouping. *Superseded 2026-10-07: claims
+      group on the same allergen key corroboration counts on (migration 0043).* Rejecting a corroborated
       `add_caution` report requires a reason and immediately stops it showing on other families'
       scans — including scans already in their history, not just new ones; rejecting
       `remove_caution` doesn't require one, since that direction still doesn't propagate at all.
@@ -226,7 +228,7 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
       `docs/principles.md`. Still open, not done here: the reverse "warning survives" gap in
       `recordCorrection.ts` and letting corroborated removals actually reach other profiles — see
       `docs/journal.md`.
-- [ ] Fix the case-sensitivity mismatch between the corroboration bucket and the family-facing
+- [x] Fix the case-sensitivity mismatch between the corroboration bucket and the family-facing
       display: `communityAdditions.ts:31` groups by `lower(allergen)`, but `recordCorrection.ts`'s
       threshold query (`allergen = $2`) and migration 0015's unique index are both exact-match. Two
       reports spelled "Sesame" and "sesame" are the same claim to families reading the count, but
@@ -239,6 +241,12 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
       loosening it to match the display query would let two differently-spelled reports corroborate
       an allergen removal that neither reporter alone had cleared the threshold for. Found while
       building the review queue (2026-09-20 journal entry); not blocking anything, not fixed there.
+      **Done 2026-10-07, migration 0043** — when the two-family threshold made it a safety bug rather
+      than a consistency one: two differently-spelled families could report the same allergen and no
+      warning would spread. Corroboration, the review queue and the family-facing count now all group
+      on one stored key. The warning above about removals is kept: removals count on a spelling-only
+      key ("Milk", "milk", "Milks"), never synonym clusters, so a removal still can't add up from
+      reports of different things.
 - [x] Correction form fixes from the 2026-10-01 production logs. Correction photos are downscaled
       client-side to 2048px before upload. A duplicate report is a 409 `already_reported` with its
       own copy, not a 500 and "try again". Rejected reports no longer count toward corroboration. A
@@ -429,7 +437,8 @@ it is the least-worked area. Treat this whole section as the priority block it i
       2026-10-01. `docs/approvals/2026-10-01-yoest-mvp-statement.md` approved the MVP statement
       *with two changes*, and that statement is already in the README promising them. He said the
       judges will look for this, and it is the ethical-AI bonus in his own words.
-      - [x] **Downgrades are owner-only.** Any circle member may escalate (`add_caution`). Anything
+      - [x] **Downgrades are for the profile's managers** (dictated as owner-only; widened to owner
+        or co-manager with his approval the same day). Any circle member may escalate (`add_caution`). Anything
         with direction `remove_caution` — `flag_wrong`, `wrong_product` — is reserved for the
         people who manage the profile: owner or co-manager, deliberately (`CONTEST_RULES.md` §3a,
         `docs/principles.md` Oct 1 precedent). Done 2026-10-01: a follower's removal is refused
