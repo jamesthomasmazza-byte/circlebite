@@ -135,6 +135,12 @@ function ClaimSection({
           treat the corroboration count above as weaker than it looks.
         </p>
       )}
+      {claim.heldByWarning.length > 0 && (
+        <p>
+          Held: a confirmed warning for {claim.heldByWarning.join(" / ")} on this product outranks this removal, so it
+          can't corroborate while that warning stands. The parent's card says their request is held.
+        </p>
+      )}
       <ul>
         {claim.reports.map((report) => (
           <ReportRow

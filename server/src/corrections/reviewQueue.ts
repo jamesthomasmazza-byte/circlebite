@@ -70,6 +70,12 @@ export type ReviewQueueClaim = {
   // membership against, so it can never trigger this. No identities included; only this boolean
   // ever leaves this module.
   sameCircleWarning: boolean;
+  // A pending removal that can't corroborate because a confirmed warning in the same allergen family
+  // stands on this product (recordCorrection.ts's warning-survives check — the same rule, over the
+  // same family keys). The warning's spellings as its reporters wrote them, which reviewers already
+  // see on that claim. Empty for everything else. The parent sees the same fact on their card in
+  // their own allergen name (client correctionCopy.ts, heldRemovalNotes).
+  heldByWarning: string[];
   reports: ReviewQueueReport[]; // full list, every status, including deleted-account reports
 };
 
@@ -237,6 +243,11 @@ export function groupIntoClaims(
     else buckets.set(key, { barcode: row.barcode, direction: row.direction, rows: [row] });
   }
 
+  // Confirmed warnings by barcode, for heldByWarning below.
+  const confirmedWarnings = rows.filter(
+    (r) => r.direction === "add_caution" && r.status === "corroborated" && r.barcode !== null && r.allergen !== null,
+  );
+
   const claims: ReviewQueueClaim[] = [];
   for (const { barcode, direction, rows: claimRows } of buckets.values()) {
     const spellings = [...new Set(claimRows.map((r) => r.allergen).filter((a): a is string => a !== null))];
@@ -279,11 +290,24 @@ export function groupIntoClaims(
         ? "pending"
         : "rejected";
 
+    const familyKeys = new Set(claimRows.map((r) => r.allergen_family_key).filter((k): k is string => k !== null));
+    const heldByWarning =
+      direction === "remove_caution" && status === "pending" && barcode !== null
+        ? [
+            ...new Set(
+              confirmedWarnings
+                .filter((w) => w.barcode === barcode && w.allergen_family_key !== null && familyKeys.has(w.allergen_family_key))
+                .map((w) => w.allergen!),
+            ),
+          ]
+        : [];
+
     claims.push({
       barcode,
       allergen,
       direction,
       status,
+      heldByWarning,
       liveReporterCount: liveReporterIds.length,
       deletedAccountReportCount,
       sameCircleWarning: hasSharedProfile(liveReporterIds, circleMemberships),

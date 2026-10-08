@@ -742,6 +742,9 @@ export type ReviewQueueClaim = {
   liveReporterCount: number;
   deletedAccountReportCount: number;
   sameCircleWarning: boolean;
+  // A pending removal blocked by a confirmed warning in the same allergen family on this product:
+  // that warning's spellings. Empty otherwise (server/src/corrections/reviewQueue.ts).
+  heldByWarning: string[];
   reports: ReviewQueueReport[];
 };
 

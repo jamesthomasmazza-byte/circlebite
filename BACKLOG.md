@@ -321,6 +321,11 @@ it is the least-worked area. Treat this whole section as the priority block it i
       a parent's report in that window would 500. Push up to the commit before 0044, deploy, confirm
       healthy, then push 0044 and deploy again. If 0044 refuses ("row(s) name an allergen but have no
       allergen key"), run `SELECT product_corrections_backfill_allergen_keys();` and deploy again.
+- [ ] **A held removal waits on someone working the review queue.** A removal blocked by a
+      confirmed warning stays pending, and its parent is told "a reviewer sees both" — true while JT
+      reviews daily through judging, but a promise with no timer behind it if this ever runs
+      unattended. Before that: an age on held claims in the queue, or an alert when one sits too long.
+      Not now (JT, 2026-10-08).
 - [ ] **Allergen hierarchy for corroboration.** Walnut is a tree nut, so a "contains walnut" report
       should count toward a tree-nut warning claim — but not the reverse, since "contains tree nuts"
       doesn't say which nut. That's a hierarchy, not a synonym cluster, and neither allergen key

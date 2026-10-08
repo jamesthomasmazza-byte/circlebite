@@ -206,6 +206,28 @@ test("groupIntoClaims: a synonym pair is one claim as an addition, two as a remo
   assert.deepEqual(removals.map((c) => [c.allergen, c.reports.length]), [["Milk / milk", 2], ["Lactose", 1]]);
 });
 
+test("groupIntoClaims: a pending removal under a confirmed warning in its family names the warning's spellings", () => {
+  const removal = { direction: "remove_caution" as const, correction_type: "flag_wrong" as const, status: "pending" as const };
+  const claims = groupIntoClaims(
+    [
+      makeRow({ allergen: "Whey" }),
+      makeRow({ allergen: "whey" }),
+      makeRow({ allergen: "Peanut" }),
+      makeRow({ allergen: "Lactose", status: "pending" }), // not confirmed: holds nothing
+      makeRow({ allergen: "Milk", ...removal }),
+      makeRow({ allergen: "Egg", ...removal }),
+      makeRow({ barcode: "9000000000002", allergen: "Milk", ...removal }), // a different product
+    ],
+    new Map(),
+  );
+  const held = (barcode: string, allergen: string) =>
+    claims.find((c) => c.barcode === barcode && c.direction === "remove_caution" && c.allergen === allergen)?.heldByWarning;
+  assert.deepEqual(held("9000000000001", "Milk"), ["Whey", "whey"]);
+  assert.deepEqual(held("9000000000001", "Egg"), []);
+  assert.deepEqual(held("9000000000002", "Milk"), []);
+  assert.ok(claims.filter((c) => c.direction === "add_caution").every((c) => c.heldByWarning.length === 0));
+});
+
 test("groupIntoClaims: different allergen keys stay separate claims", () => {
   const claims = groupIntoClaims([makeRow({ allergen: "Peanut" }), makeRow({ allergen: "Tree nut" })], new Map());
   assert.equal(claims.length, 2);
@@ -551,4 +573,24 @@ test("only a pending, unaccepted re-file can be accepted — 409 not_acceptable 
     () => acceptCorrection("00000000-0000-0000-0000-000000000000", ADMIN),
     (err: unknown) => err instanceof HttpError && err.status === 404,
   );
+});
+
+test("the queue's held flag matches the real block: three families' Milk removals under a confirmed Whey warning", async () => {
+  const barcode = "3000000000040";
+  const report = (reportedBy: string, correctionType: "flag_missing" | "flag_wrong", allergen: string) => ({
+    reportedBy, correctionType, allergen, note: null, photoPath: "/fake.jpg", origin: "user_initiated" as const,
+  });
+  await recordCorrection({ scanId: await makeScan(PROFILE_ID, barcode, "safe"), ...report(USER_A, "flag_missing", "Whey") });
+  await recordCorrection({ scanId: await makeScan(PROFILE_B, barcode, "safe"), ...report(USER_B, "flag_missing", "Whey") });
+
+  const milk = [{ allergenName: "Milk", severity: "severe", classification: "contains" }];
+  let last;
+  for (const [profile, user] of [[PROFILE_ID, USER_A], [PROFILE_B, USER_B], [CIRCLE_PROFILE_ID, CIRCLE_OWNER]]) {
+    last = await recordCorrection({ scanId: await makeScan(profile, barcode, "contains_allergen", milk), ...report(user, "flag_wrong", "Milk") });
+  }
+  assert.equal(last?.corroborated, false, "three families, held by the warning");
+
+  const claim = (await loadReviewQueue()).find((c) => c.barcode === barcode && c.direction === "remove_caution");
+  assert.equal(claim?.status, "pending");
+  assert.deepEqual(claim?.heldByWarning, ["Whey"]);
 });
