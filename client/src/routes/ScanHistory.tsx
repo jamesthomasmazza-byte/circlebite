@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { getScanHistory, type MatchedAllergen, type ScanHistoryEntry } from "../lib/api";
-import { yourReportLine } from "../lib/correctionCopy";
+import { heldRemovalNotes, yourReportLine } from "../lib/correctionCopy";
 import { historyUncheckedNote, uncheckedBasis } from "../lib/evidenceCopy";
 import { DISCLAIMER, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
 
@@ -132,6 +132,9 @@ export function ScanHistory() {
                         <li>A shopper report about an allergen on this profile that isn't shared with you</li>
                       )}
                     </ul>
+                    {heldRemovalNotes(scan.corrections, scan.community_reports).map((note) => (
+                      <p key={note}>{note}</p>
+                    ))}
                   </div>
                 )}
               </li>

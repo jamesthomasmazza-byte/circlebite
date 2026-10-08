@@ -27,6 +27,7 @@ import {
   sourceLabel,
 } from "../lib/allergenRowCopy";
 import {
+  heldRemovalNotes,
   priorReportNotice,
   reportableTypes,
   reportErrorMessage,
@@ -834,6 +835,9 @@ export function Scan() {
                   </li>
                 ))}
               </ul>
+              {heldRemovalNotes(result.corrections ?? [], result.community_reports).map((note) => (
+                <p key={note}>{note}</p>
+              ))}
             </div>
           )}
 

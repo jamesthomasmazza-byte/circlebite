@@ -3,6 +3,7 @@ import { test } from "node:test";
 
 import type { ReviewQueueReport } from "./api";
 import {
+  heldRemovalNotes,
   priorReportNotice,
   reportableTypes,
   reportCountLine,
@@ -196,4 +197,32 @@ test("reportErrorMessage: a refused removal says who can file it and what this p
   assert.match(message, /manage this profile/);
   assert.match(message, /can still report one that is/);
   assert.doesNotMatch(message, /try again/i);
+});
+
+test("heldRemovalNotes: a removal under a confirmed warning says held, in the parent's own allergen name", () => {
+  const notes = heldRemovalNotes(
+    [{ correctionType: "flag_wrong", allergen: "Milk", status: "pending" }],
+    [{ allergenName: "Milk" }],
+  );
+  assert.equal(notes.length, 1);
+  assert.match(notes[0], /Your request to remove Milk is held/);
+  assert.match(notes[0], /A confirmed report of Milk stands on this product/);
+  assert.match(notes[0], /A reviewer sees both your request and the warning/);
+  // Held is the true state: nobody declined it, and a live report can't be re-filed.
+  assert.doesNotMatch(notes[0], /declined|rejected|re-?file|or an ingredient/i);
+});
+
+test("heldRemovalNotes: nothing to say without a confirmed warning on that allergen, or once the request was rejected", () => {
+  assert.deepEqual(heldRemovalNotes([{ correctionType: "flag_wrong", allergen: "Milk", status: "pending" }], [{ allergenName: "Egg" }]), []);
+  assert.deepEqual(heldRemovalNotes([{ correctionType: "flag_wrong", allergen: "Milk", status: "rejected" }], [{ allergenName: "Milk" }]), []);
+  assert.deepEqual(heldRemovalNotes([{ correctionType: "flag_missing", allergen: "Milk", status: "pending" }], [{ allergenName: "Milk" }]), []);
+});
+
+test("heldRemovalNotes: a wrong-product report under confirmed warnings names each one", () => {
+  const [note] = heldRemovalNotes(
+    [{ correctionType: "wrong_product", allergen: null, status: "pending" }],
+    [{ allergenName: "Milk" }, { allergenName: "Egg" }],
+  );
+  assert.match(note, /Your report that this is the wrong product is held/);
+  assert.match(note, /Confirmed reports of Milk and Egg stand on this product, so those cautions stay/);
 });

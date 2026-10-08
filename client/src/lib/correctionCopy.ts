@@ -1,4 +1,4 @@
-import type { CorrectionType, MyReport, ProfileSummary, ReviewQueueClaim, ScanCorrection } from "./api";
+import type { CommunityReport, CorrectionType, MyReport, ProfileSummary, ReviewQueueClaim, ScanCorrection } from "./api";
 
 // Plain functions, no JSX — the wording a family or an admin reads about a correction, kept here
 // so it can be tested (`npm test -w client`) and shared between pages instead of drifting apart.
@@ -139,6 +139,47 @@ const CORRECTION_STATUS: Record<ScanCorrection["status"], string> = {
 export function yourReportLine(c: Pick<ScanCorrection, "correctionType" | "allergen" | "status" | "note">): string {
   const what = `${c.allergen ? `${c.allergen} ` : ""}${CORRECTION_CLAIM[c.correctionType]}`;
   return `Your report: ${what} — ${CORRECTION_STATUS[c.status]}${c.note ? ` — "${c.note}"` : ""}`;
+}
+
+/**
+ * Why a removal the parent asked for isn't showing on their own card: a confirmed report that the
+ * allergen is in this product stands, and a confirmed warning outranks a removal — on the card and
+ * in corroboration (recordCorrection.ts's warning-survives check). Without this the card says
+ * Contains right under "Your report: Milk isn't in this product — pending review", and the request
+ * looks like it silently went nowhere.
+ *
+ * "Held", never "declined" or "rejected": nobody said no. The request stays pending, still with the
+ * reviewers, and nothing here invites re-filing — a live report can't be re-filed.
+ *
+ * Names only the parent's own allergen, as community_reports already does: the shoppers' report is
+ * labelled with this profile's name for the allergen (applyCommunityCorrections.ts), whatever the
+ * shoppers' own profiles call it, and nothing else about it reaches the client.
+ */
+export function heldRemovalNotes(
+  corrections: Pick<ScanCorrection, "correctionType" | "allergen" | "status">[],
+  communityReports: Pick<CommunityReport, "allergenName">[],
+): string[] {
+  const confirmed = (allergen: string) => communityReports.some((r) => r.allergenName.toLowerCase() === allergen.toLowerCase());
+  const notes: string[] = [];
+  for (const c of corrections) {
+    if (c.status === "rejected") continue;
+    if (c.correctionType === "flag_wrong" && c.allergen && confirmed(c.allergen)) {
+      notes.push(
+        `Your request to remove ${c.allergen} is held. A confirmed report of ${c.allergen} stands on this product, so ` +
+          "the caution stays, on your card too. A reviewer sees both your request and the warning.",
+      );
+    }
+    if (c.correctionType === "wrong_product" && communityReports.length > 0) {
+      const names = communityReports.map((r) => r.allergenName);
+      const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+      notes.push(
+        `Your report that this is the wrong product is held. Confirmed reports of ${list} stand on this product, so ` +
+          `${names.length === 1 ? "that caution stays" : "those cautions stay"}, on your card too. A reviewer sees both your ` +
+          "report and the warnings.",
+      );
+    }
+  }
+  return notes;
 }
 
 /**

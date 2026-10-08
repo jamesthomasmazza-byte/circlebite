@@ -5,7 +5,7 @@ import { pool } from "../db/pool.js";
 import { env } from "../env.js";
 import { recordCorrection } from "./recordCorrection.js";
 import { rejectCorrection } from "./reviewQueue.js";
-import { loadUserScanViews, type ScanForView } from "./userScanView.js";
+import { loadUserScanViews, publicCommunityReports, type ScanForView } from "./userScanView.js";
 
 // Real Postgres, same discipline as recordCorrection.test.ts: real inserts, real cleanup. This is
 // the sequence both scan history and the live card's post-report refresh go through, so it's tested
@@ -19,6 +19,9 @@ const OTHER_PROFILE = "bbbbbbbb-0000-0000-0000-0000000000a2";
 const SECOND_FAMILY = "aaaaaaaa-0000-0000-0000-0000000000a3";
 const SECOND_FAMILY_PROFILE = "bbbbbbbb-0000-0000-0000-0000000000a3";
 const CO_MANAGER = "aaaaaaaa-0000-0000-0000-0000000000a4";
+// A milk-allergic child's owner, for the held-removal case.
+const MILK_PARENT = "aaaaaaaa-0000-0000-0000-0000000000a5";
+const MILK_PROFILE = "bbbbbbbb-0000-0000-0000-0000000000a5";
 
 const SAFE_SESAME = [{ allergenName: "Sesame", severity: "severe", classification: "clear" }];
 
@@ -41,8 +44,9 @@ before(async () => {
        ($1, 'view-test-a@example.com', 'x', 'A', true, now()),
        ($2, 'view-test-b@example.com', 'x', 'B', true, now()),
        ($3, 'view-test-c@example.com', 'x', 'C', true, now()),
-       ($4, 'view-test-d@example.com', 'x', 'D', true, now())`,
-    [REPORTER, OTHER, SECOND_FAMILY, CO_MANAGER],
+       ($4, 'view-test-d@example.com', 'x', 'D', true, now()),
+       ($5, 'view-test-e@example.com', 'x', 'E', true, now())`,
+    [REPORTER, OTHER, SECOND_FAMILY, CO_MANAGER, MILK_PARENT],
   );
   await pool.query(
     `INSERT INTO allergen_profiles (id, manager_id, label) VALUES ($1, $2, 'Test A'), ($3, $4, 'Test B'), ($5, $6, 'Test C')`,
@@ -53,6 +57,10 @@ before(async () => {
      VALUES ($1, 'Sesame', 'severe', false), ($2, 'Sesame', 'severe', false), ($3, 'Sesame', 'severe', false)`,
     [REPORTER_PROFILE, OTHER_PROFILE, SECOND_FAMILY_PROFILE],
   );
+  await pool.query("INSERT INTO allergen_profiles (id, manager_id, label) VALUES ($1, $2, 'Test E')", [MILK_PROFILE, MILK_PARENT]);
+  await pool.query("INSERT INTO allergens (allergen_profile_id, name, severity, treat_traces_as_unsafe) VALUES ($1, 'Milk', 'severe', true)", [
+    MILK_PROFILE,
+  ]);
   await pool.query("INSERT INTO profile_managers (allergen_profile_id, user_id, added_by) VALUES ($1, $2, $3)", [
     REPORTER_PROFILE,
     CO_MANAGER,
@@ -64,9 +72,9 @@ after(async () => {
   // Corrections first — scan_id is ON DELETE SET NULL, see recordCorrection.test.ts's after().
   await pool.query(
     "DELETE FROM product_corrections WHERE scan_id IN (SELECT id FROM scans WHERE allergen_profile_id = ANY($1))",
-    [[REPORTER_PROFILE, OTHER_PROFILE, SECOND_FAMILY_PROFILE]],
+    [[REPORTER_PROFILE, OTHER_PROFILE, SECOND_FAMILY_PROFILE, MILK_PROFILE]],
   );
-  await pool.query("DELETE FROM users WHERE id = ANY($1)", [[REPORTER, OTHER, SECOND_FAMILY, CO_MANAGER]]);
+  await pool.query("DELETE FROM users WHERE id = ANY($1)", [[REPORTER, OTHER, SECOND_FAMILY, CO_MANAGER, MILK_PARENT]]);
   await pool.end();
 });
 
@@ -189,4 +197,30 @@ test("after an admin rejects it, a removal stops clearing the reporter's view; a
 
   const afterAdditionRejected = (await loadUserScanViews([added], REPORTER_PROFILE, REPORTER)).get(added.id)!;
   assert.equal(afterAdditionRejected.effective?.result, "contains_allergen");
+});
+
+test("a Milk removal under two families' confirmed Whey reports is held: the parent sees Milk confirmed, never whey", async () => {
+  const barcode = "7000000000007";
+  for (const [user, profile] of [[OTHER, OTHER_PROFILE], [SECOND_FAMILY, SECOND_FAMILY_PROFILE]]) {
+    await report((await makeScan(profile, barcode, "safe", [])).id, user, "flag_missing", "Whey");
+  }
+  const containsMilk = [{ allergenName: "Milk", severity: "severe", classification: "contains" }];
+  const scan = await makeScan(MILK_PROFILE, barcode, "contains_allergen", containsMilk);
+  const removal = await report(scan.id, MILK_PARENT, "flag_wrong", "Milk");
+  assert.equal(removal.status, "pending");
+
+  const previous = env.communityCorrections;
+  try {
+    env.communityCorrections = true;
+    const view = (await loadUserScanViews([scan], MILK_PROFILE, MILK_PARENT)).get(scan.id)!;
+    // The confirmed warning outranks the removal on the parent's own card...
+    assert.equal(view.effective?.result, "contains_allergen");
+    assert.equal(view.corrections[0].status, "pending");
+    // ...and is named in the parent's own vocabulary: Milk, the profile's name. What reaches the
+    // client is publicCommunityReports — allergenName and reporterCount, no spellings.
+    assert.deepEqual(publicCommunityReports(view.communityApplied), [{ allergenName: "Milk", reporterCount: 2 }]);
+    assert.doesNotMatch(JSON.stringify(publicCommunityReports(view.communityApplied)), /whey/i);
+  } finally {
+    env.communityCorrections = previous;
+  }
 });
