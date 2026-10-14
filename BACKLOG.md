@@ -462,11 +462,19 @@ it is the least-worked area. Treat this whole section as the priority block it i
       downgrades — "your reading is better than my wording" — and attached two conditions, a judge
       account, and an operational note. The cross-family sentence is answered (README, 2026-10-05);
       the judge seed itself is built and verified. What's left:
-      - [ ] **Log every downgrade — who, when, and what evidence.** `product_corrections` already
+      - [x] **Log every downgrade — who, when, and what evidence.** `product_corrections` already
         stores `reported_by`, `created_at` and a required photo, so most of the data exists. What
         doesn't exist is a surface where a parent can *read* their profile's downgrade history.
         Build the reading surface, and check the row isn't missing anything he'd expect — the
         evidence photo and the accepted/rejected outcome in particular.
+        **Built 2026-10-06** (profile change history, migrations 0036–0039). **Verified on
+        production 2026-10-08 for profile edits only:** an owner's add and severity change, and a
+        co-manager's severity change and removal, each logged with who and when, attributed
+        correctly from both sides. Screenshot sent to Prof. Yoest that day:
+        `docs/approvals/circlebite-downgrade-history-2026-10-08.jpg`. **Downgrade reports
+        (`downgrade_reported`, migration 0037), the only entries that carry evidence, are verified
+        by tests only.** No report was filed on production: the form requires a label photo, and JT
+        stopped rather than upload a stand-in. Closes on the follow-up below.
       - [ ] **Notify the owner when a co-manager downgrades — a new subsystem, not a feature.**
         There is no notification mechanism in the server at all: no mail dependency (the five
         deps are express, pg, multer, cookie-parser, dotenv), no notifications table, and circle
@@ -476,6 +484,18 @@ it is the least-worked area. Treat this whole section as the priority block it i
         table, unread indicator, a list the owner can read), and tell him that's the route and why
         rather than letting him assume email. Design against his standard, which is the right one:
         "the owner should never learn about a change to their child's profile by accident."
+        **Built 2026-10-06** as an in-app notice (acknowledgements, migration 0040). **Verified on
+        production 2026-10-08 for profile edits only:** after a co-manager changed and then removed
+        an allergen, the owner's dashboard showed "Changes to review", two updates flagged New, with
+        an "I've seen these" control. Not shown in the screenshot above, which is the owner's own
+        edits. **The notice for a co-manager's downgrade report is verified by tests only.** Closes
+        on the follow-up below.
+      - [ ] **File one downgrade report as a co-manager on production, and check the owner's
+        notice.** Use a real photo of a real label, not a stand-in. Check the owner sees the
+        `downgrade_reported` entry with who, when, the note and the photo, and that it appears under
+        "Changes to review". Then record it in `docs/approvals/conditions.md`. This also exercises
+        the `allergen_fold_key`/`allergen_family_key` columns under migration 0044's NOT NULL, which
+        nothing live has written since that deploy.
       - [x] **Automated Postgres backups.** His operational note, and he's right that it belongs
         before real circles depend on the data — Postgres is on the same box as the app, so losing
         the box currently loses everything. `pg_dump` on a timer with off-box storage; decide where
