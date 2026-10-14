@@ -121,7 +121,7 @@ If a decision needs one of these to lose, that's fine — but write down which o
 |---|---|---|
 | Accounts restricted to 18+ | 5 | The self-managing teenager |
 | Four barriers so a label photo can't reach "safe" | 1, 2 | Faster community data flowing into verdicts |
-| Corroboration thresholds 2 to add, 3 to remove, counted in families — the owner of the profile each report was filed from, so an owner, co-manager and follower of one child are one — with allergen spellings folded (Oct 7, 2026). Supersedes "1 to add, 3 to remove", counted in reporters, Aug 2026 – Oct 7 | 1 | Symmetry, and easier removal of bad warnings. Since Oct 7, also the one-report warning: a true report from one family changes only that family's view until a second family reports it. One report was one account, and signup is open to any adult, so it could put a warning in front of every family in the app |
+| Corroboration thresholds 2 to add, 3 to remove, counted in families — the owner of the profile each report was filed from, so an owner, co-manager and follower of one child are one — with allergen spellings folded (Oct 7, 2026). Supersedes "1 to add, 3 to remove", counted in reporters, Aug 2026 – Oct 7 | 1 | Symmetry, and easier removal of bad warnings. Since Oct 7, also the one-report warning: a true report from one family changes only the reporter's own view of that scan until a second family reports it. One report was one account, and signup is open to any adult, so it could put a warning in front of every family in the app |
 | Audit trail and kill switch before the safe list | 4 | Two switching-cost features shipped later |
 | Audit table not editable, even by admin | 4 | Admin convenience |
 | No merged verdict on multi-profile scan (N11) | 3 | Aisle reading speed |

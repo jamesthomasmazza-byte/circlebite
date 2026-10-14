@@ -64,10 +64,10 @@ function rollupResult(matchedAllergens: { classification: string }[]): string {
  * A rejected report is judged by its direction (docs/principles.md principle 1, decided
  * 2026-09-29). A rejected removal (flag_wrong, wrong_product) stops applying: an admin looked at the
  * photo and said no, and keeping the warning cleared on the reporter's own view anyway would be
- * false safety for the one family that saw it. A rejected addition (flag_missing) keeps applying:
+ * false safety for the one person who saw it. A rejected addition (flag_missing) keeps applying:
  * the rejection stops it reaching other families (communityAdditions.ts), but it never lifts a
  * warning the parent attested to from the package in their own hand — that would let someone
- * else's decision move this family's view toward safe.
+ * else's decision move the reporter's view toward safe.
  */
 export function applyUserCorrections(
   scan: ScanForCorrection,
