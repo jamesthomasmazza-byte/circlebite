@@ -21,8 +21,9 @@ reaction.
 
 *Approved by Prof. Yoest with these two revisions, 2026-10-01 —
 `docs/approvals/2026-10-01-yoest-mvp-statement.md`. The downgrade rule was widened from owner-only to
-owner-or-co-manager with his approval the same day —
-`docs/approvals/2026-10-02-yoest-overrule-conditions.md`.*
+owner-or-co-manager with his approval on 2026-10-02 —
+`docs/approvals/2026-10-02-yoest-overrule-conditions.md`. (Corrected 2026-10-13: this note said
+"the same day".)*
 
 **Only escalations cross family lines.** A corroborated report that an allergen *is* present raises
 the verdict on every profile that allergen matches, but a report that an allergen is *absent* changes
