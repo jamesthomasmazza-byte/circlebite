@@ -397,6 +397,17 @@ it is the least-worked area. Treat this whole section as the priority block it i
         body's `status: 0` to confirm it, rather than counting every non-2xx as a failure. Not
         checked: whether a barcode with a *valid* check digit that OFF doesn't know answers the
         same way. This one's check digit is deliberately invalid.
+- [ ] **A pending escalation stays with the person who filed it, on the one scan they filed it
+      from.** Found 2026-10-13. `loadUserScanViews` (`server/src/corrections/userScanView.ts`)
+      applies uncorroborated corrections only `WHERE scan_id = ANY($1) AND reported_by = $2`. So
+      within one circle, a co-manager's report that an allergen is present is invisible to the owner
+      and the other managers, and the reporter loses it on their own next scan of that barcode.
+      **Product decision, JT, 2026-10-13:** share pending escalations across a profile's managers
+      and persist them across scans of that barcode, while pending removals stay with the reporter,
+      on that scan, until corroborated. Warnings spread, clearings don't (principle 1). The README
+      described it this way before the code did: both corroboration rules said "the reporting
+      family's own view". They were reworded to match the code on 2026-10-13 (`b26f3b9`) and go
+      back to family wording when this ships. Not for tonight; not yet sized.
 - [ ] **Ship migration 0044 in the deploy after 0043, never the same one.** 0043 adds the two
       allergen keys nullable; 0044 requires them. `release.sh` migrates before it swaps the symlink,
       so a constraint shipped with 0043 would be live against the old release for a few seconds, and
