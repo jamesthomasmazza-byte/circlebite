@@ -66,7 +66,7 @@ function rollupResult(matchedAllergens: { classification: string }[]): string {
  * photo and said no, and keeping the warning cleared on the reporter's own view anyway would be
  * false safety for the one person who saw it. A rejected addition (flag_missing) keeps applying:
  * the rejection stops it reaching other families (communityAdditions.ts), but it never lifts a
- * warning the parent attested to from the package in their own hand — that would let someone
+ * warning the reporter attested to from the package in their own hand — that would let someone
  * else's decision move the reporter's view toward safe.
  */
 export function applyUserCorrections(
