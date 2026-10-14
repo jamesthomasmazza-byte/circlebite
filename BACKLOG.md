@@ -298,8 +298,8 @@ it is the least-worked area. Treat this whole section as the priority block it i
         reads as applying to either. A reason typed before pressing Accept is silently discarded. It
         belongs to Reject alone — move it under that button, or reveal it only once Reject is
         pressed.
-      - **The admin's real email shows as the rejecter** in the review queue ("Rejected by
-        jamesthomasmazza@gmail.com"). A judge logged in as admin sees it, and R9 wants synthetic data
+      - **The admin's real email shows as the rejecter** in the review queue ("Rejected by" and the
+        admin account's real address). A judge logged in as admin sees it, and R9 wants synthetic data
         in anything a judge can reach. Either the seeded demo admin does the rejecting in judge data,
         or the queue shows a display name rather than an address.
       - **"Safe" is built inside composed sentences, not just the two label maps.** The card renders
