@@ -1,15 +1,20 @@
 # Overrule widening approved, with two conditions — plus the judge demo account
 
 **From:** Prof. Jack Yoest (yoest@cua.edu)
-**Dates:** October 1 and October 2, 2026 (replies to JT's Oct 1 submission)
+**Dates:** October 2, 2026, 12:13 PM and 12:20 PM (replies to JT's Oct 1 submission)
 **Grants:** repo/live URL/screenshot logged complete; AWS deployment logged complete;
 owner-or-co-manager downgrades approved
 
-Reproduced verbatim. Referenced in `CONTEST_RULES.md` §3 and `BACKLOG.md`.
+Reproduced verbatim. Referenced in `CONTEST_RULES.md` §3 and `BACKLOG.md`; indexed in
+`docs/approvals/conditions.md`.
+
+Both emails are dated October 2. Until 2026-10-13 the first was filed here as October 1, and the
+repo still calls these "Yoest's Oct 1 conditions" in places; October 1 is his MVP approval
+(`2026-10-01-yoest-mvp-statement.md`).
 
 ---
 
-## October 1
+## October 2, 12:13 PM
 
 > James,
 > These Tasks are complete: repo, live URL, and screenshot received. And since circlebite.app already runs on your own EC2 instance, we will log your AWS deployment as complete too.
@@ -24,7 +29,7 @@ Reproduced verbatim. Referenced in `CONTEST_RULES.md` §3 and `BACKLOG.md`.
 > Cheers,
 > Jack
 
-## October 2
+## October 2, 12:20 PM
 
 > James,
 > One more item for the upcoming judging next month: the live app requires sign-in, which is right for a product holding children's profiles.
