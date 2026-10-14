@@ -26,16 +26,17 @@ owner-or-co-manager with his approval the same day —
 
 **Only escalations cross family lines.** A corroborated report that an allergen *is* present raises
 the verdict on every profile that allergen matches, but a report that an allergen is *absent* changes
-only the reporting family's own view and can never clear a warning for anyone else — because sign-up
-is open to any adult, and three throwaway accounts should not be able to clear a peanut warning for
-every family in the app (`server/src/corrections/applyCommunityCorrections.ts`, decided 2026-09-10).
+only the reporter's own view of the scan they filed it from and can never clear a warning for anyone
+else — because sign-up is open to any adult, and three throwaway accounts should not be able to clear
+a peanut warning for every family in the app (`server/src/corrections/applyCommunityCorrections.ts`,
+decided 2026-09-10).
 
 **A warning reaches other families only once two families have reported it.** A report that an
-allergen is present changes the reporting family's own view at once, but it escalates anyone else's
-verdict only after a second, independent family reports the same allergen on the same product — and
-a child's owner, co-managers and circle members count as one family, so no single household can put
-a warning in front of every family in the app (`server/src/corrections/recordCorrection.ts`, decided
-2026-10-07).
+allergen is present changes the reporter's own view of the scan they filed it from at once, but it
+escalates anyone else's verdict only after a second, independent family reports the same allergen on
+the same product — and a child's owner, co-managers and circle members count as one family, so no
+single household can put a warning in front of every family in the app
+(`server/src/corrections/recordCorrection.ts`, decided 2026-10-07).
 
 ## Thesis
 
