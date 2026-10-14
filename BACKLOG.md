@@ -408,6 +408,31 @@ it is the least-worked area. Treat this whole section as the priority block it i
       described it this way before the code did: both corroboration rules said "the reporting
       family's own view". They were reworded to match the code on 2026-10-13 (`b26f3b9`) and go
       back to family wording when this ships. Not for tonight; not yet sized.
+- [ ] **A test that fails when a doc states a corroboration threshold the code doesn't.** Found
+      2026-10-13. Six times in two weeks a doc claimed more than the code: the README's owner-only
+      downgrade line, "1 to add" in `docs/principles.md`, the review-queue comment, the
+      `docs/legacy-spec.md` scope clause, and the family-reach wording in both `principles.md` and
+      the code comments. Each was caught by someone reading carefully at the right moment. Narrow
+      version only: read `CORROBORATION_THRESHOLD` (`server/src/corrections/recordCorrection.ts`)
+      and assert the README and `principles.md` state the same numbers. It won't catch prose; it
+      catches a number in a doc outliving the constant it describes, the class that has bitten most.
+      *Sized 2026-10-13: small, about two hours with the doc edits. Not built.*
+      - Anchor on the canonical sentences, not every number. `principles.md` keeps history on
+        purpose ("one report until Oct 7, 2026", "Supersedes '1 to add, 3 to remove'"), so "no
+        other number appears" would fail on correct text. Match the "Where it decided things" line
+        (`two families to *add* … three to *remove*`, line 39) and the decisions-table row
+        (`thresholds 2 to add, 3 to remove`, line 124), and the README's bold rule (`once two
+        families have reported it`, line 34). Map the words one–five to digits.
+      - The README states only the add threshold. Either assert just that, or add the removal
+        number to the README first. That's a wording decision for JT, not the test's.
+      - A missing anchor fails too, so rewording a sentence can't silently switch the check off;
+        the failure message names the file and the pattern it looked for.
+      - Lives in `server/src/corrections/`, runs under the existing `npm test` (`node --test`),
+        reads the docs by paths resolved from `import.meta.url`. Importing `recordCorrection.ts`
+        pulls in `env.ts`, which throws without `DATABASE_URL` and friends; the suite already runs
+        with those set, so nothing changes, but the test can't run bare.
+      - Later, same harness: the 911/disclaimer wording and "reporter's own view of that scan".
+        Out of scope for the narrow version.
 - [ ] **Ship migration 0044 in the deploy after 0043, never the same one.** 0043 adds the two
       allergen keys nullable; 0044 requires them. `release.sh` migrates before it swaps the symlink,
       so a constraint shipped with 0043 would be live against the old release for a few seconds, and
