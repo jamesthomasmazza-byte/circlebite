@@ -4,6 +4,7 @@ import type { ProfileAllergen } from "../matcher/match.js";
 import { loadProfileAllergens } from "../matcher/profileAllergens.js";
 import { applyCommunityCorrections, type AppliedCommunityAddition, type CommunityAddition } from "./applyCommunityCorrections.js";
 import { applyUserCorrections, type EffectiveScanResult, type MatchedAllergenLike, type UserCorrection } from "./applyCorrections.js";
+import { applyCircleEscalations, loadCircleEscalations, type AppliedCircleEscalation } from "./circleEscalations.js";
 import { loadCommunityAdditions } from "./communityAdditions.js";
 
 // What the client gets about community reports: which of this profile's allergens a report
@@ -23,9 +24,11 @@ export type ScanForView = {
 export type UserScanView = {
   /** This user's own corrections on the scan, oldest first. */
   corrections: UserCorrection[];
-  /** Null when neither this user's corrections nor a community report changed anything. */
+  /** Null when no correction or report — this user's, the community's or the circle's — changed anything. */
   effective: EffectiveScanResult | null;
   communityApplied: AppliedCommunityAddition[];
+  /** Pending reports from this profile's circle that escalated this view (circleEscalations.ts). */
+  circleApplied: AppliedCircleEscalation[];
 };
 
 /**
@@ -37,6 +40,10 @@ export type UserScanView = {
  * Only this user's own corrections — never someone else's. Community additions go on top of them,
  * not under: if this user reported an allergen isn't there and the community has corroborated that
  * it is, the warning survives (docs/legacy-spec.md §6).
+ *
+ * A pending escalation from anyone in this profile's circle goes on top of both, when
+ * CIRCLE_ESCALATIONS is on (circleEscalations.ts). After the community layer, not before: when other
+ * families have already confirmed an allergen, the card should say so, not call it one report.
  *
  * Community additions are read fresh rather than from each scan's community_corrections_applied
  * snapshot: a warning reported after someone bought a product is exactly what they need to see when
@@ -71,16 +78,17 @@ export async function loadUserScanViews(
   }
 
   let additionsByBarcode = new Map<string, CommunityAddition[]>();
-  let profileAllergens: ProfileAllergen[] = [];
   if (env.communityCorrections) {
     const barcodes = [...new Set(scans.map((s) => s.barcode).filter((b): b is string => b !== null))];
     additionsByBarcode = await loadCommunityAdditions(barcodes);
-    // The same loader the live scan uses, so history recomputes the same card — not a second copy
-    // of the query that could list the allergens in a different order.
-    profileAllergens = await loadProfileAllergens(profileId);
   }
+  const circleEscalations = env.circleEscalations ? await loadCircleEscalations(profileId, scans, userId) : [];
+  // The same loader the live scan uses, so history recomputes the same card — not a second copy
+  // of the query that could list the allergens in a different order.
+  const profileAllergens: ProfileAllergen[] =
+    env.communityCorrections || env.circleEscalations ? await loadProfileAllergens(profileId) : [];
 
-  for (const scan of scans) {
+  for (const [index, scan] of scans.entries()) {
     const original = { result: scan.result, matchedAllergens: scan.matched_allergens };
     const corrections = correctionsByScanId.get(scan.id) ?? [];
     const userEffective = applyUserCorrections(original, corrections);
@@ -89,10 +97,16 @@ export async function loadUserScanViews(
       profileAllergens,
       (scan.barcode !== null && additionsByBarcode.get(scan.barcode)) || [],
     );
+    const circle = applyCircleEscalations(
+      community ?? userEffective ?? original,
+      profileAllergens,
+      circleEscalations[index] ?? [],
+    );
     views.set(scan.id, {
       corrections,
-      effective: community ?? userEffective,
+      effective: circle ?? community ?? userEffective,
       communityApplied: community?.applied ?? [],
+      circleApplied: circle?.applied ?? [],
     });
   }
   return views;

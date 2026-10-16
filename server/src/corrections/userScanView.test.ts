@@ -19,6 +19,8 @@ const OTHER_PROFILE = "bbbbbbbb-0000-0000-0000-0000000000a2";
 const SECOND_FAMILY = "aaaaaaaa-0000-0000-0000-0000000000a3";
 const SECOND_FAMILY_PROFILE = "bbbbbbbb-0000-0000-0000-0000000000a3";
 const CO_MANAGER = "aaaaaaaa-0000-0000-0000-0000000000a4";
+// The reporter's second child — same family, a different circle (circle escalations are per profile).
+const SIBLING_PROFILE = "bbbbbbbb-0000-0000-0000-0000000000a6";
 // A milk-allergic child's owner, for the held-removal case.
 const MILK_PARENT = "aaaaaaaa-0000-0000-0000-0000000000a5";
 const MILK_PROFILE = "bbbbbbbb-0000-0000-0000-0000000000a5";
@@ -58,6 +60,10 @@ before(async () => {
     [REPORTER_PROFILE, OTHER_PROFILE, SECOND_FAMILY_PROFILE],
   );
   await pool.query("INSERT INTO allergen_profiles (id, manager_id, label) VALUES ($1, $2, 'Test E')", [MILK_PROFILE, MILK_PARENT]);
+  await pool.query("INSERT INTO allergen_profiles (id, manager_id, label) VALUES ($1, $2, 'Test A sibling')", [SIBLING_PROFILE, REPORTER]);
+  await pool.query("INSERT INTO allergens (allergen_profile_id, name, severity, treat_traces_as_unsafe) VALUES ($1, 'Sesame', 'severe', false)", [
+    SIBLING_PROFILE,
+  ]);
   await pool.query("INSERT INTO allergens (allergen_profile_id, name, severity, treat_traces_as_unsafe) VALUES ($1, 'Milk', 'severe', true)", [
     MILK_PROFILE,
   ]);
@@ -72,7 +78,7 @@ after(async () => {
   // Corrections first — scan_id is ON DELETE SET NULL, see recordCorrection.test.ts's after().
   await pool.query(
     "DELETE FROM product_corrections WHERE scan_id IN (SELECT id FROM scans WHERE allergen_profile_id = ANY($1))",
-    [[REPORTER_PROFILE, OTHER_PROFILE, SECOND_FAMILY_PROFILE, MILK_PROFILE]],
+    [[REPORTER_PROFILE, OTHER_PROFILE, SECOND_FAMILY_PROFILE, MILK_PROFILE, SIBLING_PROFILE]],
   );
   await pool.query("DELETE FROM users WHERE id = ANY($1)", [[REPORTER, OTHER, SECOND_FAMILY, CO_MANAGER, MILK_PARENT]]);
   await pool.end();
@@ -220,6 +226,124 @@ test("a Milk removal under two families' confirmed Whey reports is held: the par
     // client is publicCommunityReports — allergenName and reporterCount, no spellings.
     assert.deepEqual(publicCommunityReports(view.communityApplied), [{ allergenName: "Milk", reporterCount: 2 }]);
     assert.doesNotMatch(JSON.stringify(publicCommunityReports(view.communityApplied)), /whey/i);
+  } finally {
+    env.communityCorrections = previous;
+  }
+});
+
+// Shared pending escalations (circleEscalations.ts; JT 2026-10-13, Prof. Yoest's ask of 2026-10-14).
+// REPORTER owns REPORTER_PROFILE and CO_MANAGER co-manages it: the parent and the grandparent.
+
+async function withCircleEscalations<T>(on: boolean, run: () => Promise<T>): Promise<T> {
+  const previous = env.circleEscalations;
+  env.circleEscalations = on;
+  try {
+    return await run();
+  } finally {
+    env.circleEscalations = previous;
+  }
+}
+
+test("a co-manager's pending escalation is visible to the child's parent", async () => {
+  const scan = await makeScan(REPORTER_PROFILE, "7100000000001", "safe");
+  const filed = await report(scan.id, CO_MANAGER, "flag_missing", "Sesame");
+  assert.equal(filed.status, "pending", "one family: not corroborated");
+
+  const before = await withCircleEscalations(false, async () =>
+    (await loadUserScanViews([scan], REPORTER_PROFILE, REPORTER)).get(scan.id)!,
+  );
+  assert.equal(before.effective, null, "switch off: only the reporter sees it, as before");
+
+  const parents = await withCircleEscalations(true, async () =>
+    (await loadUserScanViews([scan], REPORTER_PROFILE, REPORTER)).get(scan.id)!,
+  );
+  assert.equal(parents.effective?.result, "contains_allergen");
+  const sesame = parents.effective?.matchedAllergens.find((m) => m.allergenName === "Sesame");
+  assert.equal(sesame?.classification, "contains");
+  assert.equal(sesame?.circleReported, true, "marked as a circle report, so the card can say so");
+  assert.deepEqual(parents.circleApplied, [
+    { allergenName: "Sesame", reporters: [{ name: "D", role: "co_manager", isViewer: false }] },
+  ]);
+  assert.deepEqual(parents.communityApplied, [], "not a community report — nobody else has confirmed it");
+  assert.deepEqual(parents.corrections, [], "the parent's own corrections list stays theirs");
+});
+
+test("a circle's pending escalation persists onto every scan of the barcode, even after its own scan is deleted", async () => {
+  const barcode = "7100000000002";
+  const grandparentsScan = await makeScan(REPORTER_PROFILE, barcode, "safe");
+  const filed = await report(grandparentsScan.id, CO_MANAGER, "flag_missing", "Sesame");
+  const parentsLaterScan = await makeScan(REPORTER_PROFILE, barcode, "safe");
+  await pool.query("DELETE FROM scans WHERE id = $1", [grandparentsScan.id]);
+
+  try {
+    await withCircleEscalations(true, async () => {
+      const parents = (await loadUserScanViews([parentsLaterScan], REPORTER_PROFILE, REPORTER)).get(parentsLaterScan.id)!;
+      assert.equal(parents.effective?.result, "contains_allergen");
+      assert.equal(parents.circleApplied[0]?.allergenName, "Sesame");
+
+      // The grandparent's own later scan says it was theirs.
+      const theirs = (await loadUserScanViews([parentsLaterScan], REPORTER_PROFILE, CO_MANAGER)).get(parentsLaterScan.id)!;
+      assert.deepEqual(theirs.circleApplied[0]?.reporters, [{ name: "D", role: "co_manager", isViewer: true }]);
+    });
+  } finally {
+    // after() finds corrections through their scans; this one no longer has one.
+    await pool.query("DELETE FROM product_corrections WHERE id = $1", [filed.id]);
+  }
+});
+
+test("a co-manager's pending removal stays with them: the parent still sees the warning", async () => {
+  const scan = await makeScan(REPORTER_PROFILE, "7100000000003", "contains_allergen", [
+    { allergenName: "Sesame", severity: "severe", classification: "contains" },
+  ]);
+  await report(scan.id, CO_MANAGER, "flag_wrong", "Sesame");
+
+  await withCircleEscalations(true, async () => {
+    const parents = (await loadUserScanViews([scan], REPORTER_PROFILE, REPORTER)).get(scan.id)!;
+    assert.equal(parents.effective, null, "the engine's contains_allergen, unchanged");
+    assert.deepEqual(parents.circleApplied, []);
+
+    const theirs = (await loadUserScanViews([scan], REPORTER_PROFILE, CO_MANAGER)).get(scan.id)!;
+    assert.equal(theirs.effective?.result, "safe", "the reporter's own view, as before");
+  });
+});
+
+test("a pending escalation reaches neither another family's profile nor the same owner's other child", async () => {
+  const barcode = "7100000000004";
+  await report((await makeScan(REPORTER_PROFILE, barcode, "safe")).id, CO_MANAGER, "flag_missing", "Sesame");
+  const siblingsScan = await makeScan(SIBLING_PROFILE, barcode, "safe");
+  const othersScan = await makeScan(OTHER_PROFILE, barcode, "safe");
+
+  await withCircleEscalations(true, async () => {
+    const sibling = (await loadUserScanViews([siblingsScan], SIBLING_PROFILE, REPORTER)).get(siblingsScan.id)!;
+    assert.equal(sibling.effective, null, "one owner, but a different child's circle");
+    const other = (await loadUserScanViews([othersScan], OTHER_PROFILE, OTHER)).get(othersScan.id)!;
+    assert.equal(other.effective, null);
+  });
+});
+
+test("a rejected escalation stops being shared; a corroborated one shows as confirmed, not as one circle's report", async () => {
+  const rejectedBarcode = "7100000000005";
+  const rejected = await report((await makeScan(REPORTER_PROFILE, rejectedBarcode, "safe")).id, CO_MANAGER, "flag_missing", "Sesame");
+  await rejectCorrection(rejected.id, OTHER, "label photo shows no sesame");
+  const parentsRejectedScan = await makeScan(REPORTER_PROFILE, rejectedBarcode, "safe");
+
+  const confirmedBarcode = "7100000000006";
+  await report((await makeScan(REPORTER_PROFILE, confirmedBarcode, "safe")).id, CO_MANAGER, "flag_missing", "Sesame");
+  await report((await makeScan(SECOND_FAMILY_PROFILE, confirmedBarcode, "safe")).id, SECOND_FAMILY, "flag_missing", "Sesame");
+  const parentsConfirmedScan = await makeScan(REPORTER_PROFILE, confirmedBarcode, "safe");
+
+  const previous = env.communityCorrections;
+  try {
+    env.communityCorrections = true;
+    await withCircleEscalations(true, async () => {
+      const views = await loadUserScanViews([parentsRejectedScan, parentsConfirmedScan], REPORTER_PROFILE, REPORTER);
+      assert.equal(views.get(parentsRejectedScan.id)!.effective, null);
+
+      const confirmed = views.get(parentsConfirmedScan.id)!;
+      assert.equal(confirmed.effective?.result, "contains_allergen");
+      assert.equal(confirmed.communityApplied[0]?.reporterCount, 2);
+      assert.deepEqual(confirmed.circleApplied, [], "not also called one family's unconfirmed report");
+    });
   } finally {
     env.communityCorrections = previous;
   }

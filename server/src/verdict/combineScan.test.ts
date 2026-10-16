@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 
+import { recordCorrection } from "../corrections/recordCorrection.js";
 import { pool } from "../db/pool.js";
+import { env } from "../env.js";
 import { combineLabelScan, discardLabelEvidence } from "./combineScan.js";
 import type { AiClientResult, AiVisionClientResult } from "./types.js";
 
@@ -117,7 +119,7 @@ test("a mismatched label still merges automatically, flagged as identity_mismatc
   });
 
   const outcome = await combineLabelScan(
-    { scanId: original.id, imageBuffer: IMAGE, mimeType: "image/jpeg" },
+    { scanId: original.id, viewerId: USER_A, imageBuffer: IMAGE, mimeType: "image/jpeg" },
     {
       extractLabelDeps: fakeExtractOk({ productName: "Totally Different Snack Bar" }),
       reasonVerdictDeps: REASON_DEPS_OK,
@@ -163,7 +165,7 @@ test("an unreadable photo leaves the original scan untouched", async () => {
   });
 
   const outcome = await combineLabelScan(
-    { scanId: original.id, imageBuffer: IMAGE, mimeType: "image/jpeg" },
+    { scanId: original.id, viewerId: USER_A, imageBuffer: IMAGE, mimeType: "image/jpeg" },
     { extractLabelDeps: fakeExtractOk({ legible: false }) },
   );
 
@@ -181,7 +183,7 @@ test("matching identity: the scan is updated to source 'combined', label_stricte
   });
 
   const outcome = await combineLabelScan(
-    { scanId: original.id, imageBuffer: IMAGE, mimeType: "image/jpeg" },
+    { scanId: original.id, viewerId: USER_A, imageBuffer: IMAGE, mimeType: "image/jpeg" },
     {
       extractLabelDeps: fakeExtractOk({ productName: "Cookies", ingredientsText: "flour, sugar, milk powder" }),
       reasonVerdictDeps: {
@@ -223,7 +225,7 @@ test("a barcode with no product record combines as label_only — the explanatio
   });
 
   const outcome = await combineLabelScan(
-    { scanId: original.id, imageBuffer: IMAGE, mimeType: "image/jpeg" },
+    { scanId: original.id, viewerId: USER_A, imageBuffer: IMAGE, mimeType: "image/jpeg" },
     { extractLabelDeps: fakeExtractOk(), reasonVerdictDeps: REASON_DEPS_OK },
   );
 
@@ -246,7 +248,7 @@ test("a barcode with a product record combines as barcode_and_label", async () =
   });
 
   const outcome = await combineLabelScan(
-    { scanId: original.id, imageBuffer: IMAGE, mimeType: "image/jpeg" },
+    { scanId: original.id, viewerId: USER_A, imageBuffer: IMAGE, mimeType: "image/jpeg" },
     { extractLabelDeps: fakeExtractOk(), reasonVerdictDeps: REASON_DEPS_OK },
   );
 
@@ -265,7 +267,7 @@ test("discardLabelEvidence reverts a mismatched combine back to the pre-combine 
   });
 
   const outcome = await combineLabelScan(
-    { scanId: original.id, imageBuffer: IMAGE, mimeType: "image/jpeg" },
+    { scanId: original.id, viewerId: USER_A, imageBuffer: IMAGE, mimeType: "image/jpeg" },
     {
       extractLabelDeps: fakeExtractOk({ productName: "Something Else Entirely", ingredientsText: "flour, sugar" }),
       reasonVerdictDeps: REASON_DEPS_OK,
@@ -278,7 +280,7 @@ test("discardLabelEvidence reverts a mismatched combine back to the pre-combine 
   const afterCombine = await fetchScan(original.id);
   assert.equal(afterCombine.source, "combined");
 
-  const discarded = await discardLabelEvidence({ extractionId: outcome.identity_mismatch!.extraction_id });
+  const discarded = await discardLabelEvidence({ extractionId: outcome.identity_mismatch!.extraction_id, viewerId: USER_A });
   assert.equal(discarded.status, "discarded");
   if (discarded.status !== "discarded") throw new Error("unreachable");
   assert.equal(discarded.scan_id, original.id);
@@ -307,7 +309,7 @@ test("discardLabelEvidence rejects a second discard on the same extraction", asy
   });
 
   const outcome = await combineLabelScan(
-    { scanId: original.id, imageBuffer: IMAGE, mimeType: "image/jpeg" },
+    { scanId: original.id, viewerId: USER_A, imageBuffer: IMAGE, mimeType: "image/jpeg" },
     {
       extractLabelDeps: fakeExtractOk({ productName: "A Totally Unrelated Cereal", ingredientsText: "oats, sugar" }),
       reasonVerdictDeps: REASON_DEPS_OK,
@@ -317,10 +319,10 @@ test("discardLabelEvidence rejects a second discard on the same extraction", asy
   if (outcome.status !== "combined") throw new Error("unreachable");
   const extractionId = outcome.identity_mismatch!.extraction_id;
 
-  await discardLabelEvidence({ extractionId });
+  await discardLabelEvidence({ extractionId, viewerId: USER_A });
 
   await assert.rejects(
-    () => discardLabelEvidence({ extractionId }),
+    () => discardLabelEvidence({ extractionId, viewerId: USER_A }),
     (err: unknown) => (err as { status?: number }).status === 400,
   );
 });
@@ -334,7 +336,7 @@ test("discardLabelEvidence rejects an extraction whose identity actually matched
   });
 
   const outcome = await combineLabelScan(
-    { scanId: original.id, imageBuffer: IMAGE, mimeType: "image/jpeg" },
+    { scanId: original.id, viewerId: USER_A, imageBuffer: IMAGE, mimeType: "image/jpeg" },
     { extractLabelDeps: fakeExtractOk({ productName: "Chips" }), reasonVerdictDeps: REASON_DEPS_OK },
   );
   assert.equal(outcome.status, "combined");
@@ -344,7 +346,7 @@ test("discardLabelEvidence rejects an extraction whose identity actually matched
   const { rows: extractions } = await pool.query("SELECT id FROM label_extractions WHERE scan_id = $1", [original.id]);
 
   await assert.rejects(
-    () => discardLabelEvidence({ extractionId: extractions[0].id }),
+    () => discardLabelEvidence({ extractionId: extractions[0].id, viewerId: USER_A }),
     (err: unknown) => (err as { status?: number }).status === 400,
   );
 });
@@ -357,16 +359,63 @@ test("re-combining an already-combined scan is rejected, not silently re-applied
     matchedAllergens: [{ allergenName: "Milk", matched: false, source: null, severity: "severe", classification: "clear" }],
   });
   await combineLabelScan(
-    { scanId: original.id, imageBuffer: IMAGE, mimeType: "image/jpeg" },
+    { scanId: original.id, viewerId: USER_A, imageBuffer: IMAGE, mimeType: "image/jpeg" },
     { extractLabelDeps: fakeExtractOk({ productName: "Chips" }), reasonVerdictDeps: REASON_DEPS_OK },
   );
 
   await assert.rejects(
     () =>
       combineLabelScan(
-        { scanId: original.id, imageBuffer: IMAGE, mimeType: "image/jpeg" },
+        { scanId: original.id, viewerId: USER_A, imageBuffer: IMAGE, mimeType: "image/jpeg" },
         { extractLabelDeps: fakeExtractOk({ productName: "Chips" }), reasonVerdictDeps: REASON_DEPS_OK },
       ),
     (err: unknown) => (err as { status?: number }).status === 400,
   );
+});
+
+test("a combined scan carries the circle's pending report on the barcode, with CIRCLE_ESCALATIONS on", async () => {
+  // A live path, not history (userScanView.test.ts covers that): the owner reported Milk on an
+  // earlier scan of this barcode; their next scan of it, combined with a label photo, says so.
+  const barcode = "3333333333399";
+  const earlier = await insertBarcodeScan({
+    barcode,
+    productName: "Real Product",
+    result: "safe",
+    matchedAllergens: [{ allergenName: "Milk", matched: false, source: null, severity: "severe", classification: "clear" }],
+  });
+  const filed = await recordCorrection({
+    scanId: earlier.id,
+    reportedBy: USER_A,
+    correctionType: "flag_missing",
+    allergen: "Milk",
+    note: null,
+    photoPath: "/fake.jpg",
+    origin: "user_initiated",
+  });
+  const later = await insertBarcodeScan({
+    barcode,
+    productName: "Real Product",
+    result: "safe",
+    matchedAllergens: [{ allergenName: "Milk", matched: false, source: null, severity: "severe", classification: "clear" }],
+  });
+
+  const previous = env.circleEscalations;
+  try {
+    env.circleEscalations = true;
+    const outcome = await combineLabelScan(
+      { scanId: later.id, viewerId: USER_A, imageBuffer: IMAGE, mimeType: "image/jpeg" },
+      { extractLabelDeps: fakeExtractOk(), reasonVerdictDeps: REASON_DEPS_OK },
+    );
+    assert.equal(outcome.status, "combined");
+    if (outcome.status !== "combined") throw new Error("unreachable");
+    assert.equal(outcome.result, "safe", "the engine's verdict is untouched");
+    assert.equal(outcome.effective?.result, "contains_allergen");
+    assert.deepEqual(outcome.pending_circle_reports, [
+      { allergenName: "Milk", reporters: [{ name: "A", role: "owner", isViewer: true }] },
+    ]);
+    assert.equal((await fetchScan(later.id)).result, "safe", "never written into the scan row");
+  } finally {
+    env.circleEscalations = previous;
+    await pool.query("DELETE FROM product_corrections WHERE id = $1", [filed.id]);
+  }
 });

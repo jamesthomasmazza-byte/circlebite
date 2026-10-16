@@ -171,6 +171,29 @@ test("reaches_other_families is true only for a corroborated addition with commu
   }
 });
 
+test("reaches_circle is true only for a pending addition with circle escalations on", async () => {
+  const matched = [{ allergenName: "Sesame", severity: "severe", classification: "clear" }];
+  const previous = env.circleEscalations;
+  try {
+    env.circleEscalations = false;
+    const off = await postCorrection(await makeScan("8000000000021", "safe", matched), { correctionType: "flag_missing", allergen: "Sesame" });
+    assert.equal(off.body.reaches_circle, false, "switched off: the warning is only on the reporter's view");
+
+    env.circleEscalations = true;
+    const on = await postCorrection(await makeScan("8000000000022", "safe", matched), { correctionType: "flag_missing", allergen: "Sesame" });
+    assert.equal(on.body.corroborated, false);
+    assert.equal(on.body.reaches_circle, true);
+
+    const removal = await postCorrection(await makeScan("8000000000023", "contains_allergen", matched), {
+      correctionType: "flag_wrong",
+      allergen: "Sesame",
+    });
+    assert.equal(removal.body.reaches_circle, false, "a pending removal stays with its reporter");
+  } finally {
+    env.circleEscalations = previous;
+  }
+});
+
 test("a duplicate report is a 409 already_reported, and its photo doesn't stay on disk", async () => {
   // The 2026-10-01 production 500: the same sesame claim, reported again from a new scan.
   const matched = [{ allergenName: "Sesame", severity: "severe", classification: "clear" }];

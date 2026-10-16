@@ -1,5 +1,6 @@
 import { applyCommunityCorrectionsIfEnabled, type AppliedCommunityAddition } from "../corrections/applyCommunityCorrections.js";
 import type { MatchedAllergenLike } from "../corrections/applyCorrections.js";
+import { applyCircleEscalationsIfEnabled, publicCircleReports, type AppliedCircleEscalation } from "../corrections/circleEscalations.js";
 import { pool } from "../db/pool.js";
 import { HttpError } from "../lib/httpError.js";
 import { computeVerdict, type ProductForMatching, type ProfileAllergen, type Verdict } from "../matcher/match.js";
@@ -20,12 +21,15 @@ export type CombineScanDeps = {
 
 export type CombineScanInput = {
   scanId: string;
+  /** Who is looking at the card — so a circle report they filed themselves reads as theirs. */
+  viewerId: string;
   imageBuffer: Buffer;
   mimeType: "image/jpeg" | "image/png" | "image/webp";
 };
 
 export type DiscardLabelEvidenceInput = {
   extractionId: string;
+  viewerId: string;
 };
 
 /** Which evidence a combined scan actually rests on — the verdict card's provenance line reads this
@@ -54,6 +58,7 @@ export type CombineOutcome =
       extracted_text: string;
       effective: { result: string; matched_allergens: unknown } | null;
       community_reports: { allergenName: string; reporterCount: number }[];
+      pending_circle_reports: Pick<AppliedCircleEscalation, "allergenName" | "reporters">[];
       // Set when the label's own extracted name didn't match the barcode's — no longer a block
       // (see reconcileEvidence.ts: label evidence can only escalate, never weaken, a barcode
       // finding, so there is nothing a mismatched label can make less cautious). Surfaced as an
@@ -79,6 +84,7 @@ export type CombineOutcome =
       explanation: string | null;
       effective: { result: string; matched_allergens: unknown } | null;
       community_reports: { allergenName: string; reporterCount: number }[];
+      pending_circle_reports: Pick<AppliedCircleEscalation, "allergenName" | "reporters">[];
     };
 
 type ScanForCombine = {
@@ -256,6 +262,14 @@ export async function combineLabelScan(input: CombineScanInput, deps: CombineSca
     reconciled.matchedAllergens as MatchedAllergenLike[],
     allergens,
   );
+  // The circle's pending reports on top, as on the barcode scan (routes/scans.ts). This scan exists,
+  // so a report filed from it counts even without a barcode.
+  const circle = await applyCircleEscalationsIfEnabled(
+    { profileId: scan.allergen_profile_id, scanId: scan.id, barcode: scan.barcode, viewerId: input.viewerId },
+    community ?? { result: reconciled.verdict, matchedAllergens: reconciled.matchedAllergens as MatchedAllergenLike[] },
+    allergens,
+  );
+  const effective = circle ?? community;
 
   await pool.query(
     `UPDATE scans
@@ -318,8 +332,9 @@ export async function combineLabelScan(input: CombineScanInput, deps: CombineSca
     explanation,
     evidence,
     extracted_text: extraction.ingredientsText,
-    effective: community && { result: community.result, matched_allergens: community.matchedAllergens },
+    effective: effective && { result: effective.result, matched_allergens: effective.matchedAllergens },
     community_reports: publicCommunityReports(community?.applied ?? []),
+    pending_circle_reports: publicCircleReports(circle?.applied ?? []),
     identity_mismatch:
       identity.matched === false
         ? {
@@ -392,6 +407,12 @@ export async function discardLabelEvidence(input: DiscardLabelEvidenceInput): Pr
     preCombine.matchedAllergens as MatchedAllergenLike[],
     allergens,
   );
+  const circle = await applyCircleEscalationsIfEnabled(
+    { profileId: row.allergen_profile_id, scanId: row.scan_id, barcode: row.barcode, viewerId: input.viewerId },
+    community ?? { result: preCombine.verdict, matchedAllergens: preCombine.matchedAllergens as MatchedAllergenLike[] },
+    allergens,
+  );
+  const effective = circle ?? community;
 
   await pool.query(
     `UPDATE scans
@@ -416,7 +437,8 @@ export async function discardLabelEvidence(input: DiscardLabelEvidenceInput): Pr
     confidence: preCombine.confidence,
     matched_allergens: preCombine.matchedAllergens,
     explanation,
-    effective: community && { result: community.result, matched_allergens: community.matchedAllergens },
+    effective: effective && { result: effective.result, matched_allergens: effective.matchedAllergens },
     community_reports: publicCommunityReports(community?.applied ?? []),
+    pending_circle_reports: publicCircleReports(circle?.applied ?? []),
   };
 }

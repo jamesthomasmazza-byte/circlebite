@@ -5,6 +5,7 @@ import { assertCanReadProfile } from "../authorization/profiles.js";
 import { requireAuth } from "../auth/requireAuth.js";
 import { applyCommunityCorrectionsIfEnabled } from "../corrections/applyCommunityCorrections.js";
 import type { MatchedAllergenLike } from "../corrections/applyCorrections.js";
+import { applyCircleEscalationsIfEnabled, publicCircleReports } from "../corrections/circleEscalations.js";
 import { MAX_PHOTO_BYTES, sniffImageType } from "../corrections/photoStorage.js";
 import { loadUserScanViews, publicCommunityReports } from "../corrections/userScanView.js";
 import { pool } from "../db/pool.js";
@@ -102,6 +103,15 @@ scansRouter.post(
       matchedAllergens as MatchedAllergenLike[],
       allergens,
     );
+    // Then this profile's circle's pending reports on the barcode, on top — the view only, never the
+    // scan row, same as above (circleEscalations.ts). scanId null: this scan isn't written yet, and
+    // a barcode scan matches on the barcode.
+    const circle = await applyCircleEscalationsIfEnabled(
+      { profileId: allergenProfileId, scanId: null, barcode, viewerId: req.user!.id },
+      community ?? { result: verdict, matchedAllergens: matchedAllergens as MatchedAllergenLike[] },
+      allergens,
+    );
+    const effective = circle ?? community;
 
     const { rows } = await pool.query(
       `INSERT INTO scans
@@ -157,24 +167,25 @@ scansRouter.post(
     // photo endpoint itself — off means this field is simply absent, the same "looks like the
     // feature doesn't exist" posture /scans/label's 404 already uses, so the client never renders a
     // prompt or a required-photo step for an endpoint that would just reject the follow-up request.
-    // Decided off the verdict the card headlines, community escalation included — the engine's alone
-    // turned a reported Contains into a capture form with no card (scanPlan.ts). The cast is only
-    // because EffectiveScanResult types result as a string; the community layer sets nothing but
-    // contains_allergen.
+    // Decided off the verdict the card headlines, community and circle escalation included — the
+    // engine's alone turned a reported Contains into a capture form with no card (scanPlan.ts). The
+    // cast is only because EffectiveScanResult types result as a string; neither layer sets anything
+    // but contains_allergen.
     const evidenceDecision = env.labelScan
-      ? decideEvidenceNeeded(product, allergens, (community?.result as Verdict | undefined) ?? verdict)
+      ? decideEvidenceNeeded(product, allergens, (effective?.result as Verdict | undefined) ?? verdict)
       : null;
 
     // Full detail, unfiltered — this is the live, active-decision response, not history. See the
     // GET handler below for why history gets the opposite treatment. `effective` is null when no
-    // community report changed anything; the client headlines it when present and always shows
-    // the engine's own verdict alongside it (docs/legacy-spec.md §4 — never silently).
+    // community or circle report changed anything; the client headlines it when present and always
+    // shows the engine's own verdict alongside it (docs/legacy-spec.md §4 — never silently).
     res.status(201).json({
       ...rows[0],
       explanation,
       evidence_decision: evidenceDecision,
-      effective: community && { result: community.result, matched_allergens: community.matchedAllergens },
+      effective: effective && { result: effective.result, matched_allergens: effective.matchedAllergens },
       community_reports: publicCommunityReports(community?.applied ?? []),
+      pending_circle_reports: publicCircleReports(circle?.applied ?? []),
     });
   }),
 );
@@ -237,7 +248,7 @@ scansRouter.post(
       if (!profileId) throw new HttpError(404, "not_found");
       await assertCanReadProfile(req.user!.id, profileId);
 
-      const outcome = await combineLabelScan({ scanId, imageBuffer: req.file.buffer, mimeType: sniffed.mimeType });
+      const outcome = await combineLabelScan({ scanId, viewerId: req.user!.id, imageBuffer: req.file.buffer, mimeType: sniffed.mimeType });
       res.status(200).json(outcome);
       return;
     }
@@ -277,7 +288,7 @@ scansRouter.post(
     if (!profileId) throw new HttpError(404, "not_found");
     await assertCanReadProfile(req.user!.id, profileId);
 
-    const outcome = await discardLabelEvidence({ extractionId });
+    const outcome = await discardLabelEvidence({ extractionId, viewerId: req.user!.id });
     res.status(200).json(outcome);
   }),
 );
@@ -312,7 +323,7 @@ scansRouter.get(
 
     const history = rows.map(({ result, matched_allergens, ...row }) => {
       // The card shows both the user's own and the community's notes, so neither is silent.
-      const { corrections, effective, communityApplied } = views.get(row.id)!;
+      const { corrections, effective, communityApplied, circleApplied } = views.get(row.id)!;
       const shownAllergens = effective ? filterSevere(effective.matchedAllergens) : [];
       // Filtered to what the list itself shows: a severe_only follower mustn't learn the name of a
       // mild allergen from the community note when the allergen list hides it.
@@ -324,6 +335,9 @@ scansRouter.get(
         corrections,
         community_reports: publicCommunityReports(
           communityApplied.filter((a) => shownNames.has(a.allergenName.toLowerCase())),
+        ),
+        pending_circle_reports: publicCircleReports(
+          circleApplied.filter((a) => shownNames.has(a.allergenName.toLowerCase())),
         ),
       };
     });

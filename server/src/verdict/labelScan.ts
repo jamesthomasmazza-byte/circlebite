@@ -4,6 +4,7 @@ import { getProduct as defaultGetProduct } from "../lib/productLookup.js";
 import { computeVerdict, hasUsableData, type ProductForMatching, type Verdict } from "../matcher/match.js";
 import { loadProfileAllergens } from "../matcher/profileAllergens.js";
 import type { MatchedAllergenLike } from "../corrections/applyCorrections.js";
+import { applyCircleEscalationsIfEnabled, publicCircleReports, type AppliedCircleEscalation } from "../corrections/circleEscalations.js";
 import { explainVerdict } from "./explainVerdict.js";
 import { extractLabel as defaultExtractLabel, type ExtractLabelDeps } from "./extractLabel.js";
 import { mergeVerdict } from "./mergeVerdict.js";
@@ -50,6 +51,7 @@ export type LabelScanResult = {
   extraction_complete: boolean;
   effective: { result: Verdict; matched_allergens: unknown } | null;
   community_reports: { allergenName: string; reporterCount: number }[];
+  pending_circle_reports: Pick<AppliedCircleEscalation, "allergenName" | "reporters">[];
 };
 
 function publicCommunityReports(applied: AppliedCommunityAddition[]) {
@@ -136,6 +138,14 @@ export async function runLabelScan(input: LabelScanInput, deps: LabelScanDeps = 
     matchedAllergens as MatchedAllergenLike[],
     allergens,
   );
+  // The circle's pending reports on top, as on a barcode scan (routes/scans.ts). A scan not written
+  // yet has no reports of its own, so a barcode-less one gets nothing here.
+  const circle = await applyCircleEscalationsIfEnabled(
+    { profileId: input.allergenProfileId, scanId: null, barcode, viewerId: input.userId },
+    community ?? { result: verdict, matchedAllergens: matchedAllergens as MatchedAllergenLike[] },
+    allergens,
+  );
+  const effective = circle ?? community;
 
   const { rows } = await pool.query(
     `INSERT INTO scans
@@ -218,7 +228,8 @@ export async function runLabelScan(input: LabelScanInput, deps: LabelScanDeps = 
     extracted_text: extraction.ok ? extraction.ingredientsText : null,
     extraction_legible: extraction.ok ? extraction.legible : false,
     extraction_complete: extraction.ok ? extraction.complete : false,
-    effective: community && { result: community.result, matched_allergens: community.matchedAllergens },
+    effective: effective && { result: effective.result as Verdict, matched_allergens: effective.matchedAllergens },
     community_reports: publicCommunityReports(community?.applied ?? []),
+    pending_circle_reports: publicCircleReports(circle?.applied ?? []),
   };
 }

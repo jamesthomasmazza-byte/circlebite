@@ -12,6 +12,7 @@ import {
   sniffImageType,
 } from "../corrections/photoStorage.js";
 import { directionForCorrectionType, recordCorrection, type CorrectionType } from "../corrections/recordCorrection.js";
+import { publicCircleReports } from "../corrections/circleEscalations.js";
 import { loadUserScanViews, publicCommunityReports, type ScanForView } from "../corrections/userScanView.js";
 import { pool } from "../db/pool.js";
 import { env } from "../env.js";
@@ -146,9 +147,14 @@ correctionsRouter.post(
       // corroborated addition with COMMUNITY_CORRECTIONS on; removals never reach anyone else.
       reaches_other_families:
         result.corroborated && direction === "add_caution" && env.communityCorrections,
+      // Whether everyone else who can read this profile now sees it too (circleEscalations.ts):
+      // a pending addition, with CIRCLE_ESCALATIONS on. Corroborated ones reach them as community
+      // reports instead, under the line above.
+      reaches_circle: result.status === "pending" && direction === "add_caution" && env.circleEscalations,
       effective: view?.effective ? { result: view.effective.result, matched_allergens: view.effective.matchedAllergens } : null,
       corrections: view?.corrections ?? [],
       community_reports: publicCommunityReports(view?.communityApplied ?? []),
+      pending_circle_reports: publicCircleReports(view?.circleApplied ?? []),
     });
   }),
 );
