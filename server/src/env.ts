@@ -76,4 +76,10 @@ export const env = {
   // changes to revert — the route doesn't exist for a disabled feature, same posture as a feature
   // that was never built.
   labelScan: parseSwitch("LABEL_SCAN", process.env.LABEL_SCAN, false),
+  // Kill switch for sharing a pending escalation with the rest of the reporter's circle — everyone
+  // who can read the profile it was filed from, on every scan of that barcode
+  // (corrections/circleEscalations.ts). Same pattern and reasoning as COMMUNITY_CORRECTIONS
+  // (principle 4): off by default, and off means each pending report changes only its reporter's
+  // view of the scan they filed it from, exactly as before. No data to revert either way.
+  circleEscalations: parseSwitch("CIRCLE_ESCALATIONS", process.env.CIRCLE_ESCALATIONS, false),
 };
