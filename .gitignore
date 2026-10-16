@@ -33,3 +33,6 @@ logs/
 
 # Local Claude Code session/config state — not project source
 .claude/
+
+# Local scratch from Claude/Cowork sessions — handoff notes, drafts. Not project source.
+Claude outputs/
