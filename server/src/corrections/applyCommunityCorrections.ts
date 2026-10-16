@@ -57,46 +57,78 @@ export function allergensOverlap(a: string, b: string): boolean {
  * accounts could otherwise clear a peanut warning for every family in the app; removals wait for a
  * review queue. See the precedent row in docs/principles.md.
  *
- * Escalate-only by construction: the function never sets anything but "contains" and never
- * touches an allergen that no addition matches, so it cannot move any verdict toward safe.
- *
- * "contains", not "caution": a community report of unknown provenance resolves to a direct
- * ingredient, not a trace (docs/legacy-spec.md §6). An allergen the scan already had as "contains"
- * is left alone — the label data is the stronger source, and the card shouldn't claim the change
- * came from shoppers when it didn't.
- *
- * Severity comes from the scanned profile's own allergen, not the reporter's — it's this person's
- * severity that decides what a severe_only follower is shown.
- *
- * Returns null when nothing applied, so the caller can tell "no change" from "changed" and never
- * render a transparency note for a no-op.
+ * Escalate-only, "contains" not "caution", the scanned profile's own severity, and null when nothing
+ * applied — escalateProfileAllergens below, shared with a circle's pending reports.
  */
 export function applyCommunityCorrections(
   scan: ScanForCorrection,
   profileAllergens: Pick<ProfileAllergen, "name" | "severity">[],
   additions: CommunityAddition[],
 ): CommunityEffectiveResult | null {
-  if (additions.length === 0) return null;
+  // Max, not sum: the same person can have reported "Peanut" and "Peanuts" from two different
+  // profiles, and a sum would count them twice. The card says "at least this many".
+  const reporterCountOf = (relevant: CommunityAddition[]) => Math.max(...relevant.map((a) => a.reporterCount));
+  const escalation = escalateProfileAllergens(scan, profileAllergens, additions, (relevant) => ({
+    communityReported: true,
+    communityReporterCount: reporterCountOf(relevant),
+  }));
+  if (!escalation) return null;
+
+  return {
+    result: escalation.result,
+    matchedAllergens: escalation.matchedAllergens,
+    applied: escalation.escalated.map(({ allergenName, relevant }) => ({
+      allergenName,
+      reportedAs: relevant.map((a) => a.allergen),
+      correctionIds: relevant.flatMap((a) => a.correctionIds),
+      reporterCount: reporterCountOf(relevant),
+    })),
+  };
+}
+
+/**
+ * The escalate-only step both kinds of shared report go through — corroborated community additions
+ * (above) and a circle's own pending ones (circleEscalations.ts). One copy, so the two can't drift
+ * on the rules that make it safe:
+ *
+ * Escalate-only by construction: it never sets anything but "contains" and never touches an
+ * allergen that no report matches, so it cannot move any verdict toward safe.
+ *
+ * "contains", not "caution": a report of unknown provenance resolves to a direct ingredient, not a
+ * trace (docs/legacy-spec.md §6). An allergen the scan already had as "contains" is left alone —
+ * the label data is the stronger source, and the card shouldn't claim the change came from a
+ * report when it didn't. That also means whichever layer runs first claims an allergen, and the
+ * later one adds no second note for it.
+ *
+ * Severity comes from the scanned profile's own allergen, not the reporter's — it's this person's
+ * severity that decides what a severe_only follower is shown.
+ *
+ * `marker` is merged into each escalated entry so the card can say where the escalation came from.
+ * Returns null when nothing escalated, so the caller can tell "no change" from "changed" and never
+ * render a transparency note for a no-op.
+ */
+export function escalateProfileAllergens<R extends { allergen: string }>(
+  scan: ScanForCorrection,
+  profileAllergens: Pick<ProfileAllergen, "name" | "severity">[],
+  reports: R[],
+  marker: (relevant: R[]) => Record<string, unknown>,
+): (EffectiveScanResult & { escalated: { allergenName: string; relevant: R[] }[] }) | null {
+  if (reports.length === 0) return null;
 
   const matchedAllergens: MatchedAllergenLike[] = scan.matchedAllergens.map((m) => ({ ...m }));
-  const applied: AppliedCommunityAddition[] = [];
+  const escalated: { allergenName: string; relevant: R[] }[] = [];
 
   for (const profileAllergen of profileAllergens) {
-    const relevant = additions.filter((a) => allergensOverlap(a.allergen, profileAllergen.name));
+    const relevant = reports.filter((r) => allergensOverlap(r.allergen, profileAllergen.name));
     if (relevant.length === 0) continue;
 
     const key = profileAllergen.name.toLowerCase();
     const existing = matchedAllergens.find((m) => m.allergenName.toLowerCase() === key);
     if (existing?.classification === "contains") continue;
 
-    // Max, not sum: the same person can have reported "Peanut" and "Peanuts" from two different
-    // profiles, and a sum would count them twice. The card says "at least this many".
-    const reporterCount = Math.max(...relevant.map((a) => a.reporterCount));
-    const marker = { communityReported: true, communityReporterCount: reporterCount };
-
     if (existing) {
       existing.classification = "contains";
-      Object.assign(existing, marker);
+      Object.assign(existing, marker(relevant));
     } else {
       // No entry to escalate — the product wasn't found, had no data, or this allergen was added
       // to the profile after the scan. Same shape the matcher produces, so the card renders it.
@@ -106,19 +138,14 @@ export function applyCommunityCorrections(
         source: null,
         severity: profileAllergen.severity,
         classification: "contains",
-        ...marker,
+        ...marker(relevant),
       });
     }
 
-    applied.push({
-      allergenName: profileAllergen.name,
-      reportedAs: relevant.map((a) => a.allergen),
-      correctionIds: relevant.flatMap((a) => a.correctionIds),
-      reporterCount,
-    });
+    escalated.push({ allergenName: profileAllergen.name, relevant });
   }
 
-  if (applied.length === 0) return null;
+  if (escalated.length === 0) return null;
 
   // A scan with no per-allergen entries at all checked nothing — the product wasn't found, or had no
   // data. The report names one allergen; the rest must still be named, as "unchecked", never left
@@ -141,10 +168,10 @@ export function applyCommunityCorrections(
     }
   }
 
-  // Every applied entry is "contains", which dominates the rollup — including over a fail-closed
+  // Every escalated entry is "contains", which dominates the rollup — including over a fail-closed
   // unable_to_confirm, the one case where the original result is kept by applyUserCorrections, and
   // over the "unchecked" entries just added (mergeVerdict.ts's rollup puts contains first too).
-  return { result: "contains_allergen", matchedAllergens, applied };
+  return { result: "contains_allergen", matchedAllergens, escalated };
 }
 
 /**
