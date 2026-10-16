@@ -313,6 +313,10 @@ export type MatchedAllergen = {
   // us" is a different claim from "the label says", and the card must say which one it is.
   communityReported?: boolean;
   communityReporterCount?: number;
+  // Present (and true) only when a PENDING report from someone in this profile's own circle is why
+  // this allergen shows as "contains" — one family's report, not confirmed by any other
+  // (server corrections/circleEscalations.ts). A different claim again from communityReported.
+  circleReported?: boolean;
   // Set on an "unchecked" allergen only when there was no product data to check it against — a
   // community-escalated card on a barcode with no record. Mirrors applyCommunityCorrections.ts.
   // Absent means the usual "unchecked": a photo that didn't show it.
@@ -336,6 +340,14 @@ export type MatchedAllergen = {
 // Which of this profile's allergens a corroborated community report changed, and how many people
 // reported it. Never the reporters themselves or how their own profiles spelled the allergen.
 export type CommunityReport = { allergenName: string; reporterCount: number };
+
+// Who in this profile's circle filed a pending report — server corrections/circleEscalations.ts.
+// name null: their account is deleted. role null: they've left the circle since.
+export type CircleReporter = { name: string | null; role: "owner" | "co_manager" | "follower" | null; isViewer: boolean };
+
+// Which of this profile's allergens a pending report from its own circle raised to "contains", and
+// who reported it. One family's say-so: no other family has confirmed it.
+export type CircleReport = { allergenName: string; reporters: CircleReporter[] };
 
 // The adaptive scan flow's barcode-first decision (server/src/verdict/scanPlan.ts, mirrored
 // exactly): whether a label photo is the mandatory next step, an offered second opinion, or
@@ -364,10 +376,11 @@ export type ScanResult = {
   explanation: string | null;
   created_at: string;
   // `result`/`matched_allergens` above are always the engine's own verdict. `effective` is set
-  // only when a corroborated community report escalated it — the card headlines `effective` and
+  // only when a community or circle report escalated it — the card headlines `effective` and
   // still shows the engine's verdict alongside it, never silently replacing it.
   effective: { result: Verdict; matched_allergens: MatchedAllergen[] } | null;
   community_reports: CommunityReport[];
+  pending_circle_reports: CircleReport[];
   // Absent on a fresh scan. Set once the viewer reports a correction from this card: the POST
   // returns their corrected view (the same one scan history shows), `effective` above is replaced
   // with it, and these are the viewer's own reports that changed it.
@@ -419,6 +432,7 @@ export type ScanHistoryEntry = {
   corrections: ScanCorrection[];
   // Filtered to what this viewer's share level shows, same as matched_allergens.
   community_reports: CommunityReport[];
+  pending_circle_reports: CircleReport[];
 };
 
 export function createScan(allergenProfileId: string, barcode: string): Promise<ScanResult> {
@@ -526,6 +540,7 @@ export type CombineOutcome =
       extracted_text: string;
       effective: { result: Verdict; matched_allergens: MatchedAllergen[] } | null;
       community_reports: CommunityReport[];
+      pending_circle_reports: CircleReport[];
       // No longer a block (docs/verdict-engine.md Path D) — an inline note on the verdict card
       // instead. null when the label's name matched, or there was nothing to compare.
       identity_mismatch: IdentityMismatch | null;
@@ -542,6 +557,7 @@ export type CombineOutcome =
       explanation: string | null;
       effective: { result: Verdict; matched_allergens: MatchedAllergen[] } | null;
       community_reports: CommunityReport[];
+      pending_circle_reports: CircleReport[];
     };
 
 /**
@@ -589,9 +605,12 @@ export type CorrectionResult = {
   corroborated: boolean;
   // True only when this report is now changing what other families see for this product.
   reaches_other_families: boolean;
+  // True only when this report now shows for everyone else who can read this profile, too.
+  reaches_circle: boolean;
   effective: { result: Verdict; matched_allergens: MatchedAllergen[] } | null;
   corrections: ScanCorrection[];
   community_reports: CommunityReport[];
+  pending_circle_reports: CircleReport[];
 };
 
 /**

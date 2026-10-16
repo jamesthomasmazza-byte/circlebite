@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { getScanHistory, type MatchedAllergen, type ScanHistoryEntry } from "../lib/api";
-import { heldRemovalNotes, yourReportLine } from "../lib/correctionCopy";
+import { CIRCLE_REPORT_HEADING, circleReportLine, heldRemovalNotes, yourReportLine } from "../lib/correctionCopy";
 import { historyUncheckedNote, uncheckedBasis } from "../lib/evidenceCopy";
 import { DISCLAIMER, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
 
@@ -13,8 +13,8 @@ function shopperCount(n: number): string {
 }
 
 // Mirrors server/src/verdict/mergeVerdict.ts's own isTraceEscalatedToContains (and Scan.tsx's
-// client-side twin) exactly. See Scan.tsx's copy of this function for why communityReported has to
-// be checked ahead of this at the call site, never inside it.
+// client-side twin) exactly. See Scan.tsx's copy of this function for why communityReported (and
+// circleReported) has to be checked ahead of this at the call site, never inside it.
 function isTraceEscalatedToContains(m: MatchedAllergen): boolean {
   if (m.classification !== "contains") return false;
   if (!m.aiEscalated) return m.source === "trace";
@@ -25,6 +25,8 @@ function classificationLabel(m: MatchedAllergen): string {
   const { classification } = m;
   // docs/principles.md principle 7: say when it's shoppers, not the label, saying so.
   if (m.communityReported) return `contains — reported by ${shopperCount(m.communityReporterCount ?? 1)}`;
+  // One family's pending report — the note below names who and what it did.
+  if (m.circleReported) return "contains — reported in your circle, not yet confirmed";
   // The label said "may contain," not "contains" — this page has only one label slot per row
   // (unlike Scan.tsx's classificationLabel + sourceLabel pair), so both halves of the distinction
   // live in this one string.
@@ -128,10 +130,24 @@ export function ScanHistory() {
                       ))}
                       {/* A severe_only follower can have a verdict changed by a report about an
                           allergen their share level hides. Still never silent — just not named. */}
-                      {scan.corrections.length === 0 && scan.community_reports.length === 0 && (
-                        <li>A shopper report about an allergen on this profile that isn't shared with you</li>
-                      )}
+                      {scan.corrections.length === 0 &&
+                        scan.community_reports.length === 0 &&
+                        scan.pending_circle_reports.length === 0 && (
+                          <li>A report about an allergen on this profile that isn't shared with you</li>
+                        )}
                     </ul>
+                    {scan.pending_circle_reports.length > 0 && (
+                      <>
+                        <p>
+                          <strong>{CIRCLE_REPORT_HEADING}</strong>
+                        </p>
+                        <ul>
+                          {scan.pending_circle_reports.map((r) => (
+                            <li key={`circle-${r.allergenName}`}>{circleReportLine(r)}</li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
                     {heldRemovalNotes(scan.corrections, scan.community_reports).map((note) => (
                       <p key={note}>{note}</p>
                     ))}

@@ -27,6 +27,9 @@ import {
   sourceLabel,
 } from "../lib/allergenRowCopy";
 import {
+  CIRCLE_REPORT_HEADING,
+  changedByLine,
+  circleReportLine,
   heldRemovalNotes,
   priorReportNotice,
   reportableTypes,
@@ -57,12 +60,13 @@ function isDecided(verdict: string): boolean {
 // distinction the copy was fixed to draw.
 function rowClaim(scan: ScanResult, m: ScanResult["matched_allergens"][number]): string {
   if (reportedPresentByYou(scan, m.allergenName)) return "contains";
-  if (!m.communityReported && isTraceEscalatedToContains(m)) return "trace_unsafe";
+  if (!m.communityReported && !m.circleReported && isTraceEscalatedToContains(m)) return "trace_unsafe";
   return m.classification;
 }
 
-function rowSource(m: ScanResult["matched_allergens"][number]): "community" | "label" | "ai" {
+function rowSource(m: ScanResult["matched_allergens"][number]): "community" | "circle" | "label" | "ai" {
   if (m.communityReported) return "community";
+  if (m.circleReported) return "circle";
   if (isTraceEscalatedToContains(m)) return "label";
   if (m.aiEscalated) return "ai";
   return "label";
@@ -286,6 +290,7 @@ export function Scan() {
               extraction_complete: true,
               effective: outcome.effective,
               community_reports: outcome.community_reports,
+              pending_circle_reports: outcome.pending_circle_reports,
               evidence_decision: null,
               identity_mismatch: outcome.identity_mismatch,
             }
@@ -309,6 +314,7 @@ export function Scan() {
               extraction_complete: undefined,
               effective: outcome.effective,
               community_reports: outcome.community_reports,
+              pending_circle_reports: outcome.pending_circle_reports,
               evidence_decision: null,
               identity_mismatch: null,
             }
@@ -416,6 +422,7 @@ export function Scan() {
           correctionType: reportType,
           corroborated: outcome.corroborated,
           reachesOtherFamilies: outcome.reaches_other_families,
+          reachesCircle: outcome.reaches_circle,
           hasBarcode: result.barcode !== null,
         }),
       );
@@ -425,7 +432,13 @@ export function Scan() {
       // result.result and the callout below names what changed it.
       setResult((prev) =>
         prev
-          ? { ...prev, effective: outcome.effective, community_reports: outcome.community_reports, corrections: outcome.corrections }
+          ? {
+              ...prev,
+              effective: outcome.effective,
+              community_reports: outcome.community_reports,
+              pending_circle_reports: outcome.pending_circle_reports,
+              corrections: outcome.corrections,
+            }
           : prev,
       );
       setReportOpen(false);
@@ -820,21 +833,37 @@ export function Scan() {
           {result.effective && (
             <div role="note">
               <p>
-                The product data alone says <strong>{VERDICT_LABEL[result.result]}</strong>. Changed by{" "}
-                {result.corrections?.length ? "your report" : "shopper reports"}
-                {result.corrections?.length && result.community_reports.length ? " and shopper reports" : ""}, each with a
-                photo of the label:
+                The product data alone says <strong>{VERDICT_LABEL[result.result]}</strong>.{" "}
+                {changedByLine({
+                  yours: Boolean(result.corrections?.length),
+                  shoppers: result.community_reports.length > 0,
+                  circle: result.pending_circle_reports.length > 0,
+                })}
               </p>
-              <ul>
-                {result.corrections?.map((c) => (
-                  <li key={c.id}>{yourReportLine(c)}</li>
-                ))}
-                {result.community_reports.map((r) => (
-                  <li key={r.allergenName}>
-                    {r.allergenName} — reported present by {shopperCount(r.reporterCount)}
-                  </li>
-                ))}
-              </ul>
+              {(Boolean(result.corrections?.length) || result.community_reports.length > 0) && (
+                <ul>
+                  {result.corrections?.map((c) => (
+                    <li key={c.id}>{yourReportLine(c)}</li>
+                  ))}
+                  {result.community_reports.map((r) => (
+                    <li key={r.allergenName}>
+                      {r.allergenName} — reported present by {shopperCount(r.reporterCount)}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {result.pending_circle_reports.length > 0 && (
+                <>
+                  <p>
+                    <strong>{CIRCLE_REPORT_HEADING}</strong>
+                  </p>
+                  <ul>
+                    {result.pending_circle_reports.map((r) => (
+                      <li key={`circle-${r.allergenName}`}>{circleReportLine(r)}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
               {heldRemovalNotes(result.corrections ?? [], result.community_reports).map((note) => (
                 <p key={note}>{note}</p>
               ))}

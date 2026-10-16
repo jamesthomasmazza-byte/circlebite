@@ -1,4 +1,13 @@
-import type { CommunityReport, CorrectionType, MyReport, ProfileSummary, ReviewQueueClaim, ScanCorrection } from "./api";
+import type {
+  CircleReport,
+  CircleReporter,
+  CommunityReport,
+  CorrectionType,
+  MyReport,
+  ProfileSummary,
+  ReviewQueueClaim,
+  ScanCorrection,
+} from "./api";
 
 // Plain functions, no JSX — the wording a family or an admin reads about a correction, kept here
 // so it can be tested (`npm test -w client`) and shared between pages instead of drifting apart.
@@ -14,12 +23,14 @@ import type { CommunityReport, CorrectionType, MyReport, ProfileSummary, ReviewQ
  *
  * "Shows for other families" only when the server says it does (reachesOtherFamilies) — with
  * COMMUNITY_CORRECTIONS switched off, a corroborated addition changes the reporter's own view and
- * nobody else's, and the message has to say what actually happened (principle 7).
+ * nobody else's, and the message has to say what actually happened (principle 7). The same for
+ * "everyone who can see this profile" (reachesCircle, CIRCLE_ESCALATIONS).
  */
 export function reportOutcomeMessage(input: {
   correctionType: CorrectionType;
   corroborated: boolean;
   reachesOtherFamilies: boolean;
+  reachesCircle: boolean;
   hasBarcode: boolean;
 }): string {
   if (input.corroborated) {
@@ -33,10 +44,22 @@ export function reportOutcomeMessage(input: {
       ? "Reported — this warning now shows for other families who scan this product."
       : "Reported — this warning now shows on your own view.";
   }
+  if (!input.hasBarcode && input.reachesCircle) {
+    return (
+      "Reported — this warning now shows on this scan for everyone who can see this profile. Without a barcode " +
+      "we can't check it against anyone else's report of the same product."
+    );
+  }
   if (!input.hasBarcode) {
     return (
       "Reported — thanks. This is recorded against your own view; without a barcode we can't check it " +
       "against anyone else's report of the same product."
+    );
+  }
+  if (input.correctionType === "flag_missing" && input.reachesCircle) {
+    return (
+      "Reported — this warning now shows for everyone who can see this profile, and it's in the review queue. " +
+      "Other families see it only once a second family reports it too."
     );
   }
   if (input.correctionType === "flag_missing") {
@@ -171,7 +194,7 @@ export function heldRemovalNotes(
     }
     if (c.correctionType === "wrong_product" && communityReports.length > 0) {
       const names = communityReports.map((r) => r.allergenName);
-      const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+      const list = listOf(names);
       notes.push(
         `Your report that this is the wrong product is held. Confirmed reports of ${list} stand on this product, so ` +
           `${names.length === 1 ? "that caution stays" : "those cautions stay"}, on your card too. A reviewer sees both your ` +
@@ -180,6 +203,75 @@ export function heldRemovalNotes(
     }
   }
   return notes;
+}
+
+function listOf(items: string[]): string {
+  return items.length === 1 ? items[0] : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
+}
+
+const ROLE_LABEL: Record<NonNullable<CircleReporter["role"]>, string> = {
+  owner: "owner",
+  co_manager: "co-manager",
+  follower: "follower",
+};
+
+/** Who filed a circle report, as the card names them. Never an email address — the server never sends one. */
+export function circleReporterName(r: CircleReporter): string {
+  if (r.isViewer) return "You";
+  if (r.name === null) return "Someone whose account has since been deleted";
+  if (r.role === null) return `${r.name} (no longer in this circle)`;
+  return `${r.name} (${ROLE_LABEL[r.role]})`;
+}
+
+/**
+ * The line under "The product data alone says …" naming what changed the card. Each source is
+ * named only when it's there: a card changed by a circle report alone must not say shoppers did.
+ */
+export function changedByLine(sources: { yours: boolean; shoppers: boolean; circle: boolean }): string {
+  const named = [
+    sources.yours && "your report",
+    sources.shoppers && "shopper reports",
+    sources.circle && "a report from your circle",
+  ].filter((s): s is string => Boolean(s));
+  if (named.length === 0) return "";
+  // "each" reads wrong over the one circle report alone.
+  const photo = named.length === 1 && sources.circle ? "with a photo of the label" : "each with a photo of the label";
+  return `Changed by ${listOf(named)}, ${photo}:`;
+}
+
+/** The heading over a card's circle reports — Prof. Yoest, 2026-10-14: "the label matters as much as the logic". */
+export const CIRCLE_REPORT_HEADING = "Reported by your circle, not yet confirmed";
+
+/**
+ * One pending circle report, as the card explains it (server corrections/circleEscalations.ts).
+ * It says what the report did to the card, not only what the report is: this allergen shows as
+ * Contains because of it and nothing else, on one family's say-so. And that it stays there
+ * whether or not another family agrees — a parent shouldn't read "not yet confirmed" as "about to
+ * go away". Only a reviewer changes it: a rejection stops it being shared, a corroboration turns
+ * it into a confirmed report.
+ *
+ * The reporter is told something different. They know who reported it; what they need is who
+ * else now sees it. And "only a reviewer can change that" isn't true for them — a rejected report
+ * keeps warning the person who filed it, on the scan they filed it from (applyCorrections.ts).
+ */
+export function circleReportLine(report: CircleReport): string {
+  const { allergenName } = report;
+  // The viewer first, so "You" never lands mid-sentence.
+  const reporters = [...report.reporters.filter((r) => r.isViewer), ...report.reporters.filter((r) => !r.isViewer)];
+  const who = listOf(reporters.map(circleReporterName));
+  if (reporters[0]?.isViewer) {
+    return (
+      `${who} reported ${allergenName} present, with a photo of the label. That report is why ${allergenName} shows ` +
+      "as Contains here, and everyone who can see this profile sees it too. It's one family's say-so: other " +
+      "families see it only if a second family reports it."
+    );
+  }
+  return (
+    `${who} reported ${allergenName} present, with a photo of the label. That report alone is why ${allergenName} ` +
+    "shows as Contains here. It's one family's say-so — no other family has confirmed it, and other families " +
+    "don't see it. It stays at Contains for this circle whether or not another family agrees; only a reviewer " +
+    "can change that."
+  );
 }
 
 /**

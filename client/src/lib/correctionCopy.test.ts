@@ -3,6 +3,10 @@ import { test } from "node:test";
 
 import type { ReviewQueueReport } from "./api";
 import {
+  changedByLine,
+  CIRCLE_REPORT_HEADING,
+  circleReportLine,
+  circleReporterName,
   heldRemovalNotes,
   priorReportNotice,
   reportableTypes,
@@ -15,21 +19,21 @@ import {
 test("reportOutcomeMessage: a corroborating add_caution report never claims other reports agreed", () => {
   // The 2026-09-29 live test: one sesame report, and the confirmation said "enough other reports
   // agreed" — there were none. An addition can corroborate on the report that completes the pair.
-  const message = reportOutcomeMessage({ correctionType: "flag_missing", corroborated: true, reachesOtherFamilies: true, hasBarcode: true });
+  const message = reportOutcomeMessage({ correctionType: "flag_missing", corroborated: true, reachesOtherFamilies: true, reachesCircle: false, hasBarcode: true });
   assert.doesNotMatch(message, /other reports/);
   assert.match(message, /now shows for other families/);
 });
 
 test("reportOutcomeMessage: an addition never claims to reach other families when the server says it doesn't", () => {
   // COMMUNITY_CORRECTIONS off (principle 4's kill switch): corroborated, but only the reporter sees it.
-  const message = reportOutcomeMessage({ correctionType: "flag_missing", corroborated: true, reachesOtherFamilies: false, hasBarcode: true });
+  const message = reportOutcomeMessage({ correctionType: "flag_missing", corroborated: true, reachesOtherFamilies: false, reachesCircle: false, hasBarcode: true });
   assert.doesNotMatch(message, /other families/);
   assert.match(message, /your own view/);
 });
 
 test("reportOutcomeMessage: a corroborated removal says others agreed, and that it's still only the reporter's view", () => {
   for (const correctionType of ["flag_wrong", "wrong_product"] as const) {
-    const message = reportOutcomeMessage({ correctionType, corroborated: true, reachesOtherFamilies: false, hasBarcode: true });
+    const message = reportOutcomeMessage({ correctionType, corroborated: true, reachesOtherFamilies: false, reachesCircle: false, hasBarcode: true });
     assert.match(message, /enough other reports agreed/);
     assert.match(message, /only changes your own view/);
     assert.match(message, /other families keep seeing it/);
@@ -38,7 +42,7 @@ test("reportOutcomeMessage: a corroborated removal says others agreed, and that 
 
 test("reportOutcomeMessage: a pending addition says it's on the reporter's own view, never other families'", () => {
   // One family's report, below the threshold of 2 — but the reporter's own card has already changed.
-  const message = reportOutcomeMessage({ correctionType: "flag_missing", corroborated: false, reachesOtherFamilies: false, hasBarcode: true });
+  const message = reportOutcomeMessage({ correctionType: "flag_missing", corroborated: false, reachesOtherFamilies: false, reachesCircle: false, hasBarcode: true });
   assert.match(message, /your own view/);
   assert.match(message, /review queue/);
   assert.doesNotMatch(message, /other families/);
@@ -46,13 +50,13 @@ test("reportOutcomeMessage: a pending addition says it's on the reporter's own v
 
 test("reportOutcomeMessage: pending and barcode-less reports keep their existing wording", () => {
   assert.equal(
-    reportOutcomeMessage({ correctionType: "flag_wrong", corroborated: false, reachesOtherFamilies: false, hasBarcode: true }),
+    reportOutcomeMessage({ correctionType: "flag_wrong", corroborated: false, reachesOtherFamilies: false, reachesCircle: false, hasBarcode: true }),
     "Reported — thanks. This is now in the review queue.",
   );
   // A barcode-less report never corroborates, whichever direction it is.
   for (const correctionType of ["flag_missing", "flag_wrong"] as const) {
     assert.match(
-      reportOutcomeMessage({ correctionType, corroborated: false, reachesOtherFamilies: false, hasBarcode: false }),
+      reportOutcomeMessage({ correctionType, corroborated: false, reachesOtherFamilies: false, reachesCircle: false, hasBarcode: false }),
       /without a barcode/,
     );
   }
@@ -225,4 +229,59 @@ test("heldRemovalNotes: a wrong-product report under confirmed warnings names ea
   );
   assert.match(note, /Your report that this is the wrong product is held/);
   assert.match(note, /Confirmed reports of Milk and Egg stand on this product, so those cautions stay/);
+});
+
+// Circle reports — Prof. Yoest, 2026-10-14: "when a co-manager sees a pending escalation, how does
+// the screen tell them it is one family's report and not yet a corroborated warning?"
+
+const GRANDMA = { name: "Grandma", role: "co_manager" as const, isViewer: false };
+
+test("circleReportLine: says the report is why the card says Contains, on one family's say-so, and that it stays", () => {
+  const line = circleReportLine({ allergenName: "Peanut", reporters: [GRANDMA] });
+  assert.match(line, /^Grandma \(co-manager\) reported Peanut present, with a photo of the label\./);
+  assert.match(line, /That report alone is why Peanut shows as Contains here/);
+  assert.match(line, /one family's say-so/);
+  assert.match(line, /no other family has confirmed it/);
+  assert.match(line, /stays at Contains for this circle whether or not another family agrees/);
+  assert.doesNotMatch(line, /confirmed (by|warning)|shoppers/, "never borrows a corroborated report's words");
+  assert.match(CIRCLE_REPORT_HEADING, /not yet confirmed/);
+});
+
+test("circleReportLine: the reporter is told who else sees it, never that only a reviewer can lift it", () => {
+  // A rejected report keeps warning its own reporter on the scan they filed from, so the reviewer
+  // line would be false for them.
+  const mine = circleReportLine({ allergenName: "Peanut", reporters: [{ ...GRANDMA, isViewer: true }] });
+  assert.match(mine, /^You reported Peanut present/);
+  assert.match(mine, /everyone who can see this profile sees it too/);
+  assert.doesNotMatch(mine, /reviewer/);
+
+  const both = circleReportLine({ allergenName: "Peanut", reporters: [GRANDMA, { name: "Dad", role: "owner", isViewer: true }] });
+  assert.match(both, /^You and Grandma \(co-manager\) reported Peanut present/);
+});
+
+test("circleReporterName: a deleted account or someone who has left is said so, never guessed", () => {
+  assert.equal(circleReporterName(GRANDMA), "Grandma (co-manager)");
+  assert.equal(circleReporterName({ ...GRANDMA, role: null }), "Grandma (no longer in this circle)");
+  assert.equal(circleReporterName({ ...GRANDMA, name: null, role: null }), "Someone whose account has since been deleted");
+});
+
+test("reportOutcomeMessage: a pending addition shared with the circle says so, and that other families don't see it yet", () => {
+  const message = reportOutcomeMessage({
+    correctionType: "flag_missing",
+    corroborated: false,
+    reachesOtherFamilies: false,
+    reachesCircle: true,
+    hasBarcode: true,
+  });
+  assert.match(message, /everyone who can see this profile/);
+  assert.match(message, /Other families see it only once a second family reports it too/);
+});
+
+test("changedByLine: names only what changed the card — a circle report alone never says shoppers", () => {
+  assert.equal(changedByLine({ yours: false, shoppers: false, circle: true }), "Changed by a report from your circle, with a photo of the label:");
+  assert.equal(changedByLine({ yours: true, shoppers: false, circle: false }), "Changed by your report, each with a photo of the label:");
+  assert.equal(
+    changedByLine({ yours: true, shoppers: true, circle: true }),
+    "Changed by your report, shopper reports and a report from your circle, each with a photo of the label:",
+  );
 });

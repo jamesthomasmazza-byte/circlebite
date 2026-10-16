@@ -740,6 +740,11 @@ th {
   font-style: italic;
 }
 
+.allergen-row__source[data-source="circle"] {
+  --source-icon: var(--icon-you);
+  font-style: italic;
+}
+
 .allergen-row__source[data-source="you"] {
   --source-icon: var(--icon-you);
   font-style: italic;

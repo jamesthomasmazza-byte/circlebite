@@ -14,9 +14,9 @@ type Source = NonNullable<MatchedRow["source"]>;
 
 // Mirrors server/src/verdict/mergeVerdict.ts's own isTraceEscalatedToContains exactly — same rule,
 // so the two never drift apart on what counts as "the label said 'may contain', the app treated it
-// as unsafe" versus a genuine direct finding. communityReported is checked ahead of this at every
-// call site (never inside this function) — a corroborated community report is a different claim
-// from a trace escalation, and the two are the one case this rule alone can't tell apart: a
+// as unsafe" versus a genuine direct finding. communityReported and circleReported are checked ahead
+// of this at every call site (never inside this function) — a community or circle report is a
+// different claim from a trace escalation, and the two are the one case this rule alone can't tell apart: a
 // deterministic trace tag (source: "trace", aiEscalated: false) that a *community* report — not
 // treatTracesAsUnsafe — later escalated to "contains" would otherwise read as a false positive here.
 export function isTraceEscalatedToContains(m: MatchedRow): boolean {
@@ -39,7 +39,7 @@ export const CLAIM_LABEL: Record<Classification, string> = {
 export function classificationLabel(m: MatchedRow): string {
   // The label's own claim was a trace; this profile's trace rule is what made it unsafe. The claim
   // line says what the package said — the row's colour and weight say what the app decided.
-  if (!m.communityReported && isTraceEscalatedToContains(m)) return 'label says "may contain"';
+  if (!m.communityReported && !m.circleReported && isTraceEscalatedToContains(m)) return 'label says "may contain"';
   return CLAIM_LABEL[m.classification];
 }
 
@@ -65,6 +65,9 @@ export function sourceLabel(m: MatchedRow, scan: Pick<ScanResult, "source">): st
   if (m.communityReported) {
     return `reported by ${shopperCount(m.communityReporterCount ?? 1)} with a label photo — not in the product data`;
   }
+  // One family's pending report, not confirmed by another — never "shoppers", which is the
+  // confirmed claim above. The note under the card names who and says what it did.
+  if (m.circleReported) return "reported in your circle — one family's report, not yet confirmed";
   // The label's own claim (a trace) and the app's decision (treat it as unsafe, because this
   // profile flags traces) are two separate statements — never collapse them into "contains", which
   // is a claim the label itself never made. Checked before the AI-escalated branch below, since a
