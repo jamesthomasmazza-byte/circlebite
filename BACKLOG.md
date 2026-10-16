@@ -405,7 +405,11 @@ it is the least-worked area. Treat this whole section as the priority block it i
       and the other managers, and the reporter loses it on their own next scan of that barcode.
       **Product decision, JT, 2026-10-13:** share pending escalations across a profile's managers
       and persist them across scans of that barcode, while pending removals stay with the reporter,
-      on that scan, until corroborated. Warnings spread, clearings don't (principle 1). The README
+      on that scan, until corroborated. **Widened 2026-10-16 (JT): anyone who can view the
+      profile, followers included,** not only its managers. A follower is the babysitter standing
+      in the aisle holding the package; if a co-manager has photographed a label showing peanut,
+      that is exactly who needs to see it. A severe_only follower's history still never names a
+      mild allergen's report (`routes/scansHistory.test.ts`). Warnings spread, clearings don't (principle 1). The README
       described it this way before the code did: both corroboration rules said "the reporting
       family's own view". They were reworded to match the code on 2026-10-13 (`b26f3b9`) and go
       back to family wording when this ships. Not for tonight; not yet sized.
