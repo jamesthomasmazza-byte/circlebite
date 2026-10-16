@@ -226,6 +226,11 @@ export function circleReporterName(r: CircleReporter): string {
 /**
  * The line under "The product data alone says …" naming what changed the card. Each source is
  * named only when it's there: a card changed by a circle report alone must not say shoppers did.
+ *
+ * A circle report alone gets history's own wording, "Changed because of:" (JT, 2026-10-16, from the
+ * rendered card): the line under it already says who reported it and that they photographed the
+ * label, and the allergen row already says "reported in your circle". Naming either here said each
+ * twice for one report.
  */
 export function changedByLine(sources: { yours: boolean; shoppers: boolean; circle: boolean }): string {
   const named = [
@@ -234,9 +239,8 @@ export function changedByLine(sources: { yours: boolean; shoppers: boolean; circ
     sources.circle && "a report from your circle",
   ].filter((s): s is string => Boolean(s));
   if (named.length === 0) return "";
-  // "each" reads wrong over the one circle report alone.
-  const photo = named.length === 1 && sources.circle ? "with a photo of the label" : "each with a photo of the label";
-  return `Changed by ${listOf(named)}, ${photo}:`;
+  if (named.length === 1 && sources.circle) return "Changed because of:";
+  return `Changed by ${listOf(named)}, each with a photo of the label:`;
 }
 
 /**

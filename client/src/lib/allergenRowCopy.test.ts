@@ -3,8 +3,10 @@ import { test } from "node:test";
 
 import type { ScanResult } from "./api";
 import {
+  CIRCLE_ROW_SOURCE,
   CLAIM_LABEL,
   classificationLabel,
+  historyRowLabel,
   isTraceEscalatedToContains,
   SOURCE_LABEL,
   sourceLabel,
@@ -148,4 +150,24 @@ test("a row quotes only text that exists — no quote without matchedText or cit
       assert.doesNotMatch(sourceLabel(bare, { source: scanSource }), /"/, `quote with no evidence: ${JSON.stringify(bare)}`);
     }
   }
+});
+
+test("a circle-reported row reads the same on the live card and in scan history", () => {
+  // They drifted once (2026-10-16): the live card said "one family's report, not yet confirmed",
+  // history "not yet confirmed". Whatever the row was before the circle report escalated it — any
+  // source, AI-escalated, a trace — both surfaces must say exactly the same thing about it.
+  let checked = 0;
+  // Not a community-reported row: one the community already confirmed is "contains" before the
+  // circle layer runs, and escalateProfileAllergens leaves it alone — a row is never both.
+  for (const base of allRows().filter((r) => !r.communityReported)) {
+    const m: MatchedRow = { ...base, classification: "contains", circleReported: true };
+    for (const scanSource of SCAN_SOURCES) {
+      const live = `${classificationLabel(m)} — ${sourceLabel(m, { source: scanSource })}`;
+      assert.equal(live, historyRowLabel(m), `live card: "${live}"`);
+      assert.equal(live, `contains — ${CIRCLE_ROW_SOURCE}`);
+      checked++;
+    }
+  }
+  assert.ok(checked > 0);
+  assert.doesNotMatch(CIRCLE_ROW_SOURCE, /family|say-so/, "the wording cut from the line under the card stays cut here too");
 });

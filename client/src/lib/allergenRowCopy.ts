@@ -43,6 +43,13 @@ export function classificationLabel(m: MatchedRow): string {
   return CLAIM_LABEL[m.classification];
 }
 
+// What an allergen row says when one pending report from the profile's own circle is why it's
+// "contains" (server corrections/circleEscalations.ts). One string for both surfaces — the live card
+// and scan history drifted apart on it once (2026-10-16), and the live card's version said "one
+// family's report", the say-so wording already cut from the line under the card. The line names who
+// and says nobody else has confirmed it; this says where it came from and that it's unconfirmed.
+export const CIRCLE_ROW_SOURCE = "reported in your circle, not yet confirmed";
+
 export function shopperCount(n: number): string {
   return n === 1 ? "1 shopper" : `${n} shoppers`;
 }
@@ -67,7 +74,7 @@ export function sourceLabel(m: MatchedRow, scan: Pick<ScanResult, "source">): st
   }
   // One family's pending report, not confirmed by another — never "shoppers", which is the
   // confirmed claim above. The note under the card names who and says what it did.
-  if (m.circleReported) return "reported in your circle — one family's report, not yet confirmed";
+  if (m.circleReported) return CIRCLE_ROW_SOURCE;
   // The label's own claim (a trace) and the app's decision (treat it as unsafe, because this
   // profile flags traces) are two separate statements — never collapse them into "contains", which
   // is a claim the label itself never made. Checked before the AI-escalated branch below, since a
@@ -86,4 +93,21 @@ export function sourceLabel(m: MatchedRow, scan: Pick<ScanResult, "source">): st
   const label = SOURCE_LABEL[m.source][fromPhoto ? "photo" : "record"];
   // Quote exactly what matched, so it can be found on the package.
   return m.source === "ingredients" && m.matchedText ? `${label} — "${m.matchedText}"` : label;
+}
+
+/**
+ * Scan history's one label per row — the live card splits the same thing into classificationLabel
+ * and sourceLabel, history has a single slot, so both halves live in one string. Same precedence as
+ * the live card: a community or circle report first, then the trace escalation, then the claim.
+ * "unresolved" only appears on a scan that ran the AI reasoning step (docs/verdict-engine.md Path B)
+ * — real model uncertainty, distinct from "may contain traces".
+ */
+export function historyRowLabel(m: MatchedRow): string {
+  // docs/principles.md principle 7: say when it's shoppers, not the label, saying so.
+  if (m.communityReported) return `contains — reported by ${shopperCount(m.communityReporterCount ?? 1)}`;
+  if (m.circleReported) return `contains — ${CIRCLE_ROW_SOURCE}`;
+  if (isTraceEscalatedToContains(m)) return 'label says "may contain" — treated as unsafe because this profile flags traces';
+  if (m.classification === "contains") return "contains";
+  if (m.classification === "unresolved") return "couldn't confirm from the label text";
+  return "may contain traces";
 }

@@ -1,40 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { getScanHistory, type MatchedAllergen, type ScanHistoryEntry } from "../lib/api";
+import { historyRowLabel, shopperCount } from "../lib/allergenRowCopy";
+import { getScanHistory, type ScanHistoryEntry } from "../lib/api";
 import { circleReportLine, heldRemovalNotes, yourReportLine } from "../lib/correctionCopy";
 import { historyUncheckedNote, uncheckedBasis } from "../lib/evidenceCopy";
 import { DISCLAIMER, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
-
-// "unresolved" only appears on a scan that ran the AI reasoning step (docs/verdict-engine.md Path
-// B) — real model uncertainty, distinct from "may contain traces".
-function shopperCount(n: number): string {
-  return n === 1 ? "1 shopper" : `${n} shoppers`;
-}
-
-// Mirrors server/src/verdict/mergeVerdict.ts's own isTraceEscalatedToContains (and Scan.tsx's
-// client-side twin) exactly. See Scan.tsx's copy of this function for why communityReported (and
-// circleReported) has to be checked ahead of this at the call site, never inside it.
-function isTraceEscalatedToContains(m: MatchedAllergen): boolean {
-  if (m.classification !== "contains") return false;
-  if (!m.aiEscalated) return m.source === "trace";
-  return m.escalatedFromTrace === true;
-}
-
-function classificationLabel(m: MatchedAllergen): string {
-  const { classification } = m;
-  // docs/principles.md principle 7: say when it's shoppers, not the label, saying so.
-  if (m.communityReported) return `contains — reported by ${shopperCount(m.communityReporterCount ?? 1)}`;
-  // One family's pending report — the note below names who and what it did.
-  if (m.circleReported) return "contains — reported in your circle, not yet confirmed";
-  // The label said "may contain," not "contains" — this page has only one label slot per row
-  // (unlike Scan.tsx's classificationLabel + sourceLabel pair), so both halves of the distinction
-  // live in this one string.
-  if (isTraceEscalatedToContains(m)) return 'label says "may contain" — treated as unsafe because this profile flags traces';
-  if (classification === "contains") return "contains";
-  if (classification === "unresolved") return "couldn't confirm from the label text";
-  return "may contain traces";
-}
 
 export function ScanHistory() {
   const { id } = useParams<{ id: string }>();
@@ -84,7 +55,7 @@ export function ScanHistory() {
                       .filter((m) => m.classification !== "clear" && m.classification !== "unchecked")
                       .map((m) => (
                         <li key={m.allergenName}>
-                          {m.allergenName} ({m.severity}) — {classificationLabel(m)}
+                          {m.allergenName} ({m.severity}) — {historyRowLabel(m)}
                         </li>
                       ))}
                   </ul>

@@ -276,7 +276,8 @@ test("reportOutcomeMessage: a pending addition shared with the circle says so, a
 });
 
 test("changedByLine: names only what changed the card — a circle report alone never says shoppers", () => {
-  assert.equal(changedByLine({ yours: false, shoppers: false, circle: true }), "Changed by a report from your circle, with a photo of the label:");
+  // History's wording: the line below names who and the photo, the row names the circle.
+  assert.equal(changedByLine({ yours: false, shoppers: false, circle: true }), "Changed because of:");
   assert.equal(changedByLine({ yours: true, shoppers: false, circle: false }), "Changed by your report, each with a photo of the label:");
   assert.equal(
     changedByLine({ yours: true, shoppers: true, circle: true }),
