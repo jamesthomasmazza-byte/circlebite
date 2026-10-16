@@ -418,6 +418,9 @@ it is the least-worked area. Treat this whole section as the priority block it i
       pending additions with everyone who can read that one profile (not a sibling's — JT,
       2026-10-16), in history and on all four live card paths; the card says "Reported by your
       circle, not yet confirmed" and that one family's report is why it says Contains.
+      - [ ] **Look at the card locally first, at phone width** (JT, 2026-10-16). `seed:judge`,
+        then `seed:circle-demo` (Priya, Maya's co-manager, reports Peanut on Oat Biscuits
+        `2990000000038`), `CIRCLE_ESCALATIONS=on`, sign in as judge1.
       - [ ] **Deploy, verify, then switch on.** Not over a weekend (JT, 2026-10-16). On
         production: as a co-manager, report an allergen present; as the owner, see it on that scan
         and on a fresh scan of the barcode; check a sibling profile and another family's do not.
