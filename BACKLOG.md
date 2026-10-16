@@ -409,6 +409,20 @@ it is the least-worked area. Treat this whole section as the priority block it i
       described it this way before the code did: both corroboration rules said "the reporting
       family's own view". They were reworded to match the code on 2026-10-13 (`b26f3b9`) and go
       back to family wording when this ships. Not for tonight; not yet sized.
+      **Built 2026-10-16, off by default** (`CIRCLE_ESCALATIONS`, `docs/server-setup.md` §11a):
+      migration 0045 records the profile each report was filed from; `circleEscalations.ts` shares
+      pending additions with everyone who can read that one profile (not a sibling's — JT,
+      2026-10-16), in history and on all four live card paths; the card says "Reported by your
+      circle, not yet confirmed" and that one family's report is why it says Contains.
+      - [ ] **Deploy, verify, then switch on.** Not over a weekend (JT, 2026-10-16). On
+        production: as a co-manager, report an allergen present; as the owner, see it on that scan
+        and on a fresh scan of the barcode; check a sibling profile and another family's do not.
+      - [ ] **Then reword the README** back to family wording — both rules still say "the
+        reporter's own view of the scan they filed it from", which stays true until the switch is
+        on in production. Not before: that would be the README claiming more than production does.
+      - [ ] **Record circle escalations on the scan row**, as `community_corrections_applied`
+        does for community reports, so the audit trail says what a card showed at scan time.
+        Today the live card shows them and nothing records it.
 - [ ] **A test that fails when a doc states a corroboration threshold the code doesn't.** Found
       2026-10-13. Six times in two weeks a doc claimed more than the code: the README's owner-only
       downgrade line, "1 to add" in `docs/principles.md`, the review-queue comment, the

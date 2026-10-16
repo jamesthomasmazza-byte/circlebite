@@ -120,7 +120,7 @@ Keys that live there now: `DATABASE_URL` (set when the database was created, §5
 `SESSION_SECRET` (generated on the box with `openssl rand -hex 32`, appended when the app was first
 deployed, §7 below), `NODE_ENV=production` / `PORT=3000`, `OFF_USER_AGENT` (appended when the
 scan feature deployed — Open Food Facts requires a descriptive user agent on every request),
-`UPLOAD_DIR` (§8), `COMMUNITY_CORRECTIONS` (§11), `LABEL_SCAN`, the AI keys listed in
+`UPLOAD_DIR` (§8), `COMMUNITY_CORRECTIONS` (§11), `CIRCLE_ESCALATIONS` (§11a), `LABEL_SCAN`, the AI keys listed in
 `.env.example`, and for backups (§17) `BACKUP_S3_BUCKET` — a name, not a secret, kept here so no
 bucket name is ever in the repo — and `RESTORE_TEST_DB_PASSWORD`, generated on the box. `.env.example`
 is the complete list.
@@ -285,6 +285,42 @@ matched):
 psql "$DB" -c "SELECT id, barcode, created_at FROM scans
                WHERE community_corrections_applied @> '[{\"correctionIds\": [\"<correction-id>\"]}]';"
 ```
+
+## 11a. Circle escalations — kill switch and undo
+
+A **pending** report that an allergen is present changes the card for everyone who can read the
+profile it was filed from — owner, co-managers, followers — on every scan of that barcode, not just
+the reporter's own scan (`server/src/corrections/circleEscalations.ts`). Pending removals still stay
+with their reporter. Never another profile, not even a sibling's with the same owner. Off by default;
+it ships dark, like §11.
+
+Needs migration 0045 (`allergen_profile_id_at_report`), which `release.sh` applies. Reports filed
+before 0045 are backfilled from their scan; a report whose scan was already deleted stays unshared.
+
+**Turn it on:**
+
+```bash
+grep -q '^CIRCLE_ESCALATIONS=' ~/circlebite/.env \
+  && sed -i 's/^CIRCLE_ESCALATIONS=.*/CIRCLE_ESCALATIONS=on/' ~/circlebite/.env \
+  || echo "CIRCLE_ESCALATIONS=on" >> ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
+**Turn it off** — every pending report goes back to changing only its reporter's view of the scan
+they filed it from. No data changes; the layer is applied on read and never written to `scans`.
+
+```bash
+sed -i 's/^CIRCLE_ESCALATIONS=.*/CIRCLE_ESCALATIONS=off/' ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
+**Undo one report:** reject it in the review queue (`/admin/review-queue`). Only `status = 'pending'`
+rows are shared, so a rejected one leaves the circle's cards on the next request. Its reporter keeps
+seeing it on the scan they filed it from — a rejection never lifts a warning from the person who
+attested to it (`applyCorrections.ts`).
+
+**Not recorded on the scan row.** Unlike §11's `community_corrections_applied`, nothing on `scans`
+records which circle reports a card showed at scan time. `BACKLOG.md` has the item.
 
 ## 12. Admin access — the AI accuracy page
 
