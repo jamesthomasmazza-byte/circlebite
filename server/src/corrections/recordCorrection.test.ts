@@ -172,6 +172,20 @@ test("records the scanned profile's owner as the reporting family, whoever filed
   assert.equal(rows[0].profile_owner_at_report, USER_A);
 });
 
+test("records the profile the report was filed from, and keeps it after the scan is deleted", async () => {
+  // Migration 0045: which child's circle shares a pending escalation. The family (owner) isn't
+  // enough — one owner can have two children — and scan_id goes NULL when the scan is deleted.
+  const scanId = await makeScan("1000000000021", "safe", [{ allergenName: "Egg", severity: "moderate", classification: "clear" }]);
+  const result = await recordCorrection({ scanId, reportedBy: USER_B, correctionType: "flag_missing", allergen: "Egg", note: null, photoPath: "/fake.jpg", origin: "user_initiated" });
+
+  await pool.query("DELETE FROM scans WHERE id = $1", [scanId]);
+  const { rows } = await pool.query("SELECT scan_id, allergen_profile_id_at_report FROM product_corrections WHERE id = $1", [result.id]);
+  assert.equal(rows[0].scan_id, null);
+  assert.equal(rows[0].allergen_profile_id_at_report, PROFILE_ID);
+  // after() finds corrections through their scans; this one no longer has one.
+  await pool.query("DELETE FROM product_corrections WHERE id = $1", [result.id]);
+});
+
 test("add_caution stays pending on one family's report and corroborates on a second family's — threshold of 2", async () => {
   const barcode = "1000000000006";
   const egg = [{ allergenName: "Egg", severity: "moderate", classification: "clear" }];

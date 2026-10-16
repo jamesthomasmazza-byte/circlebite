@@ -201,9 +201,10 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
          (scan_id, barcode, reported_by, correction_type, direction, allergen, target,
           verdict_explanation_id, verdict_at_report, model_at_report, prompt_version_at_report,
           source_text_at_report, note, photo_path, origin, identity_mismatch_at_report, refiles_rejected_id,
-          profile_owner_at_report, allergen_fold_key, allergen_family_key)
+          profile_owner_at_report, allergen_profile_id_at_report, allergen_fold_key, allergen_family_key)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
                (SELECT p.manager_id FROM scans s JOIN allergen_profiles p ON p.id = s.allergen_profile_id WHERE s.id = $1),
+               (SELECT allergen_profile_id FROM scans WHERE id = $1),
                $18, $19)
        RETURNING id, status`,
       [
