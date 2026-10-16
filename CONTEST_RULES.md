@@ -1,6 +1,6 @@
 # Contest Rules — binding constraints
 
-Source of truth for this repository until judging ends (week of **November 26, 2026**).
+Source of truth for this repository until judging ends (**November 20, 2026**, over Zoom).
 Derived from the *AI Vibe Coding Competition Student FAQ, Fall 2026* (Prof. Jack Yoest,
 yoest@cua.edu) and his written approval email of September 8, 2026.
 
@@ -87,7 +87,7 @@ Requirements, same standing as §3:
 | Sept 14, 2026 | Idea submission due |
 | Oct 14, 2026, 2:10 PM | Sponsor lecture — David and Courtney Eisen, Maloney 207 |
 | TBA | Two group Zoom sessions during the build window |
-| Week of Nov 26, 2026 | Judging |
+| Nov 20, 2026 | Judging, over Zoom — moved from the week of Nov 26 (`docs/approvals/2026-10-14-yoest-shared-escalations-ask.md`) |
 
 ## 6. Scoring — where effort pays
 

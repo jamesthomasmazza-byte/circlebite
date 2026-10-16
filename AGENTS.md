@@ -2,7 +2,7 @@
 
 This repository is a **contest entry** with rules that override normal engineering defaults.
 Read `CONTEST_RULES.md` before proposing, generating, or changing anything. It is the source of
-truth until judging ends (week of November 26, 2026).
+truth until judging ends (November 20, 2026).
 
 ## Before you suggest anything
 

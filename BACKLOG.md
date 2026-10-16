@@ -335,7 +335,7 @@ it is the least-worked area. Treat this whole section as the priority block it i
       wasn't looking for it, while someone reading the history already went looking.
       Lower priority than the seeded "Someone outside the app" banner (JT, 2026-10-08): that one is
       on every judge's first screen after login, while this one needs a real co-manager edit. That
-      one is fixed in `1818677` and reaches production with the reseed under the Nov 23 credentials
+      one is fixed in `1818677` and reaches production with the reseed under the Nov 16 credentials
       item.
 - [ ] **A change with no recorded actor is shown as made by "someone outside the app".** Not now
       (JT, 2026-10-08). `1818677` fixed the seed, which was the source seen in production. But the
@@ -367,7 +367,8 @@ it is the least-worked area. Treat this whole section as the priority block it i
       cache a failure as a not-found. Principle 2's "Where it decided things" line ("distinguishes
       barcode unknown from no ingredient data") is true only for genuine not-founds until this is
       fixed.
-      **Do before Nov 23 (JT, 2026-10-08).** During judging, a slow or erroring Open Food Facts
+      **Do before Nov 16 (JT, 2026-10-08; was Nov 23 until judging moved to Nov 20).** During
+      judging, a slow or erroring Open Food Facts
       would tell a judge the barcode isn't on file for 24 hours, with nothing suggesting a retry, so
       it reads as the app being broken. In real use, one transient failure hides a product's data
       for a day. Worse than the first description: once a real product's row passes the TTL, a
@@ -551,7 +552,9 @@ it is the least-worked area. Treat this whole section as the priority block it i
         **Sent 2026-10-05**, to both, as a pwpush link set to expire after **two months or four
         views, whichever comes first** — around Dec 6 at the latest, sooner if the views are used.
         The account itself doesn't expire.
-      - [ ] **Send a fresh judge-credentials link on Monday of judging week (Nov 23).** Promised in
+      - [ ] **Send a fresh judge-credentials link on Monday of judging week (Nov 16).**
+        Judging moved to Friday Nov 20 (Oct 14 email), so that Monday is now Nov 16, not Nov 23.
+        Promised in
         the Oct 5 credentials email — this line is the only record of it outside that sent email.
         The first link can run out of views before it runs out of time, and judging is
         when someone is most likely to open it again. Same terms: pwpush, never plain email. If the
@@ -565,7 +568,7 @@ it is the least-worked area. Treat this whole section as the priority block it i
         reseed after that change deploys. This email carries all four logins. Production was
         reseeded on 2026-10-08, and JT decided the same day that the logins wait for this email
         rather than going out early. Blocked by the item below.
-      - [ ] **Four distinct judge passwords — blocks the Nov 23 credentials email.** JT,
+      - [ ] **Four distinct judge passwords — blocks the Nov 16 credentials email.** JT,
         2026-10-08. `seedJudge.ts` sets one password for all four judges (it printed "Judge
         password (the same for all four)" on the 2026-10-08 production reseed, and `78771c2` says
         "one shared password"). That defeats the isolation four accounts exist for: judge 2 typing
@@ -573,7 +576,7 @@ it is the least-worked area. Treat this whole section as the priority block it i
         - `seedJudge.ts` sets four distinct passwords, one per judge account, each generated or
           supplied without touching the command line, shell history or a file (R8).
         - `docs/server-setup.md` §16 exports a single `JUDGE_PASSWORD` and has to change with it.
-        - The reseed before the Nov 23 email runs the fixed seed, and each judge's link carries only
+        - The reseed before the Nov 16 email runs the fixed seed, and each judge's link carries only
           their own login.
         - That reseed also has to run from a release that includes `1818677`. Until then, every
           judge's first screen after login reads "Someone outside the app changed Maya's profile — 2
@@ -582,7 +585,7 @@ it is the least-worked area. Treat this whole section as the priority block it i
           "Changes to review" banner.
 
         **The Oct 5 login is dead.** The 2026-10-08 reseed deleted `judge@demo.circlebite.test`, so
-        anyone holding the Oct 5 link has no access until the Nov 23 link goes out.
+        anyone holding the Oct 5 link has no access until the Nov 16 link goes out.
       - [x] **Reply with screenshots** of "No listed allergens found" and the 911 referral once
         both are live on production. He named those as the two safety items judges look for, and
         asked for a screenshot of each. **Sent 2026-10-05** to Prof. Yoest, with both screenshots
@@ -801,7 +804,7 @@ it is the least-worked area. Treat this whole section as the priority block it i
       original verdict visible either way: the never-silently rule (docs/legacy-spec.md §6) is the
       reason the block exists.
 
-## Weeks 10–11 — Nov 17–25 · Submission prep *[10% presentation]*
+## Week 10 — Nov 17–19 · Submission prep *[10% presentation]*
 
 - [ ] One-page summary: problem, solution, how AI does the work, what was learned
 - [ ] Demo script following the five-beat sequence in `docs/verdict-engine.md`. Keep account
@@ -820,7 +823,7 @@ it is the least-worked area. Treat this whole section as the priority block it i
       until the next reseed rejects it — and if the judge deletes the account first, nothing can
       find it to reject.
       *Status 2026-10-05:* the link went out (two months / four views), but that email carried
-      neither ask above. Both go in the fresh-link email on Monday Nov 23 — see "Send a fresh
+      neither ask above. Both go in the fresh-link email on Monday Nov 16 — see "Send a fresh
       judge-credentials link on Monday of judging week" under Prof. Yoest's Oct 1-2 conditions.
 - [ ] `AI_DAILY_SPEND_CAP_CENTS` defaults to 200 ($2.00/day) — sized when a scan meant exactly one
       Anthropic call (Path B's `reasonVerdict`). Path C makes it two (extraction, then reasoning),
@@ -835,7 +838,7 @@ it is the least-worked area. Treat this whole section as the priority block it i
 - [ ] Confirm to Prof. Yoest that the instance stays running through judging *(R10)*
 - [ ] Freeze the code
 
-## Week of Nov 26 — Judging
+## Nov 20 — Judging, over Zoom
 
 - [ ] Shortly before judging opens, rerun the judge seed on production (`docs/server-setup.md` §16)
       with the **same** `JUDGE_PASSWORD`, so the credentials already sent keep working. This
@@ -862,7 +865,7 @@ it is the least-worked area. Treat this whole section as the priority block it i
       - **The current seed changes the judge login.** It deletes every account on the seed domain,
         including `judge@demo.circlebite.test`, and creates `judge1`–`judge4@demo.circlebite.test`.
         The credentials sent on 2026-10-05 predate that, so "the same `JUDGE_PASSWORD` keeps them
-        working" (item above) is no longer true. The fresh-link email on Nov 23 has to carry the new
+        working" (item above) is no longer true. The fresh-link email on Nov 16 has to carry the new
         logins, and the reseed has to happen before it goes out.
 - [ ] Check the review queue (`/admin/review-queue`) daily. A judge's reports are rejected by any
       reseed, but if a judge deletes the account first those reports turn anonymous and the seed can
@@ -872,7 +875,7 @@ it is the least-worked area. Treat this whole section as the priority block it i
 
 ## Deferred until after judging
 
-Out of scope per `CONTEST_RULES.md` §7 — do not start these before November 26.
+Out of scope per `CONTEST_RULES.md` §7 — do not start these before judging ends on November 20.
 
 - iOS build via Capacitor, Apple Developer Program enrollment ($99/yr), App Store submission
 - Admin analytics beyond the AI accuracy page
