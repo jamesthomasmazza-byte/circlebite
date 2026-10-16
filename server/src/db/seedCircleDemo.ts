@@ -1,5 +1,5 @@
-// Local only: a co-manager's pending escalation, so the "Reported by your circle, not yet confirmed"
-// card can be looked at in a browser (`npm run seed:circle-demo -w server`, after `seed:judge`).
+// Local only: a co-manager's pending escalation, so the circle-report card can be looked at in a
+// browser (`npm run seed:circle-demo -w server`, after `seed:judge`).
 //
 // Priya Nair, Maya's co-manager in judge 1's cast, reports Peanut present on her Oat Biscuits scan.
 // One family, so it stays pending. With CIRCLE_ESCALATIONS=on, judge1 — Maya's owner — sees it on

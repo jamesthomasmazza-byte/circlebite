@@ -4,7 +4,6 @@ import { test } from "node:test";
 import type { ReviewQueueReport } from "./api";
 import {
   changedByLine,
-  CIRCLE_REPORT_HEADING,
   circleReportLine,
   circleReporterName,
   heldRemovalNotes,
@@ -236,25 +235,24 @@ test("heldRemovalNotes: a wrong-product report under confirmed warnings names ea
 
 const GRANDMA = { name: "Grandma", role: "co_manager" as const, isViewer: false };
 
-test("circleReportLine: says the report is why the card says Contains, on one family's say-so, and that it stays", () => {
-  const line = circleReportLine({ allergenName: "Peanut", reporters: [GRANDMA] });
-  assert.match(line, /^Grandma \(co-manager\) reported Peanut present, with a photo of the label\./);
-  assert.match(line, /That report alone is why Peanut shows as Contains here/);
-  assert.match(line, /one family's say-so/);
-  assert.match(line, /no other family has confirmed it/);
-  assert.match(line, /stays at Contains for this circle whether or not another family agrees/);
-  assert.doesNotMatch(line, /confirmed (by|warning)|shoppers/, "never borrows a corroborated report's words");
-  assert.match(CIRCLE_REPORT_HEADING, /not yet confirmed/);
+test("circleReportLine: who reported it and that they photographed the label, then that no other family has confirmed it", () => {
+  assert.equal(
+    circleReportLine({ allergenName: "Peanut", reporters: [GRANDMA] }),
+    "Grandma (co-manager) reported Peanut present and photographed the label. No other family has confirmed it yet.",
+  );
 });
 
-test("circleReportLine: the reporter is told who else sees it, never that only a reviewer can lift it", () => {
-  // A rejected report keeps warning its own reporter on the scan they filed from, so the reviewer
-  // line would be false for them.
-  const mine = circleReportLine({ allergenName: "Peanut", reporters: [{ ...GRANDMA, isViewer: true }] });
-  assert.match(mine, /^You reported Peanut present/);
-  assert.match(mine, /everyone who can see this profile sees it too/);
-  assert.doesNotMatch(mine, /reviewer/);
+test("circleReportLine: never undercuts the photo, repeats the verdict, or explains the mechanics", () => {
+  // JT, 2026-10-16, from the rendered card: the photo makes a report evidence; the line above the
+  // list already says what changed the verdict; reach and review are the review queue's business.
+  const line = circleReportLine({ allergenName: "Peanut", reporters: [GRANDMA] });
+  assert.doesNotMatch(line, /say-so|why Peanut shows|Contains|other families (don't )?see|reviewer|shoppers/i);
+  assert.equal(line.match(/confirmed/g)?.length, 1, "said once in the line, not again on top of the row");
+});
 
+test("circleReportLine: the viewer comes first, as \"You\"", () => {
+  const mine = circleReportLine({ allergenName: "Peanut", reporters: [{ ...GRANDMA, isViewer: true }] });
+  assert.match(mine, /^You reported Peanut present and photographed the label\./);
   const both = circleReportLine({ allergenName: "Peanut", reporters: [GRANDMA, { name: "Dad", role: "owner", isViewer: true }] });
   assert.match(both, /^You and Grandma \(co-manager\) reported Peanut present/);
 });

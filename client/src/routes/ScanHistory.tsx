@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { getScanHistory, type MatchedAllergen, type ScanHistoryEntry } from "../lib/api";
-import { CIRCLE_REPORT_HEADING, circleReportLine, heldRemovalNotes, yourReportLine } from "../lib/correctionCopy";
+import { circleReportLine, heldRemovalNotes, yourReportLine } from "../lib/correctionCopy";
 import { historyUncheckedNote, uncheckedBasis } from "../lib/evidenceCopy";
 import { DISCLAIMER, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
 
@@ -128,6 +128,12 @@ export function ScanHistory() {
                           label
                         </li>
                       ))}
+                      {/* Last and lightest: the least-supported claim on the card (JT, 2026-10-16). */}
+                      {scan.pending_circle_reports.map((r) => (
+                        <li key={`circle-${r.allergenName}`} className="circle-report">
+                          {circleReportLine(r)}
+                        </li>
+                      ))}
                       {/* A severe_only follower can have a verdict changed by a report about an
                           allergen their share level hides. Still never silent — just not named. */}
                       {scan.corrections.length === 0 &&
@@ -136,18 +142,6 @@ export function ScanHistory() {
                           <li>A report about an allergen on this profile that isn't shared with you</li>
                         )}
                     </ul>
-                    {scan.pending_circle_reports.length > 0 && (
-                      <>
-                        <p>
-                          <strong>{CIRCLE_REPORT_HEADING}</strong>
-                        </p>
-                        <ul>
-                          {scan.pending_circle_reports.map((r) => (
-                            <li key={`circle-${r.allergenName}`}>{circleReportLine(r)}</li>
-                          ))}
-                        </ul>
-                      </>
-                    )}
                     {heldRemovalNotes(scan.corrections, scan.community_reports).map((note) => (
                       <p key={note}>{note}</p>
                     ))}

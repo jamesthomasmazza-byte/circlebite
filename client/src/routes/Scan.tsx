@@ -27,7 +27,6 @@ import {
   sourceLabel,
 } from "../lib/allergenRowCopy";
 import {
-  CIRCLE_REPORT_HEADING,
   changedByLine,
   circleReportLine,
   heldRemovalNotes,
@@ -840,30 +839,22 @@ export function Scan() {
                   circle: result.pending_circle_reports.length > 0,
                 })}
               </p>
-              {(Boolean(result.corrections?.length) || result.community_reports.length > 0) && (
-                <ul>
-                  {result.corrections?.map((c) => (
-                    <li key={c.id}>{yourReportLine(c)}</li>
-                  ))}
-                  {result.community_reports.map((r) => (
-                    <li key={r.allergenName}>
-                      {r.allergenName} — reported present by {shopperCount(r.reporterCount)}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {result.pending_circle_reports.length > 0 && (
-                <>
-                  <p>
-                    <strong>{CIRCLE_REPORT_HEADING}</strong>
-                  </p>
-                  <ul>
-                    {result.pending_circle_reports.map((r) => (
-                      <li key={`circle-${r.allergenName}`}>{circleReportLine(r)}</li>
-                    ))}
-                  </ul>
-                </>
-              )}
+              <ul>
+                {result.corrections?.map((c) => (
+                  <li key={c.id}>{yourReportLine(c)}</li>
+                ))}
+                {result.community_reports.map((r) => (
+                  <li key={r.allergenName}>
+                    {r.allergenName} — reported present by {shopperCount(r.reporterCount)}
+                  </li>
+                ))}
+                {/* Last and lightest: the least-supported claim on the card (JT, 2026-10-16). */}
+                {result.pending_circle_reports.map((r) => (
+                  <li key={`circle-${r.allergenName}`} className="circle-report">
+                    {circleReportLine(r)}
+                  </li>
+                ))}
+              </ul>
               {heldRemovalNotes(result.corrections ?? [], result.community_reports).map((note) => (
                 <p key={note}>{note}</p>
               ))}

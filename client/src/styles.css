@@ -745,6 +745,13 @@ th {
   font-style: italic;
 }
 
+/* An unconfirmed circle report is the least-supported claim on the card: lighter than the
+   confirmed community line above it, never as loud as the verdict (JT, 2026-10-16). */
+.circle-report {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
 .allergen-row__source[data-source="you"] {
   --source-icon: var(--icon-you);
   font-style: italic;

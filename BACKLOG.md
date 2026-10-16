@@ -416,8 +416,9 @@ it is the least-worked area. Treat this whole section as the priority block it i
       **Built 2026-10-16, off by default** (`CIRCLE_ESCALATIONS`, `docs/server-setup.md` §11a):
       migration 0045 records the profile each report was filed from; `circleEscalations.ts` shares
       pending additions with everyone who can read that one profile (not a sibling's — JT,
-      2026-10-16), in history and on all four live card paths; the card says "Reported by your
-      circle, not yet confirmed" and that one family's report is why it says Contains.
+      2026-10-16), in history and on all four live card paths; the allergen row says "reported in
+      your circle, not yet confirmed", and a lighter line under the card names who reported it and
+      that they photographed the label (JT's cut after reading the rendered card, 2026-10-16).
       - [ ] **Look at the card locally first, at phone width** (JT, 2026-10-16). `seed:judge`,
         then `seed:circle-demo` (Priya, Maya's co-manager, reports Peanut on Oat Biscuits
         `2990000000038`), `CIRCLE_ESCALATIONS=on`, sign in as judge1.

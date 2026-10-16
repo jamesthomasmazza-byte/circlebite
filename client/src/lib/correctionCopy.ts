@@ -239,39 +239,23 @@ export function changedByLine(sources: { yours: boolean; shoppers: boolean; circ
   return `Changed by ${listOf(named)}, ${photo}:`;
 }
 
-/** The heading over a card's circle reports — Prof. Yoest, 2026-10-14: "the label matters as much as the logic". */
-export const CIRCLE_REPORT_HEADING = "Reported by your circle, not yet confirmed";
-
 /**
- * One pending circle report, as the card explains it (server corrections/circleEscalations.ts).
- * It says what the report did to the card, not only what the report is: this allergen shows as
- * Contains because of it and nothing else, on one family's say-so. And that it stays there
- * whether or not another family agrees — a parent shouldn't read "not yet confirmed" as "about to
- * go away". Only a reviewer changes it: a rejection stops it being shared, a corroboration turns
- * it into a confirmed report.
- *
- * The reporter is told something different. They know who reported it; what they need is who
- * else now sees it. And "only a reviewer can change that" isn't true for them — a rejected report
- * keeps warning the person who filed it, on the scan they filed it from (applyCorrections.ts).
+ * One pending circle report, as the card lists it (server corrections/circleEscalations.ts): who
+ * reported it and that they photographed the label, then that no other family has confirmed it.
+ * Two sentences, by JT's read of the rendered card (2026-10-16):
+ * - Not why the card says Contains — the line above the list already says what changed it.
+ * - Not who else sees it or who can lift it — true, but mechanics a parent holding the box can't
+ *   act on. They belong in the review queue.
+ * - Never "say-so": the photo is what makes a report evidence, and what makes corroboration mean
+ *   something.
+ * "Not yet confirmed" itself lives on the allergen row (allergenRowCopy.ts), attached to the
+ * verdict; this line says it once more, in its own words, and nothing else does.
  */
 export function circleReportLine(report: CircleReport): string {
-  const { allergenName } = report;
   // The viewer first, so "You" never lands mid-sentence.
   const reporters = [...report.reporters.filter((r) => r.isViewer), ...report.reporters.filter((r) => !r.isViewer)];
   const who = listOf(reporters.map(circleReporterName));
-  if (reporters[0]?.isViewer) {
-    return (
-      `${who} reported ${allergenName} present, with a photo of the label. That report is why ${allergenName} shows ` +
-      "as Contains here, and everyone who can see this profile sees it too. It's one family's say-so: other " +
-      "families see it only if a second family reports it."
-    );
-  }
-  return (
-    `${who} reported ${allergenName} present, with a photo of the label. That report alone is why ${allergenName} ` +
-    "shows as Contains here. It's one family's say-so — no other family has confirmed it, and other families " +
-    "don't see it. It stays at Contains for this circle whether or not another family agrees; only a reviewer " +
-    "can change that."
-  );
+  return `${who} reported ${report.allergenName} present and photographed the label. No other family has confirmed it yet.`;
 }
 
 /**
