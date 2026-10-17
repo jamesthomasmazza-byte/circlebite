@@ -17,6 +17,8 @@ often isn't the person whose allergies are at stake.
 - [x] Public GitHub repo created, this README as first commit *[15%]*
 - [x] AWS account created; **billing alerts before provisioning anything** (also one of the five
       onboarding tasks that raises free credits from $100 to $200)
+      *Week of 2026-10-05:* the budget showed 0 of 1 email recipients verified, so the alert set up
+      in September may not have reached anyone. JT fixed the recipient; the setup date stands.
 - [x] Idea submission sent (Sept 9) — Golden Circle framing, one-page PDF, links to the live site and repo
 - [x] Domain purchased (~$12/yr) — needed for HTTPS on the login page
 
@@ -425,6 +427,14 @@ it is the least-worked area. Treat this whole section as the priority block it i
       - [ ] **Deploy, verify, then switch on.** Not over a weekend (JT, 2026-10-16). On
         production: as a co-manager, report an allergen present; as the owner, see it on that scan
         and on a fresh scan of the barcode; check a sibling profile and another family's do not.
+        *As of 2026-10-17:* production is on `372dd6e` (Oct 8). It has `1818677` (seeded history
+        recorded as the owner's) and migrations through 0044, and not `e6f96c9` (this feature). The
+        next deploy ships everything since — 33 commits as of `0903bcf`, including migration 0045,
+        per-judge passwords and the "check couldn't finish" card. Sequence:
+        1. Check `~/circlebite/.env` doesn't already set `CIRCLE_ESCALATIONS=on`, then deploy (§8).
+        2. Production check with the switch off: the app comes up, release.sh applied 0045, a plain
+           barcode scan and a label photo both work, `journalctl` shows no `AI step failed`.
+        3. Switch on (`docs/server-setup.md` §11a), then the circle check above.
       - [ ] **Then reword the README** back to family wording — both rules still say "the
         reporter's own view of the scan they filed it from", which stays true until the switch is
         on in production. Not before: that would be the README claiming more than production does.
@@ -825,6 +835,11 @@ it is the least-worked area. Treat this whole section as the priority block it i
       shopper report" — with the full block on the live card only, or behind a disclosure. Keep the
       original verdict visible either way: the never-silently rule (docs/legacy-spec.md §6) is the
       reason the block exists.
+- [ ] **`scansLabel.test.ts` depends on the local `.env`.** Its kill-switch tests assert
+      `LABEL_SCAN` is unset and fail when `server/.env` has `LABEL_SCAN=on`, which is exactly what
+      checking the photo flow locally needs (found 2026-10-17). Tests should set the switch
+      themselves, on and off, rather than assume the developer's file. Until then, run the server
+      suite with `LABEL_SCAN=off npm test -w server` (a shell value wins over dotenv).
 
 ## Week 10 — Nov 17–19 · Submission prep *[10% presentation]*
 
@@ -858,12 +873,19 @@ it is the least-worked area. Treat this whole section as the priority block it i
       judging-week value deliberately, not by leaving the default in place and hoping — before
       `LABEL_SCAN` gets flipped on for judging, not after
 - [ ] Confirm to Prof. Yoest that the instance stays running through judging *(R10)*
+- [ ] **Check the production AI key hasn't expired before judging.** "circlebite prod" expired
+      Oct 10 without anything saying so (`docs/journal.md`, 2026-10-16/17). The current key,
+      "circlebite prod 2026-10", expires Dec 31, 2026. Before judging: the Console shows it active
+      with a recent "Last used", a label photo on production gets a real result, and
+      `journalctl -u circlebite | grep 'AI step failed'` is quiet. Rotate before Dec 31 per
+      `docs/server-setup.md` §6a, whatever happens with judging.
 - [ ] Freeze the code
 
 ## Nov 20 — Judging, over Zoom
 
 - [ ] Shortly before judging opens, rerun the judge seed on production (`docs/server-setup.md` §16)
-      with the **same** `JUDGE_PASSWORD`, so the credentials already sent keep working. This
+      as a **plain run, without `--rotate-passwords`**, so each judge keeps the password already
+      sent (since `c4c1041`, a reseed keeps every surviving judge's password). This
       refreshes the scan dates (seeded history is dated relative to the run, and would otherwise
       read as two months old) and clears test activity on the judge account — including JT's two
       extra `2990000000076` scans in Maya's history from the 2026-10-01 verification.

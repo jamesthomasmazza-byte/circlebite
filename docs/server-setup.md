@@ -30,7 +30,9 @@ Security group (`launch-wizard-1`):
 | 80 (HTTP) | 0.0.0.0/0 | Public site |
 | 443 (HTTPS) | 0.0.0.0/0 | Public site |
 
-Billing: zero-spend budget alert created before provisioning anything.
+Billing: zero-spend budget alert created before provisioning anything. Its email recipient was
+unverified (0 of 1) until JT fixed it the week of Oct 5, 2026; check the budget lists a verified
+recipient, not just that a budget exists.
 
 ## 2. Connect
 
