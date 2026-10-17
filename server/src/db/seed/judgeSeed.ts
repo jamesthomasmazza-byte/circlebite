@@ -76,7 +76,11 @@ export class SeedConflictError extends Error {
   }
 }
 
+/** Which judges got a new password on this run and which kept theirs. Never the password itself. */
+export type JudgeCredential = { judgeKey: string; email: string; status: "new" | "kept" };
+
 export type SeedSummary = {
+  judgeCredentials: JudgeCredential[];
   forcedRemovals: SeedConflicts | null;
   judgeCorrectionsRejected: number;
   accounts: number;
@@ -134,18 +138,51 @@ async function removeConflicts(client: PoolClient, seededUserIds: string[]): Pro
   // Non-seed products rows on seed barcodes are overwritten by the upsert in createSeed.
 }
 
+export type SeedOptions = {
+  /** A fresh hash for every judge key in PEOPLE, used wherever that judge gets a new password. */
+  judgePasswordHashes: Record<string, string>;
+  otherPasswordHash: string;
+  force: boolean;
+  /** Replace every judge's password. Off, a judge whose account exists keeps theirs. */
+  rotatePasswords: boolean;
+};
+
+const JUDGE_KEYS = Object.keys(PEOPLE).filter((key) => PEOPLE[key].isJudge);
+
 /**
  * Clears and recreates the seed inside the caller's transaction. Throws SeedConflictError (before
  * changing anything) when the guard finds non-seeded rows on seeded profiles and `force` is off.
+ *
+ * Passwords: a judge whose account exists keeps its password hash across the delete-and-recreate,
+ * unless `rotatePasswords`. A recovery reseed after one judge deletes their account then changes
+ * only that judge's login, not the other three mid-week.
  */
-export async function seedJudge(
-  client: PoolClient,
-  options: { judgePasswordHash: string; otherPasswordHash: string; force: boolean },
-): Promise<SeedSummary> {
+export async function seedJudge(client: PoolClient, options: SeedOptions): Promise<SeedSummary> {
+  const missing = JUDGE_KEYS.filter((key) => !options.judgePasswordHashes[key]);
+  if (missing.length > 0) throw new Error(`No password hash for ${missing.join(", ")} — nothing was changed.`);
+
   const { rows: seededUsers } = await client.query<{ id: string }>("SELECT id FROM users WHERE email LIKE $1", [
     `%@${SEED_EMAIL_DOMAIN}`,
   ]);
   const seededUserIds = seededUsers.map((u) => u.id);
+
+  // Read before step 4 deletes the accounts.
+  const { rows: existingJudges } = await client.query<{ email: string; password_hash: string }>(
+    "SELECT email, password_hash FROM users WHERE email = ANY($1)",
+    [JUDGE_KEYS.map((key) => PEOPLE[key].email)],
+  );
+  const existingHashes = new Map(existingJudges.map((r) => [r.email, r.password_hash]));
+  const judgeCredentials: JudgeCredential[] = JUDGE_KEYS.map((key) => ({
+    judgeKey: key,
+    email: PEOPLE[key].email,
+    status: !options.rotatePasswords && existingHashes.has(PEOPLE[key].email) ? "kept" : "new",
+  }));
+  const judgeHashes = Object.fromEntries(
+    judgeCredentials.map((c) => [
+      c.judgeKey,
+      c.status === "kept" ? existingHashes.get(c.email)! : options.judgePasswordHashes[c.judgeKey],
+    ]),
+  );
 
   // 1. Guard.
   const conflicts = await findConflicts(client, seededUserIds);
@@ -185,9 +222,10 @@ export async function seedJudge(
   await client.query("DELETE FROM users WHERE id = ANY($1)", [seededUserIds]);
 
   // 5. Fresh.
-  await createSeed(client, options);
+  await createSeed(client, { judgeHashes, otherPasswordHash: options.otherPasswordHash });
 
   return {
+    judgeCredentials,
     forcedRemovals: hasConflicts(conflicts) ? conflicts : null,
     judgeCorrectionsRejected: judgeCorrectionsRejected ?? 0,
     accounts: Object.keys(PEOPLE).length,
@@ -197,15 +235,15 @@ export async function seedJudge(
   };
 }
 
-async function createSeed(client: PoolClient, options: { judgePasswordHash: string; otherPasswordHash: string }) {
-  for (const person of Object.values(PEOPLE)) {
-    // Only the judges can sign in — all four with the one judge password. Everyone else gets an
-    // unusable hash of random bytes nobody ever sees: they exist to be a judge's circle, or a
-    // reporting family, not to be logged into.
+async function createSeed(client: PoolClient, options: { judgeHashes: Record<string, string>; otherPasswordHash: string }) {
+  for (const [key, person] of Object.entries(PEOPLE)) {
+    // Only the judges can sign in, each with their own password. Everyone else gets an unusable hash
+    // of random bytes nobody ever sees: they exist to be a judge's circle, or a reporting family, not
+    // to be logged into.
     await client.query(
       `INSERT INTO users (id, email, password_hash, display_name, age_attested_adult, age_attested_at, is_admin)
        VALUES ($1, $2, $3, $4, true, now(), false)`,
-      [person.id, person.email, person.isJudge ? options.judgePasswordHash : options.otherPasswordHash, person.displayName],
+      [person.id, person.email, person.isJudge ? options.judgeHashes[key] : options.otherPasswordHash, person.displayName],
     );
   }
 
@@ -356,11 +394,7 @@ export async function writeSeedPhotos(): Promise<void> {
 }
 
 /** The whole run in one transaction, then the photo. Used by the CLI (seedJudge.ts) and the tests. */
-export async function runJudgeSeed(options: {
-  judgePasswordHash: string;
-  otherPasswordHash: string;
-  force: boolean;
-}): Promise<SeedSummary> {
+export async function runJudgeSeed(options: SeedOptions): Promise<SeedSummary> {
   const client = await pool.connect();
   let summary: SeedSummary;
   try {

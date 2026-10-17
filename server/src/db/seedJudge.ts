@@ -2,39 +2,45 @@
 // non-seeded people off seeded profiles). See docs/server-setup.md for the exact production steps
 // and seed/judgeSeed.ts for what a run does.
 //
-// The judge password, one for all four judge accounts (CONTEST_RULES.md R8 — never in the repo,
-// never in a file or a log):
-//   - JUDGE_PASSWORD set: used, and only confirmed as used — never echoed back. Set it with
-//     `read -s JUDGE_PASSWORD && export JUDGE_PASSWORD` so it never lands in shell history.
-//   - unset: a strong one is generated and printed once, to this terminal only.
+// Judge passwords, one per judge account (CONTEST_RULES.md R8 — never in the repo, a file or a log):
+//   - A judge whose account exists keeps their password, so a recovery reseed doesn't change the
+//     other judges' logins. A missing judge (first run, or one who deleted their account) gets a
+//     new one.
+//   - `--rotate-passwords` gives all four new ones — the run before credentials go out.
+//   - New passwords are generated here and printed once, to this terminal only. Nothing is ever
+//     supplied from outside; a leftover JUDGE_PASSWORD from the old one-password runbook is refused.
 
 import { randomBytes } from "node:crypto";
 
 import { hashPassword } from "../auth/password.js";
-import { JUDGE_CASTS, PEOPLE } from "./seed/seedData.js";
+import { JUDGE_CASTS } from "./seed/seedData.js";
 import { runJudgeSeed, SeedConflictError } from "./seed/judgeSeed.js";
+import { credentialLines, generateJudgePasswords, legacyPasswordEnvError } from "./seed/judgePasswords.js";
 import { pool } from "./pool.js";
-
-// Same floor the register route enforces (auth/routes.ts MIN_PASSWORD_LENGTH), raised: a password
-// handed to strangers for a week should be stronger than the minimum a person may choose.
-const MIN_SUPPLIED_PASSWORD_LENGTH = 12;
 
 async function main(): Promise<void> {
   const force = process.argv.includes("--force");
-  const supplied = process.env.JUDGE_PASSWORD;
+  const rotatePasswords = process.argv.includes("--rotate-passwords");
 
-  if (supplied !== undefined && supplied.length < MIN_SUPPLIED_PASSWORD_LENGTH) {
-    console.error(`JUDGE_PASSWORD is shorter than ${MIN_SUPPLIED_PASSWORD_LENGTH} characters — nothing was changed.`);
+  const legacy = legacyPasswordEnvError(process.env);
+  if (legacy) {
+    console.error(legacy);
     process.exitCode = 1;
     return;
   }
-  const password = supplied ?? randomBytes(18).toString("base64url"); // 24 characters
+
+  const judgeKeys = JUDGE_CASTS.map((c) => c.judge);
+  const passwords = generateJudgePasswords(judgeKeys);
+  const judgePasswordHashes = Object.fromEntries(
+    await Promise.all(judgeKeys.map(async (key) => [key, await hashPassword(passwords[key])] as const)),
+  );
 
   try {
     const summary = await runJudgeSeed({
-      judgePasswordHash: await hashPassword(password),
+      judgePasswordHashes,
       otherPasswordHash: await hashPassword(randomBytes(32).toString("base64url")),
       force,
+      rotatePasswords,
     });
 
     if (summary.forcedRemovals) {
@@ -50,12 +56,8 @@ async function main(): Promise<void> {
     console.log(
       `Seeded ${summary.accounts} accounts, ${summary.profiles} profiles, ${summary.scans} scans, ${summary.npsRows} NPS rows.`,
     );
-    console.log(`Judge logins: ${JUDGE_CASTS.map((c) => PEOPLE[c.judge].email).join(", ")}`);
-    console.log(
-      supplied !== undefined
-        ? "Judge password (the same for all four): JUDGE_PASSWORD was used."
-        : `Judge password (the same for all four, shown once): ${password}`,
-    );
+    console.log("Judge logins — each line goes in that judge's own one-time link, and nowhere else:");
+    for (const line of credentialLines(summary.judgeCredentials, passwords)) console.log(`  ${line}`);
   } catch (err) {
     if (err instanceof SeedConflictError) {
       const c = err.conflicts;

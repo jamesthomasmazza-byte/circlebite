@@ -15,6 +15,7 @@ import { scansRouter } from "../../routes/scans.js";
 import { loadUnseenChanges } from "../../profileChanges/acks.js";
 import { pool } from "../pool.js";
 import { JUDGE_CORRECTION_REJECTION_REASON, runJudgeSeed, SeedConflictError, SeedNotCorroboratedError } from "./judgeSeed.js";
+import { generateJudgePasswords } from "./judgePasswords.js";
 import { COMMUNITY_REPORTS, JUDGE_CASTS, JUDGE_COUNT, NPS_ROWS, PEOPLE, PRODUCTS, PROFILES, SCANS, SEED_BARCODES } from "./seedData.js";
 
 // Real Postgres. This file owns the seed domain and the seed barcodes for the length of the run, so
@@ -39,12 +40,26 @@ const MAYA = PROFILES[CAST.maya];
 const NOOR = PROFILES[CAST.noor];
 
 // Generated per run, never written down — the seed itself never sees a literal either (R8).
-const judgePassword = randomBytes(18).toString("base64url");
-let judgePasswordHash: string;
+const JUDGE_KEYS = JUDGE_CASTS.map((c) => c.judge);
+const judgePasswords = generateJudgePasswords(JUDGE_KEYS);
+let judgePasswordHashes: Record<string, string>;
 let otherPasswordHash: string;
 
-function seed(force = false) {
-  return runJudgeSeed({ judgePasswordHash, otherPasswordHash, force });
+function seed(force = false, { rotatePasswords = false, hashes = judgePasswordHashes } = {}) {
+  return runJudgeSeed({ judgePasswordHashes: hashes, otherPasswordHash, force, rotatePasswords });
+}
+
+async function hashAll(passwords: Record<string, string>): Promise<Record<string, string>> {
+  const entries = await Promise.all(Object.entries(passwords).map(async ([key, p]) => [key, await hashPassword(p)] as const));
+  return Object.fromEntries(entries);
+}
+
+/** Whether `password` signs in as the judge with this key, against the stored hash. */
+async function signsInAs(judgeKey: string, password: string): Promise<boolean> {
+  const { rows } = await pool.query<{ password_hash: string }>("SELECT password_hash FROM users WHERE id = $1", [
+    PEOPLE[judgeKey].id,
+  ]);
+  return rows.length === 1 && (await verifyPassword(password, rows[0].password_hash));
 }
 
 /** Removes every seed row, the way a never-seeded database looks. Test-only. */
@@ -94,7 +109,7 @@ async function snapshot() {
 }
 
 before(async () => {
-  judgePasswordHash = await hashPassword(judgePassword);
+  judgePasswordHashes = await hashAll(judgePasswords);
   otherPasswordHash = await hashPassword(randomBytes(32).toString("base64url"));
   await clearSeed();
 });
@@ -123,18 +138,18 @@ test("every seed barcode is a GTIN-13 with a deliberately invalid check digit �
 let baseline: Awaited<ReturnType<typeof snapshot>>;
 
 test("fresh seed: four judges can sign in, each holding every circle role, with history across all four verdicts", async () => {
-  await seed();
+  const summary = await seed();
   baseline = await snapshot();
 
   assert.equal(JUDGE_CASTS.length, 4);
+  assert.deepEqual(
+    summary.judgeCredentials.map((c) => [c.email, c.status]),
+    JUDGE_KEYS.map((key) => [PEOPLE[key].email, "new"]),
+  );
   for (const cast of JUDGE_CASTS) {
     const judge = PEOPLE[cast.judge];
     assert.equal(judge.email, `judge${cast.n}@${SEED_EMAIL_DOMAIN}`);
-    const { rows: judgeRows } = await pool.query<{ password_hash: string; is_admin: boolean }>(
-      "SELECT password_hash, is_admin FROM users WHERE id = $1",
-      [judge.id],
-    );
-    assert.equal(await verifyPassword(judgePassword, judgeRows[0].password_hash), true, judge.email);
+    const { rows: judgeRows } = await pool.query<{ is_admin: boolean }>("SELECT is_admin FROM users WHERE id = $1", [judge.id]);
     assert.equal(judgeRows[0].is_admin, false, "no judge is an admin (Sept 11 precedent)");
 
     assert.equal((await getProfileAccess(judge.id, PROFILES[cast.maya].id))?.level, "owner");
@@ -142,12 +157,24 @@ test("fresh seed: four judges can sign in, each holding every circle role, with 
     assert.equal((await getProfileAccess(judge.id, PROFILES[cast.noor].id))?.level, "follower");
   }
 
-  // Nobody else can sign in with the judge password.
+  // Each judge's password signs in as that judge and no other: judge 2 typing judge1@ by mistake
+  // gets a wrong-password error, not judge 1's world.
+  for (const account of JUDGE_KEYS) {
+    for (const passwordOf of JUDGE_KEYS) {
+      assert.equal(await signsInAs(account, judgePasswords[passwordOf]), account === passwordOf, `${passwordOf}'s password on ${account}`);
+    }
+  }
+
+  // Nobody else can sign in with any judge's password.
   const { rows: others } = await pool.query<{ email: string; password_hash: string }>(
     "SELECT email, password_hash FROM users WHERE email LIKE $1 AND NOT (id = ANY($2))",
     [`%@${SEED_EMAIL_DOMAIN}`, JUDGE_CASTS.map((c) => PEOPLE[c.judge].id)],
   );
-  for (const other of others) assert.equal(await verifyPassword(judgePassword, other.password_hash), false, other.email);
+  for (const other of others) {
+    for (const key of JUDGE_KEYS) {
+      assert.equal(await verifyPassword(judgePasswords[key], other.password_hash), false, other.email);
+    }
+  }
 
   // At least one severe allergen, and one treating traces as unsafe.
   assert.ok(baseline.allergens.some((a) => a.severity === "severe"));
@@ -277,6 +304,57 @@ test("after the judge deletes their own account, Maya transfers to Priya — and
   assert.equal(rows[0].manager_id, PRIYA.id, "the co-managed profile survived, now Priya's (coppa.md §2.6)");
 
   await seed();
+  assert.deepEqual(await snapshot(), baseline);
+});
+
+// Each reseed below is handed a different set of fresh hashes, so a judge signing in with the
+// original password proves the seed kept their hash rather than writing the one it was given.
+test("a plain reseed keeps every judge's password, and says so", async () => {
+  const offered = generateJudgePasswords(JUDGE_KEYS);
+  const summary = await seed(false, { hashes: await hashAll(offered) });
+
+  assert.deepEqual(summary.judgeCredentials.map((c) => c.status), ["kept", "kept", "kept", "kept"]);
+  for (const key of JUDGE_KEYS) {
+    assert.equal(await signsInAs(key, judgePasswords[key]), true, key);
+    assert.equal(await signsInAs(key, offered[key]), false, key);
+  }
+});
+
+test("a judge who deleted their account gets a new password on reseed; the other three keep theirs", async () => {
+  const deleted = JUDGE_KEYS[1];
+  await deleteAccount(PEOPLE[deleted].id);
+
+  const offered = generateJudgePasswords(JUDGE_KEYS);
+  const summary = await seed(false, { hashes: await hashAll(offered) });
+
+  assert.deepEqual(
+    summary.judgeCredentials.map((c) => [c.judgeKey, c.status]),
+    JUDGE_KEYS.map((key) => [key, key === deleted ? "new" : "kept"]),
+  );
+  assert.equal(await signsInAs(deleted, offered[deleted]), true);
+  assert.equal(await signsInAs(deleted, judgePasswords[deleted]), false);
+  for (const key of JUDGE_KEYS.filter((k) => k !== deleted)) {
+    assert.equal(await signsInAs(key, judgePasswords[key]), true, key);
+  }
+  assert.deepEqual(await snapshot(), baseline);
+});
+
+test("--rotate-passwords replaces all four, and no earlier password signs in", async () => {
+  const before = generateJudgePasswords(JUDGE_KEYS);
+  await seed(false, { rotatePasswords: true, hashes: await hashAll(before) });
+
+  const rotated = generateJudgePasswords(JUDGE_KEYS);
+  const summary = await seed(false, { rotatePasswords: true, hashes: await hashAll(rotated) });
+
+  assert.deepEqual(summary.judgeCredentials.map((c) => c.status), ["new", "new", "new", "new"]);
+  for (const key of JUDGE_KEYS) {
+    assert.equal(await signsInAs(key, rotated[key]), true, key);
+    assert.equal(await signsInAs(key, before[key]), false, key);
+    assert.equal(await signsInAs(key, judgePasswords[key]), false, key);
+  }
+
+  // Back to the passwords the rest of this file expects.
+  await seed(false, { rotatePasswords: true });
   assert.deepEqual(await snapshot(), baseline);
 });
 
