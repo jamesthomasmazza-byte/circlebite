@@ -453,7 +453,7 @@ psql "$DB" -c "UPDATE password_reset_tokens SET used_at = now()
 ## 16. Seed the judge accounts and demo data
 
 One command creates four judge accounts — `judge1@demo.circlebite.test` through
-`judge4@demo.circlebite.test`, one password for all four — and everything they need to show. Each
+`judge4@demo.circlebite.test`, each with its own password — and everything they need to show. Each
 judge has a world of their own: their own invented families, every circle role, and scan history
 across all four verdicts, so four judges testing at once never see each other's history, banner,
 acknowledgements or downgrades. Shared by all four: a community warning reported by two families
@@ -479,25 +479,33 @@ What it touches, and only this (details in `server/src/db/seed/judgeSeed.ts`):
 It makes no AI calls and spends no AI budget. No judge is an admin (`docs/principles.md`,
 Sept 11 2026 precedent).
 
-**Run it** from the live release, after a deploy that includes it. The password never goes on the
-command line, into shell history, or into a file:
+**Run it** from the live release, after a deploy that includes it. **JT runs the production reseed
+himself, in his own terminal over SSH — never through Claude Code or any other tool that records its
+output, because the output contains passwords.** The passwords are generated on the box and never go
+on the command line, into shell history, or into a file:
 
 ```bash
 cd ~/circlebite/current
 
-# Optional: choose the judge password (one for all four accounts). read -s keeps it off the screen and out of shell history.
-# Skip both lines to have a strong one generated and printed once instead.
-read -s JUDGE_PASSWORD && export JUDGE_PASSWORD
+# Before the credentials email: four new passwords, one per judge.
+( set -a; source ~/circlebite/.env; set +a; node server/dist/db/seedJudge.js --rotate-passwords )
 
+# Recovery reseed (a judge deleted their account mid-week): the other judges keep their passwords.
 ( set -a; source ~/circlebite/.env; set +a; node server/dist/db/seedJudge.js )
-
-unset JUDGE_PASSWORD
 ```
 
-Never `JUDGE_PASSWORD=... node ...` inline — that lands in shell history. With `JUDGE_PASSWORD` set,
-the output only confirms it was used; without it, the generated password is printed **once** — copy
-it into the one-time secret link and nowhere else. Run a recovery reseed with the same
-`JUDGE_PASSWORD` and the judges' credentials keep working. The output lists the four logins.
+The output lists the four logins, one line each. A new password is printed **once**, next to its
+login — copy each into that judge's own one-time secret link and nowhere else, so each link carries
+only one login. A judge whose account still existed reads "kept existing password" and needs no new
+link. A plain run keeps every existing judge's password, so if the run before the email prints
+"kept" for all four, `--rotate-passwords` was left off. Don't pipe the output to `tee`, a file,
+`script`, or anything else that keeps it.
+
+`JUDGE_PASSWORD` is no longer read. If it is still set from the old one-password runbook, the seed
+refuses and changes nothing: `unset JUDGE_PASSWORD` and rerun.
+
+Locally it's `npm run seed:judge -w server`, with `-- --rotate-passwords` or `-- --force` passed the
+same way.
 
 **If it refuses.** A judge may invite a real address to try the invite flow. By default the seed
 won't delete a real person's access to a seeded child, or their scans of one — it changes nothing
@@ -516,6 +524,8 @@ Look at who it is, then rerun with `--force` to remove exactly those rows and se
 ```bash
 ( set -a; source ~/circlebite/.env; set +a; node server/dist/db/seedJudge.js --force )
 ```
+
+Add `--rotate-passwords` as well if this is the run before the credentials email.
 
 `--force` only removes rows *on seeded profiles* (synthetic children) — that person's follow or
 co-manager access to them and their scans of them. Their own account, their own profiles, and their
