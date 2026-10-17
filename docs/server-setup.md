@@ -133,6 +133,53 @@ release was left untouched — exactly what it's for.
 
 To read it back: `cat ~/circlebite/.env`.
 
+## 6a. Rotate the Anthropic API key
+
+Keys expire, and an expired key doesn't break the app — every AI step fails closed to "Unable to
+confirm", which is correct and looks like nothing is wrong. The key "circlebite prod" expired
+Oct 10, 2026, and AI-dependent scans failed that way until Oct 16 with nothing on the card or in the
+logs to say why. From `89b1e39` on (not yet deployed as of Oct 17), the card says the check couldn't
+finish, and each failure logs `[verdict] AI step failed` with its reason code.
+
+**Current key:** "circlebite prod 2026-10", expires **Dec 31, 2026**. Rotate before then. The value
+is never written anywhere but `~/circlebite/.env` — not this file, not the journal, not a commit.
+
+1. Create the new key in the Anthropic Console, with a spend cap and an expiry date.
+2. On the box, check there is exactly one key line:
+
+   ```bash
+   grep -c '^AI_API_KEY=' ~/circlebite/.env   # must print 1
+   ```
+
+3. Replace it. `read -rs` keeps the key off the screen and out of shell history:
+
+   ```bash
+   read -rs NEWKEY && sed -i "s|^AI_API_KEY=.*|AI_API_KEY=$NEWKEY|" ~/circlebite/.env && unset NEWKEY
+   ```
+
+4. Check the last four characters against the key hint the Console shows — nothing more of the key:
+
+   ```bash
+   grep '^AI_API_KEY=' ~/circlebite/.env | tail -c 5
+   ```
+
+5. Restart, so the service reads the new value (`EnvironmentFile`, `scripts/circlebite.service`):
+
+   ```bash
+   sudo systemctl restart circlebite
+   ```
+
+6. Confirm it took: a scan that reaches the AI step — a label photo is the surest — returns a real
+   result, not "couldn't finish"; this prints nothing:
+
+   ```bash
+   journalctl -u circlebite --since "-10min" --no-pager | grep 'AI step failed'
+   ```
+
+   and the Console shows the new key's "Last used" as today.
+7. Revoke the old key in the Console. Record the new key's name and expiry in `docs/journal.md`,
+   and update "Current key" above.
+
 ## 7. Deploy status
 
 - [x] Domain purchased and DNS A record pointed at the Elastic IP
