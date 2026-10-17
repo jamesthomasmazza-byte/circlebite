@@ -1829,3 +1829,55 @@ with a read-only command to list them.
 Send a fresh judge-credentials link on Monday of judging week (Nov 23), as promised in tonight's
 email. The first link expires after two months or four views, so around Dec 6 at the latest. The
 account doesn't expire.
+
+## 2026-10-16/17 — A key that expired quietly, and a card that wouldn't have said so
+
+**Found:** the production Anthropic key, "circlebite prod", was expired from Oct 10 UTC until it was
+replaced on Oct 16. Most likely no scan was affected: no AI call appears in the service journal for
+that window. The last 50 lines of `journalctl -u circlebite` on Oct 16 reached back to Oct 1 and held
+only start and stop lines, a grep for "Anthropic API call failed" from Oct 10 to Oct 17 found none,
+and the Console showed the old key last used Sep 28. Nothing was logged because, as far as the logs
+show, nothing ran.
+
+Had a scan reached the AI step, the card would have looked clean. It would have failed closed to
+"Unable to confirm", the right verdict, under "No listed allergens from this profile were found in
+the ingredient text", and a photo scan would have blamed the photo. An expired key would have logged
+as an API error (`aiClient.ts`), but a missing key or the daily spend cap wouldn't have logged at all
+until `89b1e39`.
+
+**Fixed on the box, Oct 16:** a new key, "circlebite prod 2026-10" (expires Dec 31, 2026), went into
+`~/circlebite/.env` as `AI_API_KEY` with `read -rs` and `sed`, never on screen or in history. JT
+checked the last four characters with `tail -c 5`, restarted the service at 23:34:56 UTC, and
+confirmed it with a label photo that came back with a real model response and the Console's "Last
+used" reading Oct 16. The runbook it didn't have is now `docs/server-setup.md` §6a (`46380f3`).
+
+**Fixed in the app (`89b1e39`, not yet deployed):** when the AI step fails, the card says "We
+couldn't finish checking the ingredients" and to check the label, with no reason code. Under a
+finding it sits below the rows, muted. With a clean product record and a failed label check it says
+the result is from the record only. A failed photo read says to try again in a few minutes, not to
+scan the barcode, which is often how the person got there. Every failure, including a missing key
+and the spend cap, logs one line: reason code, path and step. The verdict logic didn't change.
+Wording checked at 390px before it was proposed, then by JT on a phone-width screen.
+
+**Also this session:**
+- Four judge passwords, not one (`c4c1041`, runbook `09a43ed`, decision `6f16bde`). A reseed keeps
+  each surviving judge's password; `--rotate-passwords` replaces all four. The production reseed
+  before the Nov 16 email is still to run, in JT's own terminal.
+- The conditions register (`docs/approvals/conditions.md`) with the Oct 16 screenshots, and the Oct 11
+  unattended restore test — `circlebite-20261011T073020Z`, PASSED — saved as
+  `docs/evidence/2026-10-11-restore-test.txt`. Not yet sent to Prof. Yoest; going in the Oct 19 email.
+- The report filed on production Oct 16, 7:15 PM ET was an escalation (`add_caution`, "treenuts"), not
+  the downgrade test that Conditions 1 and 2 still need.
+- The same card missed almonds under that "treenuts" allergen. Not yet traced (BACKLOG).
+- Production is on `372dd6e`: it has `1818677` (seeded history recorded as the owner's), and nothing
+  since, including circle escalations (`e6f96c9`) and migration 0045.
+
+**Learned.** The key expired for six days and nothing anywhere said so, and if a real scan had come in,
+the card wouldn't have either. Failing closed keeps a card from calling an unchecked product fine, but
+a fail-closed answer that doesn't say it failed looks the same as a careful one. Same lesson as the
+backups on Oct 5: the failure has to be visible, because nothing announces it. Keys have expiry dates;
+they belong in the judging checklist, not in memory.
+
+**Next:** deploy with `CIRCLE_ESCALATIONS` off, check production, then switch it on (§11a). Reseed
+production with `--rotate-passwords` before the Nov 16 email. File the downgrade test on production.
+Check the AI key hasn't expired before judging.
