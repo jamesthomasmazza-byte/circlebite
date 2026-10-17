@@ -3,9 +3,13 @@ import { test } from "node:test";
 
 import {
   historyUncheckedNote,
+  explanationAfterRows,
   onlyUncheckedGaps,
   photoOfferCopy,
+  photoOfferLead,
   provenanceLine,
+  showsExplanation,
+  showsUncheckedNote,
   uncheckedBasis,
   uncheckedNote,
 } from "./evidenceCopy";
@@ -103,4 +107,44 @@ test("historyUncheckedNote: the photo wording is unchanged, and no product data 
   const noData = historyUncheckedNote(["sesame"], "no_product_data");
   assert.equal(noData, "Couldn't check 1 allergen — there's no product data on file to check it against: sesame. Always check the package.");
   assert.doesNotMatch(noData, /photo|\bsafe\b/i);
+});
+
+test("showsExplanation: a check that didn't finish always leads with its sentence, even on an all-unchecked photo", () => {
+  const unchecked = [{ classification: "unchecked" as const }];
+  const scan = { explanation: "We couldn't finish checking the ingredients.", matched_allergens: unchecked as never };
+  // Normally the grouped note replaces the generic sentence...
+  assert.equal(showsExplanation({ ...scan, ingredient_check_incomplete: false }, unchecked), false);
+  // ...but when the check failed, the sentence is the only thing that says so.
+  assert.equal(showsExplanation({ ...scan, ingredient_check_incomplete: true }, unchecked), true);
+  assert.equal(showsExplanation({ ...scan, explanation: null, ingredient_check_incomplete: true }, unchecked), false);
+});
+
+test("showsUncheckedNote: never blames the photo for a check that failed", () => {
+  assert.equal(showsUncheckedNote({ ingredient_check_incomplete: true }), false);
+  assert.equal(showsUncheckedNote({ ingredient_check_incomplete: false }), true);
+  // History rows and a discarded combine don't carry the field: unchanged behavior.
+  assert.equal(showsUncheckedNote({}), true);
+});
+
+test("explanationAfterRows: the 'couldn't finish' note goes under the rows only when the check failed and a finding is on the card", () => {
+  for (const classification of ["contains", "caution", "unresolved"] as const) {
+    assert.equal(explanationAfterRows({ ingredient_check_incomplete: true }, [{ classification }]), true, classification);
+    assert.equal(explanationAfterRows({ ingredient_check_incomplete: false }, [{ classification }]), false, classification);
+  }
+  // No finding on the card: the sentence leads, where it was.
+  assert.equal(explanationAfterRows({ ingredient_check_incomplete: true }, [{ classification: "clear" }, { classification: "unchecked" }]), false);
+  assert.equal(explanationAfterRows({ ingredient_check_incomplete: true }, []), false);
+  assert.equal(explanationAfterRows({}, [{ classification: "contains" }]), false);
+});
+
+test("photoOfferLead: a check that didn't finish drops the missing-data sentence, and keeps the button's other leads", () => {
+  const missing = { photo: "prompted", reason: "missing_data" } as const;
+  assert.equal(photoOfferLead(missing, "Maya", true), null);
+  assert.equal(photoOfferLead({ photo: "prompted", reason: "thin_data" }, "Maya", true), null);
+  // Unchanged when the check finished, or the field is absent.
+  assert.equal(photoOfferLead(missing, "Maya", false), photoOfferCopy(missing, "Maya"));
+  assert.equal(photoOfferLead(missing, "Maya", undefined), photoOfferCopy(missing, "Maya"));
+  // The severe and required leads say nothing about why the check fell short, so they stay.
+  assert.match(photoOfferLead({ photo: "prompted", reason: "severe_allergen" }, "Maya", true)!, /severe allergen/);
+  assert.equal(photoOfferLead({ photo: "required", reason: "missing_data" }, "Maya", true), "We couldn't check this against a photo yet.");
 });

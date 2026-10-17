@@ -4,6 +4,7 @@ import { after, before, test } from "node:test";
 import { pool } from "../db/pool.js";
 import type { AiClientResult } from "./types.js";
 import type { AiVisionClientResult } from "./types.js";
+import { CHECK_INCOMPLETE, PHOTO_CHECK_FAILED } from "./explainVerdict.js";
 import { runLabelScan } from "./labelScan.js";
 
 // Real Postgres, same discipline as recordCorrection.test.ts/aiAccuracyReport.test.ts — this is
@@ -87,14 +88,19 @@ after(async () => {
   await pool.end();
 });
 
-test("extraction failure: returns unable_to_confirm with usable copy, not a verdict, and no verdict_explanations row", async () => {
+test("extraction failure: returns unable_to_confirm with usable copy, not a verdict, and no verdict_explanations row", async (t) => {
+  const logged = t.mock.method(console, "error", () => {});
   const result = await runLabelScan(
     { userId: USER_A, allergenProfileId: PROFILE_ID, barcode: null, imageBuffer: IMAGE, mimeType: "image/jpeg" },
     { extractLabelDeps: { underDailySpendCap: async () => true, callAiVision: async () => ({ ok: false, reason: "request_failed" }) } },
   );
 
   assert.equal(result.result, "unable_to_confirm");
-  assert.ok(result.explanation && result.explanation.length > 0);
+  assert.equal(result.explanation, PHOTO_CHECK_FAILED);
+  assert.equal(result.ingredient_check_incomplete, true);
+  assert.deepEqual(logged.mock.calls.map((c) => c.arguments), [
+    ["[verdict] AI step failed", { reason: "request_failed", path: "C", step: "label_reading" }],
+  ]);
   assert.equal(result.extraction_legible, false);
   assert.equal(result.extracted_text, null);
 
@@ -184,6 +190,52 @@ test("a dropped allergen (nothing found, deterministic and AI both clear) cannot
   const { rows } = await pool.query("SELECT result, source, confidence FROM scans WHERE id = $1", [result.id]);
   assert.equal(rows[0].result, "unable_to_confirm");
   assert.equal(rows[0].source, "label_photo");
+});
+
+test("a failed reasoning call after a full read: still unable_to_confirm, says the check didn't finish, logs only the reason", async (t) => {
+  const logged = t.mock.method(console, "error", () => {});
+  const ingredientsText = "Water, sugar, maltodextrin.";
+  const result = await runLabelScan(
+    { userId: USER_A, allergenProfileId: PROFILE_ID, barcode: null, imageBuffer: IMAGE, mimeType: "image/jpeg" },
+    {
+      extractLabelDeps: fakeExtractOk({ ingredientsText }),
+      // The REAL reasonVerdict, refusing at the spend guard before any call — the no-network case.
+      reasonVerdictDeps: { underDailySpendCap: async () => false, callAi: fakeReasonOk() },
+    },
+  );
+
+  // Rule 1, unchanged: fail-closed.
+  assert.equal(result.result, "unable_to_confirm");
+  assert.equal(result.confidence, "low");
+  assert.equal(result.explanation, CHECK_INCOMPLETE);
+  assert.equal(result.ingredient_check_incomplete, true);
+
+  // One line, the reason code and where — no label text, no profile.
+  assert.deepEqual(logged.mock.calls.map((c) => c.arguments), [
+    ["[verdict] AI step failed", { reason: "spend_cap_exceeded", path: "C", step: "reasoning" }],
+  ]);
+  assert.doesNotMatch(JSON.stringify(logged.mock.calls.map((c) => c.arguments)), /maltodextrin|Test Profile|Milk/);
+
+  const { rows } = await pool.query("SELECT failure_reason FROM verdict_explanations WHERE scan_id = $1", [result.id]);
+  assert.equal(rows[0].failure_reason, "spend_cap_exceeded");
+});
+
+test("a successful check, and an illegible read, are not a failed check", async (t) => {
+  const logged = t.mock.method(console, "error", () => {});
+  const ok = await runLabelScan(
+    { userId: USER_A, allergenProfileId: PROFILE_ID, barcode: null, imageBuffer: IMAGE, mimeType: "image/jpeg" },
+    { extractLabelDeps: fakeExtractOk(), reasonVerdictDeps: { underDailySpendCap: async () => true, callAi: fakeReasonOk() } },
+  );
+  assert.equal(ok.ingredient_check_incomplete, false);
+  assert.notEqual(ok.explanation, CHECK_INCOMPLETE);
+
+  const illegible = await runLabelScan(
+    { userId: USER_A, allergenProfileId: PROFILE_ID, barcode: null, imageBuffer: IMAGE, mimeType: "image/jpeg" },
+    { extractLabelDeps: fakeExtractOk({ legible: false }) },
+  );
+  assert.equal(illegible.ingredient_check_incomplete, false);
+  assert.match(illegible.explanation ?? "", /couldn't read that label clearly/);
+  assert.equal(logged.mock.callCount(), 0);
 });
 
 test("span validation: a citedSpan not present in the extracted text is discarded, through the REAL reasonVerdict/spanValidator", async () => {

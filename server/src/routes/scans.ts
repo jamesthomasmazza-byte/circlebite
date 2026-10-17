@@ -17,6 +17,7 @@ import { getExtractionAllergenProfileId, getScanAllergenProfileId } from "../lib
 import { computeVerdict, hasUsableData, type Verdict } from "../matcher/match.js";
 import { loadProfileAllergens } from "../matcher/profileAllergens.js";
 import { combineLabelScan, discardLabelEvidence } from "../verdict/combineScan.js";
+import { logAiFailure } from "../verdict/aiFailureLog.js";
 import { explainMissingProductData, explainVerdict } from "../verdict/explainVerdict.js";
 import { runLabelScan } from "../verdict/labelScan.js";
 import { mergeVerdict } from "../verdict/mergeVerdict.js";
@@ -81,11 +82,12 @@ scansRouter.post(
         ingredientsText: product.ingredientsText!,
         deterministicHits: deterministicAllergens,
       });
+      if (aiResult.failed) logAiFailure("B", "reasoning", aiResult.failureReason);
       const merged = mergeVerdict(deterministicAllergens, aiResult, allergens);
       verdict = merged.verdict;
       confidence = merged.confidence;
       matchedAllergens = merged.matchedAllergens;
-      explanation = explainVerdict(merged);
+      explanation = explainVerdict(merged, { aiFailed: aiResult.failed });
     } else if (!hasUsableData(product)) {
       // Nothing to match against, so no rows — without this the card said "Unknown product" and
       // nothing about why, or what "unable to confirm" rests on.
@@ -182,6 +184,8 @@ scansRouter.post(
     res.status(201).json({
       ...rows[0],
       explanation,
+      // True only when the AI step ran and failed. No reason code: that stays in verdict_explanations.
+      ingredient_check_incomplete: aiResult?.failed ?? false,
       evidence_decision: evidenceDecision,
       effective: effective && { result: effective.result, matched_allergens: effective.matchedAllergens },
       community_reports: publicCommunityReports(community?.applied ?? []),

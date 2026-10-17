@@ -23,6 +23,13 @@ export const VERDICT_LABEL: Record<Verdict, string> = {
 export const DISCLAIMER =
   "This is a screening aid, not a guarantee — always check the physical label, especially for “may contain” warnings.";
 
+/** The heading over a photo that didn't produce a verdict card. "Couldn't read that label" when the
+ *  photo was checked and fell short (illegible, cut off); "Couldn't check that photo" when the
+ *  check itself failed, which says nothing about the photo or the label. */
+export function couldntReadHeading(checkIncomplete: boolean | undefined): string {
+  return checkIncomplete ? "Couldn't check that photo" : "Couldn't read that label";
+}
+
 // Prof. Yoest's Oct 1 directive (CONTEST_RULES.md §3a): the emergency referral sits with the
 // disclaimer wherever a verdict is shown — the live card and scan history — never only in settings.
 export const EMERGENCY = "If anyone has an allergic reaction, call 911.";

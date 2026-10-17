@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { explainMissingProductData, explainVerdict } from "./explainVerdict.js";
+import {
+  CHECK_INCOMPLETE,
+  CHECK_INCOMPLETE_PARTIAL,
+  explainMissingProductData,
+  explainVerdict,
+  LABEL_CHECK_FAILED_RECORD_ONLY,
+  PHOTO_CHECK_FAILED,
+} from "./explainVerdict.js";
 import type { MergedAllergenDetail, MergeResult } from "./mergeVerdict.js";
 
 function allergen(overrides: Partial<MergedAllergenDetail> & Pick<MergedAllergenDetail, "allergenName" | "classification">): MergedAllergenDetail {
@@ -123,5 +130,73 @@ test("explainMissingProductData tells an unknown barcode apart from a known prod
     // Says why there's no verdict — never that anything was checked, never that it's probably fine.
     assert.match(text ?? "", /nothing to check it against/);
     assert.doesNotMatch(text ?? "", /safe|probably|no allergens/i);
+  }
+});
+
+// The AI step failed: the production key was expired Oct 10–16, 2026, and every Path B card read
+// "Unable to confirm" over "No listed allergens from this profile were found in the ingredient text."
+test("aiFailed with nothing found says the check didn't finish, never the clean sentence — on every evidence source", () => {
+  const clear = [allergen({ allergenName: "Milk", classification: "clear", matched: false })];
+  const unchecked = [allergen({ allergenName: "Milk", classification: "unchecked", matched: false })];
+  for (const [rows, evidenceSource] of [
+    [clear, undefined],
+    [unchecked, "photo"],
+    [unchecked, "combined"],
+  ] as const) {
+    const text = explainVerdict(result([...rows], "unable_to_confirm"), { evidenceSource, aiFailed: true });
+    assert.equal(text, CHECK_INCOMPLETE, evidenceSource ?? "barcode");
+  }
+});
+
+test("aiFailed alongside a row still on the card says other allergens may be missing", () => {
+  for (const row of [
+    allergen({ allergenName: "Milk", classification: "contains", source: "ingredients" }),
+    allergen({ allergenName: "Soy", classification: "caution", source: "trace" }),
+    allergen({ allergenName: "Egg", classification: "unresolved", aiEscalated: true }),
+  ]) {
+    const rows = [row, allergen({ allergenName: "Peanut", classification: "clear", matched: false })];
+    assert.equal(explainVerdict(result(rows, "contains_allergen"), { aiFailed: true }), CHECK_INCOMPLETE_PARTIAL, row.classification);
+  }
+});
+
+test("aiFailed: false changes nothing", () => {
+  const clear = [allergen({ allergenName: "Milk", classification: "clear", matched: false })];
+  assert.equal(explainVerdict(result(clear), { aiFailed: false }), explainVerdict(result(clear)));
+});
+
+test("the failure copy shows no reason code, never says safe, and never sends anyone back to the barcode", () => {
+  for (const text of [CHECK_INCOMPLETE, CHECK_INCOMPLETE_PARTIAL, LABEL_CHECK_FAILED_RECORD_ONLY, PHOTO_CHECK_FAILED]) {
+    assert.doesNotMatch(text, /_|api|key|spend|cap|error|unparseable|request/i, text);
+    assert.doesNotMatch(text, /\bsafe\b/i, text);
+    assert.doesNotMatch(text, /No listed allergens/i, text);
+    assert.match(text, /check the label yourself/i, text);
+  }
+  assert.doesNotMatch(PHOTO_CHECK_FAILED, /barcode/i);
+});
+
+// Path D: a clean product record, then the label photo's own check failed. The headline is the
+// record's, so the sentence says that — and only there.
+test("a clean product record with a failed label check says the result is from the record only", () => {
+  const clear = [allergen({ allergenName: "Milk", classification: "clear", matched: false })];
+  assert.equal(
+    explainVerdict(result(clear, "safe"), { evidenceSource: "combined", aiFailed: true }),
+    LABEL_CHECK_FAILED_RECORD_ONLY,
+  );
+});
+
+test("the record-only sentence appears nowhere else", () => {
+  const clear = [allergen({ allergenName: "Milk", classification: "clear", matched: false })];
+  const unchecked = [allergen({ allergenName: "Milk", classification: "unchecked", matched: false })];
+  const contains = [allergen({ allergenName: "Milk", classification: "contains", source: "ingredients" })];
+  const cases: [string, MergeResult, Parameters<typeof explainVerdict>[1]][] = [
+    ["barcode, failed", result(clear, "unable_to_confirm"), { aiFailed: true }],
+    ["photo, failed", result(unchecked, "unable_to_confirm"), { evidenceSource: "photo", aiFailed: true }],
+    ["combined, failed, no clean record", result(unchecked, "unable_to_confirm"), { evidenceSource: "combined", aiFailed: true }],
+    ["combined, failed, a row on the card", result(contains, "contains_allergen"), { evidenceSource: "combined", aiFailed: true }],
+    ["combined, check finished", result(clear, "safe"), { evidenceSource: "combined" }],
+    ["barcode, check finished", result(clear, "safe"), {}],
+  ];
+  for (const [name, merged, options] of cases) {
+    assert.notEqual(explainVerdict(merged, options), LABEL_CHECK_FAILED_RECORD_ONLY, name);
   }
 });

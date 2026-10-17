@@ -14,7 +14,35 @@ export type ExplainVerdictOptions = {
    *  a real contains/caution/unresolved finding is exactly as real from a photo as from a barcode
    *  (rule 2: escalation only), so those branches are untouched regardless of this option. */
   evidenceSource?: "photo" | "combined";
+  /** The AI reasoning step failed or never ran (no key, spend cap, API error, bad response). The
+   *  verdict is already fail-closed (mergeVerdict.ts); this only stops the sentence under it reading
+   *  like a clean result — or, on a photo, blaming the photo. Which failure it was stays server-side
+   *  (verdict_explanations.failure_reason, and the log line in aiFailureLog.ts), never on the card. */
+  aiFailed?: boolean;
 };
+
+// The AI step failed and nothing on the card is a finding. Under "Unable to confirm", without
+// "No listed allergens … were found", which read as a clean result for a week in October 2026 while
+// the production key was expired. "anyone", not "you": the profile is usually a child's.
+export const CHECK_INCOMPLETE =
+  "We couldn't finish checking the ingredients. Check the label yourself before anyone eats this.";
+
+// The AI step failed, but the keyword match still found something, and its rows are on the card.
+// Those rows are real; the gap is every allergen the check never got to.
+export const CHECK_INCOMPLETE_PARTIAL =
+  "We couldn't finish checking the ingredients, so other allergens may not be shown here. Check the label yourself.";
+
+// Path D only: the product record's own check finished clean, then the label photo's check failed.
+// The headline is the record's "No listed allergens found" (a label can only escalate, never block),
+// so the sentence under it says where that result came from rather than "couldn't finish checking
+// the ingredients", which reads as if the headline itself were unchecked.
+export const LABEL_CHECK_FAILED_RECORD_ONLY =
+  "We couldn't check your photo of the label. The result above is from the product record only — check the label yourself.";
+
+// The photo-reading call itself failed (Paths C and D). Says nothing about the photo, because nothing
+// is known about it. No "scan the barcode" either: a barcode with no data is often how the person
+// got here, so that advice sends them in a loop.
+export const PHOTO_CHECK_FAILED = "Try again in a few minutes. Until then, check the label yourself.";
 
 // The names of which allergens are unchecked live in the client's own grouped block (Scan.tsx),
 // which has the profile label and can list them plainly — this headline sentence stays generic on
@@ -71,6 +99,18 @@ export function explainVerdict(merged: MergeResult, options: ExplainVerdictOptio
   // text or cited span — so a sentence restating them ("Contains Peanut and Tree nut") is a second
   // copy of the rows on a card read in three seconds. What rows can't say: why an allergen couldn't
   // be resolved, why nothing was found, and why nothing could be checked.
+
+  // A failed check outranks everything below: every other sentence here describes what a finished
+  // check found, and this one didn't finish. Rows still on the card (a keyword hit, or an unresolved
+  // term from a barcode's earlier, successful check on a combined scan) get the partial wording.
+  if (options.aiFailed) {
+    const shownRows = merged.matchedAllergens.some(
+      (a) => a.classification === "contains" || a.classification === "caution" || a.classification === "unresolved",
+    );
+    if (shownRows) return CHECK_INCOMPLETE_PARTIAL;
+    if (options.evidenceSource === "combined" && merged.verdict === "safe") return LABEL_CHECK_FAILED_RECORD_ONLY;
+    return CHECK_INCOMPLETE;
+  }
 
   // First, even alongside a positive finding: the row says "couldn't confirm", only this says why.
   const unresolved = merged.matchedAllergens.filter((a) => a.classification === "unresolved");

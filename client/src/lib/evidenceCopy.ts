@@ -32,6 +32,55 @@ export function onlyUncheckedGaps(matched: Pick<MatchedAllergen, "classification
   );
 }
 
+type CardScan = Pick<ScanResult, "explanation" | "ingredient_check_incomplete" | "matched_allergens">;
+
+/** Whether the server's sentence leads the card. Normally it's dropped when it's only the generic
+ *  "some allergens couldn't be checked" line, because the grouped note says it more specifically. When
+ *  the check didn't finish, the sentence is the one thing that says so, and always shows. */
+export function showsExplanation(scan: CardScan, shown: Pick<MatchedAllergen, "classification">[]): boolean {
+  if (!scan.explanation) return false;
+  if (scan.ingredient_check_incomplete) return true;
+  return !(onlyUncheckedGaps(scan.matched_allergens) && shown.some((m) => m.classification === "unchecked"));
+}
+
+/** A row the card renders as a finding — the same filter as the card's allergen rows. */
+function isShownRow(m: Pick<MatchedAllergen, "classification">): boolean {
+  return m.classification !== "clear" && m.classification !== "unchecked";
+}
+
+/** When the check didn't finish but a finding is on the card, the "couldn't finish" sentence goes
+ *  under the rows, muted: the rows are what to act on, and the sentence is about what's missing
+ *  beside them. With no finding on the card it leads, as the only thing the card has to say. */
+export function explanationAfterRows(
+  scan: Pick<ScanResult, "ingredient_check_incomplete">,
+  shown: Pick<MatchedAllergen, "classification">[],
+): boolean {
+  return Boolean(scan.ingredient_check_incomplete) && shown.some(isShownRow);
+}
+
+/** The words before the "Photograph the ingredients label" button, or null for the button alone.
+ *  When the check didn't finish, the missing-data sentence ("The product data couldn't check the
+ *  rest of …") goes: the card already says why the check fell short, and a second sentence would
+ *  give a different cause and remedy. The button stays either way. */
+export function photoOfferLead(
+  decision: EvidenceDecision | null | undefined,
+  profileLabel: string | null,
+  checkIncomplete: boolean | undefined,
+): string | null {
+  if (decision?.photo === "required") return "We couldn't check this against a photo yet.";
+  if (decision?.photo === "prompted" && decision.reason === "severe_allergen") {
+    return "This profile has a severe allergen on file — for extra confidence,";
+  }
+  if (checkIncomplete) return null;
+  return photoOfferCopy(decision, profileLabel);
+}
+
+/** The grouped "couldn't check … against this photo" note. Left out when the check didn't finish:
+ *  it would blame the photo for what was a failed check, beside a sentence that already says so. */
+export function showsUncheckedNote(scan: Pick<ScanResult, "ingredient_check_incomplete">): boolean {
+  return !scan.ingredient_check_incomplete;
+}
+
 /** One grouped line for every unchecked allergen. When it stands in for the explanation it leads
  *  with the limit, as that sentence did — a parent skimming must hit "Not confirmed" first, and
  *  never the word "safe", even negated (Prof. Yoest's Oct 1 directive). The

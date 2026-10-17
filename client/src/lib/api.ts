@@ -374,6 +374,10 @@ export type ScanResult = {
   source: "barcode" | "label_photo" | "manual" | "combined";
   confidence: Confidence | null;
   explanation: string | null;
+  // The AI step failed (or, on a photo, the photo-reading call did), so the check didn't finish.
+  // The verdict is already fail-closed; this decides which sentence the card leads with. Never says
+  // why — the reason stays server-side. Absent on history rows and on a discarded combine.
+  ingredient_check_incomplete?: boolean;
   created_at: string;
   // `result`/`matched_allergens` above are always the engine's own verdict. `effective` is set
   // only when a community or circle report escalated it — the card headlines `effective` and
@@ -536,6 +540,7 @@ export type CombineOutcome =
       matched_allergens: MatchedAllergen[];
       // null when the rows say it all (server explainVerdict).
       explanation: string | null;
+      ingredient_check_incomplete: boolean;
       evidence: CombinedEvidence;
       extracted_text: string;
       effective: { result: Verdict; matched_allergens: MatchedAllergen[] } | null;

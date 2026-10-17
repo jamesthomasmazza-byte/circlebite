@@ -5,7 +5,8 @@ import { computeVerdict, hasUsableData, type ProductForMatching, type Verdict } 
 import { loadProfileAllergens } from "../matcher/profileAllergens.js";
 import type { MatchedAllergenLike } from "../corrections/applyCorrections.js";
 import { applyCircleEscalationsIfEnabled, publicCircleReports, type AppliedCircleEscalation } from "../corrections/circleEscalations.js";
-import { explainVerdict } from "./explainVerdict.js";
+import { logAiFailure } from "./aiFailureLog.js";
+import { explainVerdict, PHOTO_CHECK_FAILED } from "./explainVerdict.js";
 import { extractLabel as defaultExtractLabel, type ExtractLabelDeps } from "./extractLabel.js";
 import { mergeVerdict } from "./mergeVerdict.js";
 import { reasonVerdict as defaultReasonVerdict, type ReasonVerdictDeps } from "./reasonVerdict.js";
@@ -49,6 +50,7 @@ export type LabelScanResult = {
   extracted_text: string | null;
   extraction_legible: boolean;
   extraction_complete: boolean;
+  ingredient_check_incomplete: boolean;
   effective: { result: Verdict; matched_allergens: unknown } | null;
   community_reports: { allergenName: string; reporterCount: number }[];
   pending_circle_reports: Pick<AppliedCircleEscalation, "allergenName" | "reporters">[];
@@ -102,7 +104,8 @@ export async function runLabelScan(input: LabelScanInput, deps: LabelScanDeps = 
   // transcribe perfectly cleanly while a dropped allergen line leaves no trace anywhere
   // downstream, so it is never treated as a lesser case than an illegible one.
   if (!extraction.ok) {
-    explanation = "We couldn't read that photo right now. Try again, or enter the barcode if you have one.";
+    logAiFailure("C", "label_reading", extraction.failureReason);
+    explanation = PHOTO_CHECK_FAILED;
   } else if (!extraction.legible) {
     explanation = "We couldn't read that label clearly. Try better lighting, a closer photo, or flatten the package.";
   } else if (!extraction.complete) {
@@ -125,11 +128,12 @@ export async function runLabelScan(input: LabelScanInput, deps: LabelScanDeps = 
       { allergens, ingredientsText: extraction.ingredientsText, deterministicHits: deterministicAllergens },
       deps.reasonVerdictDeps,
     );
+    if (aiResult.failed) logAiFailure("C", "reasoning", aiResult.failureReason);
     const merged = mergeVerdict(deterministicAllergens, aiResult, allergens, { photoSourced: true });
     verdict = merged.verdict;
     confidence = merged.confidence;
     matchedAllergens = merged.matchedAllergens;
-    explanation = explainVerdict(merged, { evidenceSource: "photo" });
+    explanation = explainVerdict(merged, { evidenceSource: "photo", aiFailed: aiResult.failed });
   }
 
   const { community, communityApplied } = await applyCommunityCorrectionsIfEnabled(
@@ -228,6 +232,9 @@ export async function runLabelScan(input: LabelScanInput, deps: LabelScanDeps = 
     extracted_text: extraction.ok ? extraction.ingredientsText : null,
     extraction_legible: extraction.ok ? extraction.legible : false,
     extraction_complete: extraction.ok ? extraction.complete : false,
+    // Either AI call failed: reading the photo, or reasoning over what it read. An illegible or
+    // cut-off read is not a failure — the photo was checked, and its own copy says why it fell short.
+    ingredient_check_incomplete: !extraction.ok || (aiResult?.failed ?? false),
     effective: effective && { result: effective.result as Verdict, matched_allergens: effective.matchedAllergens },
     community_reports: publicCommunityReports(community?.applied ?? []),
     pending_circle_reports: publicCircleReports(circle?.applied ?? []),

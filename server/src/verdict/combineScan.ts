@@ -6,7 +6,8 @@ import { HttpError } from "../lib/httpError.js";
 import { computeVerdict, type ProductForMatching, type ProfileAllergen, type Verdict } from "../matcher/match.js";
 import { loadProfileAllergens } from "../matcher/profileAllergens.js";
 import { compareProductIdentity } from "./productIdentity.js";
-import { explainVerdict } from "./explainVerdict.js";
+import { logAiFailure } from "./aiFailureLog.js";
+import { explainVerdict, PHOTO_CHECK_FAILED } from "./explainVerdict.js";
 import { extractLabel as defaultExtractLabel, type ExtractLabelDeps } from "./extractLabel.js";
 import { mergeVerdict, type Confidence, type MergedAllergenDetail } from "./mergeVerdict.js";
 import { reconcileEvidence, type ReconciledAllergenDetail } from "./reconcileEvidence.js";
@@ -54,6 +55,8 @@ export type CombineOutcome =
       matched_allergens: ReconciledAllergenDetail[];
       // null when the rows say it all (explainVerdict).
       explanation: string | null;
+      // The label side's AI reasoning call failed. No reason code: that stays in verdict_explanations.
+      ingredient_check_incomplete: boolean;
       evidence: CombinedEvidence;
       extracted_text: string;
       effective: { result: string; matched_allergens: unknown } | null;
@@ -220,8 +223,9 @@ export async function combineLabelScan(input: CombineScanInput, deps: CombineSca
       ],
     );
 
+    if (!extraction.ok) logAiFailure("D", "label_reading", extraction.failureReason);
     const explanation = !extraction.ok
-      ? "We couldn't read that photo right now. Try again."
+      ? PHOTO_CHECK_FAILED
       : !extraction.legible
         ? "We couldn't read that label clearly. Try better lighting, a closer photo, or flatten the package."
         : "We could read part of the label, but the ingredients statement looked cut off — make sure the whole " +
@@ -254,7 +258,11 @@ export async function combineLabelScan(input: CombineScanInput, deps: CombineSca
   // as "the label is the sole evidence". Claiming the product record was checked in that case is the
   // same over-claiming the identity work fixed in the other direction (BACKLOG.md Week 9).
   const evidence: CombinedEvidence = scan.matched_allergens.length > 0 ? "barcode_and_label" : "label_only";
-  const explanation = explainVerdict(reconciled, { evidenceSource: evidence === "label_only" ? "photo" : "combined" });
+  if (aiResult.failed) logAiFailure("D", "reasoning", aiResult.failureReason);
+  const explanation = explainVerdict(reconciled, {
+    evidenceSource: evidence === "label_only" ? "photo" : "combined",
+    aiFailed: aiResult.failed,
+  });
 
   const { community, communityApplied } = await applyCommunityCorrectionsIfEnabled(
     scan.barcode,
@@ -330,6 +338,7 @@ export async function combineLabelScan(input: CombineScanInput, deps: CombineSca
     confidence: reconciled.confidence,
     matched_allergens: reconciled.matchedAllergens,
     explanation,
+    ingredient_check_incomplete: aiResult.failed,
     evidence,
     extracted_text: extraction.ingredientsText,
     effective: effective && { result: effective.result, matched_allergens: effective.matchedAllergens },

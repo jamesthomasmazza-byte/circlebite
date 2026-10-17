@@ -5,6 +5,7 @@ import { recordCorrection } from "../corrections/recordCorrection.js";
 import { pool } from "../db/pool.js";
 import { env } from "../env.js";
 import { combineLabelScan, discardLabelEvidence } from "./combineScan.js";
+import { LABEL_CHECK_FAILED_RECORD_ONLY, PHOTO_CHECK_FAILED } from "./explainVerdict.js";
 import type { AiClientResult, AiVisionClientResult } from "./types.js";
 
 // Real Postgres, same discipline as labelScan.test.ts — this is mostly insert/branch/guard logic
@@ -172,6 +173,59 @@ test("an unreadable photo leaves the original scan untouched", async () => {
   assert.equal(outcome.status, "unreadable");
   const after1 = await fetchScan(original.id);
   assert.deepEqual(after1, original);
+});
+
+test("a failed photo-reading call leaves the scan untouched and says to try again, logging only the reason", async (t) => {
+  const logged = t.mock.method(console, "error", () => {});
+  const original = await insertBarcodeScan({
+    barcode: "1111111111113",
+    productName: "Another Product",
+    result: "safe",
+    matchedAllergens: [{ allergenName: "Milk", matched: false, source: null, severity: "severe", classification: "clear" }],
+  });
+
+  const outcome = await combineLabelScan(
+    { scanId: original.id, viewerId: USER_A, imageBuffer: IMAGE, mimeType: "image/jpeg" },
+    { extractLabelDeps: { underDailySpendCap: async () => true, callAiVision: async () => ({ ok: false, reason: "no_api_key" }) } },
+  );
+
+  assert.equal(outcome.status, "unreadable");
+  assert.equal(outcome.explanation, PHOTO_CHECK_FAILED);
+  assert.deepEqual(await fetchScan(original.id), original);
+  assert.deepEqual(logged.mock.calls.map((c) => c.arguments), [
+    ["[verdict] AI step failed", { reason: "no_api_key", path: "D", step: "label_reading" }],
+  ]);
+});
+
+test("a failed reasoning call on the label side keeps the barcode's verdict, and the card says the check didn't finish", async (t) => {
+  const logged = t.mock.method(console, "error", () => {});
+  const original = await insertBarcodeScan({
+    barcode: "3333333333335",
+    productName: "Real Product",
+    result: "safe",
+    matchedAllergens: [{ allergenName: "Milk", matched: false, source: null, severity: "severe", classification: "clear" }],
+  });
+
+  const outcome = await combineLabelScan(
+    { scanId: original.id, viewerId: USER_A, imageBuffer: IMAGE, mimeType: "image/jpeg" },
+    {
+      extractLabelDeps: fakeExtractOk(),
+      reasonVerdictDeps: { underDailySpendCap: async () => true, callAi: async () => ({ ok: false, reason: "api_error_401" }) },
+    },
+  );
+
+  assert.equal(outcome.status, "combined");
+  if (outcome.status !== "combined") throw new Error("unreachable");
+  // Escalate-only (reconcileEvidence.ts): a label side that found nothing — here because its check
+  // failed — leaves the barcode's own verdict exactly as it was, never weaker.
+  assert.equal(outcome.result, original.result);
+  assert.equal(outcome.ingredient_check_incomplete, true);
+  // The record was checked and clean; the label's check is what failed, and the sentence says so.
+  assert.equal(outcome.evidence, "barcode_and_label");
+  assert.equal(outcome.explanation, LABEL_CHECK_FAILED_RECORD_ONLY);
+  assert.deepEqual(logged.mock.calls.map((c) => c.arguments), [
+    ["[verdict] AI step failed", { reason: "api_error_401", path: "D", step: "reasoning" }],
+  ]);
 });
 
 test("matching identity: the scan is updated to source 'combined', label_stricter escalates a clear allergen, identity_mismatch is null", async () => {

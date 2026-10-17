@@ -36,8 +36,18 @@ import {
   reportOutcomeMessage,
   yourReportLine,
 } from "../lib/correctionCopy";
-import { onlyUncheckedGaps, photoOfferCopy, provenanceLine, uncheckedBasis, uncheckedNote } from "../lib/evidenceCopy";
-import { DISCLAIMER, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
+import {
+  explanationAfterRows,
+  onlyUncheckedGaps,
+  photoOfferCopy,
+  photoOfferLead,
+  provenanceLine,
+  showsExplanation,
+  showsUncheckedNote,
+  uncheckedBasis,
+  uncheckedNote,
+} from "../lib/evidenceCopy";
+import { couldntReadHeading, DISCLAIMER, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
 
 const CORRECTION_TYPE_LABEL: Record<CorrectionType, string> = {
   flag_wrong: "This allergen isn't actually in this product",
@@ -283,6 +293,7 @@ export function Scan() {
               confidence: outcome.confidence,
               matched_allergens: outcome.matched_allergens,
               explanation: outcome.explanation,
+              ingredient_check_incomplete: outcome.ingredient_check_incomplete,
               evidence: outcome.evidence,
               extracted_text: outcome.extracted_text,
               extraction_legible: true,
@@ -307,6 +318,9 @@ export function Scan() {
               confidence: outcome.confidence,
               matched_allergens: outcome.matched_allergens,
               explanation: outcome.explanation,
+              // Unknown for the restored barcode verdict: the discard reads back a snapshot, not
+              // whether that scan's own AI step failed (BACKLOG).
+              ingredient_check_incomplete: undefined,
               evidence: undefined,
               extracted_text: undefined,
               extraction_legible: undefined,
@@ -613,9 +627,11 @@ export function Scan() {
                     the next step.
                   </p>
                 ))}
-              {photoCaptureMode === "combine" && result?.evidence_decision?.photo === "prompted" && (
-                <p>{photoOfferCopy(result.evidence_decision, resultProfileLabel)}</p>
-              )}
+              {/* Not when the check didn't finish: the card already said why, and this would give a
+                  second cause ("the product data couldn't check…", or "the barcode data looks fine"). */}
+              {photoCaptureMode === "combine" &&
+                result?.evidence_decision?.photo === "prompted" &&
+                !result.ingredient_check_incomplete && <p>{photoOfferCopy(result.evidence_decision, resultProfileLabel)}</p>}
               <label>
                 Photo of the ingredients panel
                 <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handlePhotoFileChange} required />
@@ -655,7 +671,7 @@ export function Scan() {
         // nothing real to show. Standalone Path C only — a combine-mode unreadable read never
         // reaches this state at all, since it's a form-level error on the still-open capture form.
         <section>
-          <h2>Couldn't read that label</h2>
+          <h2>{couldntReadHeading(result!.ingredient_check_incomplete)}</h2>
           <p role="alert">{result!.explanation}</p>
           <button type="button" onClick={openStandalonePhotoCapture}>
             Try again
@@ -700,11 +716,11 @@ export function Scan() {
               the headline and what to actually check against the box in your hand. */}
           {/* Omitted when it's only the generic "some allergens couldn't be checked" sentence — the
               grouped note below says the same thing with the count and names. One of the two had
-              to go on a card read in three seconds in an aisle. */}
-          {result.explanation &&
-            !(onlyUncheckedGaps(result.matched_allergens) && shown.matched_allergens.some((m) => m.classification === "unchecked")) && (
-              <p>{result.explanation}</p>
-            )}
+              to go on a card read in three seconds in an aisle. Always shown when the check didn't
+              finish (showsExplanation). */}
+          {showsExplanation(result, shown.matched_allergens) && !explanationAfterRows(result, shown.matched_allergens) && (
+            <p>{result.explanation}</p>
+          )}
 
           {shown.matched_allergens.filter((m) => m.classification !== "clear" && m.classification !== "unchecked").length >
             0 && (
@@ -764,6 +780,12 @@ export function Scan() {
             </ul>
           )}
 
+          {/* The check didn't finish, but a finding is on the card: the rows lead, and this says what
+              may be missing beside them — quiet, like the circle-report line (JT, 2026-10-17). */}
+          {showsExplanation(result, shown.matched_allergens) && explanationAfterRows(result, shown.matched_allergens) && (
+            <p className="check-incomplete-note">{result.explanation}</p>
+          )}
+
           {/* 3. DISAGREEMENT — loud, but strictly after the verdict and its findings: the headline
               is still what to act on, this says why it's worth a second look at the specific rows
               above before deciding. */}
@@ -780,7 +802,7 @@ export function Scan() {
             // finding and train people to skim. Nothing is hidden; every name is still listed, just
             // together, with the "why" said once instead of once per row.
             const unchecked = shown.matched_allergens.filter((m) => m.classification === "unchecked");
-            if (unchecked.length === 0) return null;
+            if (unchecked.length === 0 || !showsUncheckedNote(result)) return null;
             const note = uncheckedNote({
               names: unchecked.map((m) => m.allergenName.toLowerCase()),
               profileLabel: profiles.find((p) => p.id === profileId)?.label ?? null,
@@ -794,14 +816,12 @@ export function Scan() {
               verdict above. */}
           {offerPhoto && (
             <p>
-              {result.evidence_decision?.photo === "required" ? (
-                <>We couldn't check this against a photo yet. </>
-              ) : result.evidence_decision?.photo === "prompted" && result.evidence_decision.reason === "severe_allergen" ? (
-                <>This profile has a severe allergen on file — for extra confidence, </>
-              ) : (
-                // Missing or thin data under a Contains card — the photo is for the other allergens.
-                <>{photoOfferCopy(result.evidence_decision, resultProfileLabel)} </>
-              )}
+              {/* Required, severe, or missing/thin data under a Contains card (the photo is for the
+                  other allergens) — or the button alone when the check didn't finish. */}
+              {(() => {
+                const lead = photoOfferLead(result.evidence_decision, resultProfileLabel, result.ingredient_check_incomplete);
+                return lead && <>{lead} </>;
+              })()}
               <button type="button" onClick={openCombinePhotoCapture}>
                 Photograph the ingredients label
               </button>
