@@ -39,7 +39,7 @@ JT's October 8 email left out, and the gap is why he asked.
     and the co-manager saw "James Mazza (owner) added Ownertest". Evidence:
     `circlebite-downgrade-history-2026-10-08.jpg` (the owner's own two edits, sent to Prof. Yoest
     on October 8) and `img/circlebite-comanager-history-2026-10-16.png` (the co-manager's two
-    entries — taken October 16; the two October 8 entries, still flagged New).
+    entries — taken October 16, 7:18 PM ET; the two October 8 entries, still flagged New).
   - *Downgrade reports, by tests only:* `server/src/profileChanges/profileChanges.test.ts`, "a
     co-manager's downgrade is recorded with who, when and the evidence, snapshotted from the report
     and scan", and the downgrade tests after it; `server/src/routes/profileChanges.test.ts`, "the
@@ -67,13 +67,22 @@ JT's October 8 email left out, and the gap is why he asked.
     the owner's dashboard showed "Changes to review — Timmy changed James Mazza's profile — 2
     updates you haven't reviewed". The profile's history showed both entries flagged New, with
     an "I've seen these" control. Evidence: `img/circlebite-owner-notice-2026-10-16.png` (the
-    dashboard, with the signed-in address redacted — taken October 16; the two October 8 entries,
-    still unreviewed) and `img/circlebite-comanager-history-2026-10-16.png` (taken October 16; the
-    two October 8 entries, still flagged New).
+    dashboard, with the signed-in address redacted — taken October 16, 7:18 PM ET; the two
+    October 8 entries, still unreviewed) and `img/circlebite-comanager-history-2026-10-16.png`
+    (taken October 16, 7:18 PM ET; the two October 8 entries, still flagged New).
   - *Downgrade reports, by tests only:* `server/src/routes/profileChanges.test.ts`, "only the
     owner can acknowledge; the banner count follows the acks". The owner's unseen-changes notice
     counts a co-manager's downgrade report (`hasDowngrade: true`), the co-manager gets no notice,
     and only the owner can acknowledge.
+- **Scope — escalations are not downgrades.** A report that adds a warning (`add_caution`) never
+  creates a change-history entry and never appears in the owner's banner, including with
+  `CIRCLE_ESCALATIONS` on. The only trigger that writes a report into `profile_changes` fires on
+  `remove_caution` alone (migration 0037, `profile_changes_downgrades`), and the banner counts
+  `profile_changes` rows only (`server/src/profileChanges/acks.ts`, `loadUnseenChanges`).
+  `CIRCLE_ESCALATIONS` changes only what the circle sees on a scan
+  (`server/src/corrections/circleEscalations.ts`) and writes nothing to the history. Test:
+  `profileChanges.test.ts`, "a wrong_product downgrade is recorded with no allergen; an escalation
+  is not recorded at all".
 - **Closed:** October 8, 2026, for profile edits. Downgrade reports close on the same follow-up
   as Condition 1.
 
