@@ -441,6 +441,12 @@ it is the least-worked area. Treat this whole section as the priority block it i
       - [ ] **Record circle escalations on the scan row**, as `community_corrections_applied`
         does for community reports, so the audit trail says what a card showed at scan time.
         Today the live card shows them and nothing records it.
+      - [ ] **An escalation never reaches the owner's history or banner**, with `CIRCLE_ESCALATIONS`
+        on or off. Only `remove_caution` writes a `profile_changes` entry (migration 0037's
+        trigger), and the banner counts only those (`acks.ts`). With the switch on, the owner sees a
+        co-manager's pending warning on the card, but nothing tells them one was filed. Open
+        question (JT): raise it with Prof. Yoest? His Condition 2 names downgrades only
+        (`docs/approvals/conditions.md`, Condition 2's scope note).
 - [ ] **A test that fails when a doc states a corroboration threshold the code doesn't.** Found
       2026-10-13. Six times in two weeks a doc claimed more than the code: the README's owner-only
       downgrade line, "1 to add" in `docs/principles.md`, the review-queue comment, the
@@ -490,6 +496,16 @@ it is the least-worked area. Treat this whole section as the priority block it i
       doesn't say which nut. That's a hierarchy, not a synonym cluster, and neither allergen key
       (migration 0043) can express it: today "Walnut" and "Tree nuts" are separate claims in both
       directions. Not for now (JT, 2026-10-07).
+      - *Observed on production, 2026-10-16, just before 7:15 PM ET — a different problem, on the
+        card:* a barcode scan of a chewy bar, by Timmy (co-manager) on James Mazza's profile, missed
+        almonds under the profile's tree-nut allergen, which displays as "treenuts". Peanut on the
+        same card read "listed on the product record", so it most likely took Path A (tagged
+        product). **Not yet traced.** Two hypotheses, neither checked: (a) Path A matches only the
+        product's allergen tags, and the record's tags may lack tree nuts even if almonds are in the
+        ingredients; (b) "treenuts", one word, may not map to the tree-nut family — the matcher's
+        aliases are "tree nut"/"tree nuts" (`synonyms.ts:59`) — the same class as the Peanut/peanut
+        bug. The barcode is in the production `scans` table. The keyword list itself isn't the
+        cause: almond/almonds are under tree nuts in `372dd6e` and now.
 - [ ] **Prof. Yoest's Oct 1-2 conditions on the overrule widening.**
       `docs/approvals/2026-10-02-yoest-overrule-conditions.md`. He approved owner-or-co-manager
       downgrades — "your reading is better than my wording" — and attached two conditions, a judge
@@ -529,6 +545,13 @@ it is the least-worked area. Treat this whole section as the priority block it i
         "Changes to review". Then record it in `docs/approvals/conditions.md`. This also exercises
         the `allergen_fold_key`/`allergen_family_key` columns under migration 0044's NOT NULL, which
         nothing live has written since that deploy.
+        *2026-10-16, 7:15 PM ET:* the report filed on production was an **escalation** —
+        `flag_missing` → `add_caution`, "treenuts" — not this. Still open. A downgrade is `flag_wrong`
+        or `wrong_product` → `remove_caution`. The owner should see a `downgrade_reported` entry
+        naming the co-manager, the time, the note and the label photo, and the "Changes to review"
+        banner counting it, with only the owner able to acknowledge. That escalation did write a
+        `product_corrections` row, so 0044's keys have had one live write — an `add_caution` one;
+        a `remove_caution` write still hasn't happened.
       - [x] **Automated Postgres backups.** His operational note, and he's right that it belongs
         before real circles depend on the data — Postgres is on the same box as the app, so losing
         the box currently loses everything. `pg_dump` on a timer with off-box storage; decide where
@@ -584,6 +607,11 @@ it is the least-worked area. Treat this whole section as the priority block it i
         **Sent 2026-10-05**, to both, as a pwpush link set to expire after **two months or four
         views, whichever comes first** — around Dec 6 at the latest, sooner if the views are used.
         The account itself doesn't expire.
+      - [ ] **Answer "define corroborated" by email.** His Oct 6 challenge
+        (`2026-10-06-yoest-corroboration-challenge.md`) asked how many reports, from how many
+        distinct families, before an escalation fires. Answered in the README on Oct 7 (`4e622f2`,
+        two families) and never by email. Not in the Oct 19 email as drafted (JT, 2026-10-17). Open
+        in `docs/approvals/conditions.md` too, which already says "Never answered to him by email".
       - [ ] **Send a fresh judge-credentials link on Monday of judging week (Nov 16).**
         Judging moved to Friday Nov 20 (Oct 14 email), so that Monday is now Nov 16, not Nov 23.
         Promised in
