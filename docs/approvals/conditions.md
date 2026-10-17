@@ -129,18 +129,25 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
 - **Source:** October 2, 2026, 12:13 PM. He calls it "a small operational note". JT's October 8
   email first called it "Condition 4".
 - **Status: closed.** Prof. Yoest accepted it on October 9.
-- **How it was verified:** the first restore test passed on the box on the evening of October 5
-  (Eastern). It restored into a scratch database with no privileges on production, then queried
-  it: 35 migrations, and all 3 referenced correction photos present. The S3 copy was checked
-  byte-identical from the Mac, and `backup-status.sh` reported OK on all three lines. Records:
-  `docs/journal.md`, 2026-10-05, "Backups that can tell you they've stopped"; `BACKLOG.md`'s
-  backups item; runbook `docs/server-setup.md` §17. A weekly timer repeats the restore test.
+- **How it was verified:**
+  - *First restore test, October 5 (Eastern).* It passed on the box that evening. It restored into
+    a scratch database with no privileges on production, then queried it: 35 migrations, and all
+    3 referenced correction photos present. The S3 copy was checked byte-identical from the Mac,
+    and `backup-status.sh` reported OK on all three lines. Records: `docs/journal.md`, 2026-10-05,
+    "Backups that can tell you they've stopped"; `BACKLOG.md`'s backups item; runbook
+    `docs/server-setup.md` §17. A weekly timer repeats the restore test.
+  - *First unattended run, October 11, 2026, 08:00 UTC.* The weekly timer restored the newest
+    backup set, `circlebite-20261011T073020Z` (taken 07:30 UTC), with no one at the keyboard:
+    checksums matched, the schema was current at 44 migrations, all 4 referenced correction photos
+    were in the tarball, and it reported `restore-test: PASSED`, then dropped the scratch database.
+    Full output, with the command that pulled it: `docs/evidence/2026-10-11-restore-test.txt`.
 - **Closed:** October 5, 2026, Eastern. That was already October 6 in UTC, which is the date the
   October 8 email gave. The journal entry that records the pass was committed at 22:08 ET on
   October 5.
 - **Still owed:** the evidence he asked for on October 6. The October 8 email described the
-  restore but attached none. Not yet sent; going in the October 19 email. See "Corrections owed",
-  item 4.
+  restore but attached none. The evidence is the October 11 unattended run
+  (`docs/evidence/2026-10-11-restore-test.txt`). Not yet sent; going in the October 19 email. See
+  "Corrections owed", item 4.
 
 ---
 
@@ -170,6 +177,6 @@ The October 8 email, which his October 9 acceptance rests on, claimed more than 
    co-manager's changes were on a different profile, and their screenshots were not sent.
 3. "The restore was verified end to end on October 6." That was October 5, Eastern.
 4. **Evidence of one successful test restore, asked for on October 6: none was sent.** Not yet
-   sent; going in the October 19 email. The repo holds only the journal's summary of the October 5
-   run. The run's own output is in the box's systemd journal (`circlebite-restore-test`), not in
-   the repo.
+   sent; going in the October 19 email. The evidence is the October 11 unattended run, with its
+   full output in `docs/evidence/2026-10-11-restore-test.txt`. For the October 5 run, the repo
+   holds only the journal's summary.

@@ -1,0 +1,24 @@
+Unattended weekly restore test, production, 2026-10-11 (see docs/approvals/conditions.md, Condition 4)
+
+$ journalctl -u circlebite-restore-test --since "2026-10-11" --until "2026-10-12" --no-pager -o short-iso
+2026-10-11T08:00:20+00:00 ip-172-31-24-228 systemd[1]: Starting circlebite-restore-test.service - CircleBite weekly restore test of the newest backup...
+2026-10-11T08:00:20+00:00 ip-172-31-24-228 restore-test.sh[194052]: restore-test: newest set circlebite-20261011T073020Z
+2026-10-11T08:00:20+00:00 ip-172-31-24-228 restore-test.sh[194052]: restore-test: checksums match
+2026-10-11T08:00:21+00:00 ip-172-31-24-228 restore-test.sh[194052]: restore-test: restored into circlebite_restoretest_20261011080020
+2026-10-11T08:00:21+00:00 ip-172-31-24-228 restore-test.sh[194052]:   table                    rows
+2026-10-11T08:00:21+00:00 ip-172-31-24-228 restore-test.sh[194052]:   users                    24
+2026-10-11T08:00:21+00:00 ip-172-31-24-228 restore-test.sh[194052]:   allergen_profiles        18
+2026-10-11T08:00:21+00:00 ip-172-31-24-228 restore-test.sh[194052]:   allergens                37
+2026-10-11T08:00:21+00:00 ip-172-31-24-228 restore-test.sh[194052]:   profile_managers         9
+2026-10-11T08:00:21+00:00 ip-172-31-24-228 restore-test.sh[194052]:   follow_relationships     13
+2026-10-11T08:00:21+00:00 ip-172-31-24-228 restore-test.sh[194052]:   scans                    78
+2026-10-11T08:00:22+00:00 ip-172-31-24-228 restore-test.sh[194052]:   product_corrections      4
+2026-10-11T08:00:22+00:00 ip-172-31-24-228 restore-test.sh[194052]:   nps_responses            25
+2026-10-11T08:00:22+00:00 ip-172-31-24-228 restore-test.sh[194052]:   judge-seed users         18
+2026-10-11T08:00:22+00:00 ip-172-31-24-228 restore-test.sh[194052]:   migrations: schema current (44 migrations)
+2026-10-11T08:00:22+00:00 ip-172-31-24-228 restore-test.sh[194052]:   photos:     4 referenced, 4 in the tarball, 0 already missing on the live box when backed up
+2026-10-11T08:00:22+00:00 ip-172-31-24-228 restore-test.sh[194052]: restore-test: PASSED — circlebite-20261011T073020Z restores and checks out
+2026-10-11T08:00:22+00:00 ip-172-31-24-228 restore-test.sh[194052]: restore-test: dropped circlebite_restoretest_20261011080020
+2026-10-11T08:00:22+00:00 ip-172-31-24-228 systemd[1]: circlebite-restore-test.service: Deactivated successfully.
+2026-10-11T08:00:22+00:00 ip-172-31-24-228 systemd[1]: Finished circlebite-restore-test.service - CircleBite weekly restore test of the newest backup.
+2026-10-11T08:00:22+00:00 ip-172-31-24-228 systemd[1]: circlebite-restore-test.service: Consumed 1.303s CPU time.
