@@ -905,3 +905,9 @@ Out of scope per `CONTEST_RULES.md` §7 — do not start these before judging en
 - Migrating real alpha tester data
 - Decide a retention rule for corrections and their photos — currently unbounded on purpose
   (`docs/coppa.md` §2.7). Needs its own number and rationale, not invented mid-build.
+- Say "the check couldn't finish" outside the live card too (`89b1e39` did the live card only).
+  Scan history still shows a failed AI check the old way — a photo scan reads "couldn't check …
+  against this photo" — because history rows don't carry whether the check failed; it needs a join
+  on `verdict_explanations.failure_reason` / `label_extractions.failure_reason`. Same gap in "That
+  wasn't this product": the restored barcode verdict is re-explained from a snapshot that doesn't
+  record whether that scan's own AI step failed (`combineScan.ts` `discardLabelEvidence`).
