@@ -22,8 +22,9 @@ export type ExplainVerdictOptions = {
 };
 
 // The AI step failed and nothing on the card is a finding. Under "Unable to confirm", without
-// "No listed allergens … were found", which read as a clean result for a week in October 2026 while
-// the production key was expired. "anyone", not "you": the profile is usually a child's.
+// "No listed allergens … were found", which reads as a clean result. That is what a scan would have
+// shown while the production key was expired, Oct 10–16, 2026, though most likely none ran.
+// "anyone", not "you": the profile is usually a child's.
 export const CHECK_INCOMPLETE =
   "We couldn't finish checking the ingredients. Check the label yourself before anyone eats this.";
 

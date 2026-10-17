@@ -136,10 +136,13 @@ To read it back: `cat ~/circlebite/.env`.
 ## 6a. Rotate the Anthropic API key
 
 Keys expire, and an expired key doesn't break the app — every AI step fails closed to "Unable to
-confirm", which is correct and looks like nothing is wrong. The key "circlebite prod" expired
-Oct 10, 2026, and AI-dependent scans failed that way until Oct 16 with nothing on the card or in the
-logs to say why. From `89b1e39` on (not yet deployed as of Oct 17), the card says the check couldn't
-finish, and each failure logs `[verdict] AI step failed` with its reason code.
+confirm", which is correct and looks like nothing is wrong. The key "circlebite prod" was expired
+from Oct 10 to Oct 16, 2026. No AI call appears in the service journal for that window, so most
+likely no scan was affected; nothing announced the expiry either. Before `89b1e39`, a scan in that
+state would have shown a clean-looking card, and only an API error (such as a rejected key) was
+logged — a missing key or the spend cap wasn't. From `89b1e39` on (not yet deployed as of Oct 17),
+the card says the check couldn't finish, and every failure logs `[verdict] AI step failed` with its
+reason code.
 
 **Current key:** "circlebite prod 2026-10", expires **Dec 31, 2026**. Rotate before then. The value
 is never written anywhere but `~/circlebite/.env` — not this file, not the journal, not a commit.

@@ -1,6 +1,8 @@
 // One line per failed or skipped AI step, so an outage shows up in `journalctl -u circlebite` the
-// day it starts. The production key was expired Oct 10–16, 2026, and nothing on the card or in the
-// logs said so: aiClient.ts only logs API and parse errors, never a missing key or the spend cap.
+// day it starts. The production key was expired Oct 10–16, 2026. No AI call appears in the journal
+// for that window, so most likely no scan was affected, but had one been, the card would have looked
+// clean, and only an expired or rejected key would have logged: aiClient.ts logs API and parse
+// errors, never a missing key or the spend cap (docs/journal.md, 2026-10-16/17).
 //
 // The reason code and where it happened, nothing else: no key, no label or ingredient text, nothing
 // about the person or profile. The codes are aiClient.ts's and the spend guard's own fixed set
