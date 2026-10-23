@@ -16,13 +16,56 @@ test("returns null when the user has no corrections on this scan — no override
   assert.equal(applyUserCorrections(s, []), null);
 });
 
-test("flag_wrong clears the targeted allergen and recomputes the result", () => {
+// docs/verdict-engine.md principle 6, amended 2026-10-23: a removal is noted on the reporter's own
+// row, never applied to it. One pending report had turned this card green.
+test("flag_wrong marks the allergen as disputed and changes neither the row nor the headline", () => {
   const s = scan("contains_allergen", [{ allergenName: "Milk", severity: "severe", classification: "contains" }]);
   const effective = applyUserCorrections(s, [
     correction({ correctionType: "flag_wrong", direction: "remove_caution", allergen: "Milk" }),
   ]);
-  assert.equal(effective?.result, "safe");
-  assert.equal(effective?.matchedAllergens[0].classification, "clear");
+  assert.equal(effective?.result, "contains_allergen");
+  assert.equal(effective?.matchedAllergens[0].classification, "contains");
+  assert.equal(effective?.matchedAllergens[0].disputedByYou, "pending");
+});
+
+test("a removal corroborated by three families is still only noted — no reviewer has accepted it", () => {
+  const s = scan("may_contain_caution", [{ allergenName: "Sesame", severity: "moderate", classification: "caution" }]);
+  const effective = applyUserCorrections(s, [
+    correction({ correctionType: "flag_wrong", direction: "remove_caution", allergen: "Sesame", status: "corroborated" }),
+  ]);
+  assert.equal(effective?.result, "may_contain_caution");
+  assert.equal(effective?.matchedAllergens[0].classification, "caution");
+  assert.equal(effective?.matchedAllergens[0].disputedByYou, "corroborated");
+});
+
+test("no removal that hasn't been rejected can lower the headline or any row, in any starting state", () => {
+  const verdicts = ["contains_allergen", "may_contain_caution", "unable_to_confirm", "safe"];
+  const classes = ["contains", "caution", "unresolved", "clear", "unchecked"] as const;
+  for (const result of verdicts) {
+    for (const a of classes) {
+      for (const b of classes) {
+        const rows = [
+          { allergenName: "Milk", severity: "severe", classification: a },
+          { allergenName: "Egg", severity: "mild", classification: b },
+        ];
+        for (const status of ["pending", "corroborated"] as const) {
+          for (const target of ["Milk", "Egg", "Peanut"]) {
+            const effective = applyUserCorrections(scan(result, rows), [
+              correction({ correctionType: "flag_wrong", direction: "remove_caution", allergen: target, status }),
+            ]);
+            const where = `${result} / ${a},${b} / ${status} on ${target}`;
+            assert.equal(effective?.result, result, where);
+            if (result !== "safe") assert.notEqual(effective?.result, "safe", where);
+            assert.deepEqual(
+              effective?.matchedAllergens.map((m) => m.classification),
+              [a, b],
+              where,
+            );
+          }
+        }
+      }
+    }
+  }
 });
 
 test("flag_missing sets the allergen straight to 'contains', never 'caution' — direct ingredient, not trace", () => {
@@ -69,7 +112,8 @@ test("multiple corrections on different allergens each apply independently", () 
   ]);
   const milk = effective?.matchedAllergens.find((m) => m.allergenName === "Milk");
   const soy = effective?.matchedAllergens.find((m) => m.allergenName === "Soy");
-  assert.equal(milk?.classification, "clear");
+  assert.equal(milk?.classification, "contains");
+  assert.equal(milk?.disputedByYou, "pending");
   assert.equal(soy?.classification, "contains");
   assert.equal(effective?.result, "contains_allergen"); // Soy's new "contains" still drives the rollup
 });
@@ -105,7 +149,20 @@ test("the last correction in report order wins if the same user somehow has both
     correction({ correctionType: "flag_missing", direction: "add_caution", allergen: "Milk", createdAt: "2026-09-10T00:00:00Z" }),
     correction({ correctionType: "flag_wrong", direction: "remove_caution", allergen: "Milk", createdAt: "2026-09-10T00:01:00Z" }),
   ]);
-  assert.equal(effective?.matchedAllergens[0].classification, "clear");
+  // The later removal is noted on the row, which stays "contains".
+  assert.equal(effective?.matchedAllergens[0].classification, "contains");
+  assert.equal(effective?.matchedAllergens[0].disputedByYou, "pending");
+});
+
+test("an addition after a removal on the same allergen lifts the dispute mark", () => {
+  const s = scan("may_contain_caution", [{ allergenName: "Milk", severity: "severe", classification: "caution" }]);
+  const effective = applyUserCorrections(s, [
+    correction({ correctionType: "flag_wrong", direction: "remove_caution", allergen: "Milk", createdAt: "2026-09-10T00:00:00Z" }),
+    correction({ id: "c2", correctionType: "flag_missing", direction: "add_caution", allergen: "Milk", createdAt: "2026-09-10T00:01:00Z" }),
+  ]);
+  assert.equal(effective?.matchedAllergens[0].classification, "contains");
+  assert.equal(effective?.matchedAllergens[0].disputedByYou, undefined);
+  assert.equal(effective?.result, "contains_allergen");
 });
 
 test("a flag_wrong on a product the lookup never found doesn't lift unable_to_confirm to safe", () => {
@@ -139,7 +196,7 @@ test("a flag_missing on a fail-closed scan still escalates to contains_allergen"
   assert.equal(effective?.result, "contains_allergen");
 });
 
-test("clearing a real 'contains' on a Path C scan doesn't lift the rollup to safe while other allergens are still 'unchecked'", () => {
+test("disputing a real 'contains' on a Path C scan leaves it, and the 'unchecked' rows, exactly as they were", () => {
   // The exact scenario found while auditing this duplicated rollup logic: a photo-sourced scan
   // where Peanut genuinely matched and four other allergens were never actually checked. The user
   // disputes Peanut as wrongly flagged; the other four were never touched by any correction and
@@ -154,12 +211,15 @@ test("clearing a real 'contains' on a Path C scan doesn't lift the rollup to saf
   const effective = applyUserCorrections(s, [
     correction({ correctionType: "flag_wrong", direction: "remove_caution", allergen: "Peanut" }),
   ]);
-  assert.equal(effective?.result, "unable_to_confirm");
+  assert.equal(effective?.result, "contains_allergen");
+  assert.equal(effective?.matchedAllergens.find((m) => m.allergenName === "Peanut")?.classification, "contains");
   const almond = effective?.matchedAllergens.find((m) => m.allergenName === "Almond");
   assert.equal(almond?.classification, "unchecked"); // untouched by the correction, still honest
 });
 
-test("clearing the one 'unresolved' allergen that caused unable_to_confirm is still allowed on the user's own view", () => {
+// Superseded 2026-10-23 (docs/principles.md): this used to be allowed to read "safe" on the
+// reporter's own view. A report that the allergen isn't there no longer resolves anything.
+test("disputing the one 'unresolved' allergen that caused unable_to_confirm leaves the card unable to confirm", () => {
   const s = scan("unable_to_confirm", [
     { allergenName: "Milk", severity: "severe", classification: "unresolved" },
     { allergenName: "Egg", severity: "moderate", classification: "clear" },
@@ -167,7 +227,9 @@ test("clearing the one 'unresolved' allergen that caused unable_to_confirm is st
   const effective = applyUserCorrections(s, [
     correction({ correctionType: "flag_wrong", direction: "remove_caution", allergen: "Milk" }),
   ]);
-  assert.equal(effective?.result, "safe");
+  assert.equal(effective?.result, "unable_to_confirm");
+  assert.equal(effective?.matchedAllergens[0].classification, "unresolved");
+  assert.equal(effective?.matchedAllergens[0].disputedByYou, "pending");
 });
 
 // docs/principles.md principle 1, decided 2026-09-29: rejection is judged by direction. A rejected

@@ -317,6 +317,10 @@ export type MatchedAllergen = {
   // this allergen shows as "contains" — one family's report, not confirmed by any other
   // (server corrections/circleEscalations.ts). A different claim again from communityReported.
   circleReported?: boolean;
+  // Set only on the viewer's own view, when they reported this allergen isn't in the product and
+  // that report hasn't been rejected — noted on the row, never applied to it (server
+  // corrections/applyCorrections.ts; docs/verdict-engine.md principle 6, amended 2026-10-23).
+  disputedByYou?: "pending" | "corroborated";
   // Set on an "unchecked" allergen only when there was no product data to check it against — a
   // community-escalated card on a barcode with no record. Mirrors applyCommunityCorrections.ts.
   // Absent means the usual "unchecked": a photo that didn't show it.

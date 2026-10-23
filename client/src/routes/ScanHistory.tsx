@@ -3,7 +3,13 @@ import { Link, useParams } from "react-router-dom";
 
 import { historyRowLabel, shopperCount } from "../lib/allergenRowCopy";
 import { getScanHistory, type ScanHistoryEntry } from "../lib/api";
-import { circleReportLine, heldRemovalNotes, yourReportLine } from "../lib/correctionCopy";
+import {
+  circleReportLine,
+  heldRemovalNotes,
+  UNCHANGED_BY_YOUR_REPORT,
+  yourReportLine,
+  yourReportsChangedCard,
+} from "../lib/correctionCopy";
 import { historyUncheckedNote, uncheckedBasis } from "../lib/evidenceCopy";
 import { DISCLAIMER, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
 
@@ -84,9 +90,18 @@ export function ScanHistory() {
                 )}
                 {scan.effective && (
                   <div role="note">
-                    <p>
-                      Originally <strong>{VERDICT_LABEL[scan.original.result]}</strong> — changed because of:
-                    </p>
+                    {/* Only the viewer's own removals here: those are noted on the row, never
+                        applied (2026-10-23), so "Originally … — changed because of" would be false. */}
+                    {scan.corrections.length > 0 &&
+                    !yourReportsChangedCard(scan.corrections) &&
+                    scan.community_reports.length === 0 &&
+                    scan.pending_circle_reports.length === 0 ? (
+                      <p>{UNCHANGED_BY_YOUR_REPORT}</p>
+                    ) : (
+                      <p>
+                        Originally <strong>{VERDICT_LABEL[scan.original.result]}</strong> — changed because of:
+                      </p>
+                    )}
                     <ul>
                       {scan.corrections.map((c) => (
                         <li key={c.id}>{yourReportLine(c)}</li>

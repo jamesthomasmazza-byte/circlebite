@@ -12,7 +12,9 @@ import {
   reportCountLine,
   reportErrorMessage,
   reportOutcomeMessage,
+  UNCHANGED_BY_YOUR_REPORT,
   yourReportLine,
+  yourReportsChangedCard,
 } from "./correctionCopy";
 
 test("reportOutcomeMessage: a corroborating add_caution report never claims other reports agreed", () => {
@@ -283,4 +285,23 @@ test("changedByLine: names only what changed the card — a circle report alone 
     changedByLine({ yours: true, shoppers: true, circle: true }),
     "Changed by your report, shopper reports and a report from your circle, each with a photo of the label:",
   );
+});
+
+// 2026-10-23: a report that an allergen isn't there never changes the card; one that it is does.
+test("yourReportsChangedCard: only additions and unrejected wrong-product reports change the card", () => {
+  assert.equal(yourReportsChangedCard([{ correctionType: "flag_wrong", status: "pending" }]), false);
+  assert.equal(yourReportsChangedCard([{ correctionType: "flag_wrong", status: "corroborated" }]), false);
+  assert.equal(yourReportsChangedCard([{ correctionType: "flag_missing", status: "pending" }]), true);
+  assert.equal(yourReportsChangedCard([{ correctionType: "flag_missing", status: "rejected" }]), true);
+  assert.equal(yourReportsChangedCard([{ correctionType: "wrong_product", status: "pending" }]), true);
+  assert.equal(yourReportsChangedCard([{ correctionType: "wrong_product", status: "rejected" }]), false);
+});
+
+test("UNCHANGED_BY_YOUR_REPORT: one short line, whatever the report's status", () => {
+  assert.equal(UNCHANGED_BY_YOUR_REPORT, "Your report hasn't changed it:");
+});
+
+test("heldRemovalNotes: a held flag_wrong no longer claims the caution stays only because of the warning", () => {
+  const [note] = heldRemovalNotes([{ correctionType: "flag_wrong", allergen: "Milk", status: "pending" }], [{ allergenName: "Milk" }]);
+  assert.doesNotMatch(note, /on your card too/);
 });

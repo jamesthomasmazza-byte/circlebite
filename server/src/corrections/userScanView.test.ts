@@ -115,7 +115,9 @@ test("the reporter's own remove_caution changes only their view, even though it 
   await report(scan.id, REPORTER, "flag_wrong", "Sesame");
 
   const mine = (await loadUserScanViews([scan], REPORTER_PROFILE, REPORTER)).get(scan.id)!;
-  assert.equal(mine.effective?.result, "safe");
+  // Noted on their row, never applied (principle 6 as amended 2026-10-23): never "safe".
+  assert.equal(mine.effective?.result, "contains_allergen");
+  assert.equal(mine.effective?.matchedAllergens[0].disputedByYou, "pending");
   assert.equal(mine.corrections[0].status, "pending");
 
   // Someone else can't see the reporter's corrections on a scan — only their own.
@@ -303,7 +305,8 @@ test("a co-manager's pending removal stays with them: the parent still sees the 
     assert.deepEqual(parents.circleApplied, []);
 
     const theirs = (await loadUserScanViews([scan], REPORTER_PROFILE, CO_MANAGER)).get(scan.id)!;
-    assert.equal(theirs.effective?.result, "safe", "the reporter's own view, as before");
+    assert.equal(theirs.effective?.result, "contains_allergen", "the reporter's own view: noted, not lowered");
+    assert.equal(theirs.effective?.matchedAllergens[0].disputedByYou, "pending");
   });
 });
 

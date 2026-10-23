@@ -149,20 +149,30 @@ test("describeChange: a downgrade keeps its closing sentence — only that perso
   const d = describeChange(downgrade({}), MAYA);
   assert.equal(d.headline, "Sam (co-manager) reported Peanut isn't in Crunch Bars (Acme)");
   assert.deepEqual(d.consequences, [
-    "This changed only what Sam sees for that one scan. Sam's card no longer warns about Peanut. " +
+    "This changed only what Sam sees for that one scan. Sam's card still warns about Peanut, marked as disputed until it's reviewed. " +
       "Maya's profile, and what you and everyone else see, are unchanged.",
   ]);
   assert.ok(d.details.includes("The card had said: Contains an allergen."));
   assert.equal(d.status, null);
 });
 
+// 2026-10-23: a removal never lowers the reporter's card (corrections/applyCorrections.ts). The
+// sentence is built when the page loads, so it must never again say their card stopped warning.
+test("describeChange: a flag_wrong entry never says the reporter's card stopped warning", () => {
+  for (const actorIsViewer of [false, true]) {
+    const d = describeChange(downgrade({}, actorIsViewer ? { actorIsViewer: true, actorRole: "owner" } : {}), MAYA);
+    assert.doesNotMatch(d.consequences.join(" "), /no longer warns/);
+    assert.match(d.consequences.join(" "), /still warns about Peanut, marked as disputed until it's reviewed\./);
+  }
+});
+
 test("describeChange: a downgrade later rejected in review says so, and stops claiming it changes anything", () => {
   const d = describeChange(downgrade({ currentStatus: "rejected" }), MAYA);
-  assert.equal(d.status, "Reviewed and not accepted. Sam's card shows the warning again.");
+  assert.equal(d.status, "Reviewed and not accepted. Sam's card no longer marks it as disputed.");
   assert.deepEqual(d.consequences, [
     "This had changed only what Sam saw for that one scan. Maya's profile, and what you and everyone else saw, were never changed.",
   ]);
-  assert.ok(!d.consequences.join(" ").includes("no longer warns"));
+  assert.ok(!d.consequences.join(" ").includes("disputed"));
 });
 
 test("describeChange: a wrong-product report says the card shows Unable to confirm instead", () => {
@@ -175,14 +185,17 @@ test("describeChange: a wrong-product report says the card shows Unable to confi
 test("describeChange: an unrecorded report type is described without guessing which kind it was", () => {
   const d = describeChange(downgrade({ correctionType: null }), MAYA);
   assert.equal(d.headline, "Sam (co-manager) reported a problem with the verdict on a scan of Crunch Bars (Acme)");
-  assert.doesNotMatch(d.consequences[0]!, /no longer warns|Unable to confirm/);
+  assert.doesNotMatch(d.consequences[0]!, /still warns|no longer warns|Unable to confirm/);
   assert.match(d.consequences[0]!, /^This changed only what Sam sees for that one scan\./);
 });
 
 test("describeChange: your own downgrade reads in the second person", () => {
   const d = describeChange(downgrade({}, { actorIsViewer: true, actorRole: "owner" }), MAYA);
   assert.equal(d.headline, "You reported Peanut isn't in Crunch Bars (Acme)");
-  assert.match(d.consequences[0]!, /^This changed only what you see for that one scan\. Your card no longer warns about Peanut\./);
+  assert.match(
+    d.consequences[0]!,
+    /^This changed only what you see for that one scan\. Your card still warns about Peanut, marked as disputed until it's reviewed\./,
+  );
   assert.match(d.consequences[0]!, /Maya's profile and what everyone else sees are unchanged\.$/);
 });
 

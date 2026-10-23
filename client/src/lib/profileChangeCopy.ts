@@ -194,9 +194,12 @@ function describeDowngrade(e: ProfileHistoryEntry, p: ProfileRef): ChangeDescrip
   // What the report did to that one person's card. Kept in full on every downgrade entry: it is
   // what Prof. Yoest's condition rests on — the owner learns a co-manager is being told something
   // different, without being told their child's profile changed when it didn't.
+  // A flag_wrong never lowers their card (corrections/applyCorrections.ts, 2026-10-23): it's noted on
+  // the row. Worked out when the page loads, so entries written before that date say this too —
+  // which is now what their card does.
   const effectNow =
     d.correctionType === "flag_wrong"
-      ? `${capitalize(theirs)} card no longer warns about ${d.allergen ?? "it"}.`
+      ? `${capitalize(theirs)} card still warns about ${d.allergen ?? "it"}, marked as disputed until it's reviewed.`
       : d.correctionType === "wrong_product"
         ? `${capitalize(theirs)} card for it now shows “${VERDICT_LABEL.unable_to_confirm}” instead of its warnings.`
         : null;
@@ -208,8 +211,12 @@ function describeDowngrade(e: ProfileHistoryEntry, p: ProfileRef): ChangeDescrip
     // describing a dispute that was refused.
     consequences.push(`This had changed only what ${short} saw for that one scan. ${othersEver}`);
     status =
-      `Reviewed and not accepted. ${capitalize(theirs)} card shows ` +
-      (d.correctionType === "wrong_product" ? "its warnings again." : "the warning again.");
+      `Reviewed and not accepted. ${capitalize(theirs)} card ` +
+      (d.correctionType === "wrong_product"
+        ? "shows its warnings again."
+        : d.correctionType === "flag_wrong"
+          ? "no longer marks it as disputed."
+          : "shows the warning again.");
   } else {
     consequences.push(
       `This changed only what ${short} ${sees} for that one scan.${effectNow ? ` ${effectNow}` : ""} ${othersNow}`,

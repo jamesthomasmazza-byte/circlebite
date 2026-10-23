@@ -22,6 +22,7 @@ import {
 } from "../lib/api";
 import {
   classificationLabel,
+  disputedNote,
   isTraceEscalatedToContains,
   shopperCount,
   sourceLabel,
@@ -34,7 +35,9 @@ import {
   reportableTypes,
   reportErrorMessage,
   reportOutcomeMessage,
+  UNCHANGED_BY_YOUR_REPORT,
   yourReportLine,
+  yourReportsChangedCard,
 } from "../lib/correctionCopy";
 import {
   explanationAfterRows,
@@ -762,6 +765,16 @@ export function Scan() {
                         </span>
                       </>
                     )}
+                    {/* The viewer's own removal: noted under the row's evidence, never applied to it
+                        (2026-10-23). Muted, like the circle-report line — a claim nobody has checked. */}
+                    {disputedNote(m) && (
+                      <>
+                        <span className="visually-hidden"> — </span>
+                        <span className="allergen-row__source" data-source="disputed">
+                          {disputedNote(m)}
+                        </span>
+                      </>
+                    )}
                     {disagreementNote(m) && (
                       <p role="note">
                         {disagreementNote(m)}
@@ -854,10 +867,10 @@ export function Scan() {
               <p>
                 The product data alone says <strong>{VERDICT_LABEL[result.result]}</strong>.{" "}
                 {changedByLine({
-                  yours: Boolean(result.corrections?.length),
+                  yours: yourReportsChangedCard(result.corrections ?? []),
                   shoppers: result.community_reports.length > 0,
                   circle: result.pending_circle_reports.length > 0,
-                })}
+                }) || (result.corrections?.length ? UNCHANGED_BY_YOUR_REPORT : "")}
               </p>
               <ul>
                 {result.corrections?.map((c) => (

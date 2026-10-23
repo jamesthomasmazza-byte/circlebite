@@ -50,6 +50,15 @@ export function classificationLabel(m: MatchedRow): string {
 // and says nobody else has confirmed it; this says where it came from and that it's unconfirmed.
 export const CIRCLE_ROW_SOURCE = "reported in your circle, not yet confirmed";
 
+// The viewer's own report that this allergen isn't in the product, as a line of its own under the
+// row's source — noted, never applied (server corrections/applyCorrections.ts, 2026-10-23). The row
+// keeps saying what the package claims and how we know; this says what the viewer said about it.
+// Before, one pending report turned the whole card green.
+export function disputedNote(m: MatchedRow): string | null {
+  if (!m.disputedByYou) return null;
+  return `you reported it isn't in this — ${m.disputedByYou === "corroborated" ? "corroborated" : "pending review"}`;
+}
+
 export function shopperCount(n: number): string {
   return n === 1 ? "1 shopper" : `${n} shoppers`;
 }
@@ -103,6 +112,11 @@ export function sourceLabel(m: MatchedRow, scan: Pick<ScanResult, "source">): st
  * — real model uncertainty, distinct from "may contain traces".
  */
 export function historyRowLabel(m: MatchedRow): string {
+  const note = disputedNote(m);
+  return note ? `${historyClaim(m)} — ${note}` : historyClaim(m);
+}
+
+function historyClaim(m: MatchedRow): string {
   // docs/principles.md principle 7: say when it's shoppers, not the label, saying so.
   if (m.communityReported) return `contains — reported by ${shopperCount(m.communityReporterCount ?? 1)}`;
   if (m.circleReported) return `contains — ${CIRCLE_ROW_SOURCE}`;

@@ -165,11 +165,26 @@ export function yourReportLine(c: Pick<ScanCorrection, "correctionType" | "aller
 }
 
 /**
- * Why a removal the parent asked for isn't showing on their own card: a confirmed report that the
- * allergen is in this product stands, and a confirmed warning outranks a removal — on the card and
- * in corroboration (recordCorrection.ts's warning-survives check). Without this the card says
- * Contains right under "Your report: Milk isn't in this product — pending review", and the request
- * looks like it silently went nowhere.
+ * Whether any of the viewer's own reports changed what their card says. A report that something IS
+ * in the product does (it sets "contains"), and so does an unrejected wrong-product report. A report
+ * that an allergen isn't there never does — it's noted on the row (disputedNote), never applied
+ * (server corrections/applyCorrections.ts; docs/verdict-engine.md principle 6, amended 2026-10-23).
+ */
+export function yourReportsChangedCard(corrections: Pick<ScanCorrection, "correctionType" | "status">[]): boolean {
+  return corrections.some(
+    (c) => c.correctionType === "flag_missing" || (c.correctionType === "wrong_product" && c.status !== "rejected"),
+  );
+}
+
+/** What heads the viewer's own report lines when none of them changed the card. */
+export const UNCHANGED_BY_YOUR_REPORT = "Your report hasn't changed it:";
+
+/**
+ * Why a removal the parent asked for is held: a confirmed report that the allergen is in this
+ * product stands, and a confirmed warning outranks a removal in corroboration
+ * (recordCorrection.ts's warning-survives check) and, for wrong_product, on the card. Since
+ * 2026-10-23 a flag_wrong never changes the card anyway (disputedNote), so the Milk note no longer
+ * says "on your card too" — it says what else is true: other families confirmed what they dispute.
  *
  * "Held", never "declined" or "rejected": nobody said no. The request stays pending, still with the
  * reviewers, and nothing here invites re-filing — a live report can't be re-filed.
@@ -188,8 +203,8 @@ export function heldRemovalNotes(
     if (c.status === "rejected") continue;
     if (c.correctionType === "flag_wrong" && c.allergen && confirmed(c.allergen)) {
       notes.push(
-        `Your request to remove ${c.allergen} is held. A confirmed report of ${c.allergen} stands on this product, so ` +
-          "the caution stays, on your card too. A reviewer sees both your request and the warning.",
+        `Your request to remove ${c.allergen} is held. A confirmed report of ${c.allergen} stands on this product. ` +
+          "A reviewer sees both your request and the warning.",
       );
     }
     if (c.correctionType === "wrong_product" && communityReports.length > 0) {

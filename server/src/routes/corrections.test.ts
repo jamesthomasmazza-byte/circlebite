@@ -130,7 +130,7 @@ test("reporting an allergen missing returns the reporter's corrected view, not j
   assert.equal(rows[0].result, "safe");
 });
 
-test("a pending removal still changes the reporter's own card, and says it's pending", async () => {
+test("a pending removal is noted on the reporter's own card, says it's pending, and never lowers it", async () => {
   const scanId = await makeScan("8000000000002", "contains_allergen", [
     { allergenName: "Sesame", severity: "severe", classification: "contains" },
   ]);
@@ -138,7 +138,10 @@ test("a pending removal still changes the reporter's own card, and says it's pen
   const { body } = await postCorrection(scanId, { correctionType: "flag_wrong", allergen: "Sesame" });
 
   assert.equal(body.corroborated, false);
-  assert.equal((body.effective as { result: string }).result, "safe");
+  const effective = body.effective as { result: string; matched_allergens: { classification: string; disputedByYou?: string }[] };
+  assert.equal(effective.result, "contains_allergen");
+  assert.equal(effective.matched_allergens[0].classification, "contains");
+  assert.equal(effective.matched_allergens[0].disputedByYou, "pending");
   assert.equal((body.corrections as { status: string }[])[0].status, "pending");
 });
 

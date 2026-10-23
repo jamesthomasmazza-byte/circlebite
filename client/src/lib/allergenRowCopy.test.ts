@@ -6,6 +6,7 @@ import {
   CIRCLE_ROW_SOURCE,
   CLAIM_LABEL,
   classificationLabel,
+  disputedNote,
   historyRowLabel,
   isTraceEscalatedToContains,
   SOURCE_LABEL,
@@ -170,4 +171,28 @@ test("a circle-reported row reads the same on the live card and in scan history"
   }
   assert.ok(checked > 0);
   assert.doesNotMatch(CIRCLE_ROW_SOURCE, /family|say-so/, "the wording cut from the line under the card stays cut here too");
+});
+
+// 2026-10-23: the viewer's own removal is noted on the row, never applied (server
+// corrections/applyCorrections.ts). The row's claim and evidence stay exactly what they were.
+test("a disputed row keeps its claim and evidence, and adds the viewer's report on its own", () => {
+  let checked = 0;
+  for (const base of allRows()) {
+    for (const status of ["pending", "corroborated"] as const) {
+      const m: MatchedRow = { ...base, disputedByYou: status };
+      for (const scanSource of SCAN_SOURCES) {
+        assert.equal(classificationLabel(m), classificationLabel(base));
+        assert.equal(sourceLabel(m, { source: scanSource }), sourceLabel(base, { source: scanSource }));
+      }
+      const note = disputedNote(m)!;
+      assert.equal(note, `you reported it isn't in this — ${status === "pending" ? "pending review" : "corroborated"}`);
+      assert.equal(historyRowLabel(m), `${historyRowLabel(base)} — ${note}`);
+      checked++;
+    }
+  }
+  assert.ok(checked > 0);
+});
+
+test("a row nobody disputed carries no dispute note", () => {
+  for (const base of allRows()) assert.equal(disputedNote(base), null);
 });

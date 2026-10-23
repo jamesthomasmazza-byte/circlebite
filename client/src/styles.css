@@ -755,6 +755,14 @@ th {
   font-size: var(--text-sm);
 }
 
+/* The viewer's own report that an allergen isn't there: noted, never applied (2026-10-23). As quiet
+   as the circle-report line — the least-supported claim near the verdict must never be the loudest. */
+.allergen-row__source[data-source="disputed"] {
+  --source-icon: var(--icon-you);
+  font-style: italic;
+  color: var(--color-text-muted);
+}
+
 .allergen-row__source[data-source="you"] {
   --source-icon: var(--icon-you);
   font-style: italic;

@@ -86,10 +86,11 @@ correctionsRouter.post(
 
     // Downgrades are for the people who manage the profile (docs/approvals/2026-10-01-yoest-mvp-
     // statement.md). Any circle member may report an allergen IS there; only the owner or a
-    // co-manager may report one isn't (flag_wrong) or that the product is wrong (wrong_product) —
-    // because that report clears the allergen on their view of this profile at once (CONTEST_RULES
-    // §3). Prof. Yoest's example is a babysitter clearing "contains" to safe: a babysitter is a
-    // follower, and followers are refused here.
+    // co-manager may report one isn't (flag_wrong) or that the product is wrong (wrong_product).
+    // Prof. Yoest's example is a babysitter clearing "contains" to safe: a babysitter is a follower,
+    // and followers are refused here. (Since 2026-10-23 a flag_wrong is only noted on the reporter's
+    // own row and never lowers their card — corrections/applyCorrections.ts — but who may file a
+    // removal at all is still the managers' call, and wrong_product still changes their view.)
     //
     // "The parent who owns the profile" is read as owner OR co-manager, deliberately (JT, Oct 1): a
     // co-manager was explicitly invited and already has full edit rights on the profile (migration
@@ -129,9 +130,9 @@ correctionsRouter.post(
       throw err;
     }
 
-    // CONTEST_RULES.md §3: the correction overrides the reporter's own view immediately — so the
-    // live card they're still looking at gets the same corrected view their history shows, from
-    // the same function, rather than headlining the verdict they just said was wrong. Unfiltered,
+    // docs/verdict-engine.md principle 6: the correction changes the reporter's own view immediately
+    // (a removal only as a note on its row, since 2026-10-23) — so the live card they're still
+    // looking at gets the same view their history shows, from the same function. Unfiltered,
     // like the live scan response itself (scans.ts): this is still the active decision.
     const { rows: scanRows } = await pool.query<ScanForView>(
       "SELECT id, barcode, result, matched_allergens FROM scans WHERE id = $1",

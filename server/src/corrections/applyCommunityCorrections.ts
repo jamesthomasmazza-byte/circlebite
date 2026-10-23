@@ -97,7 +97,7 @@ export function applyCommunityCorrections(
  * "contains", not "caution": a report of unknown provenance resolves to a direct ingredient, not a
  * trace (docs/legacy-spec.md §6). An allergen the scan already had as "contains" is left alone —
  * the label data is the stronger source, and the card shouldn't claim the change came from a
- * report when it didn't. That also means whichever layer runs first claims an allergen, and the
+ * report when it didn't — unless the viewer disputes it (see the loop). That also means whichever layer runs first claims an allergen, and the
  * later one adds no second note for it.
  *
  * Severity comes from the scanned profile's own allergen, not the reporter's — it's this person's
@@ -124,7 +124,16 @@ export function escalateProfileAllergens<R extends { allergen: string }>(
 
     const key = profileAllergen.name.toLowerCase();
     const existing = matchedAllergens.find((m) => m.allergenName.toLowerCase() === key);
-    if (existing?.classification === "contains") continue;
+    // Except where the viewer disputes it (applyUserCorrections' disputedByYou): there the confirming
+    // report is the fact that matters — it's why their removal is held (heldRemovalNotes) — so the
+    // row names it. Before 2026-10-23 a removal cleared the row first and this never came up.
+    // Once only: a disputed row the community layer already named isn't claimed again by the circle.
+    if (
+      existing?.classification === "contains" &&
+      (!existing.disputedByYou || existing.communityReported || existing.circleReported)
+    ) {
+      continue;
+    }
 
     if (existing) {
       existing.classification = "contains";
