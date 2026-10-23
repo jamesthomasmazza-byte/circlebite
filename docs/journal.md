@@ -1884,3 +1884,16 @@ they belong in the judging checklist, not in memory.
 **Next:** deploy with `CIRCLE_ESCALATIONS` off, check production, then switch it on (§11a). Reseed
 production with `--rotate-passwords` before the Nov 16 email. File the downgrade test on production.
 Check the AI key hasn't expired before judging.
+
+## 2026-10-23 — Deployed, and the downgrade report on production
+
+Deployed `82d6c76` at 17:20 UTC with `CIRCLE_ESCALATIONS` unset (off). Migration 0045 applied, and
+every post-deploy check passed, including a label photo that reached the model. Then co-manager
+`timmy` filed the downgrade report Conditions 1 and 2 were waiting on, at 2:22:08 PM ET: sesame
+reported absent on the synthetic seed Oat Biscuits (2990000000038), with a printed test label. The
+owner's banner and history show it (`docs/approvals/conditions.md`, screenshots in
+`docs/approvals/img/`). The fake-family page (`docs/fake-family-risk.md`) was written the same day.
+All three of Prof. Yoest's Oct 19 asks are done; they go to him by Oct 25.
+
+**Found:** timmy's own card for that scan went to "No listed allergens found" on the strength of one
+unconfirmed report (BACKLOG).
