@@ -961,3 +961,9 @@ Out of scope per `CONTEST_RULES.md` §7 — do not start these before judging en
   on `verdict_explanations.failure_reason` / `label_extractions.failure_reason`. Same gap in "That
   wasn't this product": the restored barcode verdict is re-explained from a snapshot that doesn't
   record whether that scan's own AI step failed (`combineScan.ts` `discardLabelEvidence`).
+- Harden corroboration against fake families before any removal travels
+  (`docs/fake-family-risk.md`, Prof. Yoest's Oct 19 ask). Both, tested, before a corroborated
+  `remove_caution` is read outside the reporter's own view:
+  (a) count only families with scan history beyond the scan the report is filed from;
+  (b) flag reports on one claim whose photos or origin look like the same hand, into the review
+  queue. (b) needs a `docs/coppa.md` decision on keeping origin data first. Neither is built.
