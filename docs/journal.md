@@ -1866,6 +1866,9 @@ Wording checked at 390px before it was proposed, then by JT on a phone-width scr
 - The conditions register (`docs/approvals/conditions.md`) with the Oct 16 screenshots, and the Oct 11
   unattended restore test — `circlebite-20261011T073020Z`, PASSED — saved as
   `docs/evidence/2026-10-11-restore-test.txt`. Not yet sent to Prof. Yoest; going in the Oct 19 email.
+  **Sent 2026-10-19**, with the shared-escalations commit link, the second-family answer and the
+  three corrections to the Oct 8 note (`docs/approvals/2026-10-19-jt-shared-escalations-and-corrections.md`).
+  His same-day reply asks for three items by Oct 25 (`docs/approvals/conditions.md`).
 - The report filed on production Oct 16, 7:15 PM ET was an escalation (`add_caution`, "treenuts"), not
   the downgrade test that Conditions 1 and 2 still need.
 - The same card missed almonds under that "treenuts" allergen. Not yet traced (BACKLOG).
