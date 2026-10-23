@@ -1,12 +1,21 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-import { createProfile, listProfiles, type AllergenInput, type ProfileSummary, type Severity } from "../lib/api";
+import { AllergenPicker, EMPTY_PICK, isPicked, pickInput, useAllergenChoices, type AllergenPick } from "../AllergenPicker";
+import { listedAllergenMessage } from "../lib/allergenChoiceCopy";
+import {
+  ApiRequestError,
+  createProfile,
+  listProfiles,
+  type AllergenInput,
+  type ProfileSummary,
+  type Severity,
+} from "../lib/api";
 
-type AllergenDraft = { name: string; severity: Severity; treatTracesAsUnsafe: boolean };
+type AllergenDraft = { pick: AllergenPick; severity: Severity; treatTracesAsUnsafe: boolean };
 
 function emptyDraft(): AllergenDraft {
-  return { name: "", severity: "moderate", treatTracesAsUnsafe: true };
+  return { pick: EMPTY_PICK, severity: "moderate", treatTracesAsUnsafe: true };
 }
 
 export function Profiles() {
@@ -20,6 +29,7 @@ export function Profiles() {
   const [allergenDrafts, setAllergenDrafts] = useState<AllergenDraft[]>([emptyDraft()]);
   const [createError, setCreateError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const choices = useAllergenChoices();
 
   useEffect(() => {
     listProfiles()
@@ -50,9 +60,9 @@ export function Profiles() {
 
     const allergens: AllergenInput[] = [];
     for (const draft of allergenDrafts) {
-      if (draft.name.trim().length === 0) continue;
+      if (!isPicked(draft.pick)) continue;
       allergens.push({
-        name: draft.name.trim(),
+        ...pickInput(draft.pick),
         severity: draft.severity,
         treatTracesAsUnsafe: draft.treatTracesAsUnsafe,
       });
@@ -62,8 +72,12 @@ export function Profiles() {
     try {
       const profile = await createProfile({ label: label.trim(), allergens });
       navigate(`/profiles/${profile.id}`);
-    } catch {
-      setCreateError("Couldn't create the profile. Check the allergen names aren't repeated and try again.");
+    } catch (err) {
+      if (err instanceof ApiRequestError && err.message === "listed_allergen") {
+        setCreateError(listedAllergenMessage(null, String(err.detail.displayName)));
+      } else {
+        setCreateError("Couldn't create the profile. Check the allergens aren't repeated and try again.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -113,11 +127,14 @@ export function Profiles() {
             <legend>Allergens</legend>
             {allergenDrafts.map((draft, i) => (
               <div key={i}>
-                <input
-                  placeholder="Allergen name"
-                  value={draft.name}
-                  onChange={(e) => updateDraft(i, { name: e.target.value })}
-                />
+                {choices && (
+                  <AllergenPicker
+                    choices={choices}
+                    value={draft.pick}
+                    onChange={(pick) => updateDraft(i, { pick })}
+                    required={false}
+                  />
+                )}
                 <select
                   value={draft.severity}
                   onChange={(e) => updateDraft(i, { severity: e.target.value as Severity })}

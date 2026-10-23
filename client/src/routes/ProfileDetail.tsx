@@ -4,6 +4,8 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   acknowledgeProfileChanges,
   addAllergen,
+  ApiRequestError,
+  OTHER_ALLERGEN_KEY,
   createFollowInvite,
   createManagerInvite,
   deleteAllergen,
@@ -22,6 +24,8 @@ import {
   type Severity,
   type ShareLevel,
 } from "../lib/api";
+import { AllergenPicker, EMPTY_PICK, isPicked, pickInput, useAllergenChoices, type AllergenPick } from "../AllergenPicker";
+import { listedAllergenMessage, reviewNotice } from "../lib/allergenChoiceCopy";
 import { describeChange } from "../lib/profileChangeCopy";
 
 export function ProfileDetail() {
@@ -36,7 +40,12 @@ export function ProfileDetail() {
   const [notes, setNotes] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const [newName, setNewName] = useState("");
+  const [newPick, setNewPick] = useState<AllergenPick>(EMPTY_PICK);
+  const choices = useAllergenChoices();
+  // The allergen whose "Choose another" picker is open, and what's picked in it.
+  const [choosingFor, setChoosingFor] = useState<string | null>(null);
+  const [replacementPick, setReplacementPick] = useState<AllergenPick>(EMPTY_PICK);
+  const [reviewError, setReviewError] = useState<string | null>(null);
   const [newSeverity, setNewSeverity] = useState<Severity>("moderate");
   const [newTraces, setNewTraces] = useState(true);
   const [addError, setAddError] = useState<string | null>(null);
@@ -141,14 +150,37 @@ export function ProfileDetail() {
   async function handleAddAllergen(event: FormEvent) {
     event.preventDefault();
     setAddError(null);
-    if (newName.trim().length === 0) return;
+    if (!isPicked(newPick)) return;
     try {
-      await addAllergen(id!, { name: newName.trim(), severity: newSeverity, treatTracesAsUnsafe: newTraces });
-      setNewName("");
+      await addAllergen(id!, { ...pickInput(newPick), severity: newSeverity, treatTracesAsUnsafe: newTraces });
+      setNewPick(EMPTY_PICK);
       await refresh();
       await refreshHistory();
-    } catch {
-      setAddError("Couldn't add that allergen — it may already be on this profile.");
+    } catch (err) {
+      setAddError(
+        err instanceof ApiRequestError && err.message === "listed_allergen"
+          ? listedAllergenMessage(newPick.otherName.trim(), String(err.detail.displayName))
+          : "Couldn't add that allergen — it may already be on this profile.",
+      );
+    }
+  }
+
+  // Settles an allergen from before the list (migration 0046): keep the match (a rename to the
+  // list's name, logged as this manager's edit), choose another, or keep an unlisted name as typed.
+  async function handleSettleAllergen(allergenId: string, key: string) {
+    setReviewError(null);
+    try {
+      await updateAllergen(id!, allergenId, { key });
+      setChoosingFor(null);
+      setReplacementPick(EMPTY_PICK);
+      await refresh();
+      await refreshHistory();
+    } catch (err) {
+      setReviewError(
+        err instanceof ApiRequestError && err.message === "duplicate_allergen"
+          ? "That allergen is already on this profile. Remove this one instead."
+          : "Couldn't save that. Try again.",
+      );
     }
   }
 
@@ -271,13 +303,64 @@ export function ProfileDetail() {
                 Remove
               </button>
             )}
+            {canManage && a.key_needs_review && choices && (() => {
+              const notice = reviewNotice(a, choices.find((c) => c.key === a.allergen_key));
+              return (
+                <div role="note" className="allergen-review">
+                  <p>{notice.text}</p>
+                  {notice.hint && <p className="allergen-picker__hint">{notice.hint}</p>}
+                  {choosingFor === a.id ? (
+                    <>
+                      <AllergenPicker
+                        choices={choices}
+                        value={replacementPick}
+                        onChange={setReplacementPick}
+                        allowOther={false}
+                        label={`Replace “${a.name}” with`}
+                      />
+                      <button
+                        type="button"
+                        disabled={!isPicked(replacementPick)}
+                        onClick={() => handleSettleAllergen(a.id, replacementPick.key)}
+                      >
+                        Use this
+                      </button>{" "}
+                      <button type="button" onClick={() => setChoosingFor(null)}>
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <p>
+                      {notice.keepLabel && (
+                        <button
+                          type="button"
+                          onClick={() => handleSettleAllergen(a.id, a.allergen_key ?? OTHER_ALLERGEN_KEY)}
+                        >
+                          {notice.keepLabel}
+                        </button>
+                      )}{" "}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setChoosingFor(a.id);
+                          setReplacementPick(EMPTY_PICK);
+                        }}
+                      >
+                        {notice.chooseLabel}
+                      </button>
+                    </p>
+                  )}
+                  {reviewError && <p role="alert">{reviewError}</p>}
+                </div>
+              );
+            })()}
           </li>
         ))}
       </ul>
 
       {canManage && (
         <form onSubmit={handleAddAllergen}>
-          <input placeholder="Allergen name" value={newName} onChange={(e) => setNewName(e.target.value)} />
+          {choices && <AllergenPicker choices={choices} value={newPick} onChange={setNewPick} label="Add an allergen" />}
           <select value={newSeverity} onChange={(e) => setNewSeverity(e.target.value as Severity)}>
             <option value="mild">Mild</option>
             <option value="moderate">Moderate</option>
@@ -308,7 +391,7 @@ export function ProfileDetail() {
           {history && history.length > 0 && (
             <ol className="change-history__list">
               {history.map((e) => {
-                const d = describeChange(e, { label: profile.label, isSelf: profile.is_self });
+                const d = describeChange(e, { label: profile.label, isSelf: profile.is_self }, choices ?? []);
                 return (
                   <li key={e.id} className="change-entry" data-unseen={e.unseen ? "true" : undefined}>
                     <p className="change-entry__meta">

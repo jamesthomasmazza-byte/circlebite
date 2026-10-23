@@ -123,6 +123,25 @@ test("describeChange: a rename asks the parent to check, naming what scans stop 
   assert.match(d.check!, /scans for Maya will stop warning about Peanut/);
 });
 
+// 2026-10-23: confirming a pre-list name as its listed allergen widens the match, never narrows it.
+const LIST = [
+  { key: "tree-nut", displayName: "Tree nuts", group: "common" as const, hint: null, spellings: ["treenut"] },
+  { key: "walnut", displayName: "Walnut", group: "single_nut" as const, hint: null, spellings: ["walnut"] },
+];
+
+test("describeChange: confirming 'treenuts' as Tree nuts carries no rename warning, and says the match didn't narrow", () => {
+  const before = { ...PEANUT, name: "treenuts" };
+  const d = describeChange(entry({ before, after: { ...before, name: "Tree nuts" } }), MAYA, LIST);
+  assert.equal(d.check, null);
+  assert.deepEqual(d.details, ["Renamed “treenuts” to “Tree nuts”, the allergen list's name for it."]);
+  assert.deepEqual(d.consequences, ["Scans for Maya still check for everything Tree nuts covers. Confirming the name didn't narrow it."]);
+});
+
+test("describeChange: a rename to a different listed allergen keeps the warning — Peanut to Walnut stops peanut warnings", () => {
+  const d = describeChange(entry({ before: PEANUT, after: { ...PEANUT, name: "Walnut" } }), MAYA, LIST);
+  assert.match(d.check!, /scans for Maya will stop warning about Peanut/);
+});
+
 test("describeChange: traces off says a “may contain” label is now only a caution", () => {
   const d = describeChange(entry({ before: PEANUT, after: { ...PEANUT, treat_traces_as_unsafe: false } }), MAYA);
   assert.deepEqual(d.consequences, ["A “may contain Peanut” label now shows as a caution, not “contains”."]);

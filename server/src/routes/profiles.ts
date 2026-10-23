@@ -10,6 +10,7 @@ import { pool } from "../db/pool.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { HttpError } from "../lib/httpError.js";
 import { withActor } from "../lib/withActor.js";
+import { choiceForKey, choicesForClient, OTHER_KEY, recognizeAllergenName } from "../matcher/allergenChoices.js";
 
 // Mounted at /api/profiles (see app.ts) — every route below is relative to that, and every path
 // here is deliberately WITHOUT a leading "/profiles" segment. requireAuth below is router-level
@@ -29,17 +30,45 @@ function isSeverity(value: unknown): value is Severity {
   return typeof value === "string" && (SEVERITIES as readonly string[]).includes(value);
 }
 
-type AllergenInput = { name: string; severity: Severity; notes?: string; treatTracesAsUnsafe?: boolean };
+type AllergenIdentity = { name: string; key: string };
+type AllergenInput = AllergenIdentity & { severity: Severity; notes?: string; treatTracesAsUnsafe?: boolean };
+
+/**
+ * Which allergen a request names (allergenChoices.ts, 2026-10-23): a listed `key`, whose name is the
+ * list's — never the client's — or `key: "other"` with a typed `name`. Free text for something on the
+ * list is refused with the listed allergen it is, so "treenuts" can't reach a profile again: as
+ * Other it would match only that word (match.ts), and the Oct 16 chewy bar's almonds went unflagged.
+ */
+function resolveAllergenIdentity(key: unknown, name: unknown): AllergenIdentity {
+  if (typeof key !== "string") throw new HttpError(400, "invalid_request");
+  if (key !== OTHER_KEY) {
+    const choice = choiceForKey(key);
+    if (!choice) throw new HttpError(400, "invalid_request");
+    return { name: choice.displayName, key };
+  }
+  if (typeof name !== "string" || name.trim().length === 0) throw new HttpError(400, "invalid_request");
+  refuseListedName(name);
+  return { name: name.trim(), key: OTHER_KEY };
+}
+
+/** 409 naming the listed allergen a typed name already is, so the client can offer it instead. */
+function refuseListedName(name: string): void {
+  const recognized = recognizeAllergenName(name);
+  if (!recognized) return;
+  const choice = choiceForKey(recognized.key)!;
+  throw new HttpError(409, "listed_allergen", { key: choice.key, displayName: choice.displayName });
+}
 
 function parseAllergenInput(raw: unknown): AllergenInput | null {
   if (typeof raw !== "object" || raw === null) return null;
-  const { name, severity, notes, treatTracesAsUnsafe } = raw as Record<string, unknown>;
-  if (typeof name !== "string" || name.trim().length === 0) return null;
+  const { key, name, severity, notes, treatTracesAsUnsafe } = raw as Record<string, unknown>;
   if (!isSeverity(severity)) return null;
   if (notes !== undefined && typeof notes !== "string") return null;
   if (treatTracesAsUnsafe !== undefined && typeof treatTracesAsUnsafe !== "boolean") return null;
-  return { name: name.trim(), severity, notes, treatTracesAsUnsafe };
+  return { ...resolveAllergenIdentity(key, name), severity, notes, treatTracesAsUnsafe };
 }
+
+const ALLERGEN_COLUMNS = "id, name, severity, notes, treat_traces_as_unsafe, allergen_key, key_needs_review";
 
 function isUniqueViolation(err: unknown): boolean {
   return typeof err === "object" && err !== null && (err as { code?: string }).code === "23505";
@@ -85,15 +114,16 @@ profilesRouter.post(
         const createdAllergens = [];
         for (const a of allergenInputs) {
           const { rows } = await client.query(
-            `INSERT INTO allergens (allergen_profile_id, name, severity, notes, treat_traces_as_unsafe)
-             VALUES ($1, $2, $3, $4, $5)
-             RETURNING id, name, severity, notes, treat_traces_as_unsafe`,
+            `INSERT INTO allergens (allergen_profile_id, name, severity, notes, treat_traces_as_unsafe, allergen_key)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             RETURNING ${ALLERGEN_COLUMNS}`,
             [
               profile.id,
               a.name,
               a.severity,
               a.notes ?? null,
               a.treatTracesAsUnsafe ?? profile.default_treat_traces_as_unsafe,
+              a.key,
             ],
           );
           createdAllergens.push(rows[0]);
@@ -113,9 +143,13 @@ profilesRouter.get(
   asyncHandler(async (req, res) => {
     const userId = req.user!.id;
 
+    // allergens_needing_review: allergens a manager has to look at (migration 0046) — the dashboard
+    // says so until they do. Managers only; a follower can't decide, so isn't asked.
     const { rows: managed } = await pool.query(
       `SELECT p.id, p.label, p.is_self,
-              CASE WHEN p.manager_id = $1 THEN 'owner' ELSE 'co_manager' END AS relationship
+              CASE WHEN p.manager_id = $1 THEN 'owner' ELSE 'co_manager' END AS relationship,
+              (SELECT count(*)::int FROM allergens a WHERE a.allergen_profile_id = p.id AND a.key_needs_review)
+                AS allergens_needing_review
        FROM allergen_profiles p
        LEFT JOIN profile_managers pm ON pm.allergen_profile_id = p.id AND pm.user_id = $1
        WHERE p.manager_id = $1 OR pm.user_id = $1
@@ -136,6 +170,15 @@ profilesRouter.get(
   }),
 );
 
+// The list a profile's allergens are picked from. Before "/:id", which would otherwise take
+// "allergen-choices" for a profile id.
+profilesRouter.get(
+  "/allergen-choices",
+  asyncHandler(async (_req, res) => {
+    res.json({ choices: choicesForClient() });
+  }),
+);
+
 profilesRouter.get(
   "/:id",
   asyncHandler(async (req, res) => {
@@ -152,8 +195,8 @@ profilesRouter.get(
     const severeOnly = access.level === "follower" && access.shareLevel === "severe_only";
     const { rows: allergens } = await pool.query(
       severeOnly
-        ? "SELECT id, name, severity, notes, treat_traces_as_unsafe FROM allergens WHERE allergen_profile_id = $1 AND severity = 'severe' ORDER BY name"
-        : "SELECT id, name, severity, notes, treat_traces_as_unsafe FROM allergens WHERE allergen_profile_id = $1 ORDER BY name",
+        ? `SELECT ${ALLERGEN_COLUMNS} FROM allergens WHERE allergen_profile_id = $1 AND severity = 'severe' ORDER BY name`
+        : `SELECT ${ALLERGEN_COLUMNS} FROM allergens WHERE allergen_profile_id = $1 ORDER BY name`,
       [profileId],
     );
 
@@ -221,15 +264,16 @@ profilesRouter.post(
 
     try {
       const { rows } = await withActor(req.user!.id, (client) => client.query(
-        `INSERT INTO allergens (allergen_profile_id, name, severity, notes, treat_traces_as_unsafe)
-         VALUES ($1, $2, $3, $4, $5)
-         RETURNING id, name, severity, notes, treat_traces_as_unsafe`,
+        `INSERT INTO allergens (allergen_profile_id, name, severity, notes, treat_traces_as_unsafe, allergen_key)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING ${ALLERGEN_COLUMNS}`,
         [
           profileId,
           parsed.name,
           parsed.severity,
           parsed.notes ?? null,
           parsed.treatTracesAsUnsafe ?? true,
+          parsed.key,
         ],
       ));
       res.status(201).json(rows[0]);
@@ -247,10 +291,13 @@ profilesRouter.patch(
     const allergenId = req.params.allergenId;
     await assertCanManageProfile(req.user!.id, profileId);
 
-    const { name, severity, notes, treatTracesAsUnsafe } = req.body ?? {};
-    if (name !== undefined && (typeof name !== "string" || name.trim().length === 0)) {
-      throw new HttpError(400, "invalid_request");
-    }
+    const { key, name, severity, notes, treatTracesAsUnsafe } = req.body ?? {};
+    // A name changes only with a key: a listed allergen's name is the list's, and Other's is
+    // re-checked against the list (resolveAllergenIdentity). keepName: "Keep it as typed" on an
+    // allergen the list doesn't have — key "other", no new name (checked against the stored one below).
+    if (name !== undefined && key === undefined) throw new HttpError(400, "invalid_request");
+    const keepName = key === OTHER_KEY && name === undefined;
+    const identity = key === undefined || keepName ? null : resolveAllergenIdentity(key, name);
     if (severity !== undefined && !isSeverity(severity)) throw new HttpError(400, "invalid_request");
     if (notes !== undefined && notes !== null && typeof notes !== "string") {
       throw new HttpError(400, "invalid_request");
@@ -259,27 +306,41 @@ profilesRouter.patch(
       throw new HttpError(400, "invalid_request");
     }
 
+    if (keepName) {
+      const { rows: current } = await pool.query<{ name: string }>(
+        "SELECT name FROM allergens WHERE id = $1 AND allergen_profile_id = $2",
+        [allergenId, profileId],
+      );
+      if (current.length === 0) throw new HttpError(404, "not_found");
+      // "treenuts" kept as typed would drop the tree-nut key and its almonds: offer the list's instead.
+      refuseListedName(current[0]!.name);
+    }
+
     try {
       // The WHERE clause checks allergen_profile_id too, not just id — assertCanManageProfile
       // only proves the caller can manage the profile named in the URL, not that :allergenId
-      // actually belongs to it.
+      // actually belongs to it. A key ($8) is a manager's choice, so it settles the review flag; a
+      // rename it brings is an ordinary edit, logged by the trigger with this actor (0036/0041).
       const { rows } = await withActor(req.user!.id, (client) => client.query(
         `UPDATE allergens
          SET name = COALESCE($3, name),
              severity = COALESCE($4, severity),
              notes = CASE WHEN $5::boolean THEN $6 ELSE notes END,
              treat_traces_as_unsafe = COALESCE($7, treat_traces_as_unsafe),
+             allergen_key = COALESCE($8, allergen_key),
+             key_needs_review = CASE WHEN $8 IS NULL THEN key_needs_review ELSE false END,
              updated_at = now()
          WHERE id = $1 AND allergen_profile_id = $2
-         RETURNING id, name, severity, notes, treat_traces_as_unsafe`,
+         RETURNING ${ALLERGEN_COLUMNS}`,
         [
           allergenId,
           profileId,
-          name !== undefined ? name.trim() : null,
+          identity?.name ?? null,
           severity ?? null,
           notes !== undefined,
           notes ?? null,
           treatTracesAsUnsafe ?? null,
+          identity?.key ?? (keepName ? OTHER_KEY : null),
         ],
       ));
       if (rows.length === 0) throw new HttpError(404, "not_found");

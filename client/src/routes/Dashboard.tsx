@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-import { getUnseenChanges, type UnseenProfileChanges } from "../lib/api";
+import { needsReviewLine } from "../lib/allergenChoiceCopy";
+import { getUnseenChanges, listProfiles, type ProfileSummary, type UnseenProfileChanges } from "../lib/api";
 import { useAuth } from "../lib/AuthContext";
 import { profilePossessive, unseenBannerLine } from "../lib/profileChangeCopy";
 
@@ -10,6 +11,7 @@ export function Dashboard() {
   const navigate = useNavigate();
   const [unseen, setUnseen] = useState<UnseenProfileChanges[]>([]);
   const [unseenFailed, setUnseenFailed] = useState(false);
+  const [needsReview, setNeedsReview] = useState<ProfileSummary[]>([]);
 
   // Prof. Yoest's Oct 1 condition: an owner must never learn about a change by accident. This is
   // the page they land on after signing in, so the notice lives here, and it stays until they've
@@ -19,6 +21,11 @@ export function Dashboard() {
     getUnseenChanges()
       .then(setUnseen)
       .catch(() => setUnseenFailed(true));
+    // Allergens from before the pick-list that a manager has to look at (migration 0046). Shown
+    // until someone decides; quietly absent if the list can't load — the profile page says it too.
+    listProfiles()
+      .then((r) => setNeedsReview(r.managed.filter((p) => (p.allergens_needing_review ?? 0) > 0)))
+      .catch(() => setNeedsReview([]));
   }, []);
 
   async function handleLogout() {
@@ -49,6 +56,22 @@ export function Dashboard() {
                 <Link to={`/profiles/${u.profileId}#changes`}>Review changes to {profilePossessive(u)} profile</Link>
               </li>
             ))}
+          </ul>
+        </section>
+      )}
+      {needsReview.length > 0 && (
+        <section className="change-notice" aria-labelledby="allergen-review-heading">
+          <h2 id="allergen-review-heading">Allergens to check</h2>
+          <ul>
+            {needsReview.map((p) => {
+              const whose = profilePossessive({ label: p.label, isSelf: p.is_self });
+              return (
+                <li key={p.id}>
+                  {needsReviewLine(whose, p.allergens_needing_review ?? 0)}{" "}
+                  <Link to={`/profiles/${p.id}`}>Check {whose} allergens</Link>
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}

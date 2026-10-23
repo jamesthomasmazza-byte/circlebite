@@ -1,9 +1,13 @@
 export class ApiRequestError extends Error {
   status: number;
+  /** The error body's other fields (server HttpError.detail) — e.g. which listed allergen a typed
+   *  name already is. */
+  detail: Record<string, unknown>;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, detail: Record<string, unknown> = {}) {
     super(message);
     this.status = status;
+    this.detail = detail;
   }
 }
 
@@ -19,7 +23,7 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const code = (body as { error?: string } | undefined)?.error ?? `request_failed_${res.status}`;
-    throw new ApiRequestError(code, res.status);
+    throw new ApiRequestError(code, res.status, (body as Record<string, unknown> | undefined) ?? {});
   }
 
   return body as T;
@@ -70,13 +74,37 @@ export type Allergen = {
   severity: Severity;
   notes: string | null;
   treat_traces_as_unsafe: boolean;
+  // Which listed allergen this is (server matcher/allergenChoices.ts, migration 0046): a list key,
+  // "other" (typed in by hand), or null — a name from before the list that nobody has decided on.
+  allergen_key: string | null;
+  // A manager needs to look at this one: a spelling the list recognized but didn't match exactly
+  // ("treenuts"), or a name it doesn't have.
+  key_needs_review: boolean;
 };
+
+/** One allergen a profile can pick (server matcher/allergenChoices.ts). */
+export type AllergenChoice = {
+  key: string;
+  displayName: string;
+  group: "common" | "single_nut" | "other";
+  hint: string | null;
+  // The spellings recognized as this allergen (server allergenChoices.ts spellingKey of each alias).
+  spellings: string[];
+};
+
+export const OTHER_ALLERGEN_KEY = "other";
+
+export function fetchAllergenChoices(): Promise<{ choices: AllergenChoice[] }> {
+  return apiFetch("/profiles/allergen-choices");
+}
 
 export type ProfileSummary = {
   id: string;
   label: string;
   is_self: boolean;
   relationship?: "owner" | "co_manager";
+  // Managed profiles only: allergens a manager needs to look at (key_needs_review).
+  allergens_needing_review?: number;
   share_level?: "all" | "severe_only";
 };
 
@@ -95,8 +123,11 @@ export type ProfileDetail = {
   access: ProfileAccess;
 };
 
+// key: a listed allergen's key, whose name the server takes from the list; or OTHER_ALLERGEN_KEY with
+// the typed `name`. A PATCH with `key` and no name confirms a match or keeps a name as typed.
 export type AllergenInput = {
-  name: string;
+  key: string;
+  name?: string;
   severity: Severity;
   notes?: string;
   treatTracesAsUnsafe?: boolean;

@@ -1,4 +1,5 @@
-import type { AllergenImage, ProfileHistoryEntry, ProfileImage, UnseenProfileChanges, Verdict } from "./api";
+import { confirmedListedAllergen } from "./allergenChoiceCopy";
+import type { AllergenChoice, AllergenImage, ProfileHistoryEntry, ProfileImage, UnseenProfileChanges, Verdict } from "./api";
 import { VERDICT_LABEL } from "./verdictCopy";
 
 // Plain functions, no JSX — the wording an owner reads about changes other people made to a
@@ -107,13 +108,25 @@ export function describeAllergen(a: AllergenImage): string {
   return parts.join("; ");
 }
 
-function describeAllergenEdit(e: ProfileHistoryEntry, p: ProfileRef, b: AllergenImage, a: AllergenImage): ChangeDescription {
+function describeAllergenEdit(
+  e: ProfileHistoryEntry,
+  p: ProfileRef,
+  b: AllergenImage,
+  a: AllergenImage,
+  choices: readonly AllergenChoice[],
+): ChangeDescription {
   const details: string[] = [];
   const consequences: string[] = [];
   let check: string | null = null;
   const forWhom = p.isSelf ? "you" : p.label;
+  // A pre-list name confirmed as its listed allergen (migration 0046): "treenuts" → "Tree nuts". The
+  // match only widened, so the warning below — that a rename can quietly stop one — would be false.
+  const confirmed = b.name !== a.name ? confirmedListedAllergen(b.name, a.name, choices) : undefined;
 
-  if (b.name !== a.name) {
+  if (confirmed) {
+    details.push(`Renamed ${quoted(b.name)} to ${quoted(a.name)}, the allergen list's name for it.`);
+    consequences.push(`Scans for ${forWhom} still check for everything ${a.name} covers. Confirming the name didn't narrow it.`);
+  } else if (b.name !== a.name) {
     details.push(`Renamed ${quoted(b.name)} to ${quoted(a.name)}.`);
     // The most dangerous edit in the app: matching is by name, so a rename can quietly stop a
     // warning while the profile still looks complete. This line asks for action, not attention.
@@ -230,7 +243,9 @@ function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-export function describeChange(e: ProfileHistoryEntry, p: ProfileRef): ChangeDescription {
+// choices: the allergen list (server allergenChoices.ts), so a rename that confirms a listed match
+// reads as one. Without it every rename keeps its warning.
+export function describeChange(e: ProfileHistoryEntry, p: ProfileRef, choices: readonly AllergenChoice[] = []): ChangeDescription {
   const forWhom = p.isSelf ? "you" : p.label;
   switch (e.kind) {
     case "allergen_added": {
@@ -254,7 +269,7 @@ export function describeChange(e: ProfileHistoryEntry, p: ProfileRef): ChangeDes
       };
     }
     case "allergen_edited":
-      return describeAllergenEdit(e, p, e.before as AllergenImage, e.after as AllergenImage);
+      return describeAllergenEdit(e, p, e.before as AllergenImage, e.after as AllergenImage, choices);
     case "profile_edited":
       return describeProfileEdit(e, p, e.before as ProfileImage, e.after as ProfileImage);
     case "downgrade_reported":

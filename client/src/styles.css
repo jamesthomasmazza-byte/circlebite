@@ -947,3 +947,16 @@ th {
     scroll-behavior: auto !important;
   }
 }
+
+/* The allergen picker's hint and Other's warning (2026-10-23): what a pick matches, beside it —
+   secondary to the choice itself. */
+.allergen-picker__hint {
+  margin-top: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* An allergen from before the list that needs a manager's look (migration 0046). */
+.allergen-review {
+  margin-top: var(--space-2);
+}
