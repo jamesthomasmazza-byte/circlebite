@@ -27,7 +27,15 @@ export type SynonymCluster = {
 const DAIRY = ["milk", "dairy", "lactose", "whey", "casein", "caseinate", "caseinates", "buttermilk"];
 const GLUTEN = ["wheat", "gluten", "barley", "rye"];
 const CRUSTACEAN = ["shellfish", "crustacean", "crustaceans", "shrimp", "prawn", "crab", "crabmeat", "lobster"];
+// "nuts" is Open Food Facts' own tag for tree nuts ("en:nuts", normalized by openFoodFacts.ts), so
+// a record tagged only that way was a silent miss for a correctly spelled "Tree nuts" profile — found
+// on barcode 096619160761 (production, 2026-10-16), tagged "nuts" in both allergens and traces. As an
+// ingredient-text keyword it only matches the word "nuts" on its own: \bnuts\b can't fire inside
+// "peanuts", "doughnuts" or "coconuts". Keyword only, never an alias — a profile allergen named
+// "Nuts" doesn't say which nuts, and could mean peanuts.
+const UNSPECIFIED_NUTS = ["nuts"];
 const TREE_NUTS = [
+  ...UNSPECIFIED_NUTS,
   "almond",
   "almonds",
   "hazelnut",
@@ -57,15 +65,18 @@ export const SYNONYM_CLUSTERS: SynonymCluster[] = [
   { id: "peanut", aliases: ["peanut", "peanuts", "groundnut", "groundnuts"], keywords: ["peanut", "peanuts", "groundnut", "groundnuts"] },
   // The umbrella: "Tree Nuts" on a profile matches any of them.
   { id: "tree-nut", aliases: ["tree nut", "tree nuts"], keywords: TREE_NUTS },
-  // Each nut is also its own narrow entry: "Walnut" on a profile matches only walnut.
-  { id: "almond", aliases: ["almond", "almonds"], keywords: ["almond", "almonds"] },
-  { id: "hazelnut", aliases: ["hazelnut", "hazelnuts"], keywords: ["hazelnut", "hazelnuts"] },
-  { id: "walnut", aliases: ["walnut", "walnuts"], keywords: ["walnut", "walnuts"] },
-  { id: "cashew", aliases: ["cashew", "cashews"], keywords: ["cashew", "cashews"] },
-  { id: "pecan", aliases: ["pecan", "pecans"], keywords: ["pecan", "pecans"] },
-  { id: "pistachio", aliases: ["pistachio", "pistachios"], keywords: ["pistachio", "pistachios"] },
-  { id: "brazil-nut", aliases: ["brazil nut", "brazil nuts"], keywords: ["brazil nut", "brazil nuts"] },
-  { id: "macadamia", aliases: ["macadamia", "macadamias"], keywords: ["macadamia", "macadamias"] },
+  // Each nut is also its own narrow entry: "Walnut" on a profile matches walnut, never cashew — but
+  // it does match "nuts" (UNSPECIFIED_NUTS), which doesn't say which nut. Same call as
+  // allergensOverlap's "Tree nuts" report reaching a "Walnut" profile: principle 1, false caution
+  // beats false safety.
+  { id: "almond", aliases: ["almond", "almonds"], keywords: ["almond", "almonds", ...UNSPECIFIED_NUTS] },
+  { id: "hazelnut", aliases: ["hazelnut", "hazelnuts"], keywords: ["hazelnut", "hazelnuts", ...UNSPECIFIED_NUTS] },
+  { id: "walnut", aliases: ["walnut", "walnuts"], keywords: ["walnut", "walnuts", ...UNSPECIFIED_NUTS] },
+  { id: "cashew", aliases: ["cashew", "cashews"], keywords: ["cashew", "cashews", ...UNSPECIFIED_NUTS] },
+  { id: "pecan", aliases: ["pecan", "pecans"], keywords: ["pecan", "pecans", ...UNSPECIFIED_NUTS] },
+  { id: "pistachio", aliases: ["pistachio", "pistachios"], keywords: ["pistachio", "pistachios", ...UNSPECIFIED_NUTS] },
+  { id: "brazil-nut", aliases: ["brazil nut", "brazil nuts"], keywords: ["brazil nut", "brazil nuts", ...UNSPECIFIED_NUTS] },
+  { id: "macadamia", aliases: ["macadamia", "macadamias"], keywords: ["macadamia", "macadamias", ...UNSPECIFIED_NUTS] },
   { id: "egg", aliases: ["egg", "eggs"], keywords: ["egg", "eggs", "eggnog", "albumin", "ovalbumin"] },
   { id: "soy", aliases: ["soy", "soya"], keywords: ["soy", "soya", "soybean", "soybeans", "soymilk", "edamame", "tofu"] },
   // "fish" itself is included as a keyword too, not just an alias: unlike most allergens, a

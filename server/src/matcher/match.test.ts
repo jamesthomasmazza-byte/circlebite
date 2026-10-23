@@ -140,3 +140,20 @@ test("different allergens keep different keys of both kinds", () => {
     assert.notEqual(key("Kiwi"), key("Kiwano"));
   }
 });
+
+// Barcode 096619160761, production 2026-10-16: tagged "nuts" (Open Food Facts' tree-nut tag) in
+// both allergens and traces. With the ingredient text left out, the tag alone must be enough.
+test("Open Food Facts' 'nuts' tag is a tree nut — tags only, no ingredient text to fall back on", () => {
+  const product: ProductForMatching = { found: true, allergensTags: ["milk", "nuts", "peanuts", "soybeans", "coconut"], tracesTags: ["eggs", "nuts"], ingredientsText: null };
+  assert.deepEqual(matchAllergen("Tree nuts", product), { allergenName: "Tree nuts", matched: true, source: "tag" });
+  assert.deepEqual(matchAllergen("tree nut", { ...product, allergensTags: [] }), { allergenName: "tree nut", matched: true, source: "trace" });
+});
+
+test("'nuts' only adds matches: a single nut too (it doesn't say which), never peanut, never inside peanuts or doughnuts", () => {
+  const tagged: ProductForMatching = { found: true, allergensTags: ["nuts"], tracesTags: [], ingredientsText: null };
+  assert.equal(matchAllergen("Walnut", tagged).matched, true, "unspecified nuts could be walnut — principle 1");
+  assert.equal(matchAllergen("Walnut", productWithIngredients("cashews, salt")).matched, false, "a named different nut still isn't walnut");
+  assert.equal(matchAllergen("Peanut", tagged).matched, false);
+  assert.equal(matchAllergen("Tree nuts", productWithIngredients("roasted peanuts, doughnuts, coconuts")).matched, false);
+  assert.equal(matchAllergen("Tree nuts", productWithIngredients("mixed nuts, salt")).matchedText, "nuts");
+});
