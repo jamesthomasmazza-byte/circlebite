@@ -27,7 +27,8 @@ JT's October 8 email left out, and the gap is why he asked.
   owner-only to owner-or-co-manager.
 - **Status: closed for profile edits. Open for downgrade reports**, pending one production check.
   Prof. Yoest accepted it as closed on October 9. That acceptance rests on the October 8 email,
-  which claimed more than had been checked (see "Corrections owed" below).
+  which claimed more than had been checked (see "Corrections owed" below), corrected to him on
+  October 19.
 - **Built:** October 6, 2026. Profile change history, migrations 0036–0039. A downgrade report
   (`downgrade_reported`, migration 0037) is the only kind of entry that records **evidence**: the
   label photo, the note and the verdict at the time of the report.
@@ -144,10 +145,12 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
 - **Closed:** October 5, 2026, Eastern. That was already October 6 in UTC, which is the date the
   October 8 email gave. The journal entry that records the pass was committed at 22:08 ET on
   October 5.
-- **Still owed:** the evidence he asked for on October 6. The October 8 email described the
-  restore but attached none. The evidence is the October 11 unattended run
-  (`docs/evidence/2026-10-11-restore-test.txt`). Not yet sent; going in the October 19 email. See
-  "Corrections owed", item 4.
+- **Evidence sent October 19:** the evidence he asked for on October 6. The October 8 email
+  described the restore but attached none. The October 19 email
+  (`2026-10-19-jt-shared-escalations-and-corrections.md`) carried the October 11 unattended run,
+  with a link to its full output (`docs/evidence/2026-10-11-restore-test.txt`). His reply the same
+  day (`2026-10-19-yoest-fake-family-page.md`) comments on it without formally closing anything.
+  See "Corrections owed", item 4.
 
 ---
 
@@ -159,24 +162,42 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
   (`4e622f2`): "**A warning reaches other families only once two families have reported it.**"
   The code changed the same day, from one report to two distinct families (`CORROBORATION_THRESHOLD`
   in `server/src/corrections/recordCorrection.ts`). **Never answered to him by email.**
-- **Evidence of a test restore** (October 6). See Condition 4.
+  Not in the October 19 email either. Still open.
+- **Evidence of a test restore** (October 6). Sent October 19. See Condition 4.
 - **The shared-escalations commit link** (October 14, `2026-10-14-yoest-shared-escalations-ask.md`),
-  with tests for his three cases. Due October 19; going out that day. Open until sent.
+  with tests for his three cases. **Sent October 19** (`e6f96c9`, with the three tests by file and
+  line), in `2026-10-19-jt-shared-escalations-and-corrections.md`.
 - **The second-family question** (October 14): "What stops one determined person from creating a
-  second family to corroborate themselves?" Answered in the October 19 email. Open until sent.
+  second family to corroborate themselves?" **Answered October 19**, same email. His reply the
+  same day called the answer "honest and correct" and asked for it to be written down (below).
+
+### Due Sunday, October 25 (his October 19 reply, `2026-10-19-yoest-fake-family-page.md`)
+
+- **The production downgrade report, showing what the owner sees.** Closes the open half of
+  Conditions 1 and 2. `BACKLOG.md`, "File one downgrade report as a co-manager on production".
+  Open.
+- **The shared-escalations fix deployed with the setting off** (`e6f96c9`, `CIRCLE_ESCALATIONS`
+  off; `docs/server-setup.md` §11a). Open.
+- **A short page on the fake-family risk** and the two hardening steps (scan history; same-hand
+  photo flags) as the gate before removals may ever cross families. Open.
 
 ## Corrections owed to Prof. Yoest
 
-The October 8 email, which his October 9 acceptance rests on, claimed more than was checked:
+The October 8 email, which his October 9 acceptance rests on, claimed more than was checked.
+**All four were sent on October 19** (`2026-10-19-jt-shared-escalations-and-corrections.md`), and
+his same-day reply acknowledged the three corrections (`2026-10-19-yoest-fake-family-page.md`).
 
 1. "I verified both on production today rather than in tests." That holds for profile edits only.
    The verdict-downgrade report was verified by tests only, and it is Condition 2's literal case
-   and the only path that records evidence for Condition 1.
+   and the only path that records evidence for Condition 1. Corrected October 19 (the email's
+   second correction).
 2. "Screenshot attached: a co-manager lowered an allergen's severity and then removed it." The
    attached screenshot shows the owner's own two edits to Timmy ("You changed Sesame"). The
-   co-manager's changes were on a different profile, and their screenshots were not sent.
-3. "The restore was verified end to end on October 6." That was October 5, Eastern.
-4. **Evidence of one successful test restore, asked for on October 6: none was sent.** Not yet
-   sent; going in the October 19 email. The evidence is the October 11 unattended run, with its
-   full output in `docs/evidence/2026-10-11-restore-test.txt`. For the October 5 run, the repo
-   holds only the journal's summary.
+   co-manager's changes were on a different profile, and their screenshots were not sent on October 8.
+   Corrected October 19 (the email's first correction), with the October 16 screenshots attached.
+3. "The restore was verified end to end on October 6." That was October 5, Eastern. Corrected
+   October 19 (the email's third correction): 21:48 Eastern on October 5, 01:48 UTC on the 6th.
+4. **Evidence of one successful test restore, asked for on October 6: none was sent on October 8.**
+   Sent October 19: the October 11 unattended run, with its full output in
+   `docs/evidence/2026-10-11-restore-test.txt`. For the October 5 run, the repo holds only the
+   journal's summary.
