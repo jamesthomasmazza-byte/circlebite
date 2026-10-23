@@ -878,7 +878,7 @@ it is the least-worked area. Treat this whole section as the priority block it i
       checking the photo flow locally needs (found 2026-10-17). Tests should set the switch
       themselves, on and off, rather than assume the developer's file. Until then, run the server
       suite with `LABEL_SCAN=off npm test -w server` (a shell value wins over dotenv).
-- [ ] **One pending, unverified removal turns the reporter's own card green.** Found on production
+- [x] **One pending, unverified removal turns the reporter's own card green.** Found on production
       2026-10-23: after `timmy` reported sesame absent on Oat Biscuits, timmy's own view of that
       scan read "No listed allergens found", the cleanest verdict the app gives, from one family's
       report that nobody has confirmed. A pending `remove_caution` clears its allergen in the
@@ -888,6 +888,12 @@ it is the least-worked area. Treat this whole section as the priority block it i
       the weakest evidence making the loudest claim — the same problem the circle card fixed for pending escalations ("the weaker
       claim shouldn't be the louder one", Oct 19). Decide the wording: the card should say the
       warning was lifted by the reporter's own unconfirmed report, not present it as a clean label.
+      **Done 2026-10-23** (Option A, JT's choice): a removal is noted on the reporter's own row —
+      "you reported it isn't in this — pending review" — and never applied; the headline stays what
+      the product data says. Pending and three-family-corroborated removals alike. Decision:
+      `docs/principles.md`; `docs/verdict-engine.md` principle 6 amended. Test: "no removal that
+      hasn't been rejected can lower the headline or any row, in any starting state"
+      (`applyCorrections.test.ts`).
 
 ## Week 10 — Nov 17–19 · Submission prep *[10% presentation]*
 
@@ -981,6 +987,7 @@ Out of scope per `CONTEST_RULES.md` §7 — do not start these before judging en
   on `verdict_explanations.failure_reason` / `label_extractions.failure_reason`. Same gap in "That
   wasn't this product": the restored barcode verdict is re-explained from a snapshot that doesn't
   record whether that scan's own AI step failed (`combineScan.ts` `discardLabelEvidence`).
+- Wrong-product reports still lower the reporter's own card to "Unable to confirm" — by design (the record is for another product, so none of its claims hold), unlike a removal, which since 2026-10-23 is only noted (`applyCorrections.ts`). Revisit after judging.
 - Harden corroboration against fake families before any removal travels
   (`docs/fake-family-risk.md`, Prof. Yoest's Oct 19 ask). Both, tested, before a corroborated
   `remove_caution` is read outside the reporter's own view:

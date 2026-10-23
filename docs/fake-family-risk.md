@@ -27,8 +27,11 @@ label. A false all-clear can cost a child.
 - The function that applies them can only raise an allergen to "contains"
   (`server/src/corrections/applyCommunityCorrections.ts`). Test:
   `applyCommunityCorrections.test.ts`, "never clears or downgrades anything".
-- A removal changes only the reporter's own view of the scan it was filed from. Test:
-  `userScanView.test.ts`, "the reporter's own remove_caution changes only their view".
+- A removal is noted only on the reporter's own view of the scan it was filed from, and since
+  October 23 it doesn't lower even that card (`server/src/corrections/applyCorrections.ts`). Tests:
+  `userScanView.test.ts`, "the reporter's own remove_caution changes only their view";
+  `applyCorrections.test.ts`, "no removal that hasn't been rejected can lower the headline or any
+  row, in any starting state".
 - A removal never corroborates while a corroborated warning for the same allergen family stands
   (`corroborateClaimIfThresholdMet`).
 - A false warning can be undone: an admin rejects its reports, or `COMMUNITY_CORRECTIONS` is

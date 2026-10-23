@@ -140,8 +140,11 @@ aiAccuracyReport(since: Date): { scans, overruled, rate, byAllergen }
 5. **A conflict is shown, never resolved silently.** If the sources disagree, the verdict card says
    so and names both readings. That disagreement is also the highest-value correction report the app
    can generate, and it can be contributed back upstream to Open Food Facts.
-6. **The human wins.** A user correction overrides the verdict for that product on their profile
-   immediately, and enters the review queue for everyone else.
+6. **The human wins — toward caution.** A user's report that an allergen *is* there overrides the
+   verdict for that product on their profile immediately, and enters the review queue for everyone
+   else. A report that an allergen *isn't* there is noted on their own row, pending review, and never
+   lowers what their card says (amended Oct 23, 2026: one pending report had turned a card green on
+   the reporter's view — the same asymmetry as `docs/fake-family-risk.md`; `docs/principles.md`).
 7. **Minimum data in the prompt.** Allergen names and severities only. No names, profile labels, or
    ages — these are health details about real people, often children.
 8. **Every verdict is reproducible.** Store model name, prompt version, and exact input alongside the
