@@ -506,6 +506,12 @@ it is the least-worked area. Treat this whole section as the priority block it i
         aliases are "tree nut"/"tree nuts" (`synonyms.ts:59`) — the same class as the Peanut/peanut
         bug. The barcode is in the production `scans` table. The keyword list itself isn't the
         cause: almond/almonds are under tree nuts in `372dd6e` and now.
+        **Traced 2026-10-23: both hypotheses were real.** Production's record for barcode
+        096619160761 lists ALMONDS and ALMOND BUTTER in the ingredients, and "treenuts" came back
+        clear — (b). It is also tagged "nuts" in allergens and traces, which no cluster matched — (a).
+        Fixed by the allergen pick-list (migration 0046, `matcher/allergenChoices.ts`) and the "nuts"
+        tag (`synonyms.ts`); tests on that exact record in `allergenChoices.test.ts` and `match.test.ts`.
+        The hierarchy item above is still open.
 - [ ] **Prof. Yoest's Oct 1-2 conditions on the overrule widening.**
       `docs/approvals/2026-10-02-yoest-overrule-conditions.md`. He approved owner-or-co-manager
       downgrades — "your reading is better than my wording" — and attached two conditions, a judge

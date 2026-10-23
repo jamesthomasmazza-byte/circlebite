@@ -1897,3 +1897,17 @@ All three of Prof. Yoest's Oct 19 asks are done; they go to him by Oct 25.
 
 **Found:** timmy's own card for that scan went to "No listed allergens found" on the strength of one
 unconfirmed report (BACKLOG).
+
+**Later the same day — the almonds, traced and fixed.** Production's record for the Oct 16 chewy bar
+(096619160761) lists ALMONDS and ALMOND BUTTER, and the profile's tree-nut allergen was spelled
+"treenuts", which matched no cluster: the matcher looked for the word "treenuts" and nothing else.
+The record is also tagged "nuts", Open Food Facts' tree-nut tag, which no cluster knew either — a
+correctly spelled "Tree nuts" would have needed the ingredient text. Both fixed: profiles now pick
+allergens from a list mapped to the matcher's own families, with a typed "Other" that says it
+matches only that word; existing allergens got keys (migration 0046) without being renamed, and
+"treenuts" asks a manager to confirm Tree nuts. The 390px check caught the change history warning
+that confirming the name could stop warnings — the opposite of what it does — so a rename to the
+list's name for the same allergen no longer carries it.
+
+**Learned.** Free text on a safety field is a bug waiting for a spelling. Twice now — Peanut/peanut,
+then treenuts — the matcher was right and the name was the problem.
