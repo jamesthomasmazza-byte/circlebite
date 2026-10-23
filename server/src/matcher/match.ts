@@ -4,7 +4,9 @@ export type MatchSource = "tag" | "ingredients" | "trace";
 export type Severity = "mild" | "moderate" | "severe";
 export type Classification = "contains" | "caution" | "clear";
 
-export type ProfileAllergen = { name: string; severity: Severity; treatTracesAsUnsafe: boolean };
+// key: the listed allergen it was picked as, or recognized as (allergenChoices.ts, migration 0046) —
+// a synonyms.ts cluster id, "other", or null for a typed name nobody has decided on yet.
+export type ProfileAllergen = { name: string; severity: Severity; treatTracesAsUnsafe: boolean; key?: string | null };
 
 export type ProductForMatching = {
   found: boolean;
@@ -44,12 +46,24 @@ function clusterFor(normalized: string) {
 }
 
 /** Unknown allergen name: literal match on the name itself, trailing "s" stripped first. */
-function keywordsFor(allergenName: string): string[] {
+function nameKeywords(allergenName: string): string[] {
   const normalized = normalizeAllergenName(allergenName);
   const cluster = clusterFor(normalized);
   if (cluster) return cluster.keywords;
   const singular = stripTrailingS(normalized);
   return singular === normalized ? [normalized] : [normalized, singular];
+}
+
+/**
+ * What to search for: everything the name alone matches, plus — when the allergen has a key — that
+ * cluster's keywords. A key only ever adds: "treenuts" keyed to tree-nut (migration 0046) still
+ * matches the literal word, and now almonds too. An unknown key ("other", or a cluster id this
+ * build doesn't have) adds nothing.
+ */
+function keywordsFor(allergenName: string, key?: string | null): string[] {
+  const byName = nameKeywords(allergenName);
+  const cluster = key ? SYNONYM_CLUSTERS.find((c) => c.id === key) : undefined;
+  return cluster ? [...new Set([...byName, ...cluster.keywords])] : byName;
 }
 
 /**
@@ -92,8 +106,8 @@ function wordBoundaryMatch(text: string, keyword: string): string | null {
  * matched by exact equality (they're normalized, discrete values, not free text — see
  * openFoodFacts.ts); ingredient text is matched by word-boundary regex since it's prose.
  */
-export function matchAllergen(allergenName: string, product: ProductForMatching): AllergenMatchResult {
-  const keywords = keywordsFor(allergenName);
+export function matchAllergen(allergenName: string, product: ProductForMatching, key?: string | null): AllergenMatchResult {
+  const keywords = keywordsFor(allergenName, key);
 
   for (const kw of keywords) {
     if (product.allergensTags.includes(kw)) return { allergenName, matched: true, source: "tag" };
@@ -139,7 +153,7 @@ export function computeVerdict(
   }
 
   const details: AllergenVerdictDetail[] = allergens.map((allergen) => {
-    const result = matchAllergen(allergen.name, product);
+    const result = matchAllergen(allergen.name, product, allergen.key);
     const base = { ...result, severity: allergen.severity };
     if (!result.matched) return { ...base, classification: "clear" };
     if (result.source === "trace" && !allergen.treatTracesAsUnsafe) {

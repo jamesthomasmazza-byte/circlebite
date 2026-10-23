@@ -7,11 +7,18 @@ import type { ProfileAllergen, Severity } from "./match.js";
  * fixed this session (applyCommunityCorrectionsIfEnabled) and a fourth was about to start here.
  */
 export async function loadProfileAllergens(allergenProfileId: string): Promise<ProfileAllergen[]> {
-  const { rows } = await pool.query<{ name: string; severity: Severity; treat_traces_as_unsafe: boolean }>(
+  const { rows } = await pool.query<{ name: string; severity: Severity; treat_traces_as_unsafe: boolean; allergen_key: string | null }>(
     // Ordered, so a scan and its history entry list the same allergens in the same order — both
     // build the card's rows from this list (userScanView.ts). Same order as the profile page.
-    "SELECT name, severity, treat_traces_as_unsafe FROM allergens WHERE allergen_profile_id = $1 ORDER BY name",
+    // allergen_key (migration 0046) is read whether or not a manager has confirmed it: a key only
+    // adds matches (match.ts keywordsFor), so it is safe to use before anyone has looked.
+    "SELECT name, severity, treat_traces_as_unsafe, allergen_key FROM allergens WHERE allergen_profile_id = $1 ORDER BY name",
     [allergenProfileId],
   );
-  return rows.map((a) => ({ name: a.name, severity: a.severity, treatTracesAsUnsafe: a.treat_traces_as_unsafe }));
+  return rows.map((a) => ({
+    name: a.name,
+    severity: a.severity,
+    treatTracesAsUnsafe: a.treat_traces_as_unsafe,
+    key: a.allergen_key,
+  }));
 }

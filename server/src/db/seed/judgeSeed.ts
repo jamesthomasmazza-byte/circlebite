@@ -5,6 +5,7 @@ import type { PoolClient } from "pg";
 
 import { claimKey, CORROBORATION_THRESHOLD, corroborateClaimIfThresholdMet } from "../../corrections/recordCorrection.js";
 import { env } from "../../env.js";
+import { recognizeAllergenName } from "../../matcher/allergenChoices.js";
 import { allergenFamilyKey, allergenFoldKey } from "../../matcher/match.js";
 import { SEED_PRODUCT_MARKER } from "../../lib/productLookup.js";
 import { SEED_EMAIL_DOMAIN } from "../../lib/seedMarker.js";
@@ -259,9 +260,9 @@ async function createSeed(client: PoolClient, options: { judgeHashes: Record<str
     await client.query("SELECT set_config('circlebite.actor_id', $1, true)", [PEOPLE[profile.owner].id]);
     for (const a of profile.allergens) {
       await client.query(
-        `INSERT INTO allergens (id, allergen_profile_id, name, severity, treat_traces_as_unsafe)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [a.id, profile.id, a.name, a.severity, a.treatTracesAsUnsafe],
+        `INSERT INTO allergens (id, allergen_profile_id, name, severity, treat_traces_as_unsafe, allergen_key, key_needs_review)
+         VALUES ($1, $2, $3, $4, $5, $6, false)`,
+        [a.id, profile.id, a.name, a.severity, a.treatTracesAsUnsafe, seededAllergenKey(a.name)],
       );
     }
   }
@@ -409,4 +410,16 @@ export async function runJudgeSeed(options: SeedOptions): Promise<SeedSummary> {
   }
   await writeSeedPhotos();
   return summary;
+}
+
+/**
+ * A seeded allergen's listed key (allergenChoices.ts, migration 0046), settled — so a judge's
+ * dashboard never says an allergen "needs a look" after a reseed. Refuses any seeded name that isn't
+ * one of the list's spellings exactly: a seed that needed the spelling check would be showing judges
+ * the very bug the list exists to stop.
+ */
+export function seededAllergenKey(name: string): string {
+  const recognized = recognizeAllergenName(name);
+  if (!recognized?.exact) throw new Error(`seeded allergen "${name}" isn't a listed allergen's own spelling`);
+  return recognized.key;
 }

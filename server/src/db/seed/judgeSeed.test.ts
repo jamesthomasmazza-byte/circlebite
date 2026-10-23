@@ -5,6 +5,7 @@ import path from "node:path";
 import { after, before, test } from "node:test";
 
 import { deleteAccount } from "../../account/deleteAccount.js";
+import { choiceForKey, recognizeAllergenName } from "../../matcher/allergenChoices.js";
 import { hashPassword, verifyPassword } from "../../auth/password.js";
 import { getProfileAccess } from "../../authorization/profiles.js";
 import { loadCommunityAdditions } from "../../corrections/communityAdditions.js";
@@ -222,6 +223,29 @@ test("a judge logs in to no unreviewed changes: seeded history is recorded as ea
   for (const r of rows) {
     assert.equal(r.actor_id, ownerId.get(r.allergen_profile_id), r.allergen_profile_id);
     assert.equal(r.actor_role, "owner", r.allergen_profile_id);
+  }
+});
+
+// JT, 2026-10-23: a reseed must never leave a judge's dashboard saying an allergen "needs a look".
+test("every seeded allergen has its listed key, settled — no judge's dashboard asks for a review", async () => {
+  const { rows } = await pool.query<{ name: string; allergen_key: string | null; key_needs_review: boolean }>(
+    "SELECT name, allergen_key, key_needs_review FROM allergens WHERE allergen_profile_id = ANY($1)",
+    [Object.values(PROFILES).map((p) => p.id)],
+  );
+  assert.equal(rows.length, Object.values(PROFILES).flatMap((p) => p.allergens).length);
+  for (const r of rows) {
+    assert.equal(r.allergen_key, recognizeAllergenName(r.name)?.key, r.name);
+    assert.ok(choiceForKey(r.allergen_key!), `${r.name} is on the list`);
+    assert.equal(r.key_needs_review, false, r.name);
+  }
+  for (const cast of JUDGE_CASTS) {
+    const { rows: counts } = await pool.query<{ n: number }>(
+      `SELECT count(*)::int AS n FROM allergens a JOIN allergen_profiles p ON p.id = a.allergen_profile_id
+       LEFT JOIN profile_managers pm ON pm.allergen_profile_id = p.id AND pm.user_id = $1
+       WHERE (p.manager_id = $1 OR pm.user_id = $1) AND a.key_needs_review`,
+      [PEOPLE[cast.judge].id],
+    );
+    assert.equal(counts[0]!.n, 0, cast.judge);
   }
 });
 
