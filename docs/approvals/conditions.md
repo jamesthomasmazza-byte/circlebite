@@ -25,10 +25,10 @@ JT's October 8 email left out, and the gap is why he asked.
 
 - **Source:** October 2, 2026, 12:13 PM. He calls it a condition on widening downgrades from
   owner-only to owner-or-co-manager.
-- **Status: closed for profile edits. Open for downgrade reports**, pending one production check.
-  Prof. Yoest accepted it as closed on October 9. That acceptance rests on the October 8 email,
-  which claimed more than had been checked (see "Corrections owed" below), corrected to him on
-  October 19.
+- **Status: closed.** Profile edits were verified on production October 8; downgrade reports on
+  October 23 (below). Prof. Yoest accepted it as closed on October 9. That acceptance rests on the
+  October 8 email, which claimed more than had been checked (see "Corrections owed" below),
+  corrected to him on October 19.
 - **Built:** October 6, 2026. Profile change history, migrations 0036–0039. A downgrade report
   (`downgrade_reported`, migration 0037) is the only kind of entry that records **evidence**: the
   label photo, the note and the verdict at the time of the report.
@@ -46,10 +46,17 @@ JT's October 8 email left out, and the gap is why he asked.
     and scan", and the downgrade tests after it; `server/src/routes/profileChanges.test.ts`, "the
     downgrade's photo is served from the entry after its scan is gone"; and
     `client/src/lib/profileChangeCopy.test.ts`. On production, an escalation (`add_caution`) was
-    filed October 16, 7:15 PM ET; no downgrade (`remove_caution`) yet, because none of the products
+    filed October 16, 7:15 PM ET; no downgrade (`remove_caution`), because none of the products
     checked had a card flagging an allergen its label doesn't list.
-- **Closed:** October 8, 2026, for profile edits. Downgrade reports close on the `BACKLOG.md`
-  follow-up "File one downgrade report as a co-manager on production".
+  - *Downgrade reports, on production, October 23, 2026,* after the deploy of `82d6c76` (17:20 UTC;
+    migration 0045 applied, `CIRCLE_ESCALATIONS` off). Co-manager `timmy` filed `flag_wrong` →
+    `remove_caution` on Sesame, scanning James Mazza's profile, at 2:22:08 PM ET. The product is
+    the judge seed's synthetic Oat Biscuits (2990000000038), whose record lists a sesame trace;
+    the photo is a printed label marked "TEST LABEL — synthetic product", not a real package, and
+    the note says the same. The owner's history shows the entry with who ("timmy (co-manager)"),
+    when, the verdict at the time ("The card had said: Contains an allergen"), the note and a link
+    to the label photo. Evidence: `img/circlebite-downgrade-history-2026-10-23.png`.
+- **Closed:** October 8, 2026, for profile edits; October 23, 2026, for downgrade reports.
 
 ## Condition 2 — Notify the owner when a co-manager downgrades
 
@@ -57,9 +64,9 @@ JT's October 8 email left out, and the gap is why he asked.
 > about a change to their child's profile by accident.
 
 - **Source:** October 2, 2026, 12:13 PM, the same email and paragraph as Condition 1.
-- **Status: closed for profile edits. Open for downgrade reports**, which is the case his wording
-  names: "downgrades a verdict". Prof. Yoest accepted it as closed on October 9, on the strength
-  of the October 8 email.
+- **Status: closed.** Profile edits were verified on production October 8; downgrade reports,
+  the case his wording names ("downgrades a verdict"), on October 23 (below). Prof. Yoest accepted
+  it as closed on October 9, on the strength of the October 8 email.
 - **Built:** October 6, 2026. An in-app notice with acknowledgements (migration 0040), not email:
   a hosted sender would breach R6, and EC2 blocks outbound port 25. Prof. Yoest approved the
   in-app route on October 6.
@@ -75,6 +82,13 @@ JT's October 8 email left out, and the gap is why he asked.
     owner can acknowledge; the banner count follows the acks". The owner's unseen-changes notice
     counts a co-manager's downgrade report (`hasDowngrade: true`), the co-manager gets no notice,
     and only the owner can acknowledge.
+  - *Downgrade reports, on production, October 23, 2026,* the report in Condition 1. The owner's
+    dashboard showed "Changes to review — Timmy changed James Mazza's profile and disputed a scan
+    warning — 3 updates you haven't reviewed": the downgrade report plus the two October 8 entries,
+    still unacknowledged. Evidence: `img/circlebite-downgrade-owner-notice-2026-10-23.png` (signed-in
+    address redacted) and `img/circlebite-downgrade-history-2026-10-23.png` (all three entries
+    flagged New, with "I've seen these"). That the co-manager gets no notice and only the owner can
+    acknowledge is still verified by the test above, not on production.
 - **Scope — escalations are not downgrades.** A report that adds a warning (`add_caution`) never
   creates a change-history entry and never appears in the owner's banner, including with
   `CIRCLE_ESCALATIONS` on. The only trigger that writes a report into `profile_changes` fires on
@@ -84,8 +98,7 @@ JT's October 8 email left out, and the gap is why he asked.
   (`server/src/corrections/circleEscalations.ts`) and writes nothing to the history. Test:
   `profileChanges.test.ts`, "a wrong_product downgrade is recorded with no allergen; an escalation
   is not recorded at all".
-- **Closed:** October 8, 2026, for profile edits. Downgrade reports close on the same follow-up
-  as Condition 1.
+- **Closed:** October 8, 2026, for profile edits; October 23, 2026, for downgrade reports.
 
 ## Condition 3 — Only escalations cross family lines
 
@@ -174,10 +187,11 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
 ### Due Sunday, October 25 (his October 19 reply, `2026-10-19-yoest-fake-family-page.md`)
 
 - **The production downgrade report, showing what the owner sees.** Closes the open half of
-  Conditions 1 and 2. `BACKLOG.md`, "File one downgrade report as a co-manager on production".
-  Open.
+  Conditions 1 and 2. **Done October 23** (Conditions 1 and 2, above). Open until sent.
 - **The shared-escalations fix deployed with the setting off** (`e6f96c9`, `CIRCLE_ESCALATIONS`
-  off; `docs/server-setup.md` §11a). Open.
+  off; `docs/server-setup.md` §11a). **Done October 23:** `82d6c76` deployed at 17:20 UTC,
+  migration 0045 applied, `CIRCLE_ESCALATIONS` unset (off), and every post-deploy check passed,
+  including a real label-photo AI call. Open until sent.
 - **A short page on the fake-family risk** and the two hardening steps (scan history; same-hand
   photo flags) as the gate before removals may ever cross families. Written October 23:
   `docs/fake-family-risk.md`. The hardening it describes is not built (`BACKLOG.md`, deferred until
