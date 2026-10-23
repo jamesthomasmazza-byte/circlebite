@@ -539,7 +539,7 @@ it is the least-worked area. Treat this whole section as the priority block it i
         an "I've seen these" control. Not shown in the screenshot above, which is the owner's own
         edits. **The notice for a co-manager's downgrade report is verified by tests only.** Closes
         on the follow-up below.
-      - [ ] **File one downgrade report as a co-manager on production, and check the owner's
+      - [x] **File one downgrade report as a co-manager on production, and check the owner's
         notice.** Use a real photo of a real label, not a stand-in. Check the owner sees the
         `downgrade_reported` entry with who, when, the note and the photo, and that it appears under
         "Changes to review". Then record it in `docs/approvals/conditions.md`. This also exercises
@@ -552,6 +552,16 @@ it is the least-worked area. Treat this whole section as the priority block it i
         banner counting it, with only the owner able to acknowledge. That escalation did write a
         `product_corrections` row, so 0044's keys have had one live write — an `add_caution` one;
         a `remove_caution` write still hasn't happened.
+        **Done 2026-10-23, 2:22:08 PM ET**, after deploying `82d6c76`: co-manager `timmy` filed
+        `flag_wrong` on Sesame, on James Mazza's profile, against the synthetic seed Oat Biscuits
+        (2990000000038, sesame trace on the record). Not a real label, unlike what this item asked:
+        a printed one marked "TEST LABEL — synthetic product", because no real product checked had a
+        card flagging an allergen its label doesn't list. The owner's history shows the entry with
+        who, when, the verdict at the time, the note and the photo link, and the banner counts it
+        ("disputed a scan warning — 3 updates"). Screenshots and the record:
+        `docs/approvals/conditions.md`, Conditions 1 and 2. Only-the-owner-can-acknowledge was not
+        exercised on production; it rests on `profileChanges.test.ts`. This was 0044's first live
+        `remove_caution` write.
       - [x] **Automated Postgres backups.** His operational note, and he's right that it belongs
         before real circles depend on the data — Postgres is on the same box as the app, so losing
         the box currently loses everything. `pg_dump` on a timer with off-box storage; decide where
@@ -868,6 +878,16 @@ it is the least-worked area. Treat this whole section as the priority block it i
       checking the photo flow locally needs (found 2026-10-17). Tests should set the switch
       themselves, on and off, rather than assume the developer's file. Until then, run the server
       suite with `LABEL_SCAN=off npm test -w server` (a shell value wins over dotenv).
+- [ ] **One pending, unverified removal turns the reporter's own card green.** Found on production
+      2026-10-23: after `timmy` reported sesame absent on Oat Biscuits, timmy's own view of that
+      scan read "No listed allergens found", the cleanest verdict the app gives, from one family's
+      report that nobody has confirmed. A pending `remove_caution` clears its allergen in the
+      reporter's view at once (`server/src/corrections/applyCorrections.ts`, only rejected removals
+      are skipped), and the rollup then has nothing left to flag. That's by design — a correction
+      overrides the reporter's own view immediately (`server/src/routes/corrections.ts`) — but it is
+      the weakest evidence making the loudest claim — the same problem the circle card fixed for pending escalations ("the weaker
+      claim shouldn't be the louder one", Oct 19). Decide the wording: the card should say the
+      warning was lifted by the reporter's own unconfirmed report, not present it as a clean label.
 
 ## Week 10 — Nov 17–19 · Submission prep *[10% presentation]*
 
