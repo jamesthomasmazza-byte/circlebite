@@ -55,7 +55,11 @@ JT's October 8 email left out, and the gap is why he asked.
     the photo is a printed label marked "TEST LABEL — synthetic product", not a real package, and
     the note says the same. The owner's history shows the entry with who ("timmy (co-manager)"),
     when, the verdict at the time ("The card had said: Contains an allergen"), the note and a link
-    to the label photo. Evidence: `img/circlebite-downgrade-history-2026-10-23.png`.
+    to the label photo. Evidence: `img/circlebite-downgrade-history-2026-10-23.png`. Taken before
+    the Oct 23 wording change: its line "Timmy's card no longer warns about sesame" is generated
+    when the page loads, and now reads "Timmy's card still warns about sesame, marked as disputed
+    until it's reviewed" — what the card does since a removal stopped lowering the reporter's own
+    view (`docs/principles.md`, Oct 23). The recorded entry itself is unchanged.
 - **Closed:** October 8, 2026, for profile edits; October 23, 2026, for downgrade reports.
 
 ## Condition 2 — Notify the owner when a co-manager downgrades
