@@ -179,7 +179,9 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
 - **The shared-escalations fix deployed with the setting off** (`e6f96c9`, `CIRCLE_ESCALATIONS`
   off; `docs/server-setup.md` §11a). Open.
 - **A short page on the fake-family risk** and the two hardening steps (scan history; same-hand
-  photo flags) as the gate before removals may ever cross families. Open.
+  photo flags) as the gate before removals may ever cross families. Written October 23:
+  `docs/fake-family-risk.md`. The hardening it describes is not built (`BACKLOG.md`, deferred until
+  after judging). Open until sent.
 
 ## Corrections owed to Prof. Yoest
 

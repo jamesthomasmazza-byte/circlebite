@@ -31,6 +31,8 @@ only the reporter's own view of the scan they filed it from and can never clear 
 else — because sign-up is open to any adult, and three throwaway accounts should not be able to clear
 a peanut warning for every family in the app (`server/src/corrections/applyCommunityCorrections.ts`,
 decided 2026-09-10).
+What open sign-up still allows, and what must be built before a removal may ever cross a family
+line: `docs/fake-family-risk.md`.
 
 **A warning reaches other families only once two families have reported it.** A report that an
 allergen is present changes the reporter's own view of the scan they filed it from at once, but it
