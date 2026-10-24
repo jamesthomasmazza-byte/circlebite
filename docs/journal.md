@@ -1911,3 +1911,15 @@ list's name for the same allergen no longer carries it.
 
 **Learned.** Free text on a safety field is a bug waiting for a spelling. Twice now — Peanut/peanut,
 then treenuts — the matcher was right and the name was the problem.
+
+**Evening — a tab bar, and where Condition 2 went.** The app now has a bottom tab bar, Profile ·
+Scan · Circle, and opens on Scan. That skipped the dashboard, which was where an owner learned of a
+co-manager's change (Condition 2), so the notice moved rather than being lost: a banner at the top
+of Scan and of the Profile tab, and a count on the Profile tab everywhere else. Checked locally
+end to end: a co-manager lowered Sesame on Maya's profile, and the first screen after judge1 signed
+in said "Priya Nair changed Maya's profile — 1 update you haven't reviewed", with a 1 on the
+Profile tab; acknowledging cleared both. A test renders that banner from the unseen-changes data and
+another fails if Scan ever leaves the layout that shows it. The Circle tab lists each circle's
+people and the invites nobody has accepted yet; it showed a co-manager their own name as a
+co-manager, now "You". An approve/decline request flow is in BACKLOG, after judging.
+

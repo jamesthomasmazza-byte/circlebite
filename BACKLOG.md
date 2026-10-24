@@ -993,6 +993,9 @@ Out of scope per `CONTEST_RULES.md` §7 — do not start these before judging en
   on `verdict_explanations.failure_reason` / `label_extractions.failure_reason`. Same gap in "That
   wasn't this product": the restored barcode verdict is re-explained from a snapshot that doesn't
   record whether that scan's own AI step failed (`combineScan.ts` `discardLabelEvidence`).
+- Circle requests to approve or decline: today an invite is a link the invitee accepts, so the
+  Circle tab lists only invites waiting to be accepted (JT, 2026-10-23). A request flow is a new
+  feature.
 - Wrong-product reports still lower the reporter's own card to "Unable to confirm" — by design (the record is for another product, so none of its claims hold), unlike a removal, which since 2026-10-23 is only noted (`applyCorrections.ts`). Revisit after judging.
 - Harden corroboration against fake families before any removal travels
   (`docs/fake-family-risk.md`, Prof. Yoest's Oct 19 ask). Both, tested, before a corroborated

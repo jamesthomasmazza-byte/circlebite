@@ -74,6 +74,16 @@ JT's October 8 email left out, and the gap is why he asked.
 - **Built:** October 6, 2026. An in-app notice with acknowledgements (migration 0040), not email:
   a hosted sender would breach R6, and EC2 blocks outbound port 25. Prof. Yoest approved the
   in-app route on October 6.
+- **Where the notice lives (since October 23, 2026).** The app now opens on Scan, not the
+  dashboard, which is gone (`/dashboard` redirects). The same "Changes to review" notice shows at the
+  top of Scan and of the Profile tab, until the entries are acknowledged on the profile page, and a
+  count badge on the Profile tab carries it on every other screen (`client/src/TabShell.tsx`).
+  Verified locally: with a co-manager's edit unacknowledged, the first screen after sign-in named
+  the co-manager and the profile, with no navigation; acknowledging cleared the banner and the
+  badge. Tests: `client/src/LandingNotices.test.ts` (the notice renders on the landing screen from
+  the unseen-changes data) and `client/src/lib/tabs.test.ts` (Scan is the landing page and sits
+  inside the layout that shows it). The mentions of "the owner's dashboard" below are what it
+  showed at the time.
 - **How it was verified:**
   - *Profile edits, on production, October 8, 2026.* After the co-manager changes in Condition 1,
     the owner's dashboard showed "Changes to review — Timmy changed James Mazza's profile — 2
