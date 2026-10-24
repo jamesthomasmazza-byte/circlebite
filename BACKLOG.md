@@ -757,7 +757,9 @@ it is the least-worked area. Treat this whole section as the priority block it i
       checked against either the product record or the label you photographed") and the per-allergen
       detail ("couldn't check 4 of James Mazza's allergens against this photo"). On a card meant to be
       read in three seconds in an aisle, one of them goes.
-- [ ] **Scanner targeting box, and a fallback when the barcode won't read.** The camera scanner
+- [x] **Scanner targeting box, and a fallback when the barcode won't read.** *The box shipped
+      2026-10-24 as a guide only (`client/src/BarcodeScanner.tsx`); decoding only inside it and the
+      label-photo fallback below are both deferred to after judging — see that section.* The camera scanner
       gives no indication of where to hold the package, so it hunts across the whole frame and
       takes longer than it needs to. Draw a reticle — a bounded box with the live view dimmed
       outside it — and, if the decoding library supports a region of interest, restrict decoding
@@ -993,6 +995,11 @@ Out of scope per `CONTEST_RULES.md` §7 — do not start these before judging en
   on `verdict_explanations.failure_reason` / `label_extractions.failure_reason`. Same gap in "That
   wasn't this product": the restored barcode verdict is re-explained from a snapshot that doesn't
   record whether that scan's own AI step failed (`combineScan.ts` `discardLabelEvidence`).
+- Scanner: decode only inside the target box. `decodeFromVideoDevice` reads the whole frame with
+  no region option, so this needs our own loop — copy the box's part of each frame into a small
+  canvas and call `decodeFromCanvas` — replacing a camera path that works today. Test on a phone.
+- Scanner: when no barcode reads within a set interval, offer the ingredients-label photo while
+  the scanner keeps running (an offer, not an automatic switch — the reasoning in the Week 9 item).
 - Circle requests to approve or decline: today an invite is a link the invitee accepts, so the
   Circle tab lists only invites waiting to be accepted (JT, 2026-10-23). A request flow is a new
   feature.
