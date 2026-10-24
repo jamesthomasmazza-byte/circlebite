@@ -1,7 +1,7 @@
-import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
+import { BarcodeScanner } from "../BarcodeScanner";
 import { useAuth } from "../lib/AuthContext";
 import {
   ApiRequestError,
@@ -125,10 +125,6 @@ export function Scan() {
   const [resultProfileId, setResultProfileId] = useState<string | null>(null);
   const [managedProfiles, setManagedProfiles] = useState<ProfileSummary[]>([]);
 
-  const [cameraActive, setCameraActive] = useState(false);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const controlsRef = useRef<IScannerControls | null>(null);
 
   const [reportOpen, setReportOpen] = useState(false);
   const [reportType, setReportType] = useState<CorrectionType>("flag_wrong");
@@ -467,36 +463,6 @@ export function Scan() {
     }
   }
 
-  function stopCamera() {
-    controlsRef.current?.stop();
-    controlsRef.current = null;
-    setCameraActive(false);
-  }
-
-  async function startCamera() {
-    setCameraError(null);
-    setCameraActive(true);
-    try {
-      const reader = new BrowserMultiFormatReader();
-      const controls = await reader.decodeFromVideoDevice(undefined, videoRef.current!, (detected) => {
-        if (!detected) return;
-        const text = detected.getText();
-        setBarcode(text);
-        stopCamera();
-        void runScan(text, profileId);
-      });
-      controlsRef.current = controls;
-    } catch {
-      // No camera device, permission denied, or an insecure context — manual entry stays
-      // available either way, so this is a soft failure, not a page-level error.
-      setCameraError("Couldn't access the camera. You can still enter the barcode by hand below.");
-      setCameraActive(false);
-    }
-  }
-
-  // Stop the camera on unmount so it doesn't keep the device open after navigating away.
-  useEffect(() => () => controlsRef.current?.stop(), []);
-
   // The engine's own verdict unless a corroborated community report escalated it. Both are always
   // on the card: the headline is what to act on, the note under it says what changed it.
   const shown = result && (result.effective ?? { result: result.result, matched_allergens: result.matched_allergens });
@@ -558,33 +524,12 @@ export function Scan() {
             </select>
           </label>
 
-          <section>
-            {/* Always mounted, visibility toggled by CSS rather than conditional rendering — a
-                conditionally-rendered <video> wouldn't exist in the DOM yet when startCamera() reads
-                videoRef.current synchronously (before the setCameraActive(true) re-render happens),
-                so zxing would silently fall back to an off-screen video element and the user would
-                never see a feed even though decoding still technically worked. */}
-            <video
-              ref={videoRef}
-              style={{ width: "100%", maxWidth: 400, display: cameraActive ? "block" : "none" }}
-              muted
-              playsInline
-            />
-            {cameraActive ? (
-              <p>
-                <button type="button" onClick={stopCamera}>
-                  Stop camera
-                </button>
-              </p>
-            ) : (
-              <p>
-                <button type="button" onClick={startCamera}>
-                  Scan with camera
-                </button>
-              </p>
-            )}
-            {cameraError && <p role="alert">{cameraError}</p>}
-          </section>
+          <BarcodeScanner
+            onDetected={(text) => {
+              setBarcode(text);
+              void runScan(text, profileId);
+            }}
+          />
 
           <form onSubmit={handleSubmit}>
             <label>

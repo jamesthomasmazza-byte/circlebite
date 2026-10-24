@@ -1047,3 +1047,69 @@ th {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
 }
+
+/* ---------- Camera scanner — target box (BarcodeScanner.tsx, 2026-10-24) ---------------------- */
+/* A guide only: the decoder still reads the whole frame. The box is wide and short, a barcode's
+   shape. Everything outside it is dimmed by the box's own spread shadow, clipped to the preview.
+   The outline is white over a live picture, with a dark edge so it holds on a pale package. On a
+   read it goes solid in the safe-line colour, and "Got it" says so in words — colour alone isn't
+   the signal. The preview is capped at 55% of the screen's height, so in a landscape phone the
+   hint and Stop camera still fit above the tab bar. */
+
+.scanner {
+  position: relative;
+  display: none;
+  max-width: 400px;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: #000;
+}
+
+.scanner[data-active="true"] {
+  display: block;
+}
+
+.scanner__video {
+  display: block;
+  width: 100%;
+  max-height: 55vh;
+  object-fit: cover;
+}
+
+.scanner__box {
+  position: absolute;
+  inset: 30% 10%;
+  border: 3px dashed #ffffff;
+  border-radius: var(--radius-sm);
+  outline: 1px solid rgb(0 0 0 / 0.6);
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.45);
+}
+
+.scanner[data-read="true"] .scanner__box {
+  border: 4px solid var(--color-safe-line);
+}
+
+.scanner__got-it {
+  position: absolute;
+  left: 50%;
+  bottom: calc(-1 * var(--space-6));
+  transform: translateX(-50%);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-safe-bg);
+  color: var(--color-safe-text);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Still role="status", so "Got it" is announced — but a quiet hint, not the bordered status note. */
+.scanner__hint[role="status"] {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.scanner__hint {
+  margin-top: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
