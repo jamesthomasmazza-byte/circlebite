@@ -960,3 +960,90 @@ th {
 .allergen-review {
   margin-top: var(--space-2);
 }
+
+/* ---------- Bottom tab bar — Profile · Scan · Circle (TabShell.tsx, 2026-10-23) ---------------- */
+/* Fixed to the bottom, clear of the home indicator. The page pads itself so nothing sits under the
+   bar. Scan, in the centre, is the raised accent circle: it's where the app opens and what it's for.
+   The badge uses the accent pair (8.95:1), already in styles.contrast.test.ts. */
+
+.tab-shell {
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+}
+
+.tab-shell__notices {
+  max-width: var(--measure);
+  margin-inline: auto;
+}
+
+.tab-bar {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 10;
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  padding: var(--space-1) var(--space-2) max(var(--space-2), env(safe-area-inset-bottom));
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.tab-bar__item {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: var(--tap-min);
+  padding-top: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+
+.tab-bar__item[aria-current="page"] {
+  color: var(--color-link);
+  font-weight: 600;
+}
+
+.tab-bar__icon {
+  position: relative;
+  display: inline-flex;
+}
+
+.tab-bar__item--scan .tab-bar__icon {
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  margin-top: calc(-1 * var(--space-5));
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  box-shadow: var(--shadow);
+}
+
+.tab-bar__item--scan .tab-bar__icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.tab-bar__badge {
+  position: absolute;
+  top: -6px;
+  right: -12px;
+  min-width: 1.25rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.25rem;
+  text-align: center;
+}
+
+.circle-card {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}

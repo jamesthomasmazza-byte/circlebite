@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { AllergenPicker, EMPTY_PICK, isPicked, pickInput, useAllergenChoices, type AllergenPick } from "../AllergenPicker";
 import { listedAllergenMessage } from "../lib/allergenChoiceCopy";
+import { useAuth } from "../lib/AuthContext";
 import {
   ApiRequestError,
   createProfile,
@@ -20,6 +21,7 @@ function emptyDraft(): AllergenDraft {
 
 export function Profiles() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [managed, setManaged] = useState<ProfileSummary[]>([]);
   const [followed, setFollowed] = useState<ProfileSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,6 +82,18 @@ export function Profiles() {
       }
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  // Moved from the old dashboard (2026-10-23). Local auth state is cleared either way
+  // (AuthContext.logout); a failed server-side revoke is only logged, never blocks leaving.
+  async function handleLogout() {
+    try {
+      await logout();
+    } catch (err) {
+      console.error("logout request failed", err);
+    } finally {
+      navigate("/login");
     }
   }
 
@@ -168,6 +182,37 @@ export function Profiles() {
             Create profile
           </button>
         </form>
+      </section>
+
+      {/* The Profile tab's account end (2026-10-23): what the dashboard used to link. */}
+      {user?.isAdmin && (
+        <section aria-labelledby="admin-heading">
+          <h2 id="admin-heading">Admin</h2>
+          <ul>
+            <li>
+              <Link to="/admin/ai-accuracy">AI accuracy</Link>
+            </li>
+            <li>
+              <Link to="/admin/review-queue">Review queue</Link>
+            </li>
+            <li>
+              <Link to="/admin/nps">NPS</Link>
+            </li>
+          </ul>
+        </section>
+      )}
+
+      <section aria-labelledby="account-heading">
+        <h2 id="account-heading">Account</h2>
+        <p>
+          Signed in as {user?.displayName} ({user?.email}).
+        </p>
+        <p>
+          <Link to="/settings">Settings</Link>
+        </p>
+        <button type="button" onClick={handleLogout}>
+          Log out
+        </button>
       </section>
     </main>
   );

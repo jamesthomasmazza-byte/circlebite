@@ -147,7 +147,7 @@ export function Settings() {
   return (
     <main>
       <p>
-        <Link to="/dashboard">← Dashboard</Link>
+        <Link to="/profiles">← Profile</Link>
       </p>
       <h1>Settings</h1>
 

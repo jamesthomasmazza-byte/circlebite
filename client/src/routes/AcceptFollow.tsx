@@ -51,7 +51,7 @@ export function AcceptFollow() {
     return (
       <main>
         <p>This invite link isn't valid.</p>
-        <Link to="/dashboard">Go to your dashboard</Link>
+        <Link to="/scan">Open CircleBite</Link>
       </main>
     );
   }
@@ -60,7 +60,7 @@ export function AcceptFollow() {
     return (
       <main>
         <p>This invite link has already been used.</p>
-        <Link to="/dashboard">Go to your dashboard</Link>
+        <Link to="/scan">Open CircleBite</Link>
       </main>
     );
   }

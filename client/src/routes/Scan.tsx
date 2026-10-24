@@ -539,9 +539,6 @@ export function Scan() {
 
   return (
     <main>
-      <p>
-        <Link to="/dashboard">← Dashboard</Link>
-      </p>
       <h1>Scan a product</h1>
 
       {profiles.length === 0 ? (

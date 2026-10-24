@@ -9,7 +9,7 @@ import { AcceptCoManager } from "./routes/AcceptCoManager";
 import { AcceptFollow } from "./routes/AcceptFollow";
 import { AdminNps } from "./routes/AdminNps";
 import { AiAccuracy } from "./routes/AiAccuracy";
-import { Dashboard } from "./routes/Dashboard";
+import { Circle } from "./routes/Circle";
 import { Login } from "./routes/Login";
 import { ProfileDetail } from "./routes/ProfileDetail";
 import { Profiles } from "./routes/Profiles";
@@ -19,6 +19,8 @@ import { ReviewQueue } from "./routes/ReviewQueue";
 import { Scan } from "./routes/Scan";
 import { ScanHistory } from "./routes/ScanHistory";
 import { Settings } from "./routes/Settings";
+import { LANDING_PATH } from "./lib/tabs";
+import { TabShell } from "./TabShell";
 
 function App() {
   return (
@@ -36,19 +38,26 @@ function App() {
               only credential. */}
           <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route element={<RequireAuth />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/profiles" element={<Profiles />} />
-            <Route path="/profiles/:id" element={<ProfileDetail />} />
-            <Route path="/scan" element={<Scan />} />
-            <Route path="/profiles/:id/history" element={<ScanHistory />} />
-            <Route path="/settings" element={<Settings />} />
-            {/* Real gate is server-side (assertIsAdmin, a 404 for anyone else) — this route exists
-                for admins to navigate to, not as the access control itself. */}
-            <Route path="/admin/ai-accuracy" element={<AiAccuracy />} />
-            <Route path="/admin/review-queue" element={<ReviewQueue />} />
-            <Route path="/admin/nps" element={<AdminNps />} />
+            {/* Every signed-in page sits in the tab bar's layout (TabShell.tsx) — the one that shows
+                Condition 2's banner on Scan and the Profile tab's badge. tabs.test.ts checks Scan
+                stays inside it. */}
+            <Route element={<TabShell />}>
+              <Route path="/profiles" element={<Profiles />} />
+              <Route path="/circle" element={<Circle />} />
+              <Route path="/profiles/:id" element={<ProfileDetail />} />
+              <Route path="/scan" element={<Scan />} />
+              <Route path="/profiles/:id/history" element={<ScanHistory />} />
+              <Route path="/settings" element={<Settings />} />
+              {/* Real gate is server-side (assertIsAdmin, a 404 for anyone else) — this route exists
+                  for admins to navigate to, not as the access control itself. */}
+              <Route path="/admin/ai-accuracy" element={<AiAccuracy />} />
+              <Route path="/admin/review-queue" element={<ReviewQueue />} />
+              <Route path="/admin/nps" element={<AdminNps />} />
+            </Route>
           </Route>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          {/* Sign-in lands on Scan (2026-10-23). The dashboard is gone; its old address still works. */}
+          <Route path="/dashboard" element={<Navigate to={LANDING_PATH} replace />} />
+          <Route path="/" element={<Navigate to={LANDING_PATH} replace />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

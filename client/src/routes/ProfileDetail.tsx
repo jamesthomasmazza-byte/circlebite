@@ -426,7 +426,7 @@ export function ProfileDetail() {
       )}
 
       {canManage && (
-        <section>
+        <section id="circle">
           <h2>Circle</h2>
 
           {lastInviteLink && (

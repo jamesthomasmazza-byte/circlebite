@@ -1,3 +1,5 @@
+import { LANDING_PATH } from "./tabs";
+
 /**
  * Validates a `?returnTo=` query value before ever passing it to navigate(). Only a same-origin
  * relative path is accepted — rejects anything starting with "//" (protocol-relative URL, an
@@ -5,5 +7,5 @@
  */
 export function safeReturnTo(value: string | null): string {
   if (value && value.startsWith("/") && !value.startsWith("//")) return value;
-  return "/dashboard";
+  return LANDING_PATH;
 }
