@@ -1923,3 +1923,15 @@ another fails if Scan ever leaves the layout that shows it. The Circle tab lists
 people and the invites nobody has accepted yet; it showed a co-manager their own name as a
 co-manager, now "You". An approve/decline request flow is in BACKLOG, after judging.
 
+
+## 2026-10-24 — Deployed: the pick-list, the removal note and the tab bar
+
+Deployed `aa349f7` at about 13:41 UTC. Migration 0046 applied; `CIRCLE_ESCALATIONS` is still off.
+Checked on production, by JT:
+
+- The tab bar is there, and signing in lands on Scan.
+- Both notices — "Changes to review" and "Allergens to check" — show on Scan and on the Profile
+  tab, with the count on the Profile tab.
+- James Mazza's profile shows the notice matching "treenuts" to Tree nuts.
+- The Oct 16 chewy bar (096619160761) now flags tree nut. The miss is fixed on production, not only
+  in tests.
