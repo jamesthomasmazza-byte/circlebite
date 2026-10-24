@@ -271,6 +271,16 @@ circleRouter.get(
       [profileId],
     );
 
-    res.json({ pendingFollows, followers, pendingManagerInvites, managers });
+    // The owner, so a co-manager sees whose circle it is (2026-10-23 — the Circle tab listed a
+    // co-managed circle without its owner). Display name only, never email: a co-manager didn't
+    // choose to see the owner's address.
+    const { rows: ownerRows } = await pool.query<{ user_id: string; display_name: string }>(
+      `SELECT u.id AS user_id, u.display_name
+       FROM allergen_profiles p JOIN users u ON u.id = p.manager_id
+       WHERE p.id = $1`,
+      [profileId],
+    );
+
+    res.json({ owner: ownerRows[0] ?? null, pendingFollows, followers, pendingManagerInvites, managers });
   }),
 );

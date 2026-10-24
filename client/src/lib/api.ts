@@ -249,6 +249,8 @@ export function profileChangePhotoUrl(profileId: string, changeId: string): stri
 export type ShareLevel = "all" | "severe_only";
 
 export type CircleData = {
+  // Whose profile it is — display name only (server routes/circle.ts).
+  owner: { user_id: string; display_name: string } | null;
   pendingFollows: { id: string; share_level: ShareLevel; message: string | null; created_at: string }[];
   followers: {
     id: string;

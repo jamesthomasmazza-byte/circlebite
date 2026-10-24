@@ -7,6 +7,12 @@ import { profilePossessive } from "../lib/profileChangeCopy";
 
 type ManagedCircle = { profile: ProfileSummary; circle: CircleData | null };
 
+/** "Sam — owner" on a circle you co-manage; nothing on your own, where it would only say "You". */
+export function circleOwnerLine(circle: Pick<CircleData, "owner">, viewerId: string | undefined): string | null {
+  if (!circle.owner || circle.owner.user_id === viewerId) return null;
+  return `${circle.owner.display_name} — owner`;
+}
+
 /**
  * The Circle tab (2026-10-23): for each profile you manage, who's in its circle and which invites
  * nobody has accepted yet; then the profiles you follow. Read-only — making invites and removing
@@ -69,6 +75,8 @@ export function Circle() {
                   <p>Just you, so far.</p>
                 ) : (
                   <ul>
+                    {/* Someone else's profile that you co-manage: say whose (circleOwnerLine). */}
+                    {circleOwnerLine(circle, user?.id) && <li>{circleOwnerLine(circle, user?.id)}</li>}
                     {circle.managers.map((m) => (
                       <li key={m.user_id}>
                         {/* A co-manager sees themselves in the list — say so, not their own name. */}
