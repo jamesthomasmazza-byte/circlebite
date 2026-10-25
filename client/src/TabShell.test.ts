@@ -12,7 +12,7 @@ const SHELL = readFileSync(new URL("./TabShell.tsx", import.meta.url), "utf8");
 
 function render(label: string | null): string {
   return renderToStaticMarkup(
-    createElement(MemoryRouter, null, createElement(ShellHeader, { scanningFor: label ? { label } : null })),
+    createElement(MemoryRouter, null, createElement(ShellHeader, { scanningFor: label })),
   );
 }
 
@@ -21,6 +21,10 @@ test("the header names the profile Scan checks for, and links to Scan", () => {
   assert.match(html, /CircleBite/);
   assert.match(html, /Scanning for: <strong>Maya<\/strong>/);
   assert.match(html, /href="\/scan"/);
+});
+
+test("the header carries the same-name suffix it's given", () => {
+  assert.match(render("Maya (you follow)"), /Scanning for: <strong>Maya \(you follow\)<\/strong>/);
 });
 
 test("with no profile yet, the header is the wordmark alone", () => {

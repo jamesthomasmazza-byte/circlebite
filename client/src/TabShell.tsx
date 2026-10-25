@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, useOutletContext } from "react-router-dom";
 
 import { LandingNotices, type NoticeData } from "./LandingNotices";
 import { getUnseenChanges, listProfiles, type ProfileSummary } from "./lib/api";
+import { headerProfileName } from "./lib/profileLineCopy";
 import {
   activeTab,
   badgeLabel,
@@ -69,7 +70,8 @@ export function TabShell() {
   }, [pathname]);
 
   const current = activeTab(pathname);
-  const scanningFor = profiles.find((p) => p.id === scanningForId(chosenProfileId, profiles)) ?? null;
+  const chosen = profiles.find((p) => p.id === scanningForId(chosenProfileId, profiles));
+  const scanningFor = chosen ? headerProfileName(chosen, profiles) : null;
   const context: ScanningFor = { chosenProfileId, chooseProfile: setChosenProfileId };
 
   return (
@@ -103,14 +105,15 @@ export function TabShell() {
 }
 
 /** The wordmark, and the profile Scan checks for — a link to Scan. Nothing more: no allergens here,
- *  and no profile at all until there is one. */
-export function ShellHeader({ scanningFor }: { scanningFor: Pick<ProfileSummary, "label"> | null }) {
+ *  and no profile at all until there is one. `scanningFor` is its name, with how you hold it when
+ *  another profile shares the name (lib/profileLineCopy.ts headerProfileName). */
+export function ShellHeader({ scanningFor }: { scanningFor: string | null }) {
   return (
     <header className="shell-header">
       <span className="shell-header__wordmark">CircleBite</span>
       {scanningFor && (
         <Link to={LANDING_PATH} className="shell-header__profile">
-          Scanning for: <strong>{scanningFor.label}</strong>
+          Scanning for: <strong>{scanningFor}</strong>
         </Link>
       )}
     </header>

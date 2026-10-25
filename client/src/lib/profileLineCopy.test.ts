@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { allergenLine, profileOptionText } from "./profileLineCopy";
+import { allergenLine, headerProfileName, profileOptionText } from "./profileLineCopy";
 
 test("the line names up to three allergens, then how many more", () => {
   assert.equal(allergenLine({ allergen_names: ["Peanut"] }), "Peanut");
@@ -30,4 +30,14 @@ test("when name and allergens both match, how you hold each one is added", () =>
   assert.equal(profileOptionText(mine, all), "Maya · Peanut (you own)");
   assert.equal(profileOptionText(coManaged, all), "Maya · Peanut (co-manager)");
   assert.equal(profileOptionText(followed, all), "Maya · Peanut (you follow)");
+});
+
+test("the header adds how you hold a profile only when another one has the same name", () => {
+  const coManaged = { id: "a", label: "Maya", relationship: "co_manager" as const };
+  const followed = { id: "b", label: "Maya" };
+  const noor = { id: "c", label: "Noor" };
+  assert.equal(headerProfileName(coManaged, [coManaged, followed, noor]), "Maya (co-manager)");
+  assert.equal(headerProfileName(followed, [coManaged, followed, noor]), "Maya (you follow)");
+  assert.equal(headerProfileName(noor, [coManaged, followed, noor]), "Noor");
+  assert.equal(headerProfileName(coManaged, [coManaged, noor]), "Maya");
 });

@@ -38,3 +38,15 @@ export function profileOptionText(
   const twin = all.some((o) => o.id !== p.id && `${o.label} · ${allergenLine(o)}` === text);
   return twin ? `${text} (${relationshipWord(p)})` : text;
 }
+
+/**
+ * The header's "Scanning for" name (TabShell.tsx). Just the name, unless another profile you can
+ * scan for has the same one — then how you hold this one, as the "Scanning for" option says it.
+ */
+export function headerProfileName(
+  p: Pick<ProfileSummary, "id" | "label" | "relationship">,
+  all: Pick<ProfileSummary, "id" | "label">[],
+): string {
+  const twin = all.some((o) => o.id !== p.id && o.label === p.label);
+  return twin ? `${p.label} (${relationshipWord(p)})` : p.label;
+}
