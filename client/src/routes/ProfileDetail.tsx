@@ -27,6 +27,8 @@ import {
 import { AllergenPicker, EMPTY_PICK, isPicked, pickInput, useAllergenChoices, type AllergenPick } from "../AllergenPicker";
 import { listedAllergenMessage, reviewNotice } from "../lib/allergenChoiceCopy";
 import { describeChange } from "../lib/profileChangeCopy";
+import { SEVERITY_REQUIRED } from "../lib/severityCopy";
+import { SeverityChoice } from "../SeverityChoice";
 
 export function ProfileDetail() {
   const { id } = useParams<{ id: string }>();
@@ -46,7 +48,8 @@ export function ProfileDetail() {
   const [choosingFor, setChoosingFor] = useState<string | null>(null);
   const [replacementPick, setReplacementPick] = useState<AllergenPick>(EMPTY_PICK);
   const [reviewError, setReviewError] = useState<string | null>(null);
-  const [newSeverity, setNewSeverity] = useState<Severity>("moderate");
+  // Unset until a manager chooses (lib/severityCopy.ts), and unset again after each add.
+  const [newSeverity, setNewSeverity] = useState<Severity | null>(null);
   const [newTraces, setNewTraces] = useState(true);
   const [addError, setAddError] = useState<string | null>(null);
 
@@ -151,9 +154,14 @@ export function ProfileDetail() {
     event.preventDefault();
     setAddError(null);
     if (!isPicked(newPick)) return;
+    if (newSeverity === null) {
+      setAddError(SEVERITY_REQUIRED);
+      return;
+    }
     try {
       await addAllergen(id!, { ...pickInput(newPick), severity: newSeverity, treatTracesAsUnsafe: newTraces });
       setNewPick(EMPTY_PICK);
+      setNewSeverity(null);
       await refresh();
       await refreshHistory();
     } catch (err) {
@@ -365,11 +373,7 @@ export function ProfileDetail() {
       {canManage && (
         <form onSubmit={handleAddAllergen}>
           {choices && <AllergenPicker choices={choices} value={newPick} onChange={setNewPick} label="Add an allergen" />}
-          <select value={newSeverity} onChange={(e) => setNewSeverity(e.target.value as Severity)}>
-            <option value="mild">Mild</option>
-            <option value="moderate">Moderate</option>
-            <option value="severe">Severe</option>
-          </select>
+          <SeverityChoice name="new-allergen-severity" value={newSeverity} onChange={setNewSeverity} required />
           <label>
             <input type="checkbox" checked={newTraces} onChange={(e) => setNewTraces(e.target.checked)} />
             Treat traces as unsafe

@@ -241,3 +241,29 @@ test("the profile list names each profile's allergens, and a severe_only followe
     await pool.query("DELETE FROM users WHERE id = ANY($1)", [[FULL, SEVERE_ONLY]]);
   }
 });
+
+// No default severity anywhere (docs/principles.md, 2026-10-25): the client makes a parent choose,
+// and the server never fills one in. And nothing here changes a severity already on a profile.
+test("an allergen without a severity is refused, on a new profile and an existing one", async () => {
+  await assert.rejects(
+    call("post", "/", {}, { label: "No Severity", allergens: [{ key: "milk" }] }, OWNER),
+    (err: { status?: number }) => err.status === 400,
+  );
+  await assert.rejects(
+    call("post", "/:id/allergens", { id: profileId }, { key: "milk" }, OWNER),
+    (err: { status?: number }) => err.status === 400,
+  );
+  const { rows } = await pool.query("SELECT 1 FROM allergen_profiles WHERE manager_id = $1 AND label = 'No Severity'", [OWNER]);
+  assert.equal(rows.length, 0);
+});
+
+test("editing an allergen's other fields leaves its severity as it was", async () => {
+  const { rows } = await pool.query<{ id: string; severity: string }>(
+    "SELECT id, severity FROM allergens WHERE allergen_profile_id = $1 ORDER BY created_at LIMIT 1",
+    [profileId],
+  );
+  const before = rows[0]!;
+  await call("patch", "/:id/allergens/:allergenId", { id: profileId, allergenId: before.id }, { treatTracesAsUnsafe: false }, OWNER);
+  const { rows: after } = await pool.query<{ severity: string }>("SELECT severity FROM allergens WHERE id = $1", [before.id]);
+  assert.equal(after[0]!.severity, before.severity);
+});

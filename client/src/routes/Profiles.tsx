@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { AllergenPicker, EMPTY_PICK, isPicked, pickInput, useAllergenChoices, type AllergenPick } from "../AllergenPicker";
 import { listedAllergenMessage } from "../lib/allergenChoiceCopy";
+import { SEVERITY_REQUIRED } from "../lib/severityCopy";
+import { SeverityChoice } from "../SeverityChoice";
 import { allergenLine } from "../lib/profileLineCopy";
 import { useAuth } from "../lib/AuthContext";
 import {
@@ -14,10 +16,11 @@ import {
   type Severity,
 } from "../lib/api";
 
-type AllergenDraft = { pick: AllergenPick; severity: Severity; treatTracesAsUnsafe: boolean };
+// severity starts unset: a parent chooses it (lib/severityCopy.ts).
+type AllergenDraft = { pick: AllergenPick; severity: Severity | null; treatTracesAsUnsafe: boolean };
 
 function emptyDraft(): AllergenDraft {
-  return { pick: EMPTY_PICK, severity: "moderate", treatTracesAsUnsafe: true };
+  return { pick: EMPTY_PICK, severity: null, treatTracesAsUnsafe: true };
 }
 
 export function Profiles() {
@@ -64,6 +67,10 @@ export function Profiles() {
     const allergens: AllergenInput[] = [];
     for (const draft of allergenDrafts) {
       if (!isPicked(draft.pick)) continue;
+      if (draft.severity === null) {
+        setCreateError(SEVERITY_REQUIRED);
+        return;
+      }
       allergens.push({
         ...pickInput(draft.pick),
         severity: draft.severity,
@@ -152,14 +159,12 @@ export function Profiles() {
                     required={false}
                   />
                 )}
-                <select
+                <SeverityChoice
+                  name={`severity-${i}`}
                   value={draft.severity}
-                  onChange={(e) => updateDraft(i, { severity: e.target.value as Severity })}
-                >
-                  <option value="mild">Mild</option>
-                  <option value="moderate">Moderate</option>
-                  <option value="severe">Severe</option>
-                </select>
+                  onChange={(severity) => updateDraft(i, { severity })}
+                  required={isPicked(draft.pick)}
+                />
                 <label>
                   <input
                     type="checkbox"
