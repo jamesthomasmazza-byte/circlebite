@@ -45,3 +45,19 @@ export function badgeLabel(count: number): string {
 export function noticesShownOn(pathname: string): boolean {
   return pathname === LANDING_PATH || pathname === TAB_PATH.profile;
 }
+
+/**
+ * The profile Scan checks for, and the header names on every signed-in screen (TabShell.tsx,
+ * 2026-10-25). One value, held by the shell, so the header can never name a profile Scan isn't
+ * using. The last one chosen — from Scan's "Scanning for", or a profile page's "Scan for" button
+ * (`/scan?profile=<id>`) — if it's still yours to read, else the first.
+ */
+export function scanningForId(chosen: string | null, profiles: Pick<ProfileSummary, "id">[]): string {
+  if (chosen && profiles.some((p) => p.id === chosen)) return chosen;
+  return profiles[0]?.id ?? "";
+}
+
+/** A profile page's "Scan for" button: `/scan?profile=<id>`. What the shell takes as the choice. */
+export function requestedProfile(search: string): string | null {
+  return new URLSearchParams(search).get("profile");
+}

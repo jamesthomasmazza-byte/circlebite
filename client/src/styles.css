@@ -970,6 +970,35 @@ th {
   margin-top: var(--space-2);
 }
 
+/* ---------- Header — the wordmark and who you're scanning for (TabShell.tsx, 2026-10-25) ------- */
+/* One line, not sticky: it scrolls away with the page. Kept short so Condition 2's notice, right
+   under it, stays on the landing screen. Existing tokens only — styles.contrast.test.ts covers them. */
+
+.shell-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  max-width: var(--measure);
+  margin-inline: auto;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+}
+
+.shell-header__wordmark {
+  flex: none;
+  font-weight: 700;
+}
+
+.shell-header__profile {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text);
+}
+
 /* ---------- Bottom tab bar — Profile · Scan · Circle (TabShell.tsx, 2026-10-23) ---------------- */
 /* Fixed to the bottom, clear of the home indicator. The page pads itself so nothing sits under the
    bar. Scan, in the centre, is the raised accent circle: it's where the app opens and what it's for.

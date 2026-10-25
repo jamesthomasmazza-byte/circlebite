@@ -1,9 +1,27 @@
 import { useEffect, useState } from "react";
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation, useOutletContext } from "react-router-dom";
 
 import { LandingNotices, type NoticeData } from "./LandingNotices";
-import { getUnseenChanges, listProfiles } from "./lib/api";
-import { activeTab, badgeLabel, noticesShownOn, profileBadgeCount, TAB_LABEL, TAB_PATH, type Tab } from "./lib/tabs";
+import { getUnseenChanges, listProfiles, type ProfileSummary } from "./lib/api";
+import {
+  activeTab,
+  badgeLabel,
+  LANDING_PATH,
+  noticesShownOn,
+  profileBadgeCount,
+  requestedProfile,
+  scanningForId,
+  TAB_LABEL,
+  TAB_PATH,
+  type Tab,
+} from "./lib/tabs";
+
+/** What the shell hands the page: the profile chosen for scanning (lib/tabs.ts scanningForId). */
+export type ScanningFor = { chosenProfileId: string | null; chooseProfile: (id: string) => void };
+
+export function useScanningFor(): ScanningFor {
+  return useOutletContext<ScanningFor>();
+}
 
 const EMPTY: NoticeData = { unseen: [], unseenFailed: false, needsReview: [] };
 
@@ -13,11 +31,23 @@ const EMPTY: NoticeData = { unseen: [], unseenFailed: false, needsReview: [] };
  * dashboard, so its two notices live here: above Scan and the Profile tab's own page, and as a count
  * on the Profile tab everywhere. Re-read on every navigation, so acknowledging changes on a profile
  * page clears the badge by the time you're back.
+ *
+ * Above everything, a slim header: the wordmark and the profile Scan checks for (2026-10-25), so
+ * the profile you're acting for is on every screen. One line, then the notices — never between
+ * the notices and the top of the landing screen's content (Condition 2).
  */
 export function TabShell() {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const [notices, setNotices] = useState<NoticeData>(EMPTY);
   const [badge, setBadge] = useState(0);
+  const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
+  const [chosenProfileId, setChosenProfileId] = useState<string | null>(() => requestedProfile(search));
+
+  // A "Scan for" button arriving with ?profile=<id> is a choice, even while the shell is mounted.
+  useEffect(() => {
+    const requested = requestedProfile(search);
+    if (requested) setChosenProfileId(requested);
+  }, [search]);
 
   useEffect(() => {
     let live = true;
@@ -25,6 +55,7 @@ export function TabShell() {
       if (!live) return;
       const unseenRows = unseen.status === "fulfilled" ? unseen.value : [];
       const managed = profiles.status === "fulfilled" ? profiles.value.managed : [];
+      setProfiles(profiles.status === "fulfilled" ? [...managed, ...profiles.value.followed] : []);
       setNotices({
         unseen: unseenRows,
         unseenFailed: unseen.status === "rejected",
@@ -38,15 +69,18 @@ export function TabShell() {
   }, [pathname]);
 
   const current = activeTab(pathname);
+  const scanningFor = profiles.find((p) => p.id === scanningForId(chosenProfileId, profiles)) ?? null;
+  const context: ScanningFor = { chosenProfileId, chooseProfile: setChosenProfileId };
 
   return (
     <div className="tab-shell">
+      <ShellHeader scanningFor={scanningFor} />
       {noticesShownOn(pathname) && (
         <div className="tab-shell__notices">
           <LandingNotices {...notices} />
         </div>
       )}
-      <Outlet />
+      <Outlet context={context} />
       <nav className="tab-bar" aria-label="Main">
         {(["profile", "scan", "circle"] as Tab[]).map((tab) => (
           <Link
@@ -65,6 +99,21 @@ export function TabShell() {
         ))}
       </nav>
     </div>
+  );
+}
+
+/** The wordmark, and the profile Scan checks for — a link to Scan. Nothing more: no allergens here,
+ *  and no profile at all until there is one. */
+export function ShellHeader({ scanningFor }: { scanningFor: Pick<ProfileSummary, "label"> | null }) {
+  return (
+    <header className="shell-header">
+      <span className="shell-header__wordmark">CircleBite</span>
+      {scanningFor && (
+        <Link to={LANDING_PATH} className="shell-header__profile">
+          Scanning for: <strong>{scanningFor.label}</strong>
+        </Link>
+      )}
+    </header>
   );
 }
 

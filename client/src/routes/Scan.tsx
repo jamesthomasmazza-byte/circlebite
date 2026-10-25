@@ -1,7 +1,9 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 import { BarcodeScanner } from "../BarcodeScanner";
+import { useScanningFor } from "../TabShell";
+import { scanningForId } from "../lib/tabs";
 import { useAuth } from "../lib/AuthContext";
 import {
   ApiRequestError,
@@ -113,10 +115,12 @@ function disagreementNote(m: ScanResult["matched_allergens"][number]): string | 
 
 export function Scan() {
   const { labelScanEnabled } = useAuth();
-  const [searchParams] = useSearchParams();
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
   const [loadingProfiles, setLoadingProfiles] = useState(true);
-  const [profileId, setProfileId] = useState(searchParams.get("profile") ?? "");
+  // Held by the shell, which names it in the header on every screen (TabShell.tsx) — one value, so
+  // the header and this page can't disagree. A profile page's "Scan for" button sets it.
+  const { chosenProfileId, chooseProfile } = useScanningFor();
+  const profileId = scanningForId(chosenProfileId, profiles);
   const [barcode, setBarcode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -187,7 +191,6 @@ export function Scan() {
         const all = [...res.managed, ...res.followed];
         setProfiles(all);
         setManagedProfiles(res.managed);
-        setProfileId((current) => current || all[0]?.id || "");
       })
       .catch(() => setError("Couldn't load your profiles. Try reloading the page."))
       .finally(() => setLoadingProfiles(false));
@@ -518,7 +521,7 @@ export function Scan() {
         <>
           <label>
             Scanning for
-            <select value={profileId} onChange={(e) => setProfileId(e.target.value)}>
+            <select value={profileId} onChange={(e) => chooseProfile(e.target.value)}>
               {profiles.map((p) => (
                 <option key={p.id} value={p.id}>
                   {profileOptionText(p, profiles)}

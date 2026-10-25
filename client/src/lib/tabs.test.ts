@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import { safeReturnTo } from "./returnTo";
-import { activeTab, badgeLabel, LANDING_PATH, noticesShownOn, profileBadgeCount } from "./tabs";
+import { activeTab, badgeLabel, LANDING_PATH, noticesShownOn, profileBadgeCount, requestedProfile, scanningForId } from "./tabs";
 
 const MAIN = readFileSync(new URL("../main.tsx", import.meta.url), "utf8");
 
@@ -57,4 +57,24 @@ test("the Profile badge counts unseen changes and allergens needing a look", () 
   assert.equal(profileBadgeCount([], []), 0);
   assert.equal(badgeLabel(1), "1 update to review");
   assert.equal(badgeLabel(4), "4 updates to review");
+});
+
+// The header and Scan share one choice (TabShell.tsx). A profile page's "Scan for" button arrives as
+// /scan?profile=<id>; that's the profile both then use.
+const SCAN = readFileSync(new URL("../routes/Scan.tsx", import.meta.url), "utf8");
+
+test("the profile scanned for: the last one chosen while it's still readable, else the first", () => {
+  const profiles = [{ id: "maya" }, { id: "leo" }];
+  assert.equal(scanningForId(null, profiles), "maya");
+  assert.equal(scanningForId("leo", profiles), "leo");
+  // A follow revoked, or a made-up id: never a profile you can't read.
+  assert.equal(scanningForId("someone-else", profiles), "maya");
+  assert.equal(scanningForId("leo", []), "");
+  assert.equal(requestedProfile(""), null);
+});
+
+test("Scan takes the profile from the shell, not a choice of its own the header can't see", () => {
+  assert.match(SCAN, /useScanningFor\(\)/);
+  assert.match(SCAN, /const profileId = scanningForId\(chosenProfileId, profiles\)/);
+  assert.doesNotMatch(SCAN, /useState\(searchParams\.get\("profile"\)/);
 });
