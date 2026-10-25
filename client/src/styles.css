@@ -970,6 +970,21 @@ th {
   margin-top: var(--space-2);
 }
 
+/* A link that does what a button does — a profile page's "Scan for" (2026-10-25). Looks like the
+   other buttons, so it's found as one. */
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-min);
+  padding: var(--space-2) var(--space-4);
+  border: 2px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  color: var(--color-link);
+  font-weight: 600;
+  line-height: 1.25;
+  text-decoration: none;
+}
+
 /* ---------- Header — the wordmark and who you're scanning for (TabShell.tsx, 2026-10-25) ------- */
 /* One line, not sticky: it scrolls away with the page. Kept short so Condition 2's notice, right
    under it, stays on the landing screen. Existing tokens only — styles.contrast.test.ts covers them. */

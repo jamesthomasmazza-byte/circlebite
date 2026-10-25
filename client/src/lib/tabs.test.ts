@@ -61,7 +61,15 @@ test("the Profile badge counts unseen changes and allergens needing a look", () 
 
 // The header and Scan share one choice (TabShell.tsx). A profile page's "Scan for" button arrives as
 // /scan?profile=<id>; that's the profile both then use.
+const PROFILE_DETAIL = readFileSync(new URL("../routes/ProfileDetail.tsx", import.meta.url), "utf8");
 const SCAN = readFileSync(new URL("../routes/Scan.tsx", import.meta.url), "utf8");
+
+test("a profile page's 'Scan for' button selects that profile for Scan and the header", () => {
+  assert.match(PROFILE_DETAIL, /<Link to=\{`\/scan\?profile=\$\{id\}`\} className="button-link">\s*Scan for \{profile\.label\}/);
+  const profiles = [{ id: "maya" }, { id: "leo" }];
+  assert.equal(requestedProfile("?profile=leo"), "leo");
+  assert.equal(scanningForId(requestedProfile("?profile=leo"), profiles), "leo");
+});
 
 test("the profile scanned for: the last one chosen while it's still readable, else the first", () => {
   const profiles = [{ id: "maya" }, { id: "leo" }];
