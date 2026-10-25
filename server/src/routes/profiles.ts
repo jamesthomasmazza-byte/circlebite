@@ -70,6 +70,10 @@ function parseAllergenInput(raw: unknown): AllergenInput | null {
 
 const ALLERGEN_COLUMNS = "id, name, severity, notes, treat_traces_as_unsafe, allergen_key, key_needs_review";
 
+// Which allergens a severe_only follower is shown when browsing a profile: the profile page and the
+// names on the profile list. Never the live scan, which checks the full list (scans.ts).
+const SEVERE_ONLY_ALLERGENS = "severity = 'severe'";
+
 function isUniqueViolation(err: unknown): boolean {
   return typeof err === "object" && err !== null && (err as { code?: string }).code === "23505";
 }
@@ -145,9 +149,12 @@ profilesRouter.get(
 
     // allergens_needing_review: allergens a manager has to look at (migration 0046) — the dashboard
     // says so until they do. Managers only; a follower can't decide, so isn't asked.
+    // allergen_names: the line under each name that tells two same-named profiles apart (Scan's
+    // "Scanning for", the Profile tab). Names only — never severity or notes.
     const { rows: managed } = await pool.query(
       `SELECT p.id, p.label, p.is_self,
               CASE WHEN p.manager_id = $1 THEN 'owner' ELSE 'co_manager' END AS relationship,
+              ARRAY(SELECT name FROM allergens a WHERE a.allergen_profile_id = p.id ORDER BY name) AS allergen_names,
               (SELECT count(*)::int FROM allergens a WHERE a.allergen_profile_id = p.id AND a.key_needs_review)
                 AS allergens_needing_review
        FROM allergen_profiles p
@@ -158,7 +165,11 @@ profilesRouter.get(
     );
 
     const { rows: followed } = await pool.query(
-      `SELECT p.id, p.label, p.is_self, f.share_level
+      `SELECT p.id, p.label, p.is_self, f.share_level,
+              ARRAY(SELECT name FROM allergens a
+                    WHERE a.allergen_profile_id = p.id
+                      AND (f.share_level <> 'severe_only' OR ${SEVERE_ONLY_ALLERGENS})
+                    ORDER BY name) AS allergen_names
        FROM allergen_profiles p
        JOIN follow_relationships f ON f.allergen_profile_id = p.id
        WHERE f.follower_id = $1 AND f.status = 'accepted'
@@ -195,7 +206,7 @@ profilesRouter.get(
     const severeOnly = access.level === "follower" && access.shareLevel === "severe_only";
     const { rows: allergens } = await pool.query(
       severeOnly
-        ? `SELECT ${ALLERGEN_COLUMNS} FROM allergens WHERE allergen_profile_id = $1 AND severity = 'severe' ORDER BY name`
+        ? `SELECT ${ALLERGEN_COLUMNS} FROM allergens WHERE allergen_profile_id = $1 AND ${SEVERE_ONLY_ALLERGENS} ORDER BY name`
         : `SELECT ${ALLERGEN_COLUMNS} FROM allergens WHERE allergen_profile_id = $1 ORDER BY name`,
       [profileId],
     );

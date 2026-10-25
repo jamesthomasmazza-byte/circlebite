@@ -17,7 +17,7 @@ let profileId: string;
 
 type Captured = { status: number; body: unknown };
 
-function call(method: "post" | "patch" | "delete", path: string, params: Record<string, string>, body: unknown, userId: string): Promise<Captured> {
+function call(method: "get" | "post" | "patch" | "delete", path: string, params: Record<string, string>, body: unknown, userId: string): Promise<Captured> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const layer = (profilesRouter as any).stack.find((l: any) => l.route?.path === path && l.route.methods[method]);
   assert.ok(layer, `expected a registered ${method.toUpperCase()} ${path} route`);
@@ -194,4 +194,50 @@ test("a rename needs a key: a bare name in a PATCH is refused", async () => {
     call("patch", "/:id/allergens/:allergenId", { id: profileId, allergenId: rows[0]!.id }, { name: "treenuts" }, OWNER),
     (err: { status?: number }) => err.status === 400,
   );
+});
+
+test("the profile list names each profile's allergens, and a severe_only follower gets only the severe ones", async () => {
+  const FULL = randomUUID();
+  const SEVERE_ONLY = randomUUID();
+  await pool.query(
+    `INSERT INTO users (id, email, password_hash, display_name, age_attested_adult, age_attested_at)
+     VALUES ($1, $3, 'x', 'Full Follower', true, now()), ($2, $4, 'x', 'Severe Follower', true, now())`,
+    [FULL, SEVERE_ONLY, `${FULL}@example.test`, `${SEVERE_ONLY}@example.test`],
+  );
+  try {
+    const created = await call(
+      "post",
+      "/",
+      {},
+      {
+        label: "Names Child",
+        allergens: [
+          { key: "peanut", severity: "severe", notes: "carries an auto-injector" },
+          { key: "sesame", severity: "mild" },
+        ],
+      },
+      OWNER,
+    );
+    const id = (created.body as { id: string }).id;
+    await pool.query(
+      `INSERT INTO follow_relationships (allergen_profile_id, follower_id, token_hash, status, share_level)
+       VALUES ($1, $2, $4, 'accepted', 'all'), ($1, $3, $5, 'accepted', 'severe_only')`,
+      [id, FULL, SEVERE_ONLY, randomUUID(), randomUUID()],
+    );
+
+    type List = { managed: { id: string; allergen_names: string[] }[]; followed: { id: string; allergen_names: string[] }[] };
+    const names = async (userId: string, side: "managed" | "followed") =>
+      ((await call("get", "/", {}, undefined, userId)).body as List)[side].find((p) => p.id === id)!.allergen_names;
+
+    assert.deepEqual(await names(OWNER, "managed"), ["Peanut", "Sesame"]);
+    assert.deepEqual(await names(FULL, "followed"), ["Peanut", "Sesame"]);
+    assert.deepEqual(await names(SEVERE_ONLY, "followed"), ["Peanut"]);
+
+    const listed = JSON.stringify((await call("get", "/", {}, undefined, OWNER)).body);
+    assert.ok(!listed.includes("auto-injector"), "notes never reach the list");
+    assert.ok(!listed.includes('"severity"'), "severities never reach the list");
+  } finally {
+    await pool.query("DELETE FROM allergen_profiles WHERE manager_id = $1 AND label = 'Names Child'", [OWNER]);
+    await pool.query("DELETE FROM users WHERE id = ANY($1)", [[FULL, SEVERE_ONLY]]);
+  }
 });
