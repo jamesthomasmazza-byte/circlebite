@@ -24,7 +24,7 @@ const COMANAGER_CHANGE: UnseenProfileChanges = {
   hasProfileChange: true,
 };
 
-const NEEDS_LOOK: ProfileSummary = { id: "p1", label: "James Mazza", is_self: false, relationship: "owner", allergens_needing_review: 1 };
+const NEEDS_LOOK: ProfileSummary = { id: "p1", label: "James Mazza", is_self: false, relationship: "owner", allergens_needing_review: 1, allergen_names: [] };
 
 function render(data: Partial<NoticeData>): string {
   return renderToStaticMarkup(

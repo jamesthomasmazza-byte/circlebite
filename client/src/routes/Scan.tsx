@@ -50,6 +50,7 @@ import {
   uncheckedBasis,
   uncheckedNote,
 } from "../lib/evidenceCopy";
+import { allergenLine, profileOptionText } from "../lib/profileLineCopy";
 import { couldntReadHeading, DISCLAIMER, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
 
 const CORRECTION_TYPE_LABEL: Record<CorrectionType, string> = {
@@ -501,6 +502,8 @@ export function Scan() {
     (result.source === "label_photo" || result.source === "combined") &&
     (result.extraction_legible === false || result.extraction_complete === false);
 
+  const selectedProfile = profiles.find((p) => p.id === profileId);
+
   if (loadingProfiles) return <p>Loading…</p>;
 
   return (
@@ -518,11 +521,14 @@ export function Scan() {
             <select value={profileId} onChange={(e) => setProfileId(e.target.value)}>
               {profiles.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.label}
+                  {profileOptionText(p, profiles)}
                 </option>
               ))}
             </select>
           </label>
+          {/* The names only, never "checks for": a severe_only follower sees the severe ones, but the
+              scan checks the full list (server routes/scans.ts). */}
+          {selectedProfile && <p className="profile-line">{allergenLine(selectedProfile)}</p>}
 
           <BarcodeScanner
             onDetected={(text) => {

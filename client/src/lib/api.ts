@@ -106,6 +106,9 @@ export type ProfileSummary = {
   // Managed profiles only: allergens a manager needs to look at (key_needs_review).
   allergens_needing_review?: number;
   share_level?: "all" | "severe_only";
+  // Names only, never severity or notes; a severe_only follower gets the severe ones (server
+  // routes/profiles.ts). What tells two same-named profiles apart (lib/profileLineCopy.ts).
+  allergen_names: string[];
 };
 
 export type ProfileAccess =

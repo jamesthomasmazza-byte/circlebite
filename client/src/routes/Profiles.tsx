@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { AllergenPicker, EMPTY_PICK, isPicked, pickInput, useAllergenChoices, type AllergenPick } from "../AllergenPicker";
 import { listedAllergenMessage } from "../lib/allergenChoiceCopy";
+import { allergenLine } from "../lib/profileLineCopy";
 import { useAuth } from "../lib/AuthContext";
 import {
   ApiRequestError,
@@ -111,6 +112,7 @@ export function Profiles() {
           {managed.map((p) => (
             <li key={p.id}>
               <Link to={`/profiles/${p.id}`}>{p.label}</Link> ({p.relationship === "owner" ? "owner" : "co-manager"})
+              <span className="profile-line">{allergenLine(p)}</span>
             </li>
           ))}
         </ul>
@@ -124,6 +126,7 @@ export function Profiles() {
             <li key={p.id}>
               <Link to={`/profiles/${p.id}`}>{p.label}</Link>{" "}
               ({p.share_level === "severe_only" ? "severe allergens only" : "full profile"})
+              <span className="profile-line">{allergenLine(p)}</span>
             </li>
           ))}
         </ul>

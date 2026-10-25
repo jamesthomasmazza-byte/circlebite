@@ -749,6 +749,15 @@ th {
    confirmed community line above it, never as loud as the verdict (JT, 2026-10-16). The
    "couldn't finish" note under a card's findings matches it: secondary to the rows above it
    (JT, 2026-10-17). */
+/* The line under a profile's name that tells look-alike profiles apart (2026-10-25): the allergens,
+   short. Secondary to the name it sits under. */
+.profile-line {
+  display: block;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
 .circle-report,
 .check-incomplete-note {
   color: var(--color-text-muted);
