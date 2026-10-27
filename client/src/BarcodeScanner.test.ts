@@ -97,3 +97,38 @@ test("in a landscape phone Scan's heading gives way and the camera sits beside '
   const target = SCAN.slice(SCAN.indexOf('<div className="scan-target">'), SCAN.indexOf("</div>", SCAN.indexOf('<div className="scan-target">')));
   assert.match(target, /Scanning for[\s\S]*<BarcodeScanner/);
 });
+
+// Decoding only inside the box, behind SCANNER_REGION (2026-10-27).
+
+const REGION_READER = readFileSync(new URL("./boxRegionReader.ts", import.meta.url), "utf8");
+
+test("only which reader is created depends on region; off, it's the plain whole-frame reader", () => {
+  assert.match(SCANNER, /region = false,/, "off unless asked for");
+  assert.match(SCANNER, /const reader = region\s*\? new BoxRegionReader\([\s\S]*?\)\s*: new BrowserMultiFormatReader\(\);/);
+  assert.equal(SCANNER.match(/decodeFromVideoDevice\(/g)?.length, 1, "the camera opens one way in both modes");
+  assert.match(SCANNER, /decodeFromVideoDevice\(undefined, videoRef\.current!, \(detected\) => \{/);
+  assert.doesNotMatch(body(SCANNER, "  function stopCamera()"), /region|Region/);
+});
+
+test("the region reader replaces one step, decoding a frame, and leaves the camera to zxing", () => {
+  assert.match(REGION_READER, /extends BrowserMultiFormatReader/);
+  assert.equal(REGION_READER.match(/override /g)?.length, 1);
+  assert.match(REGION_READER, /override decodeFromCanvas\(canvas: HTMLCanvasElement\): Result/);
+  assert.doesNotMatch(REGION_READER, /getUserMedia|decodeFromVideoDevice|decodeFromStream|\bscan\(|\.stop\(/);
+  assert.match(REGION_READER, /return super\.decodeFromCanvas\(this\.crop\);/);
+  assert.doesNotMatch(REGION_READER, /super\.decodeFromCanvas\(canvas\)/, "never the whole frame");
+});
+
+test("an unmeasurable box is 'not found', so zxing's loop tries again", () => {
+  assert.match(REGION_READER, /if \(!region\) throw new NotFoundException\(/);
+  assert.match(REGION_READER, /import \{ NotFoundException, type Result \} from "@zxing\/library";/);
+});
+
+test("the region reader measures the same box the person sees", () => {
+  assert.match(SCANNER, /<div ref=\{boxRef\} className="scanner__box" aria-hidden="true">/);
+  assert.match(SCANNER, /videoRef\.current && boxRef\.current \? \{ video: videoRef\.current, box: boxRef\.current \} : null/);
+});
+
+test("Scan decodes inside the box from SCANNER_REGION, or an admin's override on this device", () => {
+  assert.match(SCAN, /region=\{scannerRegionOn\(scannerRegionEnabled, user\?\.isAdmin === true, readOverride\(\)\)\}/);
+});

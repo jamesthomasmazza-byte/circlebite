@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
 
+import { BoxRegionReader } from "./boxRegionReader";
 import { NO_READ_OFFER, NO_READ_OFFER_MS } from "./lib/scannerCopy";
 
 // How long "Got it" shows on the box before the camera stops and the scan runs.
@@ -10,10 +11,10 @@ const READ_CONFIRM_MS = 250;
  * The camera scanner, moved out of Scan.tsx (2026-10-24) with a target box over the preview: an
  * outlined box with the view dimmed outside it, and "Line up the barcode inside the box" under it.
  *
- * The box is a GUIDE ONLY. decodeFromVideoDevice reads the whole frame and has no region option;
- * decoding only the box needs our own frame loop (decodeFromCanvas on a cropped canvas), which is in
- * BACKLOG for after judging. So a barcode outside the box can still read — the box shows where to
- * aim, it doesn't decide what counts.
+ * With `region` off (SCANNER_REGION, lib/scannerRegion.ts) the box is a guide only: the plain reader
+ * decodes the whole frame, so a barcode outside the box can still read. With it on (2026-10-27),
+ * BoxRegionReader decodes only inside the box, plus a small allowance. Only which reader is
+ * created differs; the camera is opened and stopped the same way either way.
  *
  * On a read, the box goes solid with "Got it" (and a short buzz where the phone supports it) for a
  * quarter second, then the camera stops and onDetected runs — the same order as before.
@@ -25,15 +26,18 @@ const READ_CONFIRM_MS = 250;
 export function BarcodeScanner({
   onDetected,
   onOfferLabelPhoto,
+  region = false,
 }: {
   onDetected: (text: string) => void;
   onOfferLabelPhoto?: () => void;
+  region?: boolean;
 }) {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [read, setRead] = useState(false);
   const [offerShown, setOfferShown] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
   // zxing calls back once per decoded frame; only the first read counts.
@@ -55,7 +59,11 @@ export function BarcodeScanner({
     readRef.current = false;
     setCameraActive(true);
     try {
-      const reader = new BrowserMultiFormatReader();
+      const reader = region
+        ? new BoxRegionReader(() =>
+            videoRef.current && boxRef.current ? { video: videoRef.current, box: boxRef.current } : null,
+          )
+        : new BrowserMultiFormatReader();
       const controls = await reader.decodeFromVideoDevice(undefined, videoRef.current!, (detected) => {
         if (!detected || readRef.current) return;
         readRef.current = true;
@@ -107,7 +115,7 @@ export function BarcodeScanner({
       <div className="scanner" data-active={cameraActive} data-read={read}>
         <video ref={videoRef} className="scanner__video" muted playsInline />
         {cameraActive && (
-          <div className="scanner__box" aria-hidden="true">
+          <div ref={boxRef} className="scanner__box" aria-hidden="true">
             {read && <span className="scanner__got-it">Got it</span>}
           </div>
         )}

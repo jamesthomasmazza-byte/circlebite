@@ -6,6 +6,7 @@ import { useScanningFor } from "../TabShell";
 import { ADD_PROFILE_PATH } from "../lib/profileSections";
 import { scanningForId } from "../lib/tabs";
 import { useAuth } from "../lib/AuthContext";
+import { readOverride, scannerRegionOn } from "../lib/scannerRegion";
 import {
   ApiRequestError,
   CORRECTION_PHOTO_MAX_DIMENSION,
@@ -115,7 +116,7 @@ function disagreementNote(m: ScanResult["matched_allergens"][number]): string | 
 }
 
 export function Scan() {
-  const { labelScanEnabled } = useAuth();
+  const { labelScanEnabled, scannerRegionEnabled, user } = useAuth();
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
   const [loadingProfiles, setLoadingProfiles] = useState(true);
   // Held by the shell, which names it in the header on every screen (TabShell.tsx) — one value, so
@@ -563,6 +564,8 @@ export function Scan() {
                     }
                   : undefined
               }
+              // Decode only inside the box: SCANNER_REGION, or this device's override for an admin.
+              region={scannerRegionOn(scannerRegionEnabled, user?.isAdmin === true, readOverride())}
             />
           </div>
 

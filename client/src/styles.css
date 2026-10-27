@@ -1290,8 +1290,10 @@ a.card:hover {
 }
 
 /* ---------- Camera scanner — target box (BarcodeScanner.tsx, 2026-10-24) ---------------------- */
-/* A guide only: the decoder still reads the whole frame. The box is wide and short, a barcode's
-   shape. Everything outside it is dimmed by the box's own spread shadow, clipped to the preview.
+/* With SCANNER_REGION off the box is a guide only and the decoder reads the whole frame; with it
+   on (2026-10-27) only what's inside the box reads, so its inset decides. The box is wide and
+   short, a barcode's shape. Everything outside it is dimmed by the box's own spread shadow, clipped
+   to the preview.
    The outline is white over a live picture, with a dark edge so it holds on a pale package. On a
    read it goes solid in the safe-line colour, and "Got it" says so in words — colour alone isn't
    the signal. The preview is capped at 55% of the screen's height, so in a landscape phone the
