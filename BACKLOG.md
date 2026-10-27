@@ -78,6 +78,10 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
    in-app notice after Condition 2's, and a Circle tab badge, stay until Approve or Decline. Rate
    limited per requester, per IP and per owner. No message field; the request row keeps requester,
    owner, status and timestamps only, deleted on approval. Invite links unchanged.*
+   *When built, add a `docs/principles.md` precedents row: a request card shows the owner the
+   requester's email address because the form tells the requester it will ("They'll see your name
+   and email address"), unlike the display-name-only circle lines (`circle.ts`, owner's name only);
+   and the address the requester types is never stored, only the account it matched.*
 
 ### Week of Nov 9 — highest risk
 
