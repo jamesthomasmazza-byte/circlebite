@@ -3,7 +3,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { BarcodeScanner } from "../BarcodeScanner";
 import { useScanningFor } from "../TabShell";
-import { addProfileHref } from "../lib/profileSections";
+import { guidedSetupSkipped, sendToGuidedSetup } from "../lib/guidedSetupEntry";
+import { addProfileHref, NEW_PROFILE_PATH } from "../lib/profileSections";
 import { isSampleScan, SAMPLE_BARCODE, SAMPLE_LABEL, wantsSample } from "../lib/sampleScan";
 import { requestedProfile } from "../lib/tabs";
 import { scanningForId } from "../lib/tabs";
@@ -121,6 +122,8 @@ export function Scan() {
   const { labelScanEnabled, scannerRegionEnabled, guidedSetupEnabled, user } = useAuth();
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
   const [loadingProfiles, setLoadingProfiles] = useState(true);
+  // Only a list that actually loaded can say "no profiles": a failed load isn't an empty account.
+  const [profilesLoaded, setProfilesLoaded] = useState(false);
   // Held by the shell, which names it in the header on every screen (TabShell.tsx) — one value, so
   // the header and this page can't disagree. A profile page's "Scan for" button sets it.
   const { chosenProfileId, chooseProfile } = useScanningFor();
@@ -208,10 +211,28 @@ export function Scan() {
         const all = [...res.managed, ...res.followed];
         setProfiles(all);
         setManagedProfiles(res.managed);
+        setProfilesLoaded(true);
       })
       .catch(() => setError("Couldn't load your profiles. Try reloading the page."))
       .finally(() => setLoadingProfiles(false));
   }, []);
+
+  // A first visit with no profiles at all goes to the guided setup, once per browser until skipped
+  // (lib/guidedSetupEntry.ts) — never an account that follows someone, and never on a failed load.
+  useEffect(() => {
+    if (
+      sendToGuidedSetup({
+        enabled: guidedSetupEnabled,
+        profilesLoaded,
+        ownedOrManaged: managedProfiles.length,
+        followed: profiles.length - managedProfiles.length,
+        skipped: user ? guidedSetupSkipped(user.id) : true,
+      })
+    ) {
+      navigate(`${NEW_PROFILE_PATH}?from=landing`, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guidedSetupEnabled, profilesLoaded]);
 
   // The guided setup's "Try a sample scan" (lib/sampleScan.ts): once the new profile is the one
   // chosen, scan the fixed sample barcode for it, then drop the flag so a reload doesn't scan again.
