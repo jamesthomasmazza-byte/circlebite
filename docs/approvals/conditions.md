@@ -258,7 +258,7 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
   the sesame row "you reported it isn't in this — pending review", then "Your report hasn't changed
   it". A fresh scan can't show it: a report applies only to its own scan, and a duplicate report
   is refused. Taken the evening of October 26, before scan history used cards: since `801ac67`
-  (deployed October 27 in `74ea011`) the same words sit inside a card.
+  (deployed October 26 in `5b3d4c3`) the same words sit inside a card.
 - **Both sent October 26, 9:26 PM ET,** in the same thread
   (`2026-10-26-jt-green-card-screenshot.md`). His October 27 email acknowledges both: "Both items
   are done, and four days early." (`2026-10-27-yoest-follower-reporter-name.md`).

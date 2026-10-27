@@ -1959,11 +1959,15 @@ camera button in landscape. And "Copy link" can't apply to an invite already sen
 only the token's hash, so an old invite gets "New link" instead, which cancels it and makes a fresh
 one.
 
+**Then `5b3d4c3`, at about 23:01 ET:** items 3 and 4, the Profile tab's sections (Profiles /
+Account / Admin) and cards instead of bullets. Checked by JT: `5b3d4c3` running, `/health` ok, no
+boot errors, `CIRCLE_ESCALATIONS=on`. Dark mode and tapping the cards were checked on his phone on
+October 27.
+
 ## 2026-10-27 — Deployed twice: the scanner box behind a switch, and followers see roles
 
-**`74ea011`, at about 09:00 ET.** Production had been on `076eefb`, so this release carried
-items 3 and 4 of the plan to judging as well (the Profile tab's sections, and cards instead of
-bullets), plus item 5 and a fix found while building it:
+**`74ea011`, at about 09:00 ET,** on top of `5b3d4c3` (October 26): item 5 of the plan to judging
+and a fix found while building it.
 
 - `SCANNER_REGION`, decoding only inside the scanner box, deployed **off** (unset). An admin can
   turn it on for one phone from Profile → Admin (`docs/server-setup.md` §11b). The phone tests
@@ -1972,7 +1976,8 @@ bullets), plus item 5 and a fix found while building it:
   label-photo offer had sat under the tab bar, because the first scroll ran before the video had a
   height. It now scrolls again once the video knows its size.
 
-No production checks of this release are recorded here.
+Checked by JT: the deploy healthy, and a portrait scan on his phone with Stop camera above the tab
+bar.
 
 **`29854ef`, at about 11:44 ET,** checked by JT at 11:45: `git -C ~/circlebite/current log -1`
 showed `29854ef`, `/health` returned `{"ok":true}`, no boot errors, `CIRCLE_ESCALATIONS=on`. It
