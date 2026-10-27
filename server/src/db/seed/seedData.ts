@@ -47,6 +47,7 @@ export const PROFILES: Record<string, SeedProfile> = {};
 export const CO_MANAGERS: CoManager[] = [];
 export const FOLLOWERS: Follower[] = [];
 export const SCANS: SeedScan[] = [];
+export const CIRCLE_REPORTS: SeedCommunityReport[] = [];
 
 for (const cast of JUDGE_CASTS) {
   const { n } = cast;
@@ -93,10 +94,12 @@ for (const cast of JUDGE_CASTS) {
   // Owner of Maya, co-manager of Leo, follower of Noor — so the judge meets each role's experience,
   // including the follower's escalate-only report form (Oct 1 rule). Maya has a co-manager (Priya),
   // so if the judge deletes the account, Maya transfers to her instead of being destroyed
-  // (docs/coppa.md §2.6).
+  // (docs/coppa.md §2.6). Noor has one too (Sam), so the judge, as Noor's follower, has a
+  // co-manager's report to see by role only (CIRCLE_REPORTS below).
   CO_MANAGERS.push(
     { id: id(4, 1), profile: cast.maya, person: cast.priya, addedBy: cast.judge },
     { id: id(4, 2), profile: cast.leo, person: cast.judge, addedBy: cast.sam },
+    { id: id(4, 3), profile: cast.noor, person: cast.sam, addedBy: cast.elena },
   );
   FOLLOWERS.push(
     { id: id(5, 1), profile: cast.noor, person: cast.judge, invitedBy: cast.elena, shareLevel: "all" },
@@ -116,6 +119,41 @@ for (const cast of JUDGE_CASTS) {
     { id: id(6, 6), profile: cast.leo, scanner: cast.sam, product: "yogurtDrink", daysAgo: 10 },
     { id: id(6, 7), profile: cast.leo, scanner: cast.sam, product: "crackers", daysAgo: 5 },
     { id: id(6, 8), profile: cast.noor, scanner: cast.elena, product: "granola", daysAgo: 7 },
+    // Ids 9 and 10 are the reporting families' scans (below), in cast 1's range only.
+    { id: id(6, 11), profile: cast.maya, scanner: cast.priya, product: `circleReported${n}`, daysAgo: 3 },
+    { id: id(6, 12), profile: cast.noor, scanner: cast.sam, product: `circleReported${n}`, daysAgo: 2 },
+  );
+
+  // ---- A co-manager's pending report on each of two children (Prof. Yoest, 2026-10-27) ----
+  // The reporter rule in one barcode: the owner and co-managers see who filed a report, a follower
+  // only their role (corrections/circleEscalations.ts). On this judge's own circleReported barcode,
+  // Priya reports Sesame on Maya, where the judge is the owner and sees her name; Sam reports Wheat
+  // on Noor, where the judge follows and sees "a co-manager in Noor's circle".
+  //
+  // Pending, and they must stay pending: one family each. That's why every judge has their own
+  // barcode (four casts' Sesame reports on one barcode would be four families, and the threshold
+  // would confirm them) and why the two children's allergens differ (Maya's and Noor's owners are
+  // two families). judgeSeed.ts fails the seed if either ever stops holding.
+  // Ids 1 and 2 are the community reports' (below), in cast 1's range only.
+  CIRCLE_REPORTS.push(
+    {
+      id: id(7, 3),
+      scan: id(6, 11),
+      reporter: cast.priya,
+      product: `circleReported${n}`,
+      allergen: "Sesame",
+      note: "Seeded example: sesame seeds are in the ingredients on the bag, and the product record doesn't list them.",
+      photoPath: `corrections/5eed0007-circle-report-${n}-maya.png`,
+    },
+    {
+      id: id(7, 4),
+      scan: id(6, 12),
+      reporter: cast.sam,
+      product: `circleReported${n}`,
+      allergen: "Wheat",
+      note: "Seeded example: wheat flour is in the ingredients on the bag, and the product record doesn't list it.",
+      photoPath: `corrections/5eed0007-circle-report-${n}-noor.png`,
+    },
   );
 }
 
@@ -162,7 +200,15 @@ SCANS.push(
 // stores them), so they're "good data": no Path B, so no AI call and no AI spend on a rescan, and no
 // required photo. Tags are matched exactly against the matcher's keywords (matcher/synonyms.ts).
 
-export type ProductKey = "crackers" | "peanutBar" | "oatBiscuits" | "unknown" | "yogurtDrink" | "granola" | "reported";
+export type ProductKey =
+  | "crackers"
+  | "peanutBar"
+  | "oatBiscuits"
+  | "unknown"
+  | "yogurtDrink"
+  | "granola"
+  | "reported"
+  | `circleReported${number}`;
 
 export type SeedProduct = {
   barcode: string;
@@ -227,6 +273,23 @@ export const PRODUCTS: Record<ProductKey, SeedProduct> = {
   // Not found, and carries the seeded community reports: the engine says "Unable to confirm", and
   // two families' corroborated reports escalate it to "Contains" for anyone with peanut on their list.
   reported: { barcode: "2990000000076", found: false, name: null, brand: null, ingredientsText: null, allergensTags: [], tracesTags: [] },
+  // One per judge, for CIRCLE_REPORTS: the same product under four barcodes, so each judge's two
+  // pending reports stay one family's. Soy only, so "No listed allergens found" for Maya and Noor
+  // until the circle's reports raise it.
+  ...Object.fromEntries(
+    JUDGE_CASTS.map((cast, i) => [
+      `circleReported${cast.n}`,
+      {
+        barcode: ["2990000000083", "2990000000090", "2990000000106", "2990000000113"][i],
+        found: true,
+        name: "Corn Tortilla Chips",
+        brand: "Millbrook",
+        ingredientsText: "ground corn, sunflower oil, sea salt, soy lecithin",
+        allergensTags: ["soybeans"],
+        tracesTags: [],
+      },
+    ]),
+  ),
 };
 
 // ---- The seeded community reports ------------------------------------------------------------------
@@ -308,3 +371,6 @@ export const NPS_ROWS: { id: string; score: number; reason: string | null }[] = 
 ].map((row, i) => ({ id: seedId(0, i + 1), ...row }));
 
 export const SEED_BARCODES = Object.values(PRODUCTS).map((p) => p.barcode);
+
+/** Every correction row the seed writes: the cross-family demo and the circle's pending reports. */
+export const SEEDED_REPORTS = [...COMMUNITY_REPORTS, ...CIRCLE_REPORTS];

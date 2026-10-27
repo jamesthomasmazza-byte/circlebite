@@ -3,7 +3,12 @@ import path from "node:path";
 
 import type { PoolClient } from "pg";
 
-import { claimKey, CORROBORATION_THRESHOLD, corroborateClaimIfThresholdMet } from "../../corrections/recordCorrection.js";
+import {
+  claimKey,
+  CORROBORATION_THRESHOLD,
+  corroborateClaimIfThresholdMet,
+  countCorroboratingFamilies,
+} from "../../corrections/recordCorrection.js";
 import { env } from "../../env.js";
 import { recognizeAllergenName } from "../../matcher/allergenChoices.js";
 import { allergenFamilyKey, allergenFoldKey } from "../../matcher/match.js";
@@ -12,6 +17,7 @@ import { SEED_EMAIL_DOMAIN } from "../../lib/seedMarker.js";
 import { computeVerdict } from "../../matcher/match.js";
 import { pool } from "../pool.js";
 import {
+  CIRCLE_REPORTS,
   CO_MANAGERS,
   COMMUNITY_REPORTS,
   FOLLOWERS,
@@ -22,10 +28,12 @@ import {
   PROFILES,
   SCANS,
   SEED_BARCODES,
+  SEEDED_REPORTS,
+  type SeedCommunityReport,
 } from "./seedData.js";
 
 // The judge seed: four judge accounts, each with its own invented families, every circle role and
-// scan history (seedData.ts); two shared reporting families' community reports; and the NPS rows — rerunnable and idempotent. It finds its own rows by ONE marker, the reserved seed
+// scan history (seedData.ts) and its circle's pending reports; two shared reporting families' community reports; and the NPS rows — rerunnable and idempotent. It finds its own rows by ONE marker, the reserved seed
 // email domain (lib/seedMarker.ts; signup refuses it), plus the fixed ids and barcodes in
 // seedData.ts. It never selects anything by guessing.
 //
@@ -67,6 +75,17 @@ export class SeedNotCorroboratedError extends Error {
     super(
       `the seeded community reports no longer meet the add_caution threshold (${CORROBORATION_THRESHOLD.add_caution} families) — ` +
         "add reporting families in seedData.ts",
+    );
+  }
+}
+
+/** A seeded circle report reached the threshold, so it would no longer be the pending, one-family
+ *  report the JUDGES.md row describes. Thrown inside the transaction, so nothing is changed. */
+export class SeedCircleReportCorroboratedError extends Error {
+  constructor(public readonly report: SeedCommunityReport) {
+    super(
+      `the seeded circle report ${report.id} (${report.allergen}) reaches the add_caution threshold ` +
+        `(${CORROBORATION_THRESHOLD.add_caution} families) — it must stay one family's pending report`,
     );
   }
 }
@@ -197,11 +216,11 @@ export async function seedJudge(client: PoolClient, options: SeedOptions): Promi
     `UPDATE product_corrections
        SET status = 'rejected', rejected_by = NULL, rejected_at = now(), rejection_reason = $3
      WHERE reported_by = ANY($1) AND status <> 'rejected' AND NOT (id = ANY($2))`,
-    [seededUserIds, COMMUNITY_REPORTS.map((r) => r.id), JUDGE_CORRECTION_REJECTION_REASON],
+    [seededUserIds, SEEDED_REPORTS.map((r) => r.id), JUDGE_CORRECTION_REJECTION_REASON],
   );
 
   // 3. The seed's own correction and NPS rows, and seeded accounts' NPS responses.
-  await client.query("DELETE FROM product_corrections WHERE id = ANY($1)", [COMMUNITY_REPORTS.map((r) => r.id)]);
+  await client.query("DELETE FROM product_corrections WHERE id = ANY($1)", [SEEDED_REPORTS.map((r) => r.id)]);
   await client.query("DELETE FROM nps_responses WHERE id = ANY($1) OR user_id = ANY($2)", [
     NPS_ROWS.map((r) => r.id),
     seededUserIds,
@@ -342,29 +361,7 @@ async function createSeed(client: PoolClient, options: { judgeHashes: Record<str
   // (recordCorrection.ts) — the seed never writes 'corroborated' itself. If the threshold ever rises
   // past what these reports meet, the seed fails here instead of leaving a demo that silently shows
   // no escalation, or a status the rule wouldn't have granted.
-  for (const report of COMMUNITY_REPORTS) {
-    const reportedScan = SCANS.find((s) => s.id === report.scan)!;
-    await client.query(
-      `INSERT INTO product_corrections
-         (id, scan_id, barcode, reported_by, profile_owner_at_report, correction_type, direction, allergen, allergen_fold_key,
-          allergen_family_key, target, verdict_at_report, note, photo_path, status, origin, created_at)
-       VALUES ($1, $2, $3, $4, $5, 'flag_missing', 'add_caution', $6, $10, $11, 'off_data', 'unable_to_confirm', $7, $8,
-               'pending', 'user_initiated', now() - make_interval(days => $9))`,
-      [
-        report.id,
-        report.scan,
-        PRODUCTS[report.product].barcode,
-        PEOPLE[report.reporter].id,
-        PEOPLE[PROFILES[reportedScan.profile].owner].id,
-        report.allergen,
-        report.note,
-        report.photoPath,
-        reportedScan.daysAgo,
-        allergenFoldKey(report.allergen),
-        allergenFamilyKey(report.allergen),
-      ],
-    );
-  }
+  for (const report of COMMUNITY_REPORTS) await insertPendingReport(client, report);
   const claims = new Map(
     COMMUNITY_REPORTS.map((r) => {
       const barcode = PRODUCTS[r.product].barcode;
@@ -376,6 +373,16 @@ async function createSeed(client: PoolClient, options: { judgeHashes: Record<str
     if (!(await corroborateClaimIfThresholdMet(client, claim))) throw new SeedNotCorroboratedError();
   }
 
+  // The circle's reports stay pending, so each must stay below the threshold the rule would confirm
+  // it at — counted by the rule itself, after every seeded report is in.
+  for (const report of CIRCLE_REPORTS) await insertPendingReport(client, report);
+  for (const report of CIRCLE_REPORTS) {
+    const claim = { barcode: PRODUCTS[report.product].barcode, key: claimKey(report.allergen, "add_caution"), direction: "add_caution" as const };
+    if ((await countCorroboratingFamilies(client, claim)) >= CORROBORATION_THRESHOLD.add_caution) {
+      throw new SeedCircleReportCorroboratedError(report);
+    }
+  }
+
   for (const row of NPS_ROWS) {
     await client.query("INSERT INTO nps_responses (id, user_id, score, reason, source) VALUES ($1, NULL, $2, $3, 'seed')", [
       row.id,
@@ -385,9 +392,41 @@ async function createSeed(client: PoolClient, options: { judgeHashes: Record<str
   }
 }
 
+/**
+ * A seeded allergen report as recordCorrection.ts writes one: pending, filed from the reporter's own
+ * scan, with the profile and its owner at the time of the report, at the scan's verdict.
+ */
+async function insertPendingReport(client: PoolClient, report: SeedCommunityReport): Promise<void> {
+  const reportedScan = SCANS.find((s) => s.id === report.scan)!;
+  const profile = PROFILES[reportedScan.profile];
+  await client.query(
+    `INSERT INTO product_corrections
+       (id, scan_id, barcode, reported_by, profile_owner_at_report, allergen_profile_id_at_report, correction_type,
+        direction, allergen, allergen_fold_key, allergen_family_key, target, verdict_at_report, note, photo_path,
+        status, origin, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, 'flag_missing', 'add_caution', $7, $8, $9, 'off_data',
+             (SELECT result FROM scans WHERE id = $2), $10, $11,
+             'pending', 'user_initiated', now() - make_interval(days => $12))`,
+    [
+      report.id,
+      report.scan,
+      PRODUCTS[report.product].barcode,
+      PEOPLE[report.reporter].id,
+      PEOPLE[profile.owner].id,
+      profile.id,
+      report.allergen,
+      allergenFoldKey(report.allergen),
+      allergenFamilyKey(report.allergen),
+      report.note,
+      report.photoPath,
+      reportedScan.daysAgo,
+    ],
+  );
+}
+
 /** Writes (overwrites) the seeded reports' placeholder photos. Called after the transaction commits. */
 export async function writeSeedPhotos(): Promise<void> {
-  for (const report of COMMUNITY_REPORTS) {
+  for (const report of SEEDED_REPORTS) {
     const fullPath = path.join(env.uploadDir, report.photoPath);
     await mkdir(path.dirname(fullPath), { recursive: true });
     await writeFile(fullPath, PLACEHOLDER_PHOTO_PNG);
