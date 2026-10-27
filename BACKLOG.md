@@ -20,15 +20,18 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
 **JT, anytime (no code):**
 - [ ] Rename the duplicate "James Mazza" profile.
 - [ ] Phone check of the scanner box: portrait and landscape, "Got it" before the result.
+  *Partly done 2026-10-26 on JT's iPhone, on production (`076eefb`): live picture, "Got it", and
+  landscape clear of the tab bar (`docs/journal.md`). Portrait isn't recorded.*
 - [ ] Owner-only acknowledgement check on production.
 
 ### Week of Oct 26 — low risk
 
-1. [ ] **Label-photo fallback when the barcode won't read** (~8 s, offer only, no camera changes).
+1. [x] **Label-photo fallback when the barcode won't read** (~8 s, offer only, no camera changes).
    Moved from "Deferred". While the scanner keeps running, offer the ingredients-label photo for
    the selected profile — an offer, not an automatic switch (the reasoning in the Week 9 scanner
    item). The decoder and camera code don't change.
-2. [ ] **UX polish:**
+   *Done: `ae49968`, deployed 2026-10-26 in `076eefb` and checked on JT's iPhone.*
+2. [x] **UX polish:**
    - camera as the single primary button;
    - a slim Changes-to-review line on Scan — stays until acknowledged (Condition 2), the full
      version on Profile;
@@ -36,6 +39,11 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
    - empty states with a next step;
    - the Scan button covering the Circle link;
    - a remove-row control on the add-profile form.
+
+   *Done: `9a0ccb7`–`076eefb`, deployed 2026-10-26. Checked on JT's iPhone: the slim notice on
+   Scan, Copy link on a new invite, and the landscape layout. An invite already sent gets "New
+   link" instead of Copy link (the server keeps only the token's hash); "the Scan button
+   covering" turned out to be Scan's own camera button in landscape (`docs/journal.md`).*
 3. [ ] **Split the Profile page into sections** (Profiles / Account / Admin). New.
 4. [ ] **Visual pass, time-boxed:** cards not bullets, one button style.
 

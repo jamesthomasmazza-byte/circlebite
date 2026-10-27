@@ -1935,3 +1935,26 @@ Checked on production, by JT:
 - James Mazza's profile shows the notice matching "treenuts" to Tree nuts.
 - The Oct 16 chewy bar (096619160761) now flags tree nut. The miss is fixed on production, not only
   in tests.
+
+## 2026-10-26 — Deployed: the label-photo offer and the UX polish
+
+Deployed `076eefb` at about 22:35 ET: items 1 and 2 of the plan to judging (`BACKLOG.md`).
+`CIRCLE_ESCALATIONS` was already on, since 20:46 ET. Checked on production by JT, on his iPhone:
+
+- The scanner box over a live camera picture, and "Got it" on a read.
+- The label-photo offer after about 8 seconds with no read, with the camera still running.
+- In landscape, "Scan with camera", the offer and Stop camera all clear of the tab bar.
+- The slim notice line on Scan.
+- Copy link on a new invite.
+
+Not checked on the phone: the outlined "Check this product", the empty-state lines, and the named
+Remove on the add-profile form. They were checked at 390px in the browser before commit.
+
+What changed from the plan. The offer was built without touching the decoder or camera code, but
+the landscape fix (`076eefb`) moved the scanner's scroll-into-view from `startCamera` into an
+effect: called from `startCamera` it ran before the preview rendered, while the page was too short
+to scroll, so with a notice above, Stop camera stayed under the bar. The "Scan button covering"
+item turned out not to be the Circle link (nothing there was covered at any width) but Scan's own
+camera button in landscape. And "Copy link" can't apply to an invite already sent: the server keeps
+only the token's hash, so an old invite gets "New link" instead, which cancels it and makes a fresh
+one.
