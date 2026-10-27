@@ -87,10 +87,10 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
    in-app notice after Condition 2's, and a Circle tab badge, stay until Approve or Decline. Rate
    limited per requester, per IP and per owner. No message field; the request row keeps requester,
    owner, status and timestamps only, deleted on approval. Invite links unchanged.*
-   *Built 2026-10-27 (`d382698`, `455e384`), off by default, not yet deployed. The principles row
+   *Built 2026-10-27 (`d382698`, `455e384`), deployed off that day in `64803a0`. The principles row
    is in (request cards show the requester's email because the form says so; the typed address is
-   never stored). Switch on and off: `docs/server-setup.md` §11c. Open: deploy, a check on
-   production with the switch on, and telling Prof. Yoest before it's switched on.*
+   never stored). Switch on and off: `docs/server-setup.md` §11c. Open: telling Prof. Yoest, then
+   a check on production with the switch on.*
 
 ### Week of Nov 9 — highest risk
 

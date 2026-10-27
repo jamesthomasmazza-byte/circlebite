@@ -1999,3 +1999,11 @@ barcode beside the box didn't read, with the label-photo offer at about 8 s. One
 correctly inside the box. The portrait "Got it" also completes the scanner-box phone check from
 October 26. Not yet tried: curved or small packages, and an On-vs-Off comparison on the same
 packages. The switch stays off until a second phone, ideally Android, passes too.
+
+**`64803a0`, at about 12:18 ET:** item 6, follow requests, deployed dark. Migrations 0047
+(`circle_requests`) and 0048 (the `circle_request` rate-limit key) applied. Checked by JT: health
+ok, no boot errors, `CIRCLE_REQUESTS` unset (off), `CIRCLE_ESCALATIONS=on`, `SCANNER_REGION` unset
+(off). Rollback target `releases/20261027154453` (the `29854ef` release); backup taken just before,
+`circlebite-20261027T161756Z`. With the switch off every request route 404s and nothing shows, so
+nothing about follow requests has been checked on production yet. Before it goes on: tell Prof.
+Yoest, then a check on production with the switch on (`docs/server-setup.md` §11c).
