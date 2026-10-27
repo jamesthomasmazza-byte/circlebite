@@ -259,6 +259,53 @@ test("circleReportLine: the viewer comes first, as \"You\"", () => {
   assert.match(both, /^You and Grandma \(co-manager\) reported Peanut present/);
 });
 
+// A follower is sent other reporters by role only (server circleEscalations.ts, JT 2026-10-27).
+
+const withheld = (role: "owner" | "co_manager" | "follower" | null) => ({ name: null, role, isViewer: false, withheld: true });
+const line = (reporters: Parameters<typeof circleReportLine>[0]["reporters"], label: string | null = "Maya") =>
+  circleReportLine({ allergenName: "eggs", reporters }, label);
+const TAIL = " reported eggs present and photographed the label. No other family has confirmed it yet.";
+
+test("circleReportLine, for a follower: each other reporter by role, in the profile's circle", () => {
+  assert.equal(line([withheld("co_manager")]), `A co-manager in Maya's circle${TAIL}`);
+  assert.equal(line([withheld("owner")]), `The owner of Maya's profile${TAIL}`);
+  assert.equal(line([withheld("follower")]), `Another follower in Maya's circle${TAIL}`);
+  assert.equal(line([withheld(null)]), `Someone who has since left Maya's circle${TAIL}`);
+});
+
+test("circleReportLine, for a follower: several reporters, the viewer first", () => {
+  assert.equal(line([withheld("co_manager"), withheld("co_manager")]), `Two co-managers in Maya's circle${TAIL}`);
+  assert.equal(line([withheld("co_manager"), withheld("follower")]), `A co-manager and another follower in Maya's circle${TAIL}`);
+  assert.equal(line([withheld("follower"), withheld("follower")]), `Two other followers in Maya's circle${TAIL}`);
+  assert.equal(
+    line([withheld("co_manager"), { name: "Fern", role: "follower", isViewer: true, withheld: false }]),
+    `You and a co-manager in Maya's circle${TAIL}`,
+  );
+  assert.equal(
+    line([withheld("owner"), withheld("co_manager")]),
+    `The owner of Maya's profile and a co-manager in Maya's circle${TAIL}`,
+  );
+  assert.equal(
+    line([withheld("co_manager"), { name: null, role: null, isViewer: false, withheld: false }]),
+    `A co-manager in Maya's circle and Someone whose account has since been deleted${TAIL}`,
+  );
+});
+
+test("circleReportLine: without the profile's name, 'this profile's circle'", () => {
+  assert.equal(line([withheld("co_manager")], null), `A co-manager in this profile's circle${TAIL}`);
+  assert.equal(line([withheld("owner")], null), `The owner of this profile${TAIL}`);
+});
+
+test("circleReportLine: a withheld reporter is never named, and never said to be deleted", () => {
+  for (const role of ["owner", "co_manager", "follower", null] as const) {
+    assert.doesNotMatch(line([withheld(role)]), /null|deleted|undefined|\(/);
+  }
+});
+
+test("circleReportLine: owners and co-managers still see names, as before", () => {
+  assert.equal(line([GRANDMA]), `Grandma (co-manager)${TAIL}`);
+});
+
 test("circleReporterName: a deleted account or someone who has left is said so, never guessed", () => {
   assert.equal(circleReporterName(GRANDMA), "Grandma (co-manager)");
   assert.equal(circleReporterName({ ...GRANDMA, role: null }), "Grandma (no longer in this circle)");

@@ -230,7 +230,8 @@ const ROLE_LABEL: Record<NonNullable<CircleReporter["role"]>, string> = {
   follower: "follower",
 };
 
-/** Who filed a circle report, as the card names them. Never an email address — the server never sends one. */
+/** Who filed a circle report, as the card names them. Never an email address — the server never sends one.
+ *  For a reporter the server withheld, circleReportLine says the role instead. */
 export function circleReporterName(r: CircleReporter): string {
   if (r.isViewer) return "You";
   if (r.name === null) return "Someone whose account has since been deleted";
@@ -270,11 +271,48 @@ export function changedByLine(sources: { yours: boolean; shoppers: boolean; circ
  * "Not yet confirmed" itself lives on the allergen row (allergenRowCopy.ts), attached to the
  * verdict; this line says it once more, in its own words, and nothing else does.
  */
-export function circleReportLine(report: CircleReport): string {
-  // The viewer first, so "You" never lands mid-sentence.
-  const reporters = [...report.reporters.filter((r) => r.isViewer), ...report.reporters.filter((r) => !r.isViewer)];
-  const who = listOf(reporters.map(circleReporterName));
-  return `${who} reported ${report.allergenName} present and photographed the label. No other family has confirmed it yet.`;
+export function circleReportLine(report: CircleReport, profileLabel: string | null = null): string {
+  // The viewer first, so "You" never lands mid-sentence; then those shown by role; then by name.
+  const others = report.reporters.filter((r) => !r.isViewer);
+  const who = listOf([
+    ...report.reporters.filter((r) => r.isViewer).map(circleReporterName),
+    ...withheldReporters(others, profileLabel),
+    ...others.filter((r) => !r.withheld).map(circleReporterName),
+  ]);
+  return `${capitalized(who)} reported ${report.allergenName} present and photographed the label. No other family has confirmed it yet.`;
+}
+
+const COUNT_WORD = ["", "a", "two", "three", "four", "five"];
+
+function counted(n: number, one: string, many: string): string {
+  return n === 1 ? `${COUNT_WORD[1]} ${one}` : `${COUNT_WORD[n] ?? n} ${many}`;
+}
+
+/**
+ * The reporters a follower is shown by role only (server circleEscalations.ts, JT 2026-10-27):
+ * "the owner of Maya's profile", "a co-manager and another follower in Maya's circle", "someone who
+ * has since left Maya's circle". Only a follower is ever sent a withheld reporter, so a follower who
+ * reported is "another follower". Names the profile, not "this child": a profile can be an adult's
+ * own.
+ */
+function withheldReporters(reporters: CircleReporter[], profileLabel: string | null): string[] {
+  const withheld = reporters.filter((r) => r.withheld);
+  const count = (role: CircleReporter["role"]) => withheld.filter((r) => r.role === role).length;
+  const circle = profileLabel ? `${profileLabel}'s circle` : "this profile's circle";
+  const phrases: string[] = [];
+  if (count("owner") > 0) phrases.push(profileLabel ? `the owner of ${profileLabel}'s profile` : "the owner of this profile");
+  const members = [
+    count("co_manager") > 0 && counted(count("co_manager"), "co-manager", "co-managers"),
+    count("follower") > 0 && (count("follower") === 1 ? "another follower" : `${COUNT_WORD[count("follower")] ?? count("follower")} other followers`),
+  ].filter((m): m is string => Boolean(m));
+  if (members.length > 0) phrases.push(`${listOf(members)} in ${circle}`);
+  const left = count(null);
+  if (left > 0) phrases.push(left === 1 ? `someone who has since left ${circle}` : `${COUNT_WORD[left] ?? left} people who have since left ${circle}`);
+  return phrases;
+}
+
+function capitalized(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 /**

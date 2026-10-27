@@ -404,8 +404,14 @@ export type MatchedAllergen = {
 export type CommunityReport = { allergenName: string; reporterCount: number };
 
 // Who in this profile's circle filed a pending report — server corrections/circleEscalations.ts.
-// name null: their account is deleted. role null: they've left the circle since.
-export type CircleReporter = { name: string | null; role: "owner" | "co_manager" | "follower" | null; isViewer: boolean };
+// name null: their account is deleted, or withheld. role null: they've left the circle since.
+// withheld: the viewer is a follower, so someone else's report comes by role only (2026-10-27).
+export type CircleReporter = {
+  name: string | null;
+  role: "owner" | "co_manager" | "follower" | null;
+  isViewer: boolean;
+  withheld?: boolean;
+};
 
 // Which of this profile's allergens a pending report from its own circle raised to "contains", and
 // who reported it. One family's say-so: no other family has confirmed it.

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { historyRowLabel, shopperCount } from "../lib/allergenRowCopy";
-import { getScanHistory, type ScanHistoryEntry } from "../lib/api";
+import { getProfile, getScanHistory, type ScanHistoryEntry } from "../lib/api";
 import {
   circleReportLine,
   heldRemovalNotes,
@@ -18,12 +18,18 @@ export function ScanHistory() {
   const { id } = useParams<{ id: string }>();
   const [scans, setScans] = useState<ScanHistoryEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Only for a follower's circle-report line, "a co-manager in Maya's circle"; without it the line
+  // says "this profile's circle".
+  const [profileLabel, setProfileLabel] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
     getScanHistory(id)
       .then(setScans)
       .catch(() => setError("Couldn't load scan history — you may not have access to this profile."));
+    getProfile(id)
+      .then((p) => setProfileLabel(p.label))
+      .catch(() => setProfileLabel(null));
   }, [id]);
 
   return (
@@ -125,7 +131,7 @@ export function ScanHistory() {
                       {/* Last and lightest: the least-supported claim on the card (JT, 2026-10-16). */}
                       {scan.pending_circle_reports.map((r) => (
                         <li key={`circle-${r.allergenName}`} className="circle-report">
-                          {circleReportLine(r)}
+                          {circleReportLine(r, profileLabel)}
                         </li>
                       ))}
                       {/* A severe_only follower can have a verdict changed by a report about an

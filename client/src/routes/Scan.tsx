@@ -865,7 +865,7 @@ export function Scan() {
                 {/* Last and lightest: the least-supported claim on the card (JT, 2026-10-16). */}
                 {result.pending_circle_reports.map((r) => (
                   <li key={`circle-${r.allergenName}`} className="circle-report">
-                    {circleReportLine(r)}
+                    {circleReportLine(r, resultProfileLabel)}
                   </li>
                 ))}
               </ul>
