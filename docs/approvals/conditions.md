@@ -138,7 +138,13 @@ JT's October 8 email left out, and the gap is why he asked.
 - **Where:** `README.md`, under the MVP statement: "**Only escalations cross family lines.**"
   Added October 5 (`f20428c`). Reworded October 13 (`b26f3b9`): a pending report changes "the
   reporter's own view of the scan they filed it from", not "the reporting family's own view",
-  which claimed more than the code does.
+  which claimed more than the code does. Reworded again October 26, with `CIRCLE_ESCALATIONS`
+  switched on (`docs/server-setup.md` §11a): in the corroboration sentence below it, a pending
+  report that an allergen is present no longer changes only "the reporter's own view of the scan
+  they filed it from". It shows on that child's card for everyone in the child's circle, marked
+  "reported in your circle, not yet confirmed", and on no other child's card until a second family
+  reports it. The cross-family sentence itself is unchanged: the circle is one profile's, so
+  nothing crosses to another family, and a removal still never travels.
 - **How it was verified:** by construction, and by tests.
   - The only code path by which a report reaches another family's profile reads corroborated
     `add_caution` rows only (`server/src/corrections/communityAdditions.ts`), and the function
@@ -151,6 +157,12 @@ JT's October 8 email left out, and the gap is why he asked.
   - On production, the escalation half is demonstrated by the judge seed: barcode 2990000000076
     escalates Maya (peanut) and not Leo (`JUDGES.md`). The downgrade half has nothing to
     demonstrate on production, because there is no path for it to take.
+  - *Circle escalations, on production, October 26, 2026.* At 20:42 ET, co-manager timmy filed a
+    test report that Plain Rice Crackers (synthetic, 2990000000014) contains eggs, from James
+    Mazza's profile. With the switch still off, the owner's scan of that barcode showed "No listed
+    allergens found". JT switched `CIRCLE_ESCALATIONS` on at 20:46 ET, and the owner's scan then
+    showed "eggs — contains — reported in your circle, not yet confirmed". The report stays
+    pending, so it reaches no other family's card.
 - **Closed:** October 5, 2026.
 
 ## Condition 4 — Automated backups with a tested restore

@@ -35,11 +35,13 @@ What open sign-up still allows, and what must be built before a removal may ever
 line: `docs/fake-family-risk.md`.
 
 **A warning reaches other families only once two families have reported it.** A report that an
-allergen is present changes the reporter's own view of the scan they filed it from at once, but it
-escalates anyone else's verdict only after a second, independent family reports the same allergen on
-the same product — and a child's owner, co-managers and circle members count as one family, so no
-single household can put a warning in front of every family in the app
-(`server/src/corrections/recordCorrection.ts`, decided 2026-10-07).
+allergen is present shows at once on that child's card for everyone in the child's circle — owner,
+co-managers and followers — on every scan of that product, marked "reported in your circle, not yet
+confirmed". It reaches no other child's card, not even a sibling's, until a second, independent
+family reports the same allergen on the same product — and a child's owner, co-managers and circle
+members count as one family, so no single household can put a warning in front of every family in the
+app (`server/src/corrections/recordCorrection.ts`, decided 2026-10-07; shared within the circle since
+2026-10-26, `server/src/corrections/circleEscalations.ts`).
 
 ## Thesis
 
