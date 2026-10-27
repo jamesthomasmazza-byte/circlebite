@@ -301,7 +301,9 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
   barcode per judge, a pending Sesame report by Priya (co-manager) on Maya, where the judge is the
   owner and sees her name, and a pending Wheat report by Sam (co-manager, new to Noor) on Noor,
   where the judge follows and sees the role only. Seeded by the judge seed, so it holds after every
-  reseed. **Not yet built.**
+  reseed. **Built October 27** (`255f867`, the seed and its tests; the row in `JUDGES.md`) and
+  checked locally as judge1 at 390px, both cards worded as the row quotes. Not yet deployed or
+  reseeded on production, and not yet sent to him.
 
 ## Corrections owed to Prof. Yoest
 
