@@ -96,8 +96,12 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
    owner, status and timestamps only, deleted on approval. Invite links unchanged.*
    *Built 2026-10-27 (`d382698`, `455e384`), deployed off that day in `64803a0`. The principles row
    is in (request cards show the requester's email because the form says so; the typed address is
-   never stored). Switch on and off: `docs/server-setup.md` §11c. Open: a check on production with
-   the switch on, and mentioning it to Prof. Yoest in the next email.*
+   never stored). Switch on and off: `docs/server-setup.md` §11c.*
+   *Switched on in production, 2026-10-27, and checked about 12:33 ET with `CIRCLE_REQUESTS=on`, on
+   JT's two test accounts. Timmy asking James wrote no row, as designed: Timmy already sees every
+   profile James owns. James asking Timmy: Timmy saw the request line on Scan, after Condition 2's
+   notices, and the Circle badge, and approved it at full profile; James now follows Timmy's
+   profile. Open: mentioning it to Prof. Yoest in the next email.*
 
 ### Week of Nov 9 — highest risk
 

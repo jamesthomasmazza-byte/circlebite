@@ -2015,3 +2015,12 @@ package), ahead of the two phones BACKLOG item 5 had set. Checked by JT: the run
 to Server default, and on the server's setting a barcode inside the box read and one beside it
 didn't. Still owed before November 20: an Android phone, and a curved or small package. Rollback:
 `SCANNER_REGION=off` and a restart (`docs/server-setup.md` §11b).
+
+**`CIRCLE_REQUESTS` switched on, and checked at about 12:33 ET.** JT changed the plan: on today,
+and Prof. Yoest hears about it in the next email rather than before (`docs/approvals/conditions.md`,
+"Other open asks"). The test used JT's two test accounts. Timmy, who already co-manages one of
+James Mazza's profiles and can see the other, asked James's address: no row was written, as
+designed, since there was nothing left to offer him. The other way round, James asked Timmy's
+address: Timmy saw the request line on Scan, after Condition 2's notices, and the badge on the
+Circle tab, and approved it at full profile. James now follows Timmy's profile. Not checked on
+production: a decline, and a request to an address with no account.
