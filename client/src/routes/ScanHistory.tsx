@@ -10,6 +10,7 @@ import {
   yourReportLine,
   yourReportsChangedCard,
 } from "../lib/correctionCopy";
+import { NO_SCANS, SCAN_A_PRODUCT } from "../lib/emptyStateCopy";
 import { historyUncheckedNote, uncheckedBasis } from "../lib/evidenceCopy";
 import { DISCLAIMER, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
 
@@ -41,7 +42,11 @@ export function ScanHistory() {
 
       {error && <p role="alert">{error}</p>}
 
-      {scans && scans.length === 0 && <p>No scans yet.</p>}
+      {scans && scans.length === 0 && (
+        <p>
+          {NO_SCANS} <Link to={id ? `/scan?profile=${id}` : "/scan"}>{SCAN_A_PRODUCT}</Link>
+        </p>
+      )}
 
       {scans && scans.length > 0 && (
         <ul>

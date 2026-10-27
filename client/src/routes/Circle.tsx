@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { getCircle, listProfiles, type CircleData, type ProfileSummary } from "../lib/api";
 import { useAuth } from "../lib/AuthContext";
+import { CIRCLE_JUST_YOU } from "../lib/emptyStateCopy";
 import { profilePossessive } from "../lib/profileChangeCopy";
 
 type ManagedCircle = { profile: ProfileSummary; circle: CircleData | null };
@@ -72,7 +73,7 @@ export function Circle() {
             ) : (
               <>
                 {circle.managers.length === 0 && circle.followers.length === 0 ? (
-                  <p>Just you, so far.</p>
+                  <p>{CIRCLE_JUST_YOU}</p>
                 ) : (
                   <ul>
                     {/* Someone else's profile that you co-manage: say whose (circleOwnerLine). */}

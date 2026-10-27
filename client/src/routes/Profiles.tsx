@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { AllergenPicker, EMPTY_PICK, isPicked, pickInput, useAllergenChoices, type AllergenPick } from "../AllergenPicker";
 import { listedAllergenMessage } from "../lib/allergenChoiceCopy";
+import { CREATE_ONE_BELOW, NO_FOLLOWED_PROFILES, NO_MANAGED_PROFILES } from "../lib/emptyStateCopy";
 import { SEVERITY_REQUIRED } from "../lib/severityCopy";
 import { SeverityChoice } from "../SeverityChoice";
 import { allergenLine } from "../lib/profileLineCopy";
@@ -114,7 +115,11 @@ export function Profiles() {
 
       <section>
         <h2>Profiles you manage</h2>
-        {managed.length === 0 && <p>None yet.</p>}
+        {managed.length === 0 && (
+          <p>
+            {NO_MANAGED_PROFILES} <a href="#add-profile">{CREATE_ONE_BELOW}</a>
+          </p>
+        )}
         <ul>
           {managed.map((p) => (
             <li key={p.id}>
@@ -127,7 +132,7 @@ export function Profiles() {
 
       <section>
         <h2>Profiles you follow</h2>
-        {followed.length === 0 && <p>None yet.</p>}
+        {followed.length === 0 && <p>{NO_FOLLOWED_PROFILES}</p>}
         <ul>
           {followed.map((p) => (
             <li key={p.id}>
@@ -139,7 +144,7 @@ export function Profiles() {
         </ul>
       </section>
 
-      <section>
+      <section id="add-profile">
         <h2>Add a profile for someone in your care</h2>
         <form onSubmit={handleCreate}>
           <label>

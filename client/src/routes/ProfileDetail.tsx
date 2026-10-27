@@ -26,6 +26,7 @@ import {
 } from "../lib/api";
 import { AllergenPicker, EMPTY_PICK, isPicked, pickInput, useAllergenChoices, type AllergenPick } from "../AllergenPicker";
 import { listedAllergenMessage, reviewNotice } from "../lib/allergenChoiceCopy";
+import { NO_PENDING_INVITES, PROFILE_CIRCLE_JUST_YOU } from "../lib/emptyStateCopy";
 import { describeChange } from "../lib/profileChangeCopy";
 import { SEVERITY_REQUIRED } from "../lib/severityCopy";
 import { SeverityChoice } from "../SeverityChoice";
@@ -468,7 +469,7 @@ export function ProfileDetail() {
           {circle && (
             <>
               <h3>Pending invites</h3>
-              {circle.pendingFollows.length === 0 && circle.pendingManagerInvites.length === 0 && <p>None.</p>}
+              {circle.pendingFollows.length === 0 && circle.pendingManagerInvites.length === 0 && <p>{NO_PENDING_INVITES}</p>}
               <ul>
                 {circle.pendingFollows.map((f) => (
                   <li key={f.id}>
@@ -482,7 +483,7 @@ export function ProfileDetail() {
               </ul>
 
               <h3>People who can see this profile</h3>
-              {circle.followers.length === 0 && circle.managers.length === 0 && <p>Just you, so far.</p>}
+              {circle.followers.length === 0 && circle.managers.length === 0 && <p>{PROFILE_CIRCLE_JUST_YOU}</p>}
               <ul>
                 {circle.managers.map((m) => (
                   <li key={m.user_id}>
