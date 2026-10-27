@@ -22,6 +22,8 @@ meRouter.get("/me", requireAuth, (req, res) => {
     // The scanner's decode-inside-the-box switch, the same free field. Nothing on the server
     // depends on it: it only chooses how the client reads the camera.
     scannerRegionEnabled: env.scannerRegion,
+    // Follow requests' switch, the same free field. The routes check env.circleRequests themselves.
+    circleRequestsEnabled: env.circleRequests,
   });
 });
 

@@ -75,3 +75,9 @@ test("SCANNER_REGION goes through parseSwitch and defaults to off", () => {
   assert.equal(parseSwitch("SCANNER_REGION", undefined, false), false);
   assert.throws(() => parseSwitch("SCANNER_REGION", "box", false), /SCANNER_REGION must be "on" or "off"/);
 });
+
+// CIRCLE_REQUESTS (2026-10-27): off unless switched on, like every other switch.
+test("CIRCLE_REQUESTS goes through parseSwitch and defaults to off", () => {
+  const source = readFileSync(new URL("./env.ts", import.meta.url), "utf8");
+  assert.match(source, /circleRequests: parseSwitch\("CIRCLE_REQUESTS", process\.env\.CIRCLE_REQUESTS, false\)/);
+});

@@ -1,5 +1,6 @@
 import { createApp } from "./app.js";
 import { env } from "./env.js";
+import { runCircleRequestPurge } from "./jobs/circleRequestRetention.js";
 import { runScanRetentionPurge } from "./jobs/scanRetention.js";
 
 const app = createApp();
@@ -25,6 +26,13 @@ async function tickScanRetention(): Promise<void> {
     await runScanRetentionPurge();
   } catch (err) {
     console.error("scan retention tick failed unexpectedly", err);
+  }
+  // Declined follow requests after 30 days (jobs/circleRequestRetention.ts). Its own try, so one
+  // job failing never stops the other.
+  try {
+    await runCircleRequestPurge();
+  } catch (err) {
+    console.error("circle request retention tick failed unexpectedly", err);
   }
 }
 

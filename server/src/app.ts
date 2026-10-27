@@ -9,6 +9,7 @@ import { env } from "./env.js";
 import { HttpError } from "./lib/httpError.js";
 import { adminRouter } from "./routes/admin.js";
 import { circleRouter } from "./routes/circle.js";
+import { circleRequestsRouter } from "./routes/circleRequests.js";
 import { correctionsRouter } from "./routes/corrections.js";
 import { meRouter } from "./routes/me.js";
 import { npsRouter } from "./routes/nps.js";
@@ -55,6 +56,7 @@ export function createApp(): Express {
   // Express even checks whether any of profilesRouter's own routes match.
   app.use("/api/profiles", profilesRouter);
   app.use("/api", circleRouter);
+  app.use("/api", circleRequestsRouter);
   app.use("/api", scansRouter);
   // Per-route requireAuth, same reasoning as scansRouter/circleRouter above — safe to mount at
   // bare /api.

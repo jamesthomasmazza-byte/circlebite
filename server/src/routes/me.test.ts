@@ -38,3 +38,14 @@ test("GET /me exposes scannerRegionEnabled from env.scannerRegion", () => {
 
   assert.equal(body?.scannerRegionEnabled, env.scannerRegion);
 });
+
+test("GET /me exposes circleRequestsEnabled from env.circleRequests", () => {
+  const handler = findMeHandler();
+  const req = { user: { id: "u1", email: "a@example.com", displayName: "A", isAdmin: false }, session: { id: "s1", actingProfileId: null } };
+  let body: { circleRequestsEnabled?: boolean } | undefined;
+  const res = { json: (b: unknown) => { body = b as typeof body; } };
+
+  handler(req, res);
+
+  assert.equal(body?.circleRequestsEnabled, env.circleRequests);
+});

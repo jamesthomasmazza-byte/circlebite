@@ -87,4 +87,9 @@ export const env = {
   // default, and off is the full-frame decoding that ran before it. Only the client reads it, via
   // GET /me; an admin's phone can override it for testing (client/src/lib/scannerRegion.ts).
   scannerRegion: parseSwitch("SCANNER_REGION", process.env.SCANNER_REGION, false),
+  // Follow requests (routes/circleRequests.ts, 2026-10-27): asking to follow a parent by their
+  // email address, for the owner to approve or decline. Same pattern as the switches above: off by
+  // default, and off makes every request route 404 and hides the form, notice and badge. Requests
+  // already waiting stay in the database, untouched, until it's on again.
+  circleRequests: parseSwitch("CIRCLE_REQUESTS", process.env.CIRCLE_REQUESTS, false),
 };

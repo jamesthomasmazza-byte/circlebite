@@ -4,7 +4,7 @@ import { pool } from "../db/pool.js";
 import { env } from "../env.js";
 import { normalizeEmail } from "./email.js";
 
-export type AuthEndpoint = "login" | "register" | "change_password" | "password_reset";
+export type AuthEndpoint = "login" | "register" | "change_password" | "password_reset" | "circle_request";
 
 type Scope = "ip" | "email" | "ip_and_email";
 
@@ -32,6 +32,11 @@ type RateLimitRule = { scope: Scope; windowMinutes: number; threshold: number };
  * ip_and_email/email tier at all. Not a brute-force defense (the token is 2^256 bits of entropy,
  * computationally infeasible regardless of request rate) — a coarse throttle against hammering the
  * endpoint, same shape as register's ip tier.
+ *
+ * circle_request (2026-10-27): asking to follow someone by their email address. Keyed by the
+ * requester's OWN account email, never the address they typed — that is never stored, not even
+ * hashed. Ten a day per account caps how many addresses one person can try; twenty an hour per IP
+ * catches one source behind many accounts. Going over says nothing about anyone else's account.
  */
 const RULES: Record<AuthEndpoint, RateLimitRule[]> = {
   login: [
@@ -45,6 +50,10 @@ const RULES: Record<AuthEndpoint, RateLimitRule[]> = {
   ],
   change_password: [{ scope: "ip_and_email", windowMinutes: 15, threshold: 5 }],
   password_reset: [{ scope: "ip", windowMinutes: 15, threshold: 10 }],
+  circle_request: [
+    { scope: "email", windowMinutes: 24 * 60, threshold: 10 },
+    { scope: "ip", windowMinutes: 60, threshold: 20 },
+  ],
 };
 
 // Comfortably past the longest window any rule above uses (60 minutes) — this is table hygiene,
