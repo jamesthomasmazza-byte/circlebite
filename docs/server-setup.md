@@ -122,7 +122,7 @@ Keys that live there now: `DATABASE_URL` (set when the database was created, §5
 `SESSION_SECRET` (generated on the box with `openssl rand -hex 32`, appended when the app was first
 deployed, §7 below), `NODE_ENV=production` / `PORT=3000`, `OFF_USER_AGENT` (appended when the
 scan feature deployed — Open Food Facts requires a descriptive user agent on every request),
-`UPLOAD_DIR` (§8), `COMMUNITY_CORRECTIONS` (§11), `CIRCLE_ESCALATIONS` (§11a), `SCANNER_REGION` (§11b), `LABEL_SCAN`, the AI keys listed in
+`UPLOAD_DIR` (§8), `COMMUNITY_CORRECTIONS` (§11), `CIRCLE_ESCALATIONS` (§11a), `SCANNER_REGION` (§11b), `CIRCLE_REQUESTS` (§11c), `LABEL_SCAN`, the AI keys listed in
 `.env.example`, and for backups (§17) `BACKUP_S3_BUCKET` — a name, not a secret, kept here so no
 bucket name is ever in the repo — and `RESTORE_TEST_DB_PASSWORD`, generated on the box. `.env.example`
 is the complete list.
@@ -405,6 +405,36 @@ sudo systemctl restart circlebite
 
 Either way it reaches a phone on its next page load: the app reads `/me` once when it loads, so a
 phone with Scan already open keeps the old setting until it's reloaded.
+
+## 11c. Follow requests — switch
+
+With `CIRCLE_REQUESTS=on`, anyone signed in can ask to follow a parent's profile by typing that
+parent's account email address (Circle tab), and an owner approves or declines on the Circle tab,
+with a line on Scan and a badge until they do (`server/src/routes/circleRequests.ts`). Follow only;
+co-managers still come by invite link. Needs migrations 0047 and 0048, which `release.sh` applies.
+Off by default.
+
+**Turn it on:**
+
+```bash
+grep -q '^CIRCLE_REQUESTS=' ~/circlebite/.env \
+  && sed -i 's/^CIRCLE_REQUESTS=.*/CIRCLE_REQUESTS=on/' ~/circlebite/.env \
+  || echo "CIRCLE_REQUESTS=on" >> ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
+**Turn it off** — every request route 404s, and the form, notice and badge disappear on each
+phone's next page load. Requests already waiting stay in `circle_requests`, untouched, and come
+back when it's switched on again; follows already approved are ordinary follows and stay.
+
+```bash
+sed -i 's/^CIRCLE_REQUESTS=.*/CIRCLE_REQUESTS=off/' ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
+**What's kept:** one row per request — requester, owner, status and timestamps; never the address
+typed. Approved rows are deleted as the follow is created; declined ones are purged after 30 days
+by the daily retention job, recorded in `retention_runs` as `circle_request_retention`.
 
 ## 12. Admin access — the AI accuracy page
 

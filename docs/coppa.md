@@ -89,6 +89,15 @@ Invite links already require the recipient to sign in, which now means passing t
 
 - Invite screen copy: "Invite another adult to your circle." Makes the intent explicit and evidences your policy.
 - Invite acceptance should confirm the accepting account has `age_attested_adult = true` before creating the relationship.
+- **Follow requests (Oct 27, 2026, behind `CIRCLE_REQUESTS`).** An adult can ask to follow by
+  typing a parent's account email address; the owner approves. Approval confirms the requester's
+  `age_attested_adult` before the follow is created. **No new data about the child:** there's no
+  message field, and the request names no profile until the owner picks one. **About the
+  requester:** one `circle_requests` row (requester, owner, status, created and responded times),
+  deleted on approval, purged 30 days after a decline, and cascaded if either account is deleted.
+  The address they typed is never stored, not even hashed. Rate-limit attempts are hashed and
+  pruned after 24 hours, as for sign-in. The owner sees the requester's display name and email
+  address, which the form tells them before they send.
 
 ### 2.5 Admin analytics dashboard
 
