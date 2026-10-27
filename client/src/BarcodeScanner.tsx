@@ -95,6 +95,22 @@ export function BarcodeScanner({
     if (cameraActive) containerRef.current?.scrollIntoView({ block: "start" });
   }, [cameraActive]);
 
+  // And again once the video knows its size (2026-10-27). Until its first frame it has no height,
+  // so with a tall portrait frame (as iOS sends) the scroll above ran on a page too short to reach
+  // the buttons, and Stop camera and the offer stayed under the tab bar. "resize" also catches the
+  // frame changing shape when the phone turns.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!cameraActive || !video) return;
+    const scroll = () => containerRef.current?.scrollIntoView({ block: "start" });
+    video.addEventListener("loadedmetadata", scroll);
+    video.addEventListener("resize", scroll);
+    return () => {
+      video.removeEventListener("loadedmetadata", scroll);
+      video.removeEventListener("resize", scroll);
+    };
+  }, [cameraActive]);
+
   // The offer's timer, apart from the camera code: it runs while the camera does and nothing has
   // read, and starts over each time the camera starts.
   const offerEnabled = onOfferLabelPhoto !== undefined;

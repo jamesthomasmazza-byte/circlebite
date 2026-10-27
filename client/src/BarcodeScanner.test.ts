@@ -87,6 +87,19 @@ test("the camera scrolls into view after it renders, not from startCamera", () =
   assert.match(SCANNER, /useEffect\(\(\) => \{\n    if \(cameraActive\) containerRef\.current\?\.scrollIntoView\(\{ block: "start" \}\);\n  \}, \[cameraActive\]\);/);
 });
 
+test("it scrolls again once the video knows its size, so a tall portrait frame can't leave Stop camera under the bar", () => {
+  const effect = body(SCANNER, "  useEffect(() => {\n    const video = videoRef.current;");
+  assert.match(effect, /if \(!cameraActive \|\| !video\) return;/);
+  for (const event of ["loadedmetadata", "resize"]) {
+    assert.match(effect, new RegExp(`video\\.addEventListener\\("${event}", scroll\\)`));
+    assert.match(effect, new RegExp(`video\\.removeEventListener\\("${event}", scroll\\)`));
+  }
+  assert.match(effect, /containerRef\.current\?\.scrollIntoView\(\{ block: "start" \}\)/);
+  for (const fn of ["  function stopCamera()", "  async function startCamera()"]) {
+    assert.doesNotMatch(body(SCANNER, fn), /loadedmetadata|addEventListener/, `${fn} unchanged`);
+  }
+});
+
 test("in a landscape phone Scan's heading gives way and the camera sits beside 'Scanning for'", () => {
   const landscape = CSS.slice(CSS.indexOf("@media (orientation: landscape) and (max-height: 500px)"));
   assert.match(landscape, /\.scan-title \{[^}]*clip: rect\(0 0 0 0\)/, "off screen, still read");
