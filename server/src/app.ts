@@ -11,6 +11,7 @@ import { adminRouter } from "./routes/admin.js";
 import { circleRouter } from "./routes/circle.js";
 import { circleRequestsRouter } from "./routes/circleRequests.js";
 import { correctionsRouter } from "./routes/corrections.js";
+import { featuresRouter } from "./routes/features.js";
 import { meRouter } from "./routes/me.js";
 import { npsRouter } from "./routes/nps.js";
 import { profileChangesRouter } from "./routes/profileChanges.js";
@@ -50,6 +51,8 @@ export function createApp(): Express {
   // of the app shell.
   app.use("/api/auth", authRouter);
   app.use("/api", meRouter);
+  // Public: a signed-out page's switches (routes/features.ts).
+  app.use("/api", featuresRouter);
   // Mounted narrowly, not at bare /api: profilesRouter has a router-level requireAuth (.use with
   // no path, matching everything that enters the router) — mounting it at /api would make that
   // middleware intercept every /api/* request, including circleRouter's public routes, before
