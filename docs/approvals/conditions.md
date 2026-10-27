@@ -262,6 +262,26 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
 - **Both sent October 26, 9:26 PM ET,** in the same thread
   (`2026-10-26-jt-green-card-screenshot.md`).
 
+### Due Friday, October 30 (his October 27 question)
+
+- **Should followers see the reporter's name on a pending escalation?** (e.g. "timmy (co-manager)
+  reported eggs present…"). His email isn't saved in this folder yet. JT's answer: no, the role
+  only. A follower now sees "A co-manager in Maya's circle reported eggs present and photographed
+  the label."; the owner and co-managers keep the name; everyone sees "You" for their own report.
+  The server withholds the name, so it never reaches a follower's browser
+  (`server/src/corrections/circleEscalations.ts`, `circleReporter`).
+- **Built October 27, 2026,** in `79f299c` (the wording) and `3d285fb` (the server); on main, not
+  yet deployed. Decision: `docs/principles.md`, Decision precedents, October 27. Tests:
+  `server/src/corrections/circleReporterVisibility.test.ts` (each role: owner, co-manager, full and
+  severe-only follower, someone who has left, a deleted account; and no other member's name in a
+  follower's live card or history) and `client/src/lib/correctionCopy.test.ts`
+  ("circleReportLine, for a follower: …").
+- **Where else a follower could see who is in the circle:** nowhere. The circle summary and change
+  history 404 them (`server/src/routes/circle.ts`, `server/src/routes/profileChanges.ts`), the
+  profile page and the Circle tab show them no people, and scan history names no scanner. A
+  report line was the only place.
+- **Reply: not sent.**
+
 ## Corrections owed to Prof. Yoest
 
 The October 8 email, which his October 9 acceptance rests on, claimed more than was checked.
