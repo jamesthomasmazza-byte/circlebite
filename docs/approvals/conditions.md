@@ -260,12 +260,13 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
   is refused. Taken the evening of October 26, before scan history used cards: since `801ac67`
   (on main, not yet deployed when this was written) the same words sit inside a card.
 - **Both sent October 26, 9:26 PM ET,** in the same thread
-  (`2026-10-26-jt-green-card-screenshot.md`).
+  (`2026-10-26-jt-green-card-screenshot.md`). His October 27 email acknowledges both: "Both items
+  are done, and four days early." (`2026-10-27-yoest-follower-reporter-name.md`).
 
-### Due Friday, October 30 (his October 27 question)
+### Due Friday, October 30 (his October 27 email, `2026-10-27-yoest-follower-reporter-name.md`)
 
-- **Should followers see the reporter's name on a pending escalation?** (e.g. "timmy (co-manager)
-  reported eggs present…"). His email isn't saved in this folder yet. JT's answer: no, the role
+- **"Tell me in two or three sentences whether followers should see the reporter's name, and
+  why."** His example: "timmy (co-manager) reported eggs present." JT's answer: no, the role
   only. A follower now sees "A co-manager in Maya's circle reported eggs present and photographed
   the label."; the owner and co-managers keep the name; everyone sees "You" for their own report.
   The server withholds the name, so it never reaches a follower's browser
