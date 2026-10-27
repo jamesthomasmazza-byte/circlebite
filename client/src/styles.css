@@ -944,7 +944,7 @@ th {
 /* ---------- Pending invites — Cancel, New link, and a link shown once (2026-10-26) ----------- */
 
 .pending-invites li + li {
-  margin-top: var(--space-3);
+  margin-top: 0;
 }
 
 .pending-invite__actions {
@@ -1262,6 +1262,22 @@ a.card:hover {
 .card__line {
   display: block;
   overflow-wrap: anywhere;
+}
+
+/* Rows inside a card — who's in a circle, invites waiting: a hairline between, no bullets. */
+.row-list {
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.row-list > li {
+  padding-block: var(--space-2);
+}
+
+.row-list > li + li {
+  margin-top: 0;
+  border-top: 1px solid var(--color-border);
 }
 
 /* A card's buttons: their own line, under the text, never inside a sentence. */

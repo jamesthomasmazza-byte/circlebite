@@ -94,7 +94,7 @@ export function PendingInvites({
   return (
     <>
       {error && <p role="alert">{error}</p>}
-      <ul className="pending-invites">
+      <ul className="pending-invites row-list">
         {circle.pendingManagerInvites.map((m) => (
           <li key={m.id}>
             {pendingInviteLine({ kind: "co_manager", sentById: m.sent_by_id, sentByName: m.sent_by_name }, viewerId)}

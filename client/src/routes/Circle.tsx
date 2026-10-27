@@ -84,7 +84,7 @@ export function Circle() {
                 {circle.managers.length === 0 && circle.followers.length === 0 ? (
                   <p>{CIRCLE_JUST_YOU}</p>
                 ) : (
-                  <ul>
+                  <ul className="row-list">
                     {/* Someone else's profile that you co-manage: say whose (circleOwnerLine). */}
                     {circleOwnerLine(circle, user?.id) && <li>{circleOwnerLine(circle, user?.id)}</li>}
                     {circle.managers.map((m) => (
@@ -124,11 +124,15 @@ export function Circle() {
       {followed.length > 0 && (
         <section aria-labelledby="circles-youre-in">
           <h2 id="circles-youre-in">Circles you're in</h2>
-          <ul>
+          <ul className="card-list">
             {followed.map((p) => (
               <li key={p.id}>
-                <Link to={`/profiles/${p.id}`}>{p.label}</Link> — you follow (
-                {p.share_level === "severe_only" ? "severe allergens only" : "full profile"})
+                <Link to={`/profiles/${p.id}`} className="card">
+                  <span className="card__title">{p.label}</span>{" "}
+                  <span className="card__meta">
+                    — you follow ({p.share_level === "severe_only" ? "severe allergens only" : "full profile"})
+                  </span>
+                </Link>
               </li>
             ))}
           </ul>

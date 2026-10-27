@@ -37,3 +37,11 @@ test("profile page: allergens and people are cards, and each button has its own 
     assert.ok(buttons.length >= 1, `${label} sits in a card__actions line`);
   }
 });
+
+test("Circle tab: members and invites are rows inside the card; circles you're in are card links", () => {
+  const page = src("./routes/Circle.tsx");
+  assert.match(page, /<ul className="row-list">/);
+  assert.match(src("./PendingInvites.tsx"), /<ul className="pending-invites row-list">/);
+  assert.match(page, /<Link to=\{`\/profiles\/\$\{p\.id\}`\} className="card">/);
+  assert.doesNotMatch(rule(".row-list > li + li"), /--color-(safe|caution|contains|unknown)/);
+});
