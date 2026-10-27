@@ -90,7 +90,9 @@ JT's October 8 email left out, and the gap is why he asked.
   judge seed, with a co-manager's edit and downgrade report unacknowledged: on Scan and on the
   Profile tab the whole notice, its "Review changes" link included, showed on the first screen with
   no scrolling, above Scan's form. Test: `client/src/TabShell.test.ts`, "the header renders first,
-  then Condition 2's notices, then the page". Not yet checked on production.
+  then Condition 2's notices, then the page". Checked on production October 25, 2026, by JT, on
+  `421c799`: the header, then the notice, above Scan's form. No screenshot of that check is in the
+  repo.
 - **How it was verified:**
   - *Profile edits, on production, October 8, 2026.* After the co-manager changes in Condition 1,
     the owner's dashboard showed "Changes to review — Timmy changed James Mazza's profile — 2
