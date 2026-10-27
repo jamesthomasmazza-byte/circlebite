@@ -443,6 +443,12 @@ time, answered by tapping, saved through the same `POST /profiles` as the classi
 third-party call, so no key or spend cap is involved. The classic form stays a link away on every
 step. Off by default; off, every way in opens the classic form as before.
 
+It also covers sign-up and a first visit. `/register` offers the guided sign-up — today's questions,
+one per screen, sent to the same `POST /auth/register` — read from the public `GET /api/features`,
+since a signed-out browser can't read `/me`. After sign-up comes the guided setup, unless an invite's
+`returnTo` is waiting. An account with no profiles at all, owned or followed, landing on Scan is sent
+to the setup once, with "Skip for now". Off, `/register` is today's page and Scan never redirects.
+
 **Turn it on:**
 
 ```bash

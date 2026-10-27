@@ -44,6 +44,11 @@ An 18+ gate does not exempt you from the Washington My Health My Data Act, state
 
 Add a date-of-birth step to the signup flow, before account creation.
 
+*The guided sign-up (Oct 27, 2026, behind `GUIDED_SETUP`) keeps this gate exactly: the same
+"Date of birth" question with nothing about 18 before it, the same `POST /auth/register` and server
+check (`evaluateAgeGate`), the same retry block, and the same refusal screen with no "try again".
+It changes only the layout, one question per screen.*
+
 **Design it neutrally.** Do **not** ask "Are you 18 or older? [Yes] [No]" — a self-defeating gate that invites the answer you want. Use a plain date-of-birth entry with no hint about which answers pass. Neutral gates are the standard the FTC looks for.
 
 **Data minimization — important.** Do not store the raw date of birth. Compute adulthood on the server, then persist only:
