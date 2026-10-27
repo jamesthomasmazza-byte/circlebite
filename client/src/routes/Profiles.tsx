@@ -1,8 +1,9 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-import { AllergenPicker, EMPTY_PICK, isPicked, pickInput, useAllergenChoices, type AllergenPick } from "../AllergenPicker";
+import { AllergenPicker, isPicked, pickInput, useAllergenChoices } from "../AllergenPicker";
 import { listedAllergenMessage } from "../lib/allergenChoiceCopy";
+import { canRemove, emptyDraft, removeDraft, removeLabel, type AllergenDraft } from "../lib/allergenDrafts";
 import { CREATE_ONE_BELOW, NO_FOLLOWED_PROFILES, NO_MANAGED_PROFILES } from "../lib/emptyStateCopy";
 import { SEVERITY_REQUIRED } from "../lib/severityCopy";
 import { SeverityChoice } from "../SeverityChoice";
@@ -14,15 +15,7 @@ import {
   listProfiles,
   type AllergenInput,
   type ProfileSummary,
-  type Severity,
 } from "../lib/api";
-
-// severity starts unset: a parent chooses it (lib/severityCopy.ts).
-type AllergenDraft = { pick: AllergenPick; severity: Severity | null; treatTracesAsUnsafe: boolean };
-
-function emptyDraft(): AllergenDraft {
-  return { pick: EMPTY_PICK, severity: null, treatTracesAsUnsafe: true };
-}
 
 export function Profiles() {
   const navigate = useNavigate();
@@ -48,12 +41,8 @@ export function Profiles() {
       .finally(() => setLoading(false));
   }, []);
 
-  function updateDraft(index: number, patch: Partial<AllergenDraft>) {
-    setAllergenDrafts((drafts) => drafts.map((d, i) => (i === index ? { ...d, ...patch } : d)));
-  }
-
-  function removeDraft(index: number) {
-    setAllergenDrafts((drafts) => drafts.filter((_, i) => i !== index));
+  function updateDraft(id: number, patch: Partial<AllergenDraft>) {
+    setAllergenDrafts((drafts) => drafts.map((d) => (d.id === id ? { ...d, ...patch } : d)));
   }
 
   async function handleCreate(event: FormEvent) {
@@ -154,33 +143,33 @@ export function Profiles() {
 
           <fieldset>
             <legend>Allergens</legend>
-            {allergenDrafts.map((draft, i) => (
-              <div key={i}>
+            {allergenDrafts.map((draft) => (
+              <div key={draft.id} className="allergen-draft">
                 {choices && (
                   <AllergenPicker
                     choices={choices}
                     value={draft.pick}
-                    onChange={(pick) => updateDraft(i, { pick })}
+                    onChange={(pick) => updateDraft(draft.id, { pick })}
                     required={false}
                   />
                 )}
                 <SeverityChoice
-                  name={`severity-${i}`}
+                  name={`severity-${draft.id}`}
                   value={draft.severity}
-                  onChange={(severity) => updateDraft(i, { severity })}
+                  onChange={(severity) => updateDraft(draft.id, { severity })}
                   required={isPicked(draft.pick)}
                 />
                 <label>
                   <input
                     type="checkbox"
                     checked={draft.treatTracesAsUnsafe}
-                    onChange={(e) => updateDraft(i, { treatTracesAsUnsafe: e.target.checked })}
+                    onChange={(e) => updateDraft(draft.id, { treatTracesAsUnsafe: e.target.checked })}
                   />
                   Treat "may contain traces" as unsafe
                 </label>
-                {allergenDrafts.length > 1 && (
-                  <button type="button" onClick={() => removeDraft(i)}>
-                    Remove
+                {canRemove(draft, allergenDrafts.length) && (
+                  <button type="button" onClick={() => setAllergenDrafts((d) => removeDraft(d, draft.id))}>
+                    {removeLabel(draft.pick, choices)}
                   </button>
                 )}
               </div>
