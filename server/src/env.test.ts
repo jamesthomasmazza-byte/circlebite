@@ -81,3 +81,9 @@ test("CIRCLE_REQUESTS goes through parseSwitch and defaults to off", () => {
   const source = readFileSync(new URL("./env.ts", import.meta.url), "utf8");
   assert.match(source, /circleRequests: parseSwitch\("CIRCLE_REQUESTS", process\.env\.CIRCLE_REQUESTS, false\)/);
 });
+
+// GUIDED_SETUP (2026-10-27): off unless switched on.
+test("GUIDED_SETUP goes through parseSwitch and defaults to off", () => {
+  const source = readFileSync(new URL("./env.ts", import.meta.url), "utf8");
+  assert.match(source, /guidedSetup: parseSwitch\("GUIDED_SETUP", process\.env\.GUIDED_SETUP, false\)/);
+});

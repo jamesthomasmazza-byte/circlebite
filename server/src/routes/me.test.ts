@@ -49,3 +49,14 @@ test("GET /me exposes circleRequestsEnabled from env.circleRequests", () => {
 
   assert.equal(body?.circleRequestsEnabled, env.circleRequests);
 });
+
+test("GET /me exposes guidedSetupEnabled from env.guidedSetup", () => {
+  const handler = findMeHandler();
+  const req = { user: { id: "u1", email: "a@example.com", displayName: "A", isAdmin: false }, session: { id: "s1", actingProfileId: null } };
+  let body: { guidedSetupEnabled?: boolean } | undefined;
+  const res = { json: (b: unknown) => { body = b as typeof body; } };
+
+  handler(req, res);
+
+  assert.equal(body?.guidedSetupEnabled, env.guidedSetup);
+});

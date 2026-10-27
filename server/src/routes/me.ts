@@ -24,6 +24,8 @@ meRouter.get("/me", requireAuth, (req, res) => {
     scannerRegionEnabled: env.scannerRegion,
     // Follow requests' switch, the same free field. The routes check env.circleRequests themselves.
     circleRequestsEnabled: env.circleRequests,
+    // The guided profile setup's switch, the same free field.
+    guidedSetupEnabled: env.guidedSetup,
   });
 });
 

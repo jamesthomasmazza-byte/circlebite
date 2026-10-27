@@ -92,4 +92,9 @@ export const env = {
   // default, and off makes every request route 404 and hides the form, notice and badge. Requests
   // already waiting stay in the database, untouched, until it's on again.
   circleRequests: parseSwitch("CIRCLE_REQUESTS", process.env.CIRCLE_REQUESTS, false),
+  // The guided profile setup (client routes/NewProfile.tsx, 2026-10-27): one question at a time,
+  // answered by tapping, saved through the same POST /profiles. No AI and no third-party call. Off
+  // by default; off, every "Add a profile" and "Create one" opens the classic form as before. Only
+  // the client reads it, via GET /me.
+  guidedSetup: parseSwitch("GUIDED_SETUP", process.env.GUIDED_SETUP, false),
 };
