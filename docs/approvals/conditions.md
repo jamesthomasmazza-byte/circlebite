@@ -257,7 +257,8 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
   timmy's scan history on production, his October 23 Oat Biscuits report: "Contains an allergen",
   the sesame row "you reported it isn't in this — pending review", then "Your report hasn't changed
   it". A fresh scan can't show it: a report applies only to its own scan, and a duplicate report
-  is refused.
+  is refused. Taken the evening of October 26, before scan history used cards: since `801ac67`
+  (on main, not yet deployed when this was written) the same words sit inside a card.
 - **Both sent October 26, 9:26 PM ET,** in the same thread
   (`2026-10-26-jt-green-card-screenshot.md`).
 
