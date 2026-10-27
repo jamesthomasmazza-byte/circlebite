@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 
 import { BarcodeScanner } from "../BarcodeScanner";
@@ -169,6 +169,16 @@ export function Scan() {
   // inline on the verdict card; this is only the in-flight state for the discard request itself.
   const [discardingMismatch, setDiscardingMismatch] = useState(false);
   const [discardMismatchError, setDiscardMismatchError] = useState<string | null>(null);
+
+  // The scanner's "Can't read the barcode?" offer opens the photo form below the barcode form, so it
+  // brings the form into view once it's rendered.
+  const photoFormRef = useRef<HTMLFormElement>(null);
+  const [scrollToPhotoForm, setScrollToPhotoForm] = useState(false);
+  useEffect(() => {
+    if (!scrollToPhotoForm || !photoCaptureOpen) return;
+    photoFormRef.current?.scrollIntoView({ block: "start" });
+    setScrollToPhotoForm(false);
+  }, [scrollToPhotoForm, photoCaptureOpen]);
 
   const reportScanId = reportOpen ? result?.id : undefined;
   useEffect(() => {
@@ -538,6 +548,15 @@ export function Scan() {
               setBarcode(text);
               void runScan(text, profileId);
             }}
+            // No offer without the label scan: there'd be no photo flow to open.
+            onOfferLabelPhoto={
+              labelScanEnabled
+                ? () => {
+                    openStandalonePhotoCapture();
+                    setScrollToPhotoForm(true);
+                  }
+                : undefined
+            }
           />
 
           <form onSubmit={handleSubmit}>
@@ -566,7 +585,7 @@ export function Scan() {
           )}
 
           {photoCaptureOpen && (
-            <form onSubmit={handlePhotoSubmit}>
+            <form ref={photoFormRef} onSubmit={handlePhotoSubmit}>
               <h2>Photograph the ingredients label</h2>
               {photoCaptureMode === "combine" &&
                 result?.evidence_decision?.photo === "required" &&

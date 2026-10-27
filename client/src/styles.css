@@ -1194,3 +1194,34 @@ th {
   color: var(--color-text-muted);
   font-size: var(--text-sm);
 }
+
+/* Stop camera, and after 8 s without a read the label-photo offer before it (2026-10-26). */
+.scanner__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* A landscape phone has height for the preview or for the buttons under it, not both: the hint,
+   the offer and Stop camera move into a column beside the preview, clear of the tab bar. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .scanner-section:has(> .scanner[data-active="true"]) {
+    display: grid;
+    grid-template-columns: minmax(0, 400px) minmax(0, 1fr);
+    column-gap: var(--space-4);
+    align-items: start;
+  }
+
+  .scanner-section > .scanner {
+    grid-column: 1;
+    grid-row: 1 / span 4;
+  }
+
+  .scanner-section > :not(.scanner) {
+    grid-column: 2;
+  }
+
+  .scanner-section > .scanner__hint {
+    margin-top: 0;
+  }
+}

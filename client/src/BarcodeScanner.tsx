@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
 
+import { NO_READ_OFFER, NO_READ_OFFER_MS } from "./lib/scannerCopy";
+
 // How long "Got it" shows on the box before the camera stops and the scan runs.
 const READ_CONFIRM_MS = 250;
 
@@ -15,11 +17,22 @@ const READ_CONFIRM_MS = 250;
  *
  * On a read, the box goes solid with "Got it" (and a short buzz where the phone supports it) for a
  * quarter second, then the camera stops and onDetected runs — the same order as before.
+ *
+ * With onOfferLabelPhoto, a camera that has read nothing for NO_READ_OFFER_MS offers the label
+ * photo under the hint, while it keeps running (2026-10-26). Only a tap takes it: the camera stops
+ * and onOfferLabelPhoto runs. A read after the offer shows still goes through as usual.
  */
-export function BarcodeScanner({ onDetected }: { onDetected: (text: string) => void }) {
+export function BarcodeScanner({
+  onDetected,
+  onOfferLabelPhoto,
+}: {
+  onDetected: (text: string) => void;
+  onOfferLabelPhoto?: () => void;
+}) {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [read, setRead] = useState(false);
+  const [offerShown, setOfferShown] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
@@ -69,6 +82,16 @@ export function BarcodeScanner({ onDetected }: { onDetected: (text: string) => v
   // Stop the camera on unmount so it doesn't keep the device open after navigating away.
   useEffect(() => () => controlsRef.current?.stop(), []);
 
+  // The offer's timer, apart from the camera code: it runs while the camera does and nothing has
+  // read, and starts over each time the camera starts.
+  const offerEnabled = onOfferLabelPhoto !== undefined;
+  useEffect(() => {
+    setOfferShown(false);
+    if (!offerEnabled || !cameraActive || read) return;
+    const timer = window.setTimeout(() => setOfferShown(true), NO_READ_OFFER_MS);
+    return () => window.clearTimeout(timer);
+  }, [offerEnabled, cameraActive, read]);
+
   return (
     <section ref={containerRef} className="scanner-section">
       {/* Always mounted, visibility toggled by CSS rather than conditional rendering — a
@@ -90,7 +113,19 @@ export function BarcodeScanner({ onDetected }: { onDetected: (text: string) => v
         </p>
       )}
       {cameraActive ? (
-        <p>
+        // One row, so the offer doesn't push Stop camera under the tab bar in a landscape phone.
+        <p className="scanner__actions">
+          {offerShown && !read && (
+            <button
+              type="button"
+              onClick={() => {
+                stopCamera();
+                onOfferLabelPhoto?.();
+              }}
+            >
+              {NO_READ_OFFER}
+            </button>
+          )}
           <button type="button" onClick={stopCamera}>
             Stop camera
           </button>
