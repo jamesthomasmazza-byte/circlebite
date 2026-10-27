@@ -112,9 +112,17 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
    *Changed direction 2026-10-27 (JT): a guided, chat-style setup with tap-to-answer options, no
    AI. The AI food list built first that day is kept, unmerged, on the branch `item7-ai-food-box`.
    Built: `a2aad93` (the `GUIDED_SETUP` switch), `ad7fbc0` (the sample scan), `a83e165` (the
-   sentence before first camera use), `3cdd913` (the guided setup). Not yet deployed; off by
-   default (`docs/server-setup.md` §11d). Open: deploy, a check on production, and whether it's on
-   for judging.*
+   sentence before first camera use), `3cdd913` (the guided setup). Off by default
+   (`docs/server-setup.md` §11d).*
+   *`GUIDED_SETUP` switched on in production 2026-10-27, about 17:55 ET, on `738781e`; JT's phone
+   check of the guided setup passed. `738781e` also carries the sentence before first camera use,
+   which isn't behind the switch.*
+   *Item 7 now also covers sign-up and first visit: `6e38876` (the public `GET /api/features`),
+   `2dd7f35` (the guided sign-up), `011448f` (the first-visit redirect), `1fdf455` (docs), and
+   `4a27602` ("Add a profile" under the profiles you manage). Not yet deployed. Because the switch
+   is already on, deploying them puts the guided sign-up and the first-visit redirect live at once;
+   rollback is `GUIDED_SETUP=off` and a restart. Open: deploy and a check on production of those,
+   and whether it's on for judging.*
 
 ### Nov 13 — code freeze
 

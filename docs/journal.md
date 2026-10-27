@@ -2024,3 +2024,14 @@ designed, since there was nothing left to offer him. The other way round, James 
 address: Timmy saw the request line on Scan, after Condition 2's notices, and the badge on the
 Circle tab, and approved it at full profile. James now follows Timmy's profile. Not checked on
 production: a decline, and a request to an address with no account.
+
+**`GUIDED_SETUP` switched on in production, at about 17:55 ET, on `738781e`.** JT's phone check of
+the guided profile setup passed. `738781e` also carries the sentence before a device's first camera
+use, which isn't behind the switch, so every phone sees it once.
+
+**Item 7 widened to sign-up and first visit, built but not yet deployed:** `6e38876` (the public
+`GET /api/features`), `2dd7f35` (the guided sign-up: today's register form one question per screen,
+the same POST and errors, each error on its own step), `011448f` (a first visit with no profiles
+sent to the setup, with "Skip for now"), `1fdf455` (docs) and `4a27602` ("Add a profile" moved
+under the profiles you manage). `Register.tsx` is untouched and stays the page with the switch off.
+With the switch already on, deploying these puts the guided sign-up and the redirect live at once.
