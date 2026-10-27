@@ -122,7 +122,7 @@ Keys that live there now: `DATABASE_URL` (set when the database was created, §5
 `SESSION_SECRET` (generated on the box with `openssl rand -hex 32`, appended when the app was first
 deployed, §7 below), `NODE_ENV=production` / `PORT=3000`, `OFF_USER_AGENT` (appended when the
 scan feature deployed — Open Food Facts requires a descriptive user agent on every request),
-`UPLOAD_DIR` (§8), `COMMUNITY_CORRECTIONS` (§11), `CIRCLE_ESCALATIONS` (§11a), `SCANNER_REGION` (§11b), `CIRCLE_REQUESTS` (§11c), `LABEL_SCAN`, the AI keys listed in
+`UPLOAD_DIR` (§8), `COMMUNITY_CORRECTIONS` (§11), `CIRCLE_ESCALATIONS` (§11a), `SCANNER_REGION` (§11b), `CIRCLE_REQUESTS` (§11c), `GUIDED_SETUP` (§11d), `LABEL_SCAN`, the AI keys listed in
 `.env.example`, and for backups (§17) `BACKUP_S3_BUCKET` — a name, not a secret, kept here so no
 bucket name is ever in the repo — and `RESTORE_TEST_DB_PASSWORD`, generated on the box. `.env.example`
 is the complete list.
@@ -435,6 +435,33 @@ sudo systemctl restart circlebite
 **What's kept:** one row per request — requester, owner, status and timestamps; never the address
 typed. Approved rows are deleted as the follow is created; declined ones are purged after 30 days
 by the daily retention job, recorded in `retention_runs` as `circle_request_retention`.
+
+## 11d. Guided profile setup — switch
+
+With `GUIDED_SETUP=on`, "Create one" and "Add a profile" open `/profiles/new`: one question at a
+time, answered by tapping, saved through the same `POST /profiles` as the classic form. No AI and no
+third-party call, so no key or spend cap is involved. The classic form stays a link away on every
+step. Off by default; off, every way in opens the classic form as before.
+
+**Turn it on:**
+
+```bash
+grep -q '^GUIDED_SETUP=' ~/circlebite/.env \
+  && sed -i 's/^GUIDED_SETUP=.*/GUIDED_SETUP=on/' ~/circlebite/.env \
+  || echo "GUIDED_SETUP=on" >> ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
+**Turn it off** — back to the classic form on each phone's next page load. No data involved:
+profiles saved either way are ordinary profiles.
+
+```bash
+sed -i 's/^GUIDED_SETUP=.*/GUIDED_SETUP=off/' ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
+The finish screen's "Try a sample scan" needs the judge seed's synthetic products
+(`npm run seed:judge`); without them the sample scan shows "Unable to confirm".
 
 ## 12. Admin access — the AI accuracy page
 

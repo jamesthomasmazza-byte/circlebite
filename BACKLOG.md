@@ -109,6 +109,12 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
    suggestions map onto pick-list keys; the parent confirms on a normal screen; the AI never
    writes directly; and it falls back to the pick-list if the AI is down. Off for judging if not
    solid.
+   *Changed direction 2026-10-27 (JT): a guided, chat-style setup with tap-to-answer options, no
+   AI. The AI food list built first that day is kept, unmerged, on the branch `item7-ai-food-box`.
+   Built: `a2aad93` (the `GUIDED_SETUP` switch), `ad7fbc0` (the sample scan), `a83e165` (the
+   sentence before first camera use), `3cdd913` (the guided setup). Not yet deployed; off by
+   default (`docs/server-setup.md` §11d). Open: deploy, a check on production, and whether it's on
+   for judging.*
 
 ### Nov 13 — code freeze
 
