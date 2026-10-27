@@ -16,8 +16,8 @@ test("the words", () => {
 });
 
 test("each empty state with somewhere to go links there", () => {
-  assert.match(page("Profiles.tsx"), /\{NO_MANAGED_PROFILES\} <a href="#add-profile">\{CREATE_ONE_BELOW\}<\/a>/);
-  assert.match(page("Profiles.tsx"), /<section id="add-profile">/);
+  assert.match(page("Profiles.tsx"), /\{NO_MANAGED_PROFILES\} <Link to=\{ADD_PROFILE_PATH\}>\{CREATE_ONE_BELOW\}<\/Link>/);
+  assert.match(page("Profiles.tsx"), /<section id="add-profile" ref=\{addSectionRef\}>/);
   assert.match(page("ScanHistory.tsx"), /\{NO_SCANS\} <Link to=\{id \? `\/scan\?profile=\$\{id\}` : "\/scan"\}>\{SCAN_A_PRODUCT\}<\/Link>/);
   // The Circle card's next step is the link the card already ends with.
   assert.match(page("Circle.tsx"), /<p>\{CIRCLE_JUST_YOU\}<\/p>[\s\S]*Invite people or manage \{whose\} circle/);

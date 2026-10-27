@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { BarcodeScanner } from "../BarcodeScanner";
 import { useScanningFor } from "../TabShell";
+import { ADD_PROFILE_PATH } from "../lib/profileSections";
 import { scanningForId } from "../lib/tabs";
 import { useAuth } from "../lib/AuthContext";
 import {
@@ -527,7 +528,7 @@ export function Scan() {
 
       {profiles.length === 0 ? (
         <p>
-          You don't have any profiles to scan for yet. <Link to="/profiles">Create one</Link> first.
+          You don't have any profiles to scan for yet. <Link to={ADD_PROFILE_PATH}>Create one</Link> first.
         </p>
       ) : (
         <>

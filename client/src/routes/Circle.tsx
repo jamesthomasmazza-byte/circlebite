@@ -5,6 +5,7 @@ import { getCircle, listProfiles, type CircleData, type ProfileSummary } from ".
 import { useAuth } from "../lib/AuthContext";
 import { CIRCLE_JUST_YOU } from "../lib/emptyStateCopy";
 import { profilePossessive } from "../lib/profileChangeCopy";
+import { ADD_PROFILE_PATH } from "../lib/profileSections";
 import { PendingInvites } from "../PendingInvites";
 
 type ManagedCircle = { profile: ProfileSummary; circle: CircleData | null };
@@ -66,7 +67,7 @@ export function Circle() {
       <h1>Circle</h1>
       {managed.length === 0 && followed.length === 0 && (
         <p>
-          You're not in any circle yet. <Link to="/profiles">Add a profile</Link> to invite people to it.
+          You're not in any circle yet. <Link to={ADD_PROFILE_PATH}>Add a profile</Link> to invite people to it.
         </p>
       )}
 

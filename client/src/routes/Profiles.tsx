@@ -1,5 +1,5 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { AllergenPicker, isPicked, pickInput, useAllergenChoices } from "../AllergenPicker";
 import { listedAllergenMessage } from "../lib/allergenChoiceCopy";
@@ -8,6 +8,7 @@ import { CREATE_ONE_BELOW, NO_FOLLOWED_PROFILES, NO_MANAGED_PROFILES } from "../
 import { SEVERITY_REQUIRED } from "../lib/severityCopy";
 import { SeverityChoice } from "../SeverityChoice";
 import { allergenLine } from "../lib/profileLineCopy";
+import { ADD_PROFILE_PATH, addFormRequested, profileSection, SECTION_LABEL, sectionHref, visibleSections } from "../lib/profileSections";
 import { useAuth } from "../lib/AuthContext";
 import {
   ApiRequestError,
@@ -19,7 +20,10 @@ import {
 
 export function Profiles() {
   const navigate = useNavigate();
+  const { hash } = useLocation();
   const { user, logout } = useAuth();
+  const isAdmin = user?.isAdmin === true;
+  const section = profileSection(hash, isAdmin);
   const [managed, setManaged] = useState<ProfileSummary[]>([]);
   const [followed, setFollowed] = useState<ProfileSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,6 +34,25 @@ export function Profiles() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const choices = useAllergenChoices();
+
+  // Folded behind "Add a profile" (2026-10-26). A "Create one" link (/profiles#add-profile) lands
+  // with it open, and brings it into view once it's rendered.
+  const [addOpen, setAddOpen] = useState(() => addFormRequested(hash));
+  const addSectionRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (addFormRequested(hash)) setAddOpen(true);
+  }, [hash]);
+  useEffect(() => {
+    if (addOpen && !loading && addFormRequested(hash)) addSectionRef.current?.scrollIntoView({ block: "start" });
+  }, [addOpen, loading, hash]);
+
+  function closeAddForm() {
+    setAddOpen(false);
+    setLabel("");
+    setAllergenDrafts([emptyDraft()]);
+    setCreateError(null);
+    if (addFormRequested(hash)) navigate("/profiles", { replace: true });
+  }
 
   useEffect(() => {
     listProfiles()
@@ -99,95 +122,117 @@ export function Profiles() {
 
   return (
     <main>
-      <h1>Profiles</h1>
+      <h1>Profile</h1>
+      {/* One section at a time (lib/profileSections.ts). Admin isn't rendered for anyone else. */}
+      <nav className="section-switcher" aria-label="Profile tab sections">
+        {visibleSections(isAdmin).map((s) => (
+          <Link key={s} to={sectionHref(s)} aria-current={s === section ? "true" : undefined}>
+            {SECTION_LABEL[s]}
+          </Link>
+        ))}
+      </nav>
       {loadError && <p role="alert">{loadError}</p>}
 
-      <section>
-        <h2>Profiles you manage</h2>
-        {managed.length === 0 && (
-          <p>
-            {NO_MANAGED_PROFILES} <a href="#add-profile">{CREATE_ONE_BELOW}</a>
-          </p>
-        )}
-        <ul>
-          {managed.map((p) => (
-            <li key={p.id}>
-              <Link to={`/profiles/${p.id}`}>{p.label}</Link> ({p.relationship === "owner" ? "owner" : "co-manager"})
-              <span className="profile-line">{allergenLine(p)}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
+      {section === "profiles" && (
+        <>
+          <section>
+            <h2>Profiles you manage</h2>
+            {managed.length === 0 && (
+              <p>
+                {NO_MANAGED_PROFILES} <Link to={ADD_PROFILE_PATH}>{CREATE_ONE_BELOW}</Link>
+              </p>
+            )}
+            <ul>
+              {managed.map((p) => (
+                <li key={p.id}>
+                  <Link to={`/profiles/${p.id}`}>{p.label}</Link> ({p.relationship === "owner" ? "owner" : "co-manager"})
+                  <span className="profile-line">{allergenLine(p)}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
 
-      <section>
-        <h2>Profiles you follow</h2>
-        {followed.length === 0 && <p>{NO_FOLLOWED_PROFILES}</p>}
-        <ul>
-          {followed.map((p) => (
-            <li key={p.id}>
-              <Link to={`/profiles/${p.id}`}>{p.label}</Link>{" "}
-              ({p.share_level === "severe_only" ? "severe allergens only" : "full profile"})
-              <span className="profile-line">{allergenLine(p)}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
+          <section>
+            <h2>Profiles you follow</h2>
+            {followed.length === 0 && <p>{NO_FOLLOWED_PROFILES}</p>}
+            <ul>
+              {followed.map((p) => (
+                <li key={p.id}>
+                  <Link to={`/profiles/${p.id}`}>{p.label}</Link>{" "}
+                  ({p.share_level === "severe_only" ? "severe allergens only" : "full profile"})
+                  <span className="profile-line">{allergenLine(p)}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
 
-      <section id="add-profile">
-        <h2>Add a profile for someone in your care</h2>
-        <form onSubmit={handleCreate}>
-          <label>
-            Name
-            <input value={label} onChange={(e) => setLabel(e.target.value)} required />
-          </label>
+          <section id="add-profile" ref={addSectionRef}>
+            {!addOpen ? (
+              <button type="button" onClick={() => setAddOpen(true)}>
+                Add a profile
+              </button>
+            ) : (
+              <>
+                <h2>Add a profile for someone in your care</h2>
+                <form onSubmit={handleCreate}>
+                  <label>
+                    Name
+                    <input value={label} onChange={(e) => setLabel(e.target.value)} required />
+                  </label>
 
-          <fieldset>
-            <legend>Allergens</legend>
-            {allergenDrafts.map((draft) => (
-              <div key={draft.id} className="allergen-draft">
-                {choices && (
-                  <AllergenPicker
-                    choices={choices}
-                    value={draft.pick}
-                    onChange={(pick) => updateDraft(draft.id, { pick })}
-                    required={false}
-                  />
-                )}
-                <SeverityChoice
-                  name={`severity-${draft.id}`}
-                  value={draft.severity}
-                  onChange={(severity) => updateDraft(draft.id, { severity })}
-                  required={isPicked(draft.pick)}
-                />
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={draft.treatTracesAsUnsafe}
-                    onChange={(e) => updateDraft(draft.id, { treatTracesAsUnsafe: e.target.checked })}
-                  />
-                  Treat "may contain traces" as unsafe
-                </label>
-                {canRemove(draft, allergenDrafts.length) && (
-                  <button type="button" onClick={() => setAllergenDrafts((d) => removeDraft(d, draft.id))}>
-                    {removeLabel(draft.pick, choices)}
+                  <fieldset>
+                    <legend>Allergens</legend>
+                    {allergenDrafts.map((draft) => (
+                      <div key={draft.id} className="allergen-draft">
+                        {choices && (
+                          <AllergenPicker
+                            choices={choices}
+                            value={draft.pick}
+                            onChange={(pick) => updateDraft(draft.id, { pick })}
+                            required={false}
+                          />
+                        )}
+                        <SeverityChoice
+                          name={`severity-${draft.id}`}
+                          value={draft.severity}
+                          onChange={(severity) => updateDraft(draft.id, { severity })}
+                          required={isPicked(draft.pick)}
+                        />
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={draft.treatTracesAsUnsafe}
+                            onChange={(e) => updateDraft(draft.id, { treatTracesAsUnsafe: e.target.checked })}
+                          />
+                          Treat "may contain traces" as unsafe
+                        </label>
+                        {canRemove(draft, allergenDrafts.length) && (
+                          <button type="button" onClick={() => setAllergenDrafts((d) => removeDraft(d, draft.id))}>
+                            {removeLabel(draft.pick, choices)}
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button type="button" onClick={() => setAllergenDrafts((d) => [...d, emptyDraft()])}>
+                      Add another allergen
+                    </button>
+                  </fieldset>
+
+                  {createError && <p role="alert">{createError}</p>}
+                  <button type="submit" disabled={submitting}>
+                    Create profile
                   </button>
-                )}
-              </div>
-            ))}
-            <button type="button" onClick={() => setAllergenDrafts((d) => [...d, emptyDraft()])}>
-              Add another allergen
-            </button>
-          </fieldset>
+                  <button type="button" onClick={closeAddForm}>
+                    Cancel
+                  </button>
+                </form>
+              </>
+            )}
+          </section>
+        </>
+      )}
 
-          {createError && <p role="alert">{createError}</p>}
-          <button type="submit" disabled={submitting}>
-            Create profile
-          </button>
-        </form>
-      </section>
-
-      {/* The Profile tab's account end (2026-10-23): what the dashboard used to link. */}
-      {user?.isAdmin && (
+      {section === "admin" && (
         <section aria-labelledby="admin-heading">
           <h2 id="admin-heading">Admin</h2>
           <ul>
@@ -204,18 +249,20 @@ export function Profiles() {
         </section>
       )}
 
-      <section aria-labelledby="account-heading">
-        <h2 id="account-heading">Account</h2>
-        <p>
-          Signed in as {user?.displayName} ({user?.email}).
-        </p>
-        <p>
-          <Link to="/settings">Settings</Link>
-        </p>
-        <button type="button" onClick={handleLogout}>
-          Log out
-        </button>
-      </section>
+      {section === "account" && (
+        <section aria-labelledby="account-heading">
+          <h2 id="account-heading">Account</h2>
+          <p>
+            Signed in as {user?.displayName} ({user?.email}).
+          </p>
+          <p>
+            <Link to="/settings">Settings</Link>
+          </p>
+          <button type="button" onClick={handleLogout}>
+            Log out
+          </button>
+        </section>
+      )}
     </main>
   );
 }
