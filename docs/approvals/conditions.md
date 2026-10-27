@@ -223,7 +223,9 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
   to follow a parent by their email address, for the owner to approve) was to be described to him
   before `CIRCLE_REQUESTS` was switched on. JT changed that on October 27: switched on that day, to
   be mentioned in the next email instead (`BACKLOG.md` item 6; `docs/principles.md`, Decision
-  precedents, October 27). **Not yet mentioned.**
+  precedents, October 27). **Closed: mentioned the evening of October 27**
+  (`2026-10-27-jt-judges-reporter-row.md`). The reply says "the owner is told about every request",
+  which is broader than the code (that file's "What the repo shows").
 - **Define "corroborated" (October 6, 9:32 PM):** "How many reports, from how many distinct
   families, before an escalation fires? … Put your answer in one sentence in the README." He calls
   it a challenge, not a condition, and it has no number. Answered in the README on October 7
@@ -304,7 +306,8 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
   reseed. **Built October 27** (`255f867`, the seed and its tests; `f91691a`, the row in
   `JUDGES.md`) and checked locally as judge1 at 390px, both cards worded as the row quotes. Pushed
   October 27 (`cd97de2`).
-- **Reply sent the evening of October 27** (JT). Its text isn't saved in this repository.
+- **Reply sent the evening of October 27** (`2026-10-27-jt-judges-reporter-row.md`). It also
+  described circle requests and guided sign-up.
 - **Still owed:** deploy before the November 13 freeze. Deploying doesn't make the row true on
   production: the seed only writes these rows when it runs. The production reseed that does is the
   judging-week `--rotate-passwords` reseed (week of November 16), run by JT in his own terminal

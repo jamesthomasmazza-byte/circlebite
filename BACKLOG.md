@@ -72,7 +72,7 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
    restart (`docs/server-setup.md` §11b).*
    *Still owed before Nov 20: one Android phone, and a curved or small package. Not yet tried
    either: the same packages with the device choice Off.*
-6. [ ] **Approve/decline circle requests.** Moved from "Deferred". Today an invite is a link the
+6. [x] **Approve/decline circle requests.** Moved from "Deferred". Today an invite is a link the
    invitee accepts, so the Circle tab lists only invites waiting to be accepted (JT, 2026-10-23); a
    request flow is a new feature. Plan first, checked against Prof. Yoest's conditions: the
    requester sees nothing until approved, and the owner is notified.
@@ -101,7 +101,11 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
    JT's two test accounts. Timmy asking James wrote no row, as designed: Timmy already sees every
    profile James owns. James asking Timmy: Timmy saw the request line on Scan, after Condition 2's
    notices, and the Circle badge, and approved it at full profile; James now follows Timmy's
-   profile. Open: mentioning it to Prof. Yoest in the next email.*
+   profile.*
+   *Done: mentioned to Prof. Yoest in JT's reply of the evening of Oct 27
+   (`docs/approvals/2026-10-27-jt-judges-reporter-row.md`). That reply says "the owner is told
+   about every request", which is broader than the code: a repeat within 30 days of a decline, and a
+   request from someone who already sees every profile the owner has, never reach the owner.*
 
 ### Week of Nov 9 — highest risk
 
