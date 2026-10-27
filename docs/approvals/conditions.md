@@ -258,7 +258,7 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
   the sesame row "you reported it isn't in this — pending review", then "Your report hasn't changed
   it". A fresh scan can't show it: a report applies only to its own scan, and a duplicate report
   is refused. Taken the evening of October 26, before scan history used cards: since `801ac67`
-  (on main, not yet deployed when this was written) the same words sit inside a card.
+  (deployed October 27 in `74ea011`) the same words sit inside a card.
 - **Both sent October 26, 9:26 PM ET,** in the same thread
   (`2026-10-26-jt-green-card-screenshot.md`). His October 27 email acknowledges both: "Both items
   are done, and four days early." (`2026-10-27-yoest-follower-reporter-name.md`).
@@ -284,9 +284,10 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
 - **Sent October 27, 11:51 AM ET,** in the same thread
   (`2026-10-27-jt-follower-reporter-name.md`): followers see the role, not the name, with the
   reasons above. The reply also says the change is "tested and live on production as of this
-  morning". When this entry was written, the repo had no record of that deploy: `3d285fb` was
-  committed at 11:39 AM ET and pushed after 11:43 AM ET, and `docs/journal.md` records no deploy
-  on October 27. Open until a deploy of `3d285fb` or later is recorded.
+  morning". Accurate: production has run `29854ef`, which includes `3d285fb`, since about 11:44
+  AM ET, confirmed by JT at 11:45 (`docs/journal.md`, October 27). Verified by tests and a local
+  check, not yet by a follower account on production.
+- **Closed:** October 27, 2026, sent and deployed.
 
 ## Corrections owed to Prof. Yoest
 

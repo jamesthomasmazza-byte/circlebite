@@ -1958,3 +1958,31 @@ item turned out not to be the Circle link (nothing there was covered at any widt
 camera button in landscape. And "Copy link" can't apply to an invite already sent: the server keeps
 only the token's hash, so an old invite gets "New link" instead, which cancels it and makes a fresh
 one.
+
+## 2026-10-27 — Deployed twice: the scanner box behind a switch, and followers see roles
+
+**`74ea011`, at about 09:00 ET.** Production had been on `076eefb`, so this release carried
+items 3 and 4 of the plan to judging as well (the Profile tab's sections, and cards instead of
+bullets), plus item 5 and a fix found while building it:
+
+- `SCANNER_REGION`, decoding only inside the scanner box, deployed **off** (unset). An admin can
+  turn it on for one phone from Profile → Admin (`docs/server-setup.md` §11b). The phone tests
+  haven't been done.
+- The portrait scroll fix (`74ea011`): with a tall iOS camera frame, Stop camera and the
+  label-photo offer had sat under the tab bar, because the first scroll ran before the video had a
+  height. It now scrolls again once the video knows its size.
+
+No production checks of this release are recorded here.
+
+**`29854ef`, at about 11:44 ET,** checked by JT at 11:45: `git -C ~/circlebite/current log -1`
+showed `29854ef`, `/health` returned `{"ok":true}`, no boot errors, `CIRCLE_ESCALATIONS=on`. It
+carries `3d285fb`: a follower now sees who reported a pending circle report by role only ("A
+co-manager in Maya's circle reported eggs present and photographed the label."), and the server
+withholds the name, so it never reaches a follower's browser. Owners and co-managers keep the name.
+Prof. Yoest asked about it at 5:57 AM ET; JT's reply went at 11:51 AM ET
+(`docs/approvals/2026-10-27-jt-follower-reporter-name.md`).
+
+**Verified by tests and a local check only, not yet by a follower account on production.** The
+tests cover each role (`server/src/corrections/circleReporterVisibility.test.ts`). Locally, Judge 1
+following Noor saw roles only on the live card and in history, and the JSON the server sent Judge
+1 contained neither reporter's name, while Noor's owner still saw both names.

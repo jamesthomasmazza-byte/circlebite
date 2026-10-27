@@ -23,6 +23,6 @@ Reproduced verbatim. Line breaks inside paragraphs are not kept. Indexed in
 
 - **The decision and its tests:** `79f299c` (the wording) and `3d285fb` (the server), recorded in
   `docs/principles.md`'s Decision precedents, October 27.
-- **"Live on production as of this morning":** at the time this was saved, the repo had no record
-  of it. `3d285fb` was committed at 11:39 AM ET and pushed after 11:43 AM ET, and `docs/journal.md`
-  records no deploy on October 27. See `docs/approvals/conditions.md`.
+- **"Live on production as of this morning":** accurate. Production has run `29854ef`, which
+  includes `3d285fb`, since about 11:44 AM ET, confirmed by JT at 11:45 (`docs/journal.md`,
+  October 27). Verified by tests and a local check, not yet by a follower account on production.
