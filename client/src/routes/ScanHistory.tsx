@@ -49,16 +49,19 @@ export function ScanHistory() {
       )}
 
       {scans && scans.length > 0 && (
-        <ul>
+        // One card per scan (the visual pass, 2026-10-26): a neutral container only — the verdict
+        // label and what's inside each entry are unchanged.
+        <ul className="card-list">
           {scans.map((scan) => {
             // CONTEST_RULES.md §3: a user's own correction overrides their view immediately — but
             // never silently (docs/legacy-spec.md §6). The effective state is the headline; the
             // original always ships alongside it in a visible callout naming what changed and why.
             const shown = scan.effective ?? scan.original;
             return (
-              <li key={scan.id}>
+              <li key={scan.id} className="card">
                 <strong>{VERDICT_LABEL[shown.result]}</strong> — {scan.product_name ?? "Unknown product"}
-                {scan.product_brand && ` (${scan.product_brand})`} — {new Date(scan.created_at).toLocaleString()}
+                {scan.product_brand && ` (${scan.product_brand})`}
+                <span className="card__meta card__line">{new Date(scan.created_at).toLocaleString()}</span>
                 {shown.matched_allergens.filter((m) => m.classification !== "clear" && m.classification !== "unchecked")
                   .length > 0 && (
                   <ul>

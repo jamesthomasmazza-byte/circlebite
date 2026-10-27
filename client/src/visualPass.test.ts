@@ -45,3 +45,10 @@ test("Circle tab: members and invites are rows inside the card; circles you're i
   assert.match(page, /<Link to=\{`\/profiles\/\$\{p\.id\}`\} className="card">/);
   assert.doesNotMatch(rule(".row-list > li + li"), /--color-(safe|caution|contains|unknown)/);
 });
+
+test("scan history: one card per scan, the date on its own line, the verdict label unchanged", () => {
+  const page = src("./routes/ScanHistory.tsx");
+  assert.match(page, /<ul className="card-list">\s*\{scans\.map/);
+  assert.match(page, /<li key=\{scan\.id\} className="card">\s*<strong>\{VERDICT_LABEL\[shown\.result\]\}<\/strong>/);
+  assert.match(page, /<span className="card__meta card__line">\{new Date\(scan\.created_at\)\.toLocaleString\(\)\}<\/span>/);
+});
