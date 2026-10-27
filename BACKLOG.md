@@ -21,7 +21,8 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
 - [ ] Rename the duplicate "James Mazza" profile.
 - [ ] Phone check of the scanner box: portrait and landscape, "Got it" before the result.
   *Partly done 2026-10-26 on JT's iPhone, on production (`076eefb`): live picture, "Got it", and
-  landscape clear of the tab bar (`docs/journal.md`). Portrait isn't recorded.*
+  landscape clear of the tab bar (`docs/journal.md`). Portrait on 2026-10-27, on `74ea011`: a scan
+  with Stop camera above the tab bar. "Got it" in portrait isn't recorded.*
 - [ ] Owner-only acknowledgement check on production.
 
 ### Week of Oct 26 — low risk
@@ -44,8 +45,10 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
    Scan, Copy link on a new invite, and the landscape layout. An invite already sent gets "New
    link" instead of Copy link (the server keeps only the token's hash); "the Scan button
    covering" turned out to be Scan's own camera button in landscape (`docs/journal.md`).*
-3. [ ] **Split the Profile page into sections** (Profiles / Account / Admin). New.
-4. [ ] **Visual pass, time-boxed:** cards not bullets, one button style.
+3. [x] **Split the Profile page into sections** (Profiles / Account / Admin). New.
+   *Done: `5749fca`, deployed Oct 26 in `5b3d4c3`.*
+4. [x] **Visual pass, time-boxed:** cards not bullets, one button style.
+   *Done: `619cda7`–`801ac67`, deployed Oct 26 in `5b3d4c3`.*
 
 ### Week of Nov 2 — medium risk, deploy the same week
 
