@@ -105,7 +105,7 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
 
 ### Week of Nov 9 — highest risk
 
-7. [ ] **Conversational sign-up,** behind its own setting. New. The chat only suggests; its
+7. [x] **Conversational sign-up,** behind its own setting. New. The chat only suggests; its
    suggestions map onto pick-list keys; the parent confirms on a normal screen; the AI never
    writes directly; and it falls back to the pick-list if the AI is down. Off for judging if not
    solid.
@@ -119,10 +119,12 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
    which isn't behind the switch.*
    *Item 7 now also covers sign-up and first visit: `6e38876` (the public `GET /api/features`),
    `2dd7f35` (the guided sign-up), `011448f` (the first-visit redirect), `1fdf455` (docs), and
-   `4a27602` ("Add a profile" under the profiles you manage). Not yet deployed. Because the switch
-   is already on, deploying them puts the guided sign-up and the first-visit redirect live at once;
-   rollback is `GUIDED_SETUP=off` and a restart. Open: deploy and a check on production of those,
-   and whether it's on for judging.*
+   `4a27602` ("Add a profile" under the profiles you manage).*
+   *Done: `c737cdf` deployed 2026-10-27, about 18:20 ET (release `20261027221004`; rollback target
+   `20261027213148`, `738781e`), with a backup taken first, and `GUIDED_SETUP` already on. JT's phone
+   test passed: a new synthetic account through all four sign-up steps into the guided setup, the
+   progress bar continuing, and "Add a profile" under "Profiles you manage". Rollback is
+   `GUIDED_SETUP=off` and a restart. Still to decide: whether it's on for judging.*
 
 ### Nov 13 — code freeze
 

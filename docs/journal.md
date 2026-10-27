@@ -2035,3 +2035,10 @@ the same POST and errors, each error on its own step), `011448f` (a first visit 
 sent to the setup, with "Skip for now"), `1fdf455` (docs) and `4a27602` ("Add a profile" moved
 under the profiles you manage). `Register.tsx` is untouched and stays the page with the switch off.
 With the switch already on, deploying these puts the guided sign-up and the redirect live at once.
+
+**`c737cdf` deployed, at about 18:20 ET.** Release `20261027221004`; rollback target
+`20261027213148` (`738781e`); a backup taken first. `GUIDED_SETUP` was already on, so the guided
+sign-up and the first-visit redirect went live with it. JT's phone test passed: a new synthetic
+account through all four sign-up steps into the guided setup, the progress bar carrying on from
+sign-up, and "Add a profile" under "Profiles you manage". BACKLOG item 7 is ticked; whether it stays
+on for judging is still open.
