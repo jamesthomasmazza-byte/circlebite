@@ -41,3 +41,7 @@ test("the header renders first, then Condition 2's notices, then the page", () =
   const page = SHELL.indexOf("<Outlet");
   assert.ok(header > 0 && header < notices && notices < page);
 });
+
+test("Scan gets the slim notices and the Profile tab the full ones (Condition 2, 2026-10-26)", () => {
+  assert.match(SHELL, /<LandingNotices \{\.\.\.notices\} slim=\{current === "scan"\} \/>/);
+});

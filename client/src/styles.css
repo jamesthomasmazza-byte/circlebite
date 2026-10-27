@@ -898,6 +898,21 @@ th {
   margin-top: var(--space-2);
 }
 
+/* Scan's version (2026-10-26): one line per profile, same tint and rule, heading for screen
+   readers only. */
+.change-notice--slim {
+  margin-block: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-3);
+}
+
+.change-notice--slim p {
+  margin: 0;
+}
+
+.change-notice--slim p + p {
+  margin-top: var(--space-1);
+}
+
 /* ---------- Change history — on the profile page ----------------------------------------------- */
 /* Unseen entries carry the notice's caution tint AND the word "New", so colour is never the only
    signal. A rename's "check this" line uses the contains palette: it asks for action. Every pair

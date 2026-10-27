@@ -79,7 +79,8 @@ export function TabShell() {
       <ShellHeader scanningFor={scanningFor} />
       {noticesShownOn(pathname) && (
         <div className="tab-shell__notices">
-          <LandingNotices {...notices} />
+          {/* One line each on Scan, so the page starts sooner; the full notices on Profile. */}
+          <LandingNotices {...notices} slim={current === "scan"} />
         </div>
       )}
       <Outlet context={context} />

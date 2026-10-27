@@ -93,6 +93,18 @@ JT's October 8 email left out, and the gap is why he asked.
   then Condition 2's notices, then the page". Checked on production October 25, 2026, by JT, on
   `421c799`: the header, then the notice, above Scan's form. No screenshot of that check is in the
   repo.
+- **Slim on Scan (since October 26, 2026).** On Scan, "Changes to review" and "Allergens to check"
+  are now a tinted line per profile instead of a boxed list under a visible heading
+  (`client/src/LandingNotices.tsx`, `slim`). Each line keeps the full sentence, e.g. "Priya Nair
+  changed Maya's profile — 1 update you haven't reviewed.", and its link to the profile. The
+  heading stays for screen readers. Nothing else changed: same data, no dismiss, gone only when
+  the entries are acknowledged (or the allergen resolved), still under the header and above Scan's
+  form. The Profile tab keeps the full version, and the failed-check alert is the same on both. At
+  390px a line still wraps to two or three lines: the sentence was kept whole rather than cut to
+  one line. Checked locally at 390×844 on the judge seed, with a co-manager's edit and an allergen
+  needing a look: both lines, and both links, on the first screen with no scrolling, above Scan's
+  form. Tests: `client/src/LandingNotices.test.ts` ("slim: …") and `client/src/TabShell.test.ts`
+  ("Scan gets the slim notices and the Profile tab the full ones"). Not yet checked on production.
 - **How it was verified:**
   - *Profile edits, on production, October 8, 2026.* After the co-manager changes in Condition 1,
     the owner's dashboard showed "Changes to review — Timmy changed James Mazza's profile — 2
