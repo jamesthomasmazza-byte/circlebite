@@ -82,7 +82,9 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
    - *No list of sent requests for the requester.*
    - *A declined request is kept 30 days, so a repeat request is silently dropped, then purged by
      the retention job.*
-   - *Prof. Yoest hears about it before it's switched on.*
+   - *Prof. Yoest hears about it before it's switched on.* Changed 2026-10-27 (JT): switched on
+     that day, and Prof. Yoest hears about it in the next email instead (`docs/approvals/conditions.md`,
+     "Other open asks").
    - *Ships dark behind `CIRCLE_REQUESTS`, off by default.*
 
    *The plan: a request goes to an adult's account by the exact email address the requester
@@ -94,8 +96,8 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
    owner, status and timestamps only, deleted on approval. Invite links unchanged.*
    *Built 2026-10-27 (`d382698`, `455e384`), deployed off that day in `64803a0`. The principles row
    is in (request cards show the requester's email because the form says so; the typed address is
-   never stored). Switch on and off: `docs/server-setup.md` §11c. Open: telling Prof. Yoest, then
-   a check on production with the switch on.*
+   never stored). Switch on and off: `docs/server-setup.md` §11c. Open: a check on production with
+   the switch on, and mentioning it to Prof. Yoest in the next email.*
 
 ### Week of Nov 9 — highest risk
 

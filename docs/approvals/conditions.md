@@ -219,6 +219,11 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
 
 ## Other open asks from Prof. Yoest
 
+- **Mention follow requests in the next email.** Not his ask: JT's own commitment. Item 6 (asking
+  to follow a parent by their email address, for the owner to approve) was to be described to him
+  before `CIRCLE_REQUESTS` was switched on. JT changed that on October 27: switched on that day, to
+  be mentioned in the next email instead (`BACKLOG.md` item 6; `docs/principles.md`, Decision
+  precedents, October 27). **Not yet mentioned.**
 - **Define "corroborated" (October 6, 9:32 PM):** "How many reports, from how many distinct
   families, before an escalation fires? … Put your answer in one sentence in the README." He calls
   it a challenge, not a condition, and it has no number. Answered in the README on October 7
