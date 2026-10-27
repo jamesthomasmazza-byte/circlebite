@@ -224,8 +224,7 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
   before `CIRCLE_REQUESTS` was switched on. JT changed that on October 27: switched on that day, to
   be mentioned in the next email instead (`BACKLOG.md` item 6; `docs/principles.md`, Decision
   precedents, October 27). **Closed: mentioned the evening of October 27**
-  (`2026-10-27-jt-judges-reporter-row.md`). The reply says "the owner is told about every request",
-  which is broader than the code (that file's "What the repo shows").
+  (`2026-10-27-jt-judges-reporter-row.md`).
 - **Define "corroborated" (October 6, 9:32 PM):** "How many reports, from how many distinct
   families, before an escalation fires? … Put your answer in one sentence in the README." He calls
   it a challenge, not a condition, and it has no number. Answered in the README on October 7

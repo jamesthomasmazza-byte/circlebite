@@ -7,8 +7,8 @@ October 27, 2:51 PM email
 November 13 code freeze, add one row: a barcode where a co-manager has a pending escalation, and
 what the owner sees next to what the follower sees."
 
-Reproduced verbatim. Line breaks inside paragraphs are not kept. Indexed in
-`docs/approvals/conditions.md`.
+Reproduced verbatim as sent; JT revised the draft before sending. Line breaks inside paragraphs are
+not kept. Indexed in `docs/approvals/conditions.md`.
 
 ---
 
@@ -18,7 +18,7 @@ Reproduced verbatim. Line breaks inside paragraphs are not kept. Indexed in
 >
 > Two other changes since my last report, both live on production as of October 27:
 >
-> Circle requests. Someone can now ask to join a child's circle, and the owner approves or declines. The requester sees nothing of the profile until the owner approves, and the owner is told about every request.
+> Circle requests. Someone can now ask to join a child's circle, and the owner approves or declines. The requester sees nothing of the profile until the owner approves. The owner is emailed about each new request, but not about a repeat within 30 days of a decline, and requests are rate-limited, so an owner who has said no is not pressed again.
 >
 > Guided sign-up. A new account is now set up one question per screen and goes straight into building the child's profile. The age gate is unchanged: the same date-of-birth question, nothing mentions 18 before it is answered, and there is no retry after a refusal.
 >
@@ -37,14 +37,12 @@ Reproduced verbatim. Line breaks inside paragraphs are not kept. Indexed in
   deploy before the November 13 freeze first (`BACKLOG.md`, "Nov 13 — code freeze").
 - **Circle requests:** live on production since October 27, `CIRCLE_REQUESTS=on` (`BACKLOG.md`
   item 6). "The requester sees nothing of the profile until the owner approves" matches the plan
-  and the October 27 check.
-  - **"The owner is told about every request" says more than the code does.** Some requests never
-    reach the owner, by design (`BACKLOG.md` item 6):
-    - a repeat request within 30 days of a decline is silently dropped;
-    - a request from someone who already sees every profile the owner has writes no row;
-    - requests are rate-limited per requester, per IP and per owner.
-    
-    Every request that is recorded is shown to the owner until they approve or decline it.
+  and the October 27 check. No repeat within 30 days of a decline (`DECLINED_KEPT_DAYS`) and rate
+  limits (`isRateLimited`) both match `server/src/routes/circleRequests.ts`.
+  - **"The owner is emailed about each new request": the app sends no email.** No mailer exists in
+    `server/` or its dependencies. The owner is told in the app: a line on Scan and a badge on the
+    Circle tab until they approve or decline (`docs/server-setup.md` §11c). Found October 27, after
+    sending; not yet corrected to him.
   - "Ask to join a child's circle": a request goes to the owner by their exact email address, never
     to a profile. The owner picks which of their profiles to share, and at what level.
 - **Guided sign-up:** `2dd7f35`, deployed in `c737cdf` on October 27 with `GUIDED_SETUP` on. The

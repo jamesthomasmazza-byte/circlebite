@@ -103,9 +103,7 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
    notices, and the Circle badge, and approved it at full profile; James now follows Timmy's
    profile.*
    *Done: mentioned to Prof. Yoest in JT's reply of the evening of Oct 27
-   (`docs/approvals/2026-10-27-jt-judges-reporter-row.md`). That reply says "the owner is told
-   about every request", which is broader than the code: a repeat within 30 days of a decline, and a
-   request from someone who already sees every profile the owner has, never reach the owner.*
+   (`docs/approvals/2026-10-27-jt-judges-reporter-row.md`).*
 
 ### Week of Nov 9 — highest risk
 
