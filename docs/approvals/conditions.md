@@ -332,3 +332,10 @@ his same-day reply acknowledged the three corrections (`2026-10-19-yoest-fake-fa
    Sent October 19: the October 11 unattended run, with its full output in
    `docs/evidence/2026-10-11-restore-test.txt`. For the October 5 run, the repo holds only the
    journal's summary.
+
+The October 27 evening reply (`2026-10-27-jt-judges-reporter-row.md`) said one thing the code
+doesn't do. **Owed and sent the same evening** (`2026-10-27-jt-follow-request-correction.md`).
+
+5. "The owner is emailed about each new request." CircleBite sends no email. Owners learn of circle
+   requests in the app, from a line on Scan and a badge on the Circle tab. Corrected the evening of
+   October 27.

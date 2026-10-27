@@ -42,7 +42,7 @@ not kept. Indexed in `docs/approvals/conditions.md`.
   - **"The owner is emailed about each new request": the app sends no email.** No mailer exists in
     `server/` or its dependencies. The owner is told in the app: a line on Scan and a badge on the
     Circle tab until they approve or decline (`docs/server-setup.md` §11c). Found October 27, after
-    sending; not yet corrected to him.
+    sending. **Corrected to him the same evening** (`2026-10-27-jt-follow-request-correction.md`).
   - "Ask to join a child's circle": a request goes to the owner by their exact email address, never
     to a profile. The owner picks which of their profiles to share, and at what level.
 - **Guided sign-up:** `2dd7f35`, deployed in `c737cdf` on October 27 with `GUIDED_SETUP` on. The
