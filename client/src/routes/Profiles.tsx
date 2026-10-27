@@ -10,6 +10,7 @@ import { SeverityChoice } from "../SeverityChoice";
 import { allergenLine } from "../lib/profileLineCopy";
 import { ADD_PROFILE_PATH, addFormRequested, profileSection, SECTION_LABEL, sectionHref, visibleSections } from "../lib/profileSections";
 import { useAuth } from "../lib/AuthContext";
+import { OVERRIDE_CHOICES, readOverride, regionStatus, saveOverride, type RegionOverride } from "../lib/scannerRegion";
 import {
   ApiRequestError,
   createProfile,
@@ -21,9 +22,14 @@ import {
 export function Profiles() {
   const navigate = useNavigate();
   const { hash } = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, scannerRegionEnabled } = useAuth();
   const isAdmin = user?.isAdmin === true;
   const section = profileSection(hash, isAdmin);
+  // This device's scanner-box override (lib/scannerRegion.ts), for testing on a phone before
+  // SCANNER_REGION goes on. Admins only: the section shows only for them, and the override counts
+  // only for them.
+  const [regionOverride, setRegionOverride] = useState<RegionOverride>(() => readOverride());
+  const [regionSaveFailed, setRegionSaveFailed] = useState(false);
   const [managed, setManaged] = useState<ProfileSummary[]>([]);
   const [followed, setFollowed] = useState<ProfileSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -254,6 +260,28 @@ export function Profiles() {
               <Link to="/admin/nps">NPS</Link>
             </li>
           </ul>
+          <fieldset>
+            <legend>Decode only inside the box, this device</legend>
+            {OVERRIDE_CHOICES.map((c) => (
+              <label key={c.value}>
+                <input
+                  type="radio"
+                  name="scanner-region"
+                  value={c.value}
+                  checked={regionOverride === c.value}
+                  onChange={() => {
+                    setRegionSaveFailed(!saveOverride(c.value));
+                    setRegionOverride(readOverride());
+                  }}
+                />
+                {c.label}
+              </label>
+            ))}
+          </fieldset>
+          <p role="status">
+            Scanner on this device: {regionStatus(scannerRegionEnabled, isAdmin, regionOverride)}
+          </p>
+          {regionSaveFailed && <p role="alert">This browser can't keep the choice, so the server's setting applies.</p>}
         </section>
       )}
 

@@ -19,6 +19,9 @@ meRouter.get("/me", requireAuth, (req, res) => {
     // independently and is the actual enforcement; this is what keeps the client from ever
     // offering an entry point the server would just 404.
     labelScanEnabled: env.labelScan,
+    // The scanner's decode-inside-the-box switch, the same free field. Nothing on the server
+    // depends on it: it only chooses how the client reads the camera.
+    scannerRegionEnabled: env.scannerRegion,
   });
 });
 

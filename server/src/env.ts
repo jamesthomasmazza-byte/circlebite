@@ -82,4 +82,9 @@ export const env = {
   // (principle 4): off by default, and off means each pending report changes only its reporter's
   // view of the scan they filed it from, exactly as before. No data to revert either way.
   circleEscalations: parseSwitch("CIRCLE_ESCALATIONS", process.env.CIRCLE_ESCALATIONS, false),
+  // Whether the camera scanner decodes only inside its target box rather than the whole frame
+  // (client/src/BarcodeScanner.tsx, 2026-10-27). Same pattern as the switches above: off by
+  // default, and off is the full-frame decoding that ran before it. Only the client reads it, via
+  // GET /me; an admin's phone can override it for testing (client/src/lib/scannerRegion.ts).
+  scannerRegion: parseSwitch("SCANNER_REGION", process.env.SCANNER_REGION, false),
 };

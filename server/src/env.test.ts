@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import { parseOptionalCents, parseSwitch } from "./env.js";
@@ -64,4 +65,13 @@ test("parseSwitch: LABEL_SCAN on/off read case-insensitively", () => {
 
 test("parseSwitch: LABEL_SCAN anything else throws at startup", () => {
   assert.throws(() => parseSwitch("LABEL_SCAN", "yes", false), /LABEL_SCAN must be "on" or "off"/);
+});
+
+// SCANNER_REGION (2026-10-27): wired through parseSwitch with off as the default, so an unset
+// variable is the whole-frame decoding that ran before it.
+test("SCANNER_REGION goes through parseSwitch and defaults to off", () => {
+  const source = readFileSync(new URL("./env.ts", import.meta.url), "utf8");
+  assert.match(source, /scannerRegion: parseSwitch\("SCANNER_REGION", process\.env\.SCANNER_REGION, false\)/);
+  assert.equal(parseSwitch("SCANNER_REGION", undefined, false), false);
+  assert.throws(() => parseSwitch("SCANNER_REGION", "box", false), /SCANNER_REGION must be "on" or "off"/);
 });
