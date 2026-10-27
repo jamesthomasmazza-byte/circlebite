@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
-import { ADD_PROFILE_PATH, addFormRequested, profileSection, sectionHref, visibleSections } from "./profileSections";
+import { ADD_PROFILE_PATH, addFormRequested, addProfileHref, NEW_PROFILE_PATH, profileSection, sectionHref, visibleSections } from "./profileSections";
 import { noticesShownOn } from "./tabs";
 
 // The Profile tab's sections (2026-10-26): picked by the fragment, so the path never changes.
@@ -38,14 +38,17 @@ test("the Admin section and its link exist only for an admin", () => {
   assert.doesNotMatch(PROFILES, /AI accuracy[\s\S]*\{section === "admin"/, "no admin link outside the section");
 });
 
-test("'Create one' links land on Profiles with the add-profile form open", () => {
+test("'Create one' links land on the classic form, or the guided setup when GUIDED_SETUP is on", () => {
+  assert.equal(addProfileHref(false), ADD_PROFILE_PATH);
+  assert.equal(addProfileHref(true), NEW_PROFILE_PATH);
+  assert.equal(NEW_PROFILE_PATH, "/profiles/new");
   assert.equal(ADD_PROFILE_PATH, "/profiles#add-profile");
   assert.ok(addFormRequested("#add-profile"));
   assert.ok(!addFormRequested(""));
   assert.match(PROFILES, /useState\(\(\) => addFormRequested\(hash\)\)/);
   for (const page of ["../routes/Scan.tsx", "../routes/Circle.tsx"]) {
-    assert.match(src(page), /<Link to=\{ADD_PROFILE_PATH\}>/, page);
+    assert.match(src(page), /<Link to=\{addProfileHref\(guidedSetupEnabled\)\}>/, page);
   }
   // Folded behind a button otherwise.
-  assert.match(PROFILES, /\{!addOpen \? \(\s*<button type="button" onClick=\{\(\) => setAddOpen\(true\)\}>\s*Add a profile/);
+  assert.match(PROFILES, /\{!addOpen \? \(\s*<button type="button" onClick=\{\(\) => \(guidedSetupEnabled \? navigate\(NEW_PROFILE_PATH\) : setAddOpen\(true\)\)\}>\s*Add a profile/);
 });

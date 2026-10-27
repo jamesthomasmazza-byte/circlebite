@@ -31,6 +31,9 @@ type AuthState = {
   // Follow requests (CIRCLE_REQUESTS), the same way and the same false default: until it's
   // confirmed on, there's no form, notice or badge.
   circleRequestsEnabled: boolean;
+  // The guided profile setup (GUIDED_SETUP), same default: until it's confirmed on, every way in
+  // opens the classic form.
+  guidedSetupEnabled: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (input: { email: string; password: string; displayName: string; dob: string }) => Promise<void>;
@@ -45,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [labelScanEnabled, setLabelScanEnabled] = useState(false);
   const [scannerRegionEnabled, setScannerRegionEnabled] = useState(false);
   const [circleRequestsEnabled, setCircleRequestsEnabled] = useState(false);
+  const [guidedSetupEnabled, setGuidedSetupEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // refresh() runs both at mount (before any session cookie exists) and after login/register
@@ -64,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLabelScanEnabled(me.labelScanEnabled);
       setScannerRegionEnabled(me.scannerRegionEnabled);
       setCircleRequestsEnabled(me.circleRequestsEnabled);
+      setGuidedSetupEnabled(me.guidedSetupEnabled);
     } catch {
       // Any failure to confirm identity — 401 or a transient network/server error — just means
       // we don't currently know who's logged in. Never rethrow: login()/register() call this
@@ -75,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLabelScanEnabled(false);
       setScannerRegionEnabled(false);
       setCircleRequestsEnabled(false);
+      setGuidedSetupEnabled(false);
     } finally {
       if (requestIdRef.current === requestId) setLoading(false);
     }
@@ -123,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLabelScanEnabled(false);
       setScannerRegionEnabled(false);
       setCircleRequestsEnabled(false);
+      setGuidedSetupEnabled(false);
     }
   }, []);
 
@@ -133,6 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         labelScanEnabled,
         scannerRegionEnabled,
         circleRequestsEnabled,
+        guidedSetupEnabled,
         loading,
         login,
         register,

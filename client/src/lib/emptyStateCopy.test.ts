@@ -16,7 +16,10 @@ test("the words", () => {
 });
 
 test("each empty state with somewhere to go links there", () => {
-  assert.match(page("Profiles.tsx"), /\{NO_MANAGED_PROFILES\} <Link to=\{ADD_PROFILE_PATH\}>\{CREATE_ONE_BELOW\}<\/Link>/);
+  assert.match(
+    page("Profiles.tsx"),
+    /\{NO_MANAGED_PROFILES\}[\s\S]{0,200}<Link to=\{guidedSetupEnabled \? NEW_PROFILE_PATH : ADD_PROFILE_PATH\}>\s*\{guidedSetupEnabled \? CREATE_ONE : CREATE_ONE_BELOW\}/,
+  );
   assert.match(page("Profiles.tsx"), /<section id="add-profile" ref=\{addSectionRef\}>/);
   assert.match(page("ScanHistory.tsx"), /\{NO_SCANS\} <Link to=\{id \? `\/scan\?profile=\$\{id\}` : "\/scan"\}>\{SCAN_A_PRODUCT\}<\/Link>/);
   // The Circle card's next step is the link the card already ends with.

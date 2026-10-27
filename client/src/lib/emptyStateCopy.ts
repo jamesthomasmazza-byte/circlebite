@@ -13,6 +13,9 @@ export const NO_PENDING_INVITES = "No invites waiting.";
 export const NO_MANAGED_PROFILES = "None yet.";
 export const CREATE_ONE_BELOW = "Create one below";
 
+/** The same link when it opens the guided setup, which isn't below. */
+export const CREATE_ONE = "Create one";
+
 /** Profiles: none followed yet. Following starts from someone else's link, so there's nothing to tap. */
 export const NO_FOLLOWED_PROFILES = "None yet. When someone sends you an invite link, open it to follow their profile.";
 

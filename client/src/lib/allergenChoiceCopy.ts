@@ -56,7 +56,8 @@ export function needsReviewLine(profilePossessiveName: string, count: number): s
 /**
  * The server's spellingKey (server/src/matcher/allergenChoices.ts), copied: case, spaces, hyphens and
  * a trailing "s" ignored. allergenChoiceCopy.test.ts runs it on the server test's own cases. Used only
- * to read the change history — never to match a product or decide what's saved.
+ * to read the change history, and to refuse a typed name the list already has before the server
+ * does (lib/guidedSetup.ts) — never to match a product or decide what's saved.
  */
 export function spellingKey(name: string): string {
   const letters = name.toLowerCase().replace(/[^a-z]/g, "");

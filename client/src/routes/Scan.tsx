@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { BarcodeScanner } from "../BarcodeScanner";
 import { useScanningFor } from "../TabShell";
-import { ADD_PROFILE_PATH } from "../lib/profileSections";
+import { addProfileHref } from "../lib/profileSections";
 import { isSampleScan, SAMPLE_BARCODE, SAMPLE_LABEL, wantsSample } from "../lib/sampleScan";
 import { requestedProfile } from "../lib/tabs";
 import { scanningForId } from "../lib/tabs";
@@ -118,7 +118,7 @@ function disagreementNote(m: ScanResult["matched_allergens"][number]): string | 
 }
 
 export function Scan() {
-  const { labelScanEnabled, scannerRegionEnabled, user } = useAuth();
+  const { labelScanEnabled, scannerRegionEnabled, guidedSetupEnabled, user } = useAuth();
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
   const [loadingProfiles, setLoadingProfiles] = useState(true);
   // Held by the shell, which names it in the header on every screen (TabShell.tsx) — one value, so
@@ -546,7 +546,7 @@ export function Scan() {
 
       {profiles.length === 0 ? (
         <p>
-          You don't have any profiles to scan for yet. <Link to={ADD_PROFILE_PATH}>Create one</Link> first.
+          You don't have any profiles to scan for yet. <Link to={addProfileHref(guidedSetupEnabled)}>Create one</Link> first.
         </p>
       ) : (
         <>

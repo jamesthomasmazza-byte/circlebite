@@ -10,6 +10,7 @@ import { AcceptFollow } from "./routes/AcceptFollow";
 import { AdminNps } from "./routes/AdminNps";
 import { AiAccuracy } from "./routes/AiAccuracy";
 import { Circle } from "./routes/Circle";
+import { NewProfile } from "./routes/NewProfile";
 import { Login } from "./routes/Login";
 import { ProfileDetail } from "./routes/ProfileDetail";
 import { Profiles } from "./routes/Profiles";
@@ -44,6 +45,8 @@ function App() {
             <Route element={<TabShell />}>
               <Route path="/profiles" element={<Profiles />} />
               <Route path="/circle" element={<Circle />} />
+              {/* The guided setup: inside RequireAuth like every page — no guest mode. */}
+              <Route path="/profiles/new" element={<NewProfile />} />
               <Route path="/profiles/:id" element={<ProfileDetail />} />
               <Route path="/scan" element={<Scan />} />
               <Route path="/profiles/:id/history" element={<ScanHistory />} />

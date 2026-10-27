@@ -37,6 +37,7 @@ export function fetchMe(): Promise<{
   labelScanEnabled: boolean;
   scannerRegionEnabled: boolean;
   circleRequestsEnabled: boolean;
+  guidedSetupEnabled: boolean;
 }> {
   return apiFetch("/me");
 }

@@ -4,11 +4,11 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AllergenPicker, isPicked, pickInput, useAllergenChoices } from "../AllergenPicker";
 import { listedAllergenMessage } from "../lib/allergenChoiceCopy";
 import { canRemove, emptyDraft, removeDraft, removeLabel, type AllergenDraft } from "../lib/allergenDrafts";
-import { CREATE_ONE_BELOW, NO_FOLLOWED_PROFILES, NO_MANAGED_PROFILES } from "../lib/emptyStateCopy";
+import { CREATE_ONE, CREATE_ONE_BELOW, NO_FOLLOWED_PROFILES, NO_MANAGED_PROFILES } from "../lib/emptyStateCopy";
 import { SEVERITY_REQUIRED } from "../lib/severityCopy";
 import { SeverityChoice } from "../SeverityChoice";
 import { allergenLine } from "../lib/profileLineCopy";
-import { ADD_PROFILE_PATH, addFormRequested, profileSection, SECTION_LABEL, sectionHref, visibleSections } from "../lib/profileSections";
+import { ADD_PROFILE_PATH, addFormRequested, NEW_PROFILE_PATH, profileSection, SECTION_LABEL, sectionHref, visibleSections } from "../lib/profileSections";
 import { useAuth } from "../lib/AuthContext";
 import { OVERRIDE_CHOICES, readOverride, regionStatus, saveOverride, type RegionOverride } from "../lib/scannerRegion";
 import {
@@ -22,7 +22,7 @@ import {
 export function Profiles() {
   const navigate = useNavigate();
   const { hash } = useLocation();
-  const { user, logout, scannerRegionEnabled } = useAuth();
+  const { user, logout, scannerRegionEnabled, guidedSetupEnabled } = useAuth();
   const isAdmin = user?.isAdmin === true;
   const section = profileSection(hash, isAdmin);
   // This device's scanner-box override (lib/scannerRegion.ts), for testing on a phone before
@@ -145,7 +145,11 @@ export function Profiles() {
             <h2>Profiles you manage</h2>
             {managed.length === 0 && (
               <p>
-                {NO_MANAGED_PROFILES} <Link to={ADD_PROFILE_PATH}>{CREATE_ONE_BELOW}</Link>
+                {NO_MANAGED_PROFILES}{" "}
+                {/* With GUIDED_SETUP on, the guided setup; the classic form stays a link away there. */}
+                <Link to={guidedSetupEnabled ? NEW_PROFILE_PATH : ADD_PROFILE_PATH}>
+                  {guidedSetupEnabled ? CREATE_ONE : CREATE_ONE_BELOW}
+                </Link>
               </p>
             )}
             {/* Each card is one link (2026-10-26): easier to hit on a phone than the name alone. */}
@@ -182,7 +186,7 @@ export function Profiles() {
 
           <section id="add-profile" ref={addSectionRef}>
             {!addOpen ? (
-              <button type="button" onClick={() => setAddOpen(true)}>
+              <button type="button" onClick={() => (guidedSetupEnabled ? navigate(NEW_PROFILE_PATH) : setAddOpen(true))}>
                 Add a profile
               </button>
             ) : (

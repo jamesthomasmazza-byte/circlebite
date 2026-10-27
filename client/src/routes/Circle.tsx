@@ -6,7 +6,7 @@ import { getCircle, listProfiles, type CircleData, type ProfileSummary } from ".
 import { useAuth } from "../lib/AuthContext";
 import { CIRCLE_JUST_YOU } from "../lib/emptyStateCopy";
 import { profilePossessive } from "../lib/profileChangeCopy";
-import { ADD_PROFILE_PATH } from "../lib/profileSections";
+import { addProfileHref } from "../lib/profileSections";
 import { PendingInvites } from "../PendingInvites";
 import { useScanningFor } from "../TabShell";
 
@@ -29,7 +29,7 @@ export function circleOwnerLine(circle: Pick<CircleData, "owner">, viewerId: str
  * anyone can ask to follow a parent's profile at the bottom. Invites work exactly as before.
  */
 export function Circle() {
-  const { user, circleRequestsEnabled } = useAuth();
+  const { user, circleRequestsEnabled, guidedSetupEnabled } = useAuth();
   const { requests, refreshRequests } = useScanningFor();
   const [managed, setManaged] = useState<ManagedCircle[] | null>(null);
   const [followed, setFollowed] = useState<ProfileSummary[]>([]);
@@ -84,7 +84,7 @@ export function Circle() {
       <FollowRequests requests={requests} onChanged={() => void afterRequestDecided()} />
       {managed.length === 0 && followed.length === 0 && (
         <p>
-          You're not in any circle yet. <Link to={ADD_PROFILE_PATH}>Add a profile</Link> to invite people to it.
+          You're not in any circle yet. <Link to={addProfileHref(guidedSetupEnabled)}>Add a profile</Link> to invite people to it.
         </p>
       )}
 

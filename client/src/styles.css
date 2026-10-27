@@ -1440,6 +1440,295 @@ a.card:hover {
   }
 }
 
+/* ---------- The guided profile setup (routes/NewProfile.tsx, GUIDED_SETUP, 2026-10-27) ---------- */
+/* Calm: one question at a time in the heading type, answers as large cards and chips, the parent's
+   last answer as a quiet right-aligned reply. Existing tokens only, so dark mode comes from the
+   tokens' own block. No red: a refusal here is guidance, styled as a quiet reply. A choice is never
+   shown by colour alone: chosen chips and cards carry a check mark. */
+
+.guided {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding-bottom: var(--space-6);
+}
+
+.guided__progress {
+  height: 3px;
+  margin: var(--space-2) 0 var(--space-4);
+  border-radius: 999px;
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.guided__progress > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-accent);
+}
+
+.guided__top {
+  display: flex;
+  align-items: center;
+  min-height: var(--tap-min);
+}
+
+.guided__back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--tap-min);
+  padding: 0 var(--space-2) 0 0;
+  border: 0;
+  background: none;
+  color: var(--color-link);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.guided__transcript {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-5);
+}
+
+.guided__transcript p {
+  margin: 0;
+}
+
+.guided__asked {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.guided__answer {
+  justify-self: end;
+  max-width: 80%;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg) var(--radius-lg) var(--space-1) var(--radius-lg);
+  background: var(--color-surface);
+  font-size: var(--text-sm);
+}
+
+.guided__question {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-xl);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: var(--leading-heading);
+}
+
+.guided__question:focus {
+  outline: none;
+}
+
+.guided__sub {
+  margin: 0 0 var(--space-4);
+  color: var(--color-text-muted);
+}
+
+.guided__cards {
+  display: grid;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.guided__card {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: var(--space-4) var(--space-7) var(--space-4) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.guided__card strong {
+  display: block;
+  font-size: var(--text-base);
+}
+
+.guided__card span {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.guided__card[aria-checked="true"] {
+  padding: calc(var(--space-4) - 1px) calc(var(--space-7) - 1px) calc(var(--space-4) - 1px) calc(var(--space-4) - 1px);
+  border: 2px solid var(--color-accent);
+}
+
+.guided__card > svg {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--color-accent);
+}
+
+.guided__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.guided__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap-min);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.guided__chip[aria-pressed="true"] {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-weight: 600;
+}
+
+.guided__chip svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.guided__more {
+  min-height: var(--tap-min);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-link);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.guided__reply {
+  margin: 0 0 var(--space-4);
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.guided__continue {
+  width: 100%;
+}
+
+.guided__classic {
+  display: block;
+  margin-top: var(--space-5);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+.guided__rows {
+  margin: 0 0 var(--space-5);
+  padding: 0;
+  border-top: 1px solid var(--color-border);
+  list-style: none;
+}
+
+.guided__rows li {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.guided__row {
+  display: flex;
+  width: 100%;
+  min-height: var(--tap-min);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border: 0;
+  background: none;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.guided__row small {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.guided__row em {
+  color: var(--color-link);
+  font-size: var(--text-sm);
+  font-style: normal;
+  font-weight: 600;
+}
+
+.guided__checks label {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.guided__checks label:first-child {
+  border-top: 1px solid var(--color-border);
+}
+
+.guided__checks label > span > span {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 400;
+}
+
+.guided__done {
+  margin: 0 0 var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.guided__actions {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.guided__actions .guided__sub {
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .guided__step {
+    animation: guided-in 150ms ease-out;
+  }
+
+  @keyframes guided-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
 /* The guided setup's sample scan (lib/sampleScan.ts): said in words above the card, and tagged in
    history. Neutral: the card below carries the verdict's own colours, unchanged. */
 
