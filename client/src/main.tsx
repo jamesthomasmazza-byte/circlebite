@@ -14,7 +14,7 @@ import { NewProfile } from "./routes/NewProfile";
 import { Login } from "./routes/Login";
 import { ProfileDetail } from "./routes/ProfileDetail";
 import { Profiles } from "./routes/Profiles";
-import { Register } from "./routes/Register";
+import { RegisterEntry } from "./routes/RegisterEntry";
 import { ResetPassword } from "./routes/ResetPassword";
 import { ReviewQueue } from "./routes/ReviewQueue";
 import { Scan } from "./routes/Scan";
@@ -29,7 +29,8 @@ function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          {/* Today's Register, or the guided sign-up when GUIDED_SETUP is on (RegisterEntry.tsx). */}
+          <Route path="/register" element={<RegisterEntry />} />
           {/* Public: viewing an invite doesn't require being logged in, only accepting it does
               (handled inside the pages themselves, via returnTo) — not behind RequireAuth. */}
           <Route path="/follow/:token" element={<AcceptFollow />} />

@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import { useAllergenChoices } from "../AllergenPicker";
 import { listedAllergenMessage, OTHER_WARNING } from "../lib/allergenChoiceCopy";
 import { ApiRequestError, createProfile, type AllergenChoice, type Severity } from "../lib/api";
 import { useAuth } from "../lib/AuthContext";
+import { signupSetupProgress } from "../lib/guidedRegister";
+import { markGuidedSetupSkipped, setupArrival, SKIP_FOR_NOW } from "../lib/guidedSetupEntry";
 import {
   addOther,
   allergenName,
@@ -58,6 +60,7 @@ import {
   WHO_SUB,
 } from "../lib/guidedSetupCopy";
 import { ADD_PROFILE_PATH } from "../lib/profileSections";
+import { LANDING_PATH } from "../lib/tabs";
 import { SEVERITY_CHOICES } from "../lib/severityCopy";
 
 const CHECK = (
@@ -74,8 +77,11 @@ const CHECK = (
  * (lib/guidedSetup.ts toCreateInput). Back never clears an answer. Each new question takes focus.
  */
 export function NewProfile() {
-  const { guidedSetupEnabled } = useAuth();
+  const { guidedSetupEnabled, user } = useAuth();
   const navigate = useNavigate();
+  // Reached from sign-up or a first visit (lib/guidedSetupEntry.ts): "Skip for now" on every step,
+  // and from sign-up the progress bar carries on from register's.
+  const arrival = setupArrival(useLocation().search);
   const choices = useAllergenChoices();
   const [answers, setAnswers] = useState<GuidedAnswers>(initialAnswers);
   const [pos, setPos] = useState<Position>({ step: "who" });
@@ -133,6 +139,21 @@ export function NewProfile() {
   }
 
   const name = (id: AllergenId) => allergenName(id, answers, choices);
+  const bar = (percent: number) => (arrival === "signup" ? signupSetupProgress(percent) : percent);
+  const skip = arrival && (
+    <p className="guided__classic">
+      <button
+        type="button"
+        className="guided__more"
+        onClick={() => {
+          if (user) markGuidedSetupSkipped(user.id);
+          navigate(LANDING_PATH);
+        }}
+      >
+        {SKIP_FOR_NOW}
+      </button>
+    </p>
+  );
   const severityLabel = (s: Severity) => SEVERITY_CHOICES.find((c) => c.value === s)!.label;
 
   if (savedId) {
@@ -199,7 +220,7 @@ export function NewProfile() {
   return (
     <main className="guided">
       <section className="guided__step" key={pos.step === "severity" ? `severity-${pos.id}` : pos.step}>
-        <Progress value={progress(pos, answers)} />
+        <Progress value={bar(progress(pos, answers))} />
         <div className="guided__top">
           {previous && (
             <button type="button" className="guided__back" onClick={() => goTo(previous)}>
@@ -470,6 +491,7 @@ export function NewProfile() {
         <Link className="guided__classic" to={ADD_PROFILE_PATH}>
           {CLASSIC_LINK}
         </Link>
+        {skip}
       </section>
     </main>
   );
