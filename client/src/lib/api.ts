@@ -36,8 +36,38 @@ export function fetchMe(): Promise<{
   actingProfileId: string | null;
   labelScanEnabled: boolean;
   scannerRegionEnabled: boolean;
+  circleRequestsEnabled: boolean;
 }> {
   return apiFetch("/me");
+}
+
+// ---- Follow requests (server routes/circleRequests.ts, behind CIRCLE_REQUESTS) ----
+
+/** One waiting request, as its owner sees it: who asked, and the owner's own profiles they don't
+ *  already see. A requester never gets a list of what they sent. */
+export type CircleRequest = {
+  id: string;
+  created_at: string;
+  requester_name: string;
+  requester_email: string;
+  profiles: { id: string; label: string }[];
+};
+
+/** The same answer whatever happens to the request. */
+export function sendCircleRequest(email: string): Promise<{ received: true }> {
+  return apiFetch("/circle-requests", { method: "POST", body: JSON.stringify({ email }) });
+}
+
+export function listCircleRequests(): Promise<CircleRequest[]> {
+  return apiFetch("/circle-requests");
+}
+
+export function approveCircleRequest(id: string, profileId: string, shareLevel: ShareLevel): Promise<void> {
+  return apiFetch(`/circle-requests/${id}/approve`, { method: "POST", body: JSON.stringify({ profileId, shareLevel }) });
+}
+
+export function declineCircleRequest(id: string): Promise<void> {
+  return apiFetch(`/circle-requests/${id}/decline`, { method: "POST" });
 }
 
 export function login(email: string, password: string): Promise<CurrentUser> {

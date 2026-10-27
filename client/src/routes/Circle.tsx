@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
+import { AskToFollow, FollowRequests } from "../CircleRequests";
 import { getCircle, listProfiles, type CircleData, type ProfileSummary } from "../lib/api";
 import { useAuth } from "../lib/AuthContext";
 import { CIRCLE_JUST_YOU } from "../lib/emptyStateCopy";
 import { profilePossessive } from "../lib/profileChangeCopy";
 import { ADD_PROFILE_PATH } from "../lib/profileSections";
 import { PendingInvites } from "../PendingInvites";
+import { useScanningFor } from "../TabShell";
 
 type ManagedCircle = { profile: ProfileSummary; circle: CircleData | null };
 
@@ -20,14 +22,28 @@ export function circleOwnerLine(circle: Pick<CircleData, "owner">, viewerId: str
  * The Circle tab (2026-10-23): for each profile you manage, who's in its circle and which invites
  * nobody has accepted yet; then the profiles you follow. Invites waiting can be cancelled or given a
  * new link here (2026-10-26, PendingInvites.tsx); making invites and removing people stay on the
- * profile page, one link away. There are no requests to approve: an invite is a link the invitee
- * accepts (approve/decline is BACKLOG "Plan to judging" item 6).
+ * profile page, one link away.
+ *
+ * With CIRCLE_REQUESTS on (2026-10-27): an owner's follow requests come first, to approve or
+ * decline (CircleRequests.tsx; the shell holds them, for Scan's notice and this tab's badge), and
+ * anyone can ask to follow a parent's profile at the bottom. Invites work exactly as before.
  */
 export function Circle() {
-  const { user } = useAuth();
+  const { user, circleRequestsEnabled } = useAuth();
+  const { requests, refreshRequests } = useScanningFor();
   const [managed, setManaged] = useState<ManagedCircle[] | null>(null);
   const [followed, setFollowed] = useState<ProfileSummary[]>([]);
   const [loadError, setLoadError] = useState(false);
+
+  // After an approval the new follower shows in that circle, so every circle is read again.
+  async function afterRequestDecided() {
+    refreshRequests();
+    if (!managed) return;
+    const circles = await Promise.all(
+      managed.map(async (m) => ({ profile: m.profile, circle: await getCircle(m.profile.id).catch(() => null) })),
+    );
+    setManaged(circles);
+  }
 
   // After a Cancel or New link: that one circle, read again.
   async function reloadCircle(profileId: string) {
@@ -65,6 +81,7 @@ export function Circle() {
   return (
     <main>
       <h1>Circle</h1>
+      <FollowRequests requests={requests} onChanged={() => void afterRequestDecided()} />
       {managed.length === 0 && followed.length === 0 && (
         <p>
           You're not in any circle yet. <Link to={ADD_PROFILE_PATH}>Add a profile</Link> to invite people to it.
@@ -138,6 +155,8 @@ export function Circle() {
           </ul>
         </section>
       )}
+
+      {circleRequestsEnabled && <AskToFollow />}
     </main>
   );
 }

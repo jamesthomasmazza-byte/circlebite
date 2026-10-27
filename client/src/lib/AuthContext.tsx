@@ -28,6 +28,9 @@ type AuthState = {
   // SCANNER_REGION (lib/scannerRegion.ts), the same way and with the same false default: until
   // it's confirmed, the scanner reads the whole frame as it did before the switch existed.
   scannerRegionEnabled: boolean;
+  // Follow requests (CIRCLE_REQUESTS), the same way and the same false default: until it's
+  // confirmed on, there's no form, notice or badge.
+  circleRequestsEnabled: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (input: { email: string; password: string; displayName: string; dob: string }) => Promise<void>;
@@ -41,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [actingProfileId, setActingProfileId] = useState<string | null>(null);
   const [labelScanEnabled, setLabelScanEnabled] = useState(false);
   const [scannerRegionEnabled, setScannerRegionEnabled] = useState(false);
+  const [circleRequestsEnabled, setCircleRequestsEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // refresh() runs both at mount (before any session cookie exists) and after login/register
@@ -59,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setActingProfileId(me.actingProfileId);
       setLabelScanEnabled(me.labelScanEnabled);
       setScannerRegionEnabled(me.scannerRegionEnabled);
+      setCircleRequestsEnabled(me.circleRequestsEnabled);
     } catch {
       // Any failure to confirm identity — 401 or a transient network/server error — just means
       // we don't currently know who's logged in. Never rethrow: login()/register() call this
@@ -69,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setActingProfileId(null);
       setLabelScanEnabled(false);
       setScannerRegionEnabled(false);
+      setCircleRequestsEnabled(false);
     } finally {
       if (requestIdRef.current === requestId) setLoading(false);
     }
@@ -116,11 +122,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setActingProfileId(null);
       setLabelScanEnabled(false);
       setScannerRegionEnabled(false);
+      setCircleRequestsEnabled(false);
     }
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, actingProfileId, labelScanEnabled, scannerRegionEnabled, loading, login, register, logout }}>
+    <AuthContext.Provider value={{
+        user,
+        actingProfileId,
+        labelScanEnabled,
+        scannerRegionEnabled,
+        circleRequestsEnabled,
+        loading,
+        login,
+        register,
+        logout,
+      }}>
       {children}
     </AuthContext.Provider>
   );

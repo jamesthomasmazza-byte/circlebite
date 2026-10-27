@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation, useOutletContext } from "react-router-dom";
 
 import { LandingNotices, type NoticeData } from "./LandingNotices";
-import { getUnseenChanges, listProfiles, type ProfileSummary } from "./lib/api";
+import { getUnseenChanges, listCircleRequests, listProfiles, type CircleRequest, type ProfileSummary } from "./lib/api";
+import { useAuth } from "./lib/AuthContext";
+import { REQUESTS_HEADING, requestBadgeLabel, requestNoticeLine } from "./lib/circleRequestCopy";
 import { headerProfileName } from "./lib/profileLineCopy";
 import {
   activeTab,
@@ -17,8 +19,14 @@ import {
   type Tab,
 } from "./lib/tabs";
 
-/** What the shell hands the page: the profile chosen for scanning (lib/tabs.ts scanningForId). */
-export type ScanningFor = { chosenProfileId: string | null; chooseProfile: (id: string) => void };
+/** What the shell hands the page: the profile chosen for scanning (lib/tabs.ts scanningForId), and
+ *  the owner's follow requests with a way to re-read them after one is decided (the Circle tab). */
+export type ScanningFor = {
+  chosenProfileId: string | null;
+  chooseProfile: (id: string) => void;
+  requests: CircleRequest[];
+  refreshRequests: () => void;
+};
 
 export function useScanningFor(): ScanningFor {
   return useOutletContext<ScanningFor>();
@@ -43,6 +51,12 @@ export function TabShell() {
   const [badge, setBadge] = useState(0);
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
   const [chosenProfileId, setChosenProfileId] = useState<string | null>(() => requestedProfile(search));
+  // Follow requests waiting on this owner (CIRCLE_REQUESTS): a line on Scan after Condition 2's
+  // notices, never before them, and a badge on the Circle tab. Gone only when each is approved or
+  // declined. Empty for anyone who owns nothing, and while the switch is off.
+  const { circleRequestsEnabled } = useAuth();
+  const [requests, setRequests] = useState<CircleRequest[]>([]);
+  const [requestsRead, setRequestsRead] = useState(0);
 
   // A "Scan for" button arriving with ?profile=<id> is a choice, even while the shell is mounted.
   useEffect(() => {
@@ -69,10 +83,29 @@ export function TabShell() {
     };
   }, [pathname]);
 
+  useEffect(() => {
+    let live = true;
+    if (!circleRequestsEnabled) {
+      setRequests([]);
+      return;
+    }
+    listCircleRequests()
+      .then((r) => live && setRequests(r))
+      .catch(() => live && setRequests([]));
+    return () => {
+      live = false;
+    };
+  }, [pathname, circleRequestsEnabled, requestsRead]);
+
   const current = activeTab(pathname);
   const chosen = profiles.find((p) => p.id === scanningForId(chosenProfileId, profiles));
   const scanningFor = chosen ? headerProfileName(chosen, profiles) : null;
-  const context: ScanningFor = { chosenProfileId, chooseProfile: setChosenProfileId };
+  const context: ScanningFor = {
+    chosenProfileId,
+    chooseProfile: setChosenProfileId,
+    requests,
+    refreshRequests: () => setRequestsRead((n) => n + 1),
+  };
 
   return (
     <div className="tab-shell">
@@ -81,6 +114,7 @@ export function TabShell() {
         <div className="tab-shell__notices">
           {/* One line each on Scan, so the page starts sooner; the full notices on Profile. */}
           <LandingNotices {...notices} slim={current === "scan"} />
+          {current === "scan" && <RequestNotice requests={requests} />}
         </div>
       )}
       <Outlet context={context} />
@@ -95,13 +129,34 @@ export function TabShell() {
             <span className="tab-bar__icon" aria-hidden="true">
               <TabIcon tab={tab} />
               {tab === "profile" && badge > 0 && <span className="tab-bar__badge">{badge > 99 ? "99+" : badge}</span>}
+              {tab === "circle" && requests.length > 0 && (
+                <span className="tab-bar__badge">{requests.length > 99 ? "99+" : requests.length}</span>
+              )}
             </span>
             <span className="tab-bar__label">{TAB_LABEL[tab]}</span>
             {tab === "profile" && badge > 0 && <span className="visually-hidden">, {badgeLabel(badge)}</span>}
+            {tab === "circle" && requests.length > 0 && (
+              <span className="visually-hidden">, {requestBadgeLabel(requests.length)}</span>
+            )}
           </Link>
         ))}
       </nav>
     </div>
+  );
+}
+
+/** Scan's follow-request line, in the slim notices' style, after Condition 2's lines. */
+export function RequestNotice({ requests }: { requests: Pick<CircleRequest, "requester_name" | "requester_email">[] }) {
+  if (requests.length === 0) return null;
+  return (
+    <section className="change-notice change-notice--slim" aria-labelledby="follow-request-notice-heading">
+      <h2 id="follow-request-notice-heading" className="visually-hidden">
+        {REQUESTS_HEADING}
+      </h2>
+      <p>
+        {requestNoticeLine(requests)} <Link to="/circle#follow-requests">Review</Link>
+      </p>
+    </section>
   );
 }
 
