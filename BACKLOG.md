@@ -62,6 +62,22 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
    invitee accepts, so the Circle tab lists only invites waiting to be accepted (JT, 2026-10-23); a
    request flow is a new feature. Plan first, checked against Prof. Yoest's conditions: the
    requester sees nothing until approved, and the owner is notified.
+   *Planned 2026-10-27, parked until next week. JT's decisions:*
+   - *Follow requests only. Co-managers still come only by invite link, so the reasoning in
+     `CONTEST_RULES.md` §3a ("a co-manager was explicitly invited") stands unchanged.*
+   - *No list of sent requests for the requester.*
+   - *A declined request is kept 30 days, so a repeat request is silently dropped, then purged by
+     the retention job.*
+   - *Prof. Yoest hears about it before it's switched on.*
+   - *Ships dark behind `CIRCLE_REQUESTS`, off by default.*
+
+   *The plan: a request goes to an adult's account by the exact email address the requester
+   already knows, never to a profile; no search or listing. The response is identical whatever the
+   address, and the requester sees nothing (no name, profile, allergen, scan or status) until the
+   owner approves. Only the owner decides, choosing one of their own profiles and a share level; an
+   in-app notice after Condition 2's, and a Circle tab badge, stay until Approve or Decline. Rate
+   limited per requester, per IP and per owner. No message field; the request row keeps requester,
+   owner, status and timestamps only, deleted on approval. Invite links unchanged.*
 
 ### Week of Nov 9 — highest risk
 
