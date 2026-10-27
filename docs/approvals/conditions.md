@@ -161,8 +161,11 @@ JT's October 8 email left out, and the gap is why he asked.
     test report that Plain Rice Crackers (synthetic, 2990000000014) contains eggs, from James
     Mazza's profile. With the switch still off, the owner's scan of that barcode showed "No listed
     allergens found". JT switched `CIRCLE_ESCALATIONS` on at 20:46 ET, and the owner's scan then
-    showed "eggs — contains — reported in your circle, not yet confirmed". The report stays
-    pending, so it reaches no other family's card.
+    showed "eggs — contains — reported in your circle, not yet confirmed". It never reached another
+    family's card. JT rejected the test report in `/admin/review-queue` at about 21:05 ET, reason
+    "Test report on a synthetic product, Oct 26 switch check.", and a rescan as the owner then
+    showed "No listed allergens found". (Corrected October 26: this note first said the report
+    "stays pending".)
 - **Closed:** October 5, 2026.
 
 ## Condition 4 — Automated backups with a tested restore
@@ -222,15 +225,29 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
 ### Due Sunday, October 25 (his October 19 reply, `2026-10-19-yoest-fake-family-page.md`)
 
 - **The production downgrade report, showing what the owner sees.** Closes the open half of
-  Conditions 1 and 2. **Done October 23** (Conditions 1 and 2, above). Open until sent.
+  Conditions 1 and 2. **Done October 23** (Conditions 1 and 2, above). Sent October 23; his
+  October 24 email confirms receipt.
 - **The shared-escalations fix deployed with the setting off** (`e6f96c9`, `CIRCLE_ESCALATIONS`
   off; `docs/server-setup.md` §11a). **Done October 23:** `82d6c76` deployed at 17:20 UTC,
   migration 0045 applied, `CIRCLE_ESCALATIONS` unset (off), and every post-deploy check passed,
-  including a real label-photo AI call. Open until sent.
+  including a real label-photo AI call. Sent October 23; his October 24 email confirms receipt.
 - **A short page on the fake-family risk** and the two hardening steps (scan history; same-hand
   photo flags) as the gate before removals may ever cross families. Written October 23:
   `docs/fake-family-risk.md`. The hardening it describes is not built (`BACKLOG.md`, deferred until
-  after judging). Open until sent.
+  after judging). Sent October 23; his October 24 email confirms receipt.
+
+### Due Friday, October 30 (his October 24 email, `2026-10-24-yoest-green-card-screenshot.md`)
+
+- **Ship `96041b4` with the switch-on.** `96041b4` deployed Oct 24 in `aa349f7`; still in
+  `421c799`, deployed Oct 25 and running with `CIRCLE_ESCALATIONS` on since Oct 26, 20:46 ET.
+- **One screenshot of the co-manager's card after a pending removal,** the note on the row and no
+  green all-clear: `img/circlebite-comanager-pending-removal-2026-10-26.png`. Taken October 26 from
+  timmy's scan history on production, his October 23 Oat Biscuits report: "Contains an allergen",
+  the sesame row "you reported it isn't in this — pending review", then "Your report hasn't changed
+  it". A fresh scan can't show it: a report applies only to its own scan, and a duplicate report
+  is refused.
+- **Both sent October 26, 9:26 PM ET,** in the same thread
+  (`2026-10-26-jt-green-card-screenshot.md`).
 
 ## Corrections owed to Prof. Yoest
 
