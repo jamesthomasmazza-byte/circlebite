@@ -1991,3 +1991,11 @@ Prof. Yoest asked about it at 5:57 AM ET; JT's reply went at 11:51 AM ET
 tests cover each role (`server/src/corrections/circleReporterVisibility.test.ts`). Locally, Judge 1
 following Noor saw roles only on the live card and in history, and the JSON the server sent Judge
 1 contained neither reporter's name, while Noor's owner still saw both names.
+
+**Item 5 on a real phone, about 12:00 ET.** JT's iPhone, on production, with "Decode only inside
+the box, this device" set to On (Profile → Admin); `SCANNER_REGION` still off for everyone. In
+portrait and in landscape alike, a barcode inside the box gave "Got it", then the result, and a
+barcode beside the box didn't read, with the label-photo offer at about 8 s. One real package read
+correctly inside the box. The portrait "Got it" also completes the scanner-box phone check from
+October 26. Not yet tried: curved or small packages, and an On-vs-Off comparison on the same
+packages. The switch stays off until a second phone, ideally Android, passes too.

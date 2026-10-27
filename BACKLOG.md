@@ -19,10 +19,10 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
 
 **JT, anytime (no code):**
 - [ ] Rename the duplicate "James Mazza" profile.
-- [ ] Phone check of the scanner box: portrait and landscape, "Got it" before the result.
-  *Partly done 2026-10-26 on JT's iPhone, on production (`076eefb`): live picture, "Got it", and
-  landscape clear of the tab bar (`docs/journal.md`). Portrait on 2026-10-27, on `74ea011`: a scan
-  with Stop camera above the tab bar. "Got it" in portrait isn't recorded.*
+- [x] Phone check of the scanner box: portrait and landscape, "Got it" before the result.
+  *Done on JT's iPhone, on production: live picture, "Got it", and landscape clear of the tab bar
+  on 2026-10-26 (`076eefb`); portrait with Stop camera above the tab bar, and "Got it" then the
+  result in portrait, on 2026-10-27 (`docs/journal.md`).*
 - [ ] Owner-only acknowledgement check on production.
 
 ### Week of Oct 26 — low risk
@@ -57,10 +57,16 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
    option, so this needs our own loop — copy the box's part of each frame into a small canvas and
    call `decodeFromCanvas` — replacing a camera path that works today. Test on 2+ phones before
    switching it on.
-   *Built 2026-10-27 (`5c99f50`, `43d0724`), not yet deployed. Decodes inside the box plus 5%
-   (`REGION_ALLOWANCE`, to tune after the phone tests). An admin can turn it on for one phone from
-   Profile → Admin before the switch goes on; rollback is `SCANNER_REGION=off` and a restart
-   (`docs/server-setup.md` §11b). Open: the phone tests.*
+   *Built 2026-10-27 (`5c99f50`, `43d0724`), deployed off that day in `74ea011`. Decodes inside the
+   box plus 5% (`REGION_ALLOWANCE`, to tune after the phone tests). An admin can turn it on for one
+   phone from Profile → Admin before the switch goes on; rollback is `SCANNER_REGION=off` and a
+   restart (`docs/server-setup.md` §11b).*
+   *Phone 1 passed, 2026-10-27 about 12:00 ET: JT's iPhone, on production, with "Decode only inside
+   the box, this device" On. Portrait and landscape alike: a barcode inside the box gave "Got it",
+   then the result; a barcode beside the box didn't read, and the label-photo offer appeared at
+   about 8 s. One real package read correctly inside the box.*
+   *Not yet tried: curved or small packages, and the same packages with the device choice Off.
+   Stays off for everyone until a second phone, ideally Android, passes.*
 6. [ ] **Approve/decline circle requests.** Moved from "Deferred". Today an invite is a link the
    invitee accepts, so the Circle tab lists only invites waiting to be accepted (JT, 2026-10-23); a
    request flow is a new feature. Plan first, checked against Prof. Yoest's conditions: the
