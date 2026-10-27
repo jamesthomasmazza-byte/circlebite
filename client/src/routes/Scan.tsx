@@ -521,7 +521,9 @@ export function Scan() {
 
   return (
     <main>
-      <h1>Scan a product</h1>
+      {/* Kept for screen readers but off screen in a landscape phone, where the header already
+          says who you're scanning for and the camera button needs the room (styles.css). */}
+      <h1 className="scan-title">Scan a product</h1>
 
       {profiles.length === 0 ? (
         <p>
@@ -529,35 +531,39 @@ export function Scan() {
         </p>
       ) : (
         <>
-          <label>
-            Scanning for
-            <select value={profileId} onChange={(e) => chooseProfile(e.target.value)}>
-              {profiles.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {profileOptionText(p, profiles)}
-                </option>
-              ))}
-            </select>
-          </label>
-          {/* The names only, never "checks for": a severe_only follower sees the severe ones, but the
-              scan checks the full list (server routes/scans.ts). */}
-          {selectedProfile && <p className="profile-line">{allergenLine(selectedProfile)}</p>}
+          {/* Who for, and the camera: side by side in a landscape phone, so "Scan with camera" is
+              above the tab bar on the first screen even under Condition 2's notices (styles.css). */}
+          <div className="scan-target">
+            <label>
+              Scanning for
+              <select value={profileId} onChange={(e) => chooseProfile(e.target.value)}>
+                {profiles.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {profileOptionText(p, profiles)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {/* The names only, never "checks for": a severe_only follower sees the severe ones, but the
+                scan checks the full list (server routes/scans.ts). */}
+            {selectedProfile && <p className="profile-line">{allergenLine(selectedProfile)}</p>}
 
-          <BarcodeScanner
-            onDetected={(text) => {
-              setBarcode(text);
-              void runScan(text, profileId);
-            }}
-            // No offer without the label scan: there'd be no photo flow to open.
-            onOfferLabelPhoto={
-              labelScanEnabled
-                ? () => {
-                    openStandalonePhotoCapture();
-                    setScrollToPhotoForm(true);
-                  }
-                : undefined
-            }
-          />
+            <BarcodeScanner
+              onDetected={(text) => {
+                setBarcode(text);
+                void runScan(text, profileId);
+              }}
+              // No offer without the label scan: there'd be no photo flow to open.
+              onOfferLabelPhoto={
+                labelScanEnabled
+                  ? () => {
+                      openStandalonePhotoCapture();
+                      setScrollToPhotoForm(true);
+                    }
+                  : undefined
+              }
+            />
+          </div>
 
           <form onSubmit={handleSubmit}>
             <label>

@@ -77,3 +77,23 @@ test("on Scan the camera is the one primary button; the typed-barcode submit is 
   assert.match(form, /<button type="submit" className="button-secondary"/);
   assert.equal(SCAN.match(/button-primary/g), null, "Scan.tsx adds no other primary button");
 });
+
+// A landscape phone (2026-10-26): "Scan with camera", the offer and Stop camera clear of the tab bar.
+
+const CSS = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
+
+test("the camera scrolls into view after it renders, not from startCamera", () => {
+  assert.doesNotMatch(body(SCANNER, "  async function startCamera()"), /scrollIntoView/);
+  assert.match(SCANNER, /useEffect\(\(\) => \{\n    if \(cameraActive\) containerRef\.current\?\.scrollIntoView\(\{ block: "start" \}\);\n  \}, \[cameraActive\]\);/);
+});
+
+test("in a landscape phone Scan's heading gives way and the camera sits beside 'Scanning for'", () => {
+  const landscape = CSS.slice(CSS.indexOf("@media (orientation: landscape) and (max-height: 500px)"));
+  assert.match(landscape, /\.scan-title \{[^}]*clip: rect\(0 0 0 0\)/, "off screen, still read");
+  assert.match(landscape, /\.scan-target \{[^}]*display: grid/);
+  assert.match(landscape, /\.scan-target > \.scanner-section \{[^}]*grid-column: 2/);
+  assert.match(landscape, /\.scan-target:has\(\.scanner\[data-active="true"\]\) > \.scanner-section \{[^}]*grid-column: 1 \/ -1/);
+  assert.match(SCAN, /<h1 className="scan-title">Scan a product<\/h1>/);
+  const target = SCAN.slice(SCAN.indexOf('<div className="scan-target">'), SCAN.indexOf("</div>", SCAN.indexOf('<div className="scan-target">')));
+  assert.match(target, /Scanning for[\s\S]*<BarcodeScanner/);
+});

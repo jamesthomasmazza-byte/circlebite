@@ -54,9 +54,6 @@ export function BarcodeScanner({
     setRead(false);
     readRef.current = false;
     setCameraActive(true);
-    // Bring the preview, hint and Stop camera into view above the tab bar — in a landscape phone
-    // the bar takes a fifth of the height.
-    containerRef.current?.scrollIntoView({ block: "start" });
     try {
       const reader = new BrowserMultiFormatReader();
       const controls = await reader.decodeFromVideoDevice(undefined, videoRef.current!, (detected) => {
@@ -81,6 +78,14 @@ export function BarcodeScanner({
 
   // Stop the camera on unmount so it doesn't keep the device open after navigating away.
   useEffect(() => () => controlsRef.current?.stop(), []);
+
+  // Bring the preview, hint and buttons into view above the tab bar — in a landscape phone the bar
+  // takes a fifth of the height. After the render that shows them (2026-10-26): called from
+  // startCamera it ran while the page was still too short to scroll, so with Scan's notices above,
+  // Stop camera stayed under the bar.
+  useEffect(() => {
+    if (cameraActive) containerRef.current?.scrollIntoView({ block: "start" });
+  }, [cameraActive]);
 
   // The offer's timer, apart from the camera code: it runs while the camera does and nothing has
   // read, and starts over each time the camera starts.
