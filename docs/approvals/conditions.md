@@ -281,7 +281,12 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
   history 404 them (`server/src/routes/circle.ts`, `server/src/routes/profileChanges.ts`), the
   profile page and the Circle tab show them no people, and scan history names no scanner. A
   report line was the only place.
-- **Reply: not sent.**
+- **Sent October 27, 11:51 AM ET,** in the same thread
+  (`2026-10-27-jt-follower-reporter-name.md`): followers see the role, not the name, with the
+  reasons above. The reply also says the change is "tested and live on production as of this
+  morning". When this entry was written, the repo had no record of that deploy: `3d285fb` was
+  committed at 11:39 AM ET and pushed after 11:43 AM ET, and `docs/journal.md` records no deploy
+  on October 27. Open until a deploy of `3d285fb` or later is recorded.
 
 ## Corrections owed to Prof. Yoest
 
