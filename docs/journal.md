@@ -2007,3 +2007,11 @@ ok, no boot errors, `CIRCLE_REQUESTS` unset (off), `CIRCLE_ESCALATIONS=on`, `SCA
 `circlebite-20261027T161756Z`. With the switch off every request route 404s and nothing shows, so
 nothing about follow requests has been checked on production yet. Before it goes on: tell Prof.
 Yoest, then a check on production with the switch on (`docs/server-setup.md` §11c).
+
+**`SCANNER_REGION` switched on for everyone, at about 12:23 ET.** JT's decision after one phone
+passed (his iPhone, portrait and landscape: inside the box reads, beside it doesn't, one real
+package), ahead of the two phones BACKLOG item 5 had set. Checked by JT: the running process shows
+`SCANNER_REGION=on` and `CIRCLE_ESCALATIONS=on`, health ok. His phone's device choice was set back
+to Server default, and on the server's setting a barcode inside the box read and one beside it
+didn't. Still owed before November 20: an Android phone, and a curved or small package. Rollback:
+`SCANNER_REGION=off` and a restart (`docs/server-setup.md` §11b).
