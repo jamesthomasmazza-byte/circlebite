@@ -132,11 +132,18 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
 
 ### Nov 13 — code freeze
 
+- [ ] **Deploy the reporter row before the freeze** (Prof. Yoest's Oct 27 ask,
+  `docs/approvals/2026-10-27-yoest-judges-reporter-row.md`): `255f867` (the seed) and `f91691a`
+  (the `JUDGES.md` row), pushed Oct 27 in `cd97de2`. A deploy alone doesn't make the row true on
+  production; the judging-week reseed below does.
+
 Fixes only from here.
 
 ### Week of Nov 16 — judges
 
-- [ ] `--rotate-passwords` reseed, in JT's own terminal.
+- [ ] `--rotate-passwords` reseed, in JT's own terminal. This is also the reseed that makes the
+  reporter row true on production; check it as judge1 on your own barcode (`2990000000083`): Maya
+  names "Priya Nair (co-manager)", Noor says "A co-manager in Noor's circle".
 - [ ] judge1 shows no banner.
 - [ ] Tick the judge item and fix the `JUDGE_PASSWORD` line.
 - [ ] Four one-time links.

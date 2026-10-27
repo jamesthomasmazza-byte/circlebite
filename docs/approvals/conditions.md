@@ -301,9 +301,14 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
   barcode per judge, a pending Sesame report by Priya (co-manager) on Maya, where the judge is the
   owner and sees her name, and a pending Wheat report by Sam (co-manager, new to Noor) on Noor,
   where the judge follows and sees the role only. Seeded by the judge seed, so it holds after every
-  reseed. **Built October 27** (`255f867`, the seed and its tests; the row in `JUDGES.md`) and
-  checked locally as judge1 at 390px, both cards worded as the row quotes. Not yet deployed or
-  reseeded on production, and not yet sent to him.
+  reseed. **Built October 27** (`255f867`, the seed and its tests; `f91691a`, the row in
+  `JUDGES.md`) and checked locally as judge1 at 390px, both cards worded as the row quotes. Pushed
+  October 27 (`cd97de2`).
+- **Reply sent the evening of October 27** (JT). Its text isn't saved in this repository.
+- **Still owed:** deploy before the November 13 freeze. Deploying doesn't make the row true on
+  production: the seed only writes these rows when it runs. The production reseed that does is the
+  judging-week `--rotate-passwords` reseed (week of November 16), run by JT in his own terminal
+  (`BACKLOG.md`, "Week of Nov 16 — judges"). Until then, production has no such barcode.
 
 ## Corrections owed to Prof. Yoest
 
