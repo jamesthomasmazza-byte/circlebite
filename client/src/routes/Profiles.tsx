@@ -166,24 +166,8 @@ export function Profiles() {
             </ul>
           </section>
 
-          <section>
-            <h2>Profiles you follow</h2>
-            {followed.length === 0 && <p>{NO_FOLLOWED_PROFILES}</p>}
-            <ul className="card-list">
-              {followed.map((p) => (
-                <li key={p.id}>
-                  <Link to={`/profiles/${p.id}`} className="card">
-                    <span className="card__title">{p.label}</span>{" "}
-                    <span className="card__meta">
-                      ({p.share_level === "severe_only" ? "severe allergens only" : "full profile"})
-                    </span>
-                    <span className="profile-line">{allergenLine(p)}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
-
+          {/* Directly under the profiles you manage (2026-10-27), so adding one sits with them,
+              above any you follow. The classic form opens here too. */}
           <section id="add-profile" ref={addSectionRef}>
             {!addOpen ? (
               <button type="button" onClick={() => (guidedSetupEnabled ? navigate(NEW_PROFILE_PATH) : setAddOpen(true))}>
@@ -246,6 +230,24 @@ export function Profiles() {
                 </form>
               </>
             )}
+          </section>
+
+          <section>
+            <h2>Profiles you follow</h2>
+            {followed.length === 0 && <p>{NO_FOLLOWED_PROFILES}</p>}
+            <ul className="card-list">
+              {followed.map((p) => (
+                <li key={p.id}>
+                  <Link to={`/profiles/${p.id}`} className="card">
+                    <span className="card__title">{p.label}</span>{" "}
+                    <span className="card__meta">
+                      ({p.share_level === "severe_only" ? "severe allergens only" : "full profile"})
+                    </span>
+                    <span className="profile-line">{allergenLine(p)}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </section>
         </>
       )}

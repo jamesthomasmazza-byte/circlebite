@@ -52,3 +52,13 @@ test("'Create one' links land on the classic form, or the guided setup when GUID
   // Folded behind a button otherwise.
   assert.match(PROFILES, /\{!addOpen \? \(\s*<button type="button" onClick=\{\(\) => \(guidedSetupEnabled \? navigate\(NEW_PROFILE_PATH\) : setAddOpen\(true\)\)\}>\s*Add a profile/);
 });
+
+test("'Add a profile' sits directly under the profiles you manage, above the ones you follow", () => {
+  const managed = PROFILES.indexOf("<h2>Profiles you manage</h2>");
+  const add = PROFILES.indexOf('<section id="add-profile" ref={addSectionRef}>');
+  const followed = PROFILES.indexOf("<h2>Profiles you follow</h2>");
+  assert.ok(managed < add && add < followed);
+  // Outside any condition on the managed list, so it shows when there are none.
+  const between = PROFILES.slice(PROFILES.indexOf("</section>", managed), add);
+  assert.doesNotMatch(between, /managed\.length/);
+});
