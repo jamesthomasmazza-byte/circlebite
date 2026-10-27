@@ -142,11 +142,15 @@ export function Profiles() {
                 {NO_MANAGED_PROFILES} <Link to={ADD_PROFILE_PATH}>{CREATE_ONE_BELOW}</Link>
               </p>
             )}
-            <ul>
+            {/* Each card is one link (2026-10-26): easier to hit on a phone than the name alone. */}
+            <ul className="card-list">
               {managed.map((p) => (
                 <li key={p.id}>
-                  <Link to={`/profiles/${p.id}`}>{p.label}</Link> ({p.relationship === "owner" ? "owner" : "co-manager"})
-                  <span className="profile-line">{allergenLine(p)}</span>
+                  <Link to={`/profiles/${p.id}`} className="card">
+                    <span className="card__title">{p.label}</span>{" "}
+                    <span className="card__meta">({p.relationship === "owner" ? "owner" : "co-manager"})</span>
+                    <span className="profile-line">{allergenLine(p)}</span>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -155,12 +159,16 @@ export function Profiles() {
           <section>
             <h2>Profiles you follow</h2>
             {followed.length === 0 && <p>{NO_FOLLOWED_PROFILES}</p>}
-            <ul>
+            <ul className="card-list">
               {followed.map((p) => (
                 <li key={p.id}>
-                  <Link to={`/profiles/${p.id}`}>{p.label}</Link>{" "}
-                  ({p.share_level === "severe_only" ? "severe allergens only" : "full profile"})
-                  <span className="profile-line">{allergenLine(p)}</span>
+                  <Link to={`/profiles/${p.id}`} className="card">
+                    <span className="card__title">{p.label}</span>{" "}
+                    <span className="card__meta">
+                      ({p.share_level === "severe_only" ? "severe allergens only" : "full profile"})
+                    </span>
+                    <span className="profile-line">{allergenLine(p)}</span>
+                  </Link>
                 </li>
               ))}
             </ul>

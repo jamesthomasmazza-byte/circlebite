@@ -1211,10 +1211,51 @@ th {
   text-align: center;
 }
 
-.circle-card {
+.circle-card,
+.card {
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+}
+
+/* ---------- Cards instead of bullets (2026-10-26, the visual pass) ---------------------------- */
+/* A list of cards: no bullets, a gap between. Neutral border and background only — the verdict
+   colours stay on verdicts. */
+
+.card-list {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
+}
+
+.card-list > li + li {
+  margin-top: 0;
+}
+
+/* A card that is one link: the name reads as the link, the rest as its detail. */
+a.card {
+  display: block;
+  min-height: var(--tap-min);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+a.card:hover {
+  border-color: var(--color-accent);
+}
+
+.card__title {
+  color: var(--color-link);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.card__meta {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
 }
 
 /* ---------- Camera scanner — target box (BarcodeScanner.tsx, 2026-10-24) ---------------------- */
