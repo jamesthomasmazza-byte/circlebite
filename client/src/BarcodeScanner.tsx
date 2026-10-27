@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
 
 import { BoxRegionReader } from "./boxRegionReader";
+import { CAMERA_PRIMER_HEADING, CAMERA_PRIMER_LINE, cameraPrimerSeen, markCameraPrimerSeen } from "./lib/cameraPrimer";
 import { NO_READ_OFFER, NO_READ_OFFER_MS } from "./lib/scannerCopy";
 
 // How long "Got it" shows on the box before the camera stops and the scan runs.
@@ -36,6 +37,9 @@ export function BarcodeScanner({
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [read, setRead] = useState(false);
   const [offerShown, setOfferShown] = useState(false);
+  // The one sentence before this device's first camera use (lib/cameraPrimer.ts), ahead of
+  // startCamera and the system prompt — nothing in the camera code changes.
+  const [primerOpen, setPrimerOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -160,11 +164,34 @@ export function BarcodeScanner({
           </button>
         </p>
       ) : (
-        <p>
-          <button type="button" className="button-primary" onClick={startCamera}>
-            Scan with camera
-          </button>
-        </p>
+        primerOpen ? (
+          <div className="camera-primer" role="group" aria-labelledby="camera-primer-heading">
+            <h2 id="camera-primer-heading">{CAMERA_PRIMER_HEADING}</h2>
+            <p>{CAMERA_PRIMER_LINE}</p>
+            <p className="camera-primer__actions">
+              <button
+                type="button"
+                className="button-primary"
+                onClick={() => {
+                  markCameraPrimerSeen();
+                  setPrimerOpen(false);
+                  void startCamera();
+                }}
+              >
+                Continue
+              </button>
+              <button type="button" className="button-secondary" onClick={() => setPrimerOpen(false)}>
+                Not now
+              </button>
+            </p>
+          </div>
+        ) : (
+          <p>
+            <button type="button" className="button-primary" onClick={() => (cameraPrimerSeen() ? void startCamera() : setPrimerOpen(true))}>
+              Scan with camera
+            </button>
+          </p>
+        )
       )}
       {cameraError && <p role="alert">{cameraError}</p>}
     </section>
