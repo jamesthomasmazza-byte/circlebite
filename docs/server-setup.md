@@ -122,7 +122,7 @@ Keys that live there now: `DATABASE_URL` (set when the database was created, §5
 `SESSION_SECRET` (generated on the box with `openssl rand -hex 32`, appended when the app was first
 deployed, §7 below), `NODE_ENV=production` / `PORT=3000`, `OFF_USER_AGENT` (appended when the
 scan feature deployed — Open Food Facts requires a descriptive user agent on every request),
-`UPLOAD_DIR` (§8), `COMMUNITY_CORRECTIONS` (§11), `CIRCLE_ESCALATIONS` (§11a), `LABEL_SCAN`, the AI keys listed in
+`UPLOAD_DIR` (§8), `COMMUNITY_CORRECTIONS` (§11), `CIRCLE_ESCALATIONS` (§11a), `SCANNER_REGION` (§11b), `LABEL_SCAN`, the AI keys listed in
 `.env.example`, and for backups (§17) `BACKUP_S3_BUCKET` — a name, not a secret, kept here so no
 bucket name is ever in the repo — and `RESTORE_TEST_DB_PASSWORD`, generated on the box. `.env.example`
 is the complete list.
@@ -373,6 +373,38 @@ attested to it (`applyCorrections.ts`).
 
 **Not recorded on the scan row.** Unlike §11's `community_corrections_applied`, nothing on `scans`
 records which circle reports a card showed at scan time. `BACKLOG.md` has the item.
+
+## 11b. Scanner box — decoding only inside it
+
+With `SCANNER_REGION=on` the camera scanner decodes only inside its target box, plus 5% beyond it on
+every side (`REGION_ALLOWANCE`, `client/src/lib/scannerRegion.ts`); a barcode outside the box no
+longer reads. Off or unset is the whole-frame decoding that ran before it. Only the client reads it,
+from `GET /me`, so the server's own behaviour doesn't change either way.
+
+**Test on one phone first.** Signed in as an admin, Profile → Admin → "Decode only inside the box,
+this device": *On* applies to that phone's browser only, whatever the server says; *Off* forces the
+whole frame; *Server default* clears the choice. The line under it says what's in effect. The choice
+counts only for an admin account. Set each test phone back to *Server default* afterwards — the
+choice outlives a change to the server's setting.
+
+**Turn it on:**
+
+```bash
+grep -q '^SCANNER_REGION=' ~/circlebite/.env \
+  && sed -i 's/^SCANNER_REGION=.*/SCANNER_REGION=on/' ~/circlebite/.env \
+  || echo "SCANNER_REGION=on" >> ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
+**Turn it off** — back to whole-frame decoding. No data involved.
+
+```bash
+sed -i 's/^SCANNER_REGION=.*/SCANNER_REGION=off/' ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
+Either way it reaches a phone on its next page load: the app reads `/me` once when it loads, so a
+phone with Scan already open keeps the old setting until it's reloaded.
 
 ## 12. Admin access — the AI accuracy page
 

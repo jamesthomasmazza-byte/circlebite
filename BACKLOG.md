@@ -54,6 +54,10 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
    option, so this needs our own loop — copy the box's part of each frame into a small canvas and
    call `decodeFromCanvas` — replacing a camera path that works today. Test on 2+ phones before
    switching it on.
+   *Built 2026-10-27 (`5c99f50`, `43d0724`), not yet deployed. Decodes inside the box plus 5%
+   (`REGION_ALLOWANCE`, to tune after the phone tests). An admin can turn it on for one phone from
+   Profile → Admin before the switch goes on; rollback is `SCANNER_REGION=off` and a restart
+   (`docs/server-setup.md` §11b). Open: the phone tests.*
 6. [ ] **Approve/decline circle requests.** Moved from "Deferred". Today an invite is a link the
    invitee accepts, so the Circle tab lists only invites waiting to be accepted (JT, 2026-10-23); a
    request flow is a new feature. Plan first, checked against Prof. Yoest's conditions: the
