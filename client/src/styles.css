@@ -1258,6 +1258,21 @@ a.card:hover {
   font-size: var(--text-sm);
 }
 
+/* A detail on a line of its own, such as an email that would otherwise wrap mid-sentence. */
+.card__line {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+/* A card's buttons: their own line, under the text, never inside a sentence. */
+.card__actions {
+  margin: var(--space-2) 0 0;
+}
+
+.card__actions button {
+  margin-bottom: 0;
+}
+
 /* ---------- Camera scanner — target box (BarcodeScanner.tsx, 2026-10-24) ---------------------- */
 /* A guide only: the decoder still reads the whole frame. The box is wide and short, a barcode's
    shape. Everything outside it is dimmed by the box's own spread shadow, clipped to the preview.

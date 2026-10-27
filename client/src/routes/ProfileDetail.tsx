@@ -302,9 +302,9 @@ export function ProfileDetail() {
       )}
 
       <h2>Allergens</h2>
-      <ul>
+      <ul className="card-list">
         {profile.allergens.map((a) => (
-          <li key={a.id}>
+          <li key={a.id} className="card">
             {a.name} — {canManage ? (
               <select value={a.severity} onChange={(e) => handleAllergenSeverity(a.id, e.target.value as Severity)}>
                 <option value="mild">Mild</option>
@@ -315,10 +315,13 @@ export function ProfileDetail() {
               a.severity
             )}
             {a.treat_traces_as_unsafe && " · traces treated as unsafe"}
+            {/* On its own line, never wrapped into the sentence above (the visual pass, 2026-10-26). */}
             {canManage && (
-              <button type="button" onClick={() => handleRemoveAllergen(a.id)}>
-                Remove
-              </button>
+              <p className="card__actions">
+                <button type="button" onClick={() => handleRemoveAllergen(a.id)}>
+                  Remove
+                </button>
+              </p>
             )}
             {canManage && a.key_needs_review && choices && (() => {
               const notice = reviewNotice(a, choices.find((c) => c.key === a.allergen_key));
@@ -482,23 +485,29 @@ export function ProfileDetail() {
 
               <h3>People who can see this profile</h3>
               {circle.followers.length === 0 && circle.managers.length === 0 && <p>{PROFILE_CIRCLE_JUST_YOU}</p>}
-              <ul>
+              <ul className="card-list">
                 {circle.managers.map((m) => (
-                  <li key={m.user_id}>
-                    {m.display_name} ({m.email}) — co-manager
+                  <li key={m.user_id} className="card">
+                    {m.display_name} — co-manager
+                    <span className="card__meta card__line">{m.email}</span>
                     {isOwner && (
-                      <button type="button" onClick={() => handleRemoveManager(m.user_id)}>
-                        Remove
-                      </button>
+                      <p className="card__actions">
+                        <button type="button" onClick={() => handleRemoveManager(m.user_id)}>
+                          Remove
+                        </button>
+                      </p>
                     )}
                   </li>
                 ))}
                 {circle.followers.map((f) => (
-                  <li key={f.id}>
-                    {f.display_name} ({f.email}) — follows ({f.share_level === "severe_only" ? "severe only" : "full profile"})
-                    <button type="button" onClick={() => handleRevokeFollow(f.id)}>
-                      Revoke
-                    </button>
+                  <li key={f.id} className="card">
+                    {f.display_name} — follows ({f.share_level === "severe_only" ? "severe only" : "full profile"})
+                    <span className="card__meta card__line">{f.email}</span>
+                    <p className="card__actions">
+                      <button type="button" onClick={() => handleRevokeFollow(f.id)}>
+                        Revoke
+                      </button>
+                    </p>
                   </li>
                 ))}
               </ul>

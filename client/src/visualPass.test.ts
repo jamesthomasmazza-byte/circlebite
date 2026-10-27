@@ -25,3 +25,15 @@ test("Profile tab: each managed and followed profile is one card, one link", () 
   assert.equal(page.match(/<ul className="card-list">/g)?.length, 2);
   assert.equal(page.match(/<Link to=\{`\/profiles\/\$\{p\.id\}`\} className="card">/g)?.length, 2);
 });
+
+test("profile page: allergens and people are cards, and each button has its own line", () => {
+  const page = src("./routes/ProfileDetail.tsx");
+  assert.match(page, /<ul className="card-list">\s*\{profile\.allergens\.map/);
+  assert.match(page, /<li key=\{a\.id\} className="card">/);
+  assert.match(page, /<li key=\{m\.user_id\} className="card">/);
+  assert.match(page, /<li key=\{f\.id\} className="card">/);
+  for (const label of ["Remove", "Revoke"]) {
+    const buttons = [...page.matchAll(new RegExp(`<p className="card__actions">\\s*<button type="button" onClick=\\{[^}]*\\}>\\s*${label}`, "g"))];
+    assert.ok(buttons.length >= 1, `${label} sits in a card__actions line`);
+  }
+});
