@@ -2042,3 +2042,8 @@ sign-up and the first-visit redirect went live with it. JT's phone test passed: 
 account through all four sign-up steps into the guided setup, the progress bar carrying on from
 sign-up, and "Add a profile" under "Profiles you manage". BACKLOG item 7 is ticked; whether it stays
 on for judging is still open.
+
+**Decided: `GUIDED_SETUP` stays on (JT).** Through judging and after, the guided sign-up and setup are
+the standard sign-up and add-profile flow. The switch and the classic form stay in the code as the
+rollback (principle 4); off is the emergency fallback, not a planned state
+(`docs/server-setup.md` §11d). That closes item 7's last open question.

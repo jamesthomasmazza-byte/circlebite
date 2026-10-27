@@ -124,7 +124,11 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
    `20261027213148`, `738781e`), with a backup taken first, and `GUIDED_SETUP` already on. JT's phone
    test passed: a new synthetic account through all four sign-up steps into the guided setup, the
    progress bar continuing, and "Add a profile" under "Profiles you manage". Rollback is
-   `GUIDED_SETUP=off` and a restart. Still to decide: whether it's on for judging.*
+   `GUIDED_SETUP=off` and a restart.*
+   *Decided 2026-10-27 (JT): `GUIDED_SETUP` stays on through judging and after. It's the standard
+   sign-up and add-profile flow from now on. The switch and the classic form stay in the code as
+   the rollback (`docs/principles.md` principle 4); off is the emergency fallback, not a planned
+   state (`docs/server-setup.md` §11d).*
 
 ### Nov 13 — code freeze
 

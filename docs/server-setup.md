@@ -443,6 +443,11 @@ time, answered by tapping, saved through the same `POST /profiles` as the classi
 third-party call, so no key or spend cap is involved. The classic form stays a link away on every
 step. Off by default; off, every way in opens the classic form as before.
 
+**On is the standard state (JT, Oct 27, 2026).** The guided sign-up and setup are the app's
+sign-up and add-profile flow, through judging and after. The switch and the classic form stay in the
+code as the rollback (`docs/principles.md` principle 4): turning it off is the emergency fallback if
+the guided flow breaks, not a planned state.
+
 It also covers sign-up and a first visit. `/register` offers the guided sign-up — today's questions,
 one per screen, sent to the same `POST /auth/register` — read from the public `GET /api/features`,
 since a signed-out browser can't read `/me`. After sign-up comes the guided setup, unless an invite's
