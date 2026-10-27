@@ -261,11 +261,19 @@ input[type="file"]::file-selector-button {
   touch-action: manipulation;
 }
 
-/* The one primary action per form is its submit button. */
+/* The one primary action per form is its submit button. On Scan the one primary action is the
+   camera (2026-10-26): "Scan with camera" is filled with .button-primary, and the typed-barcode
+   submit is outlined with .button-secondary. */
 button[type="submit"],
-input[type="submit"] {
+input[type="submit"],
+button.button-primary {
   background: var(--color-accent);
   color: var(--color-on-accent);
+}
+
+button.button-secondary[type="submit"]:not(:disabled) {
+  background: var(--color-bg);
+  color: var(--color-link);
 }
 
 button:disabled,

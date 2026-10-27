@@ -69,3 +69,11 @@ test("Scan offers it only with the label scan on, for the selected profile, and 
   assert.match(prop, /openStandalonePhotoCapture\(\);\s*setScrollToPhotoForm\(true\);/);
   assert.match(SCAN, /<form ref=\{photoFormRef\} onSubmit=\{handlePhotoSubmit\}>/);
 });
+
+test("on Scan the camera is the one primary button; the typed-barcode submit is outlined", () => {
+  const html = renderToStaticMarkup(createElement(BarcodeScanner, { onDetected: () => {} }));
+  assert.match(html, /<button type="button" class="button-primary">Scan with camera<\/button>/);
+  const form = SCAN.slice(SCAN.indexOf("<form onSubmit={handleSubmit}>"), SCAN.indexOf("</form>", SCAN.indexOf("<form onSubmit={handleSubmit}>")));
+  assert.match(form, /<button type="submit" className="button-secondary"/);
+  assert.equal(SCAN.match(/button-primary/g), null, "Scan.tsx adds no other primary button");
+});

@@ -571,7 +571,8 @@ export function Scan() {
               />
             </label>
             {error && <p role="alert">{error}</p>}
-            <button type="submit" disabled={submitting}>
+            {/* Outlined: the camera above is Scan's one primary action (styles.css). */}
+            <button type="submit" className="button-secondary" disabled={submitting}>
               {submitting ? "Checking…" : "Check this product"}
             </button>
           </form>

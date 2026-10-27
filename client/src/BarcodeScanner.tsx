@@ -132,7 +132,7 @@ export function BarcodeScanner({
         </p>
       ) : (
         <p>
-          <button type="button" onClick={startCamera}>
+          <button type="button" className="button-primary" onClick={startCamera}>
             Scan with camera
           </button>
         </p>
