@@ -59,6 +59,12 @@ friend's parent. Anyone in the circle scans a grocery barcode and gets a verdict
 specifically*: **no listed allergens found / contains / unable to confirm**. The person scanning doesn't need to know the
 allergies. They need to know whether this food is safe for this kid.
 
+Someone can also ask to join a circle: on the Circle tab they type the email address of a parent
+they already know, and that parent approves or declines. Until the parent approves, the person
+asking sees nothing about the child — not a name, an allergen or a scan, not even whether that
+address has an account — and approval makes them a follower only; co-managers still come by invite
+link alone (`server/src/routes/circleRequests.ts`, since 2026-10-27).
+
 Where existing tools stop, CircleBite continues: when a barcode isn't in the product database, the
 user photographs the ingredients panel and an AI model reads it, reasons about whether the product
 is safe for that specific profile, and cites the exact ingredient that produced the verdict.
