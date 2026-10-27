@@ -913,6 +913,34 @@ th {
   margin-top: var(--space-1);
 }
 
+/* ---------- Pending invites — Cancel, New link, and a link shown once (2026-10-26) ----------- */
+
+.pending-invites li + li {
+  margin-top: var(--space-3);
+}
+
+.pending-invite__actions {
+  display: block;
+  margin-top: var(--space-1);
+}
+
+.copy-link {
+  margin-block: var(--space-2) var(--space-4);
+}
+
+.copy-link input {
+  width: 100%;
+}
+
+/* "Copied" is announced, but reads as a quiet note, not the bordered status block. */
+.copy-link [role="status"] {
+  display: block;
+  padding-left: 0;
+  border-left: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
 /* ---------- Change history — on the profile page ----------------------------------------------- */
 /* Unseen entries carry the notice's caution tint AND the word "New", so colour is never the only
    signal. A rename's "check this" line uses the contains palette: it asks for action. Every pair

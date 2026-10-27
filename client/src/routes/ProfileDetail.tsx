@@ -25,9 +25,12 @@ import {
   type ShareLevel,
 } from "../lib/api";
 import { AllergenPicker, EMPTY_PICK, isPicked, pickInput, useAllergenChoices, type AllergenPick } from "../AllergenPicker";
+import { CopyLink } from "../CopyLink";
+import { useAuth } from "../lib/AuthContext";
 import { listedAllergenMessage, reviewNotice } from "../lib/allergenChoiceCopy";
 import { NO_PENDING_INVITES, PROFILE_CIRCLE_JUST_YOU } from "../lib/emptyStateCopy";
 import { describeChange } from "../lib/profileChangeCopy";
+import { PendingInvites } from "../PendingInvites";
 import { SEVERITY_REQUIRED } from "../lib/severityCopy";
 import { SeverityChoice } from "../SeverityChoice";
 
@@ -35,6 +38,7 @@ export function ProfileDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const [profile, setProfile] = useState<ProfileDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -438,12 +442,7 @@ export function ProfileDetail() {
         <section id="circle">
           <h2>Circle</h2>
 
-          {lastInviteLink && (
-            <p>
-              Invite link (copy it now — it won't be shown again):{" "}
-              <input readOnly value={lastInviteLink} onFocus={(e) => e.target.select()} size={50} />
-            </p>
-          )}
+          {lastInviteLink && <CopyLink url={lastInviteLink} />}
           {circleError && <p role="alert">{circleError}</p>}
 
           <h3>Invite someone to follow this profile</h3>
@@ -469,18 +468,17 @@ export function ProfileDetail() {
           {circle && (
             <>
               <h3>Pending invites</h3>
-              {circle.pendingFollows.length === 0 && circle.pendingManagerInvites.length === 0 && <p>{NO_PENDING_INVITES}</p>}
-              <ul>
-                {circle.pendingFollows.map((f) => (
-                  <li key={f.id}>
-                    Follow invite ({f.share_level === "severe_only" ? "severe only" : "full profile"})
-                    {f.message && ` — "${f.message}"`}
-                  </li>
-                ))}
-                {circle.pendingManagerInvites.map((m) => (
-                  <li key={m.id}>Co-manager invite</li>
-                ))}
-              </ul>
+              {circle.pendingFollows.length === 0 && circle.pendingManagerInvites.length === 0 ? (
+                <p>{NO_PENDING_INVITES}</p>
+              ) : (
+                <PendingInvites
+                  profileId={id!}
+                  circle={circle}
+                  isOwner={isOwner}
+                  viewerId={user?.id}
+                  onChanged={refreshCircle}
+                />
+              )}
 
               <h3>People who can see this profile</h3>
               {circle.followers.length === 0 && circle.managers.length === 0 && <p>{PROFILE_CIRCLE_JUST_YOU}</p>}

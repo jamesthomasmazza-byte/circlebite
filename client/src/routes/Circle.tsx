@@ -5,6 +5,7 @@ import { getCircle, listProfiles, type CircleData, type ProfileSummary } from ".
 import { useAuth } from "../lib/AuthContext";
 import { CIRCLE_JUST_YOU } from "../lib/emptyStateCopy";
 import { profilePossessive } from "../lib/profileChangeCopy";
+import { PendingInvites } from "../PendingInvites";
 
 type ManagedCircle = { profile: ProfileSummary; circle: CircleData | null };
 
@@ -16,15 +17,22 @@ export function circleOwnerLine(circle: Pick<CircleData, "owner">, viewerId: str
 
 /**
  * The Circle tab (2026-10-23): for each profile you manage, who's in its circle and which invites
- * nobody has accepted yet; then the profiles you follow. Read-only — making invites and removing
- * people stay on the profile page, one link away. There are no requests to approve: an invite is a
- * link the invitee accepts (an approve/decline flow is in BACKLOG, after judging).
+ * nobody has accepted yet; then the profiles you follow. Invites waiting can be cancelled or given a
+ * new link here (2026-10-26, PendingInvites.tsx); making invites and removing people stay on the
+ * profile page, one link away. There are no requests to approve: an invite is a link the invitee
+ * accepts (approve/decline is BACKLOG "Plan to judging" item 6).
  */
 export function Circle() {
   const { user } = useAuth();
   const [managed, setManaged] = useState<ManagedCircle[] | null>(null);
   const [followed, setFollowed] = useState<ProfileSummary[]>([]);
   const [loadError, setLoadError] = useState(false);
+
+  // After a Cancel or New link: that one circle, read again.
+  async function reloadCircle(profileId: string) {
+    const circle = await getCircle(profileId).catch(() => null);
+    setManaged((all) => all?.map((m) => (m.profile.id === profileId ? { ...m, circle } : m)) ?? all);
+  }
 
   useEffect(() => {
     let live = true;
@@ -94,16 +102,13 @@ export function Circle() {
                 {waiting > 0 && (
                   <>
                     <h3>Invites waiting to be accepted</h3>
-                    <ul>
-                      {circle.pendingManagerInvites.map((m) => (
-                        <li key={m.id}>Co-manager invite</li>
-                      ))}
-                      {circle.pendingFollows.map((f) => (
-                        <li key={f.id}>
-                          Follow invite ({f.share_level === "severe_only" ? "severe allergens only" : "full profile"})
-                        </li>
-                      ))}
-                    </ul>
+                    <PendingInvites
+                      profileId={profile.id}
+                      circle={circle}
+                      isOwner={profile.relationship === "owner"}
+                      viewerId={user?.id}
+                      onChanged={() => reloadCircle(profile.id)}
+                    />
                   </>
                 )}
               </>

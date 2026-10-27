@@ -254,7 +254,15 @@ export type ShareLevel = "all" | "severe_only";
 export type CircleData = {
   // Whose profile it is — display name only (server routes/circle.ts).
   owner: { user_id: string; display_name: string } | null;
-  pendingFollows: { id: string; share_level: ShareLevel; message: string | null; created_at: string }[];
+  // Who sent it — display name only; null when that account is gone (server routes/circle.ts).
+  pendingFollows: {
+    id: string;
+    share_level: ShareLevel;
+    message: string | null;
+    created_at: string;
+    sent_by_id: string | null;
+    sent_by_name: string | null;
+  }[];
   followers: {
     id: string;
     share_level: ShareLevel;
@@ -262,7 +270,7 @@ export type CircleData = {
     display_name: string;
     email: string;
   }[];
-  pendingManagerInvites: { id: string; created_at: string }[];
+  pendingManagerInvites: { id: string; created_at: string; sent_by_id: string | null; sent_by_name: string | null }[];
   managers: { user_id: string; added_at: string; display_name: string; email: string }[];
 };
 
@@ -286,6 +294,15 @@ export function revokeFollow(profileId: string, followId: string): Promise<void>
 
 export function createManagerInvite(profileId: string): Promise<{ id: string; token: string }> {
   return apiFetch(`/profiles/${profileId}/manager-invites`, { method: "POST" });
+}
+
+// Cancel an invite nobody has accepted (2026-10-26). A co-manager invite is the owner's to cancel.
+export function cancelFollowInvite(profileId: string, inviteId: string): Promise<void> {
+  return apiFetch(`/profiles/${profileId}/follow-invites/${inviteId}/cancel`, { method: "POST" });
+}
+
+export function cancelManagerInvite(profileId: string, inviteId: string): Promise<void> {
+  return apiFetch(`/profiles/${profileId}/manager-invites/${inviteId}/cancel`, { method: "POST" });
 }
 
 export function removeManager(profileId: string, userId: string): Promise<void> {

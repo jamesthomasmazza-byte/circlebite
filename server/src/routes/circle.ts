@@ -115,6 +115,25 @@ circleRouter.post(
   }),
 );
 
+// Cancel a follow invite nobody has accepted yet (2026-10-26, the Circle tab's Cancel and "New
+// link"). Any manager, as for making one. Its link then reads as revoked and can't be accepted.
+circleRouter.post(
+  "/profiles/:id/follow-invites/:inviteId/cancel",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const profileId = req.params.id;
+    await assertCanManageProfile(req.user!.id, profileId);
+
+    const { rowCount } = await pool.query(
+      `UPDATE follow_relationships SET status = 'revoked'
+       WHERE id = $1 AND allergen_profile_id = $2 AND status = 'pending'`,
+      [req.params.inviteId, profileId],
+    );
+    if (rowCount === 0) throw new HttpError(404, "not_found");
+    res.status(204).end();
+  }),
+);
+
 // ---- Co-manager invites ----
 
 circleRouter.post(
@@ -133,6 +152,26 @@ circleRouter.post(
     );
 
     res.status(201).json({ id: rows[0]!.id, token });
+  }),
+);
+
+// Cancel a co-manager invite nobody has accepted yet (2026-10-26). Owner-only, like removing a
+// co-manager: who else can manage the profile is the owner's to restructure. An accepted invite
+// can't be cancelled here — that's removing the co-manager, below.
+circleRouter.post(
+  "/profiles/:id/manager-invites/:inviteId/cancel",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const profileId = req.params.id;
+    await assertIsProfileOwner(req.user!.id, profileId);
+
+    const { rowCount } = await pool.query(
+      `UPDATE manager_invites SET revoked_at = now()
+       WHERE id = $1 AND allergen_profile_id = $2 AND revoked_at IS NULL AND accepted_at IS NULL`,
+      [req.params.inviteId, profileId],
+    );
+    if (rowCount === 0) throw new HttpError(404, "not_found");
+    res.status(204).end();
   }),
 );
 
@@ -240,11 +279,14 @@ circleRouter.get(
     const profileId = req.params.id;
     await assertCanManageProfile(req.user!.id, profileId);
 
+    // Who sent each pending invite (2026-10-26): "Invite you sent", or the other manager's name.
+    // Display name only; null when that account is gone.
     const { rows: pendingFollows } = await pool.query(
-      `SELECT id, share_level, message, created_at
-       FROM follow_relationships
-       WHERE allergen_profile_id = $1 AND status = 'pending'
-       ORDER BY created_at`,
+      `SELECT f.id, f.share_level, f.message, f.created_at, f.invited_by AS sent_by_id, u.display_name AS sent_by_name
+       FROM follow_relationships f
+       LEFT JOIN users u ON u.id = f.invited_by
+       WHERE f.allergen_profile_id = $1 AND f.status = 'pending'
+       ORDER BY f.created_at`,
       [profileId],
     );
     const { rows: followers } = await pool.query(
@@ -256,10 +298,11 @@ circleRouter.get(
       [profileId],
     );
     const { rows: pendingManagerInvites } = await pool.query(
-      `SELECT id, created_at
-       FROM manager_invites
-       WHERE allergen_profile_id = $1 AND revoked_at IS NULL AND accepted_at IS NULL
-       ORDER BY created_at`,
+      `SELECT mi.id, mi.created_at, mi.created_by AS sent_by_id, u.display_name AS sent_by_name
+       FROM manager_invites mi
+       LEFT JOIN users u ON u.id = mi.created_by
+       WHERE mi.allergen_profile_id = $1 AND mi.revoked_at IS NULL AND mi.accepted_at IS NULL
+       ORDER BY mi.created_at`,
       [profileId],
     );
     const { rows: managers } = await pool.query(
