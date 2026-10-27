@@ -1439,3 +1439,26 @@ a.card:hover {
     border: 0;
   }
 }
+
+/* The guided setup's sample scan (lib/sampleScan.ts): said in words above the card, and tagged in
+   history. Neutral: the card below carries the verdict's own colours, unchanged. */
+
+.sample-scan {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-left: 2px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.sample-scan__tag {
+  display: inline-block;
+  margin-left: var(--space-2);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}

@@ -11,6 +11,7 @@ import {
   yourReportsChangedCard,
 } from "../lib/correctionCopy";
 import { NO_SCANS, SCAN_A_PRODUCT } from "../lib/emptyStateCopy";
+import { HISTORY_SAMPLE_TAG, isSampleScan } from "../lib/sampleScan";
 import { historyUncheckedNote, uncheckedBasis } from "../lib/evidenceCopy";
 import { DISCLAIMER, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
 
@@ -66,6 +67,7 @@ export function ScanHistory() {
             return (
               <li key={scan.id} className="card">
                 <strong>{VERDICT_LABEL[shown.result]}</strong> — {scan.product_name ?? "Unknown product"}
+                {isSampleScan(scan.barcode) && <span className="sample-scan__tag">{HISTORY_SAMPLE_TAG}</span>}
                 {scan.product_brand && ` (${scan.product_brand})`}
                 <span className="card__meta card__line">{new Date(scan.created_at).toLocaleString()}</span>
                 {shown.matched_allergens.filter((m) => m.classification !== "clear" && m.classification !== "unchecked")

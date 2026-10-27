@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { BarcodeScanner } from "../BarcodeScanner";
 import { useScanningFor } from "../TabShell";
 import { ADD_PROFILE_PATH } from "../lib/profileSections";
+import { isSampleScan, SAMPLE_BARCODE, SAMPLE_LABEL, wantsSample } from "../lib/sampleScan";
+import { requestedProfile } from "../lib/tabs";
 import { scanningForId } from "../lib/tabs";
 import { useAuth } from "../lib/AuthContext";
 import { readOverride, scannerRegionOn } from "../lib/scannerRegion";
@@ -123,6 +125,9 @@ export function Scan() {
   // the header and this page can't disagree. A profile page's "Scan for" button sets it.
   const { chosenProfileId, chooseProfile } = useScanningFor();
   const profileId = scanningForId(chosenProfileId, profiles);
+  const { search } = useLocation();
+  const navigate = useNavigate();
+  const sampleStarted = useRef(false);
   const [barcode, setBarcode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -207,6 +212,18 @@ export function Scan() {
       .catch(() => setError("Couldn't load your profiles. Try reloading the page."))
       .finally(() => setLoadingProfiles(false));
   }, []);
+
+  // The guided setup's "Try a sample scan" (lib/sampleScan.ts): once the new profile is the one
+  // chosen, scan the fixed sample barcode for it, then drop the flag so a reload doesn't scan again.
+  useEffect(() => {
+    if (sampleStarted.current || loadingProfiles || !wantsSample(search)) return;
+    if (!profileId || profileId !== requestedProfile(search)) return;
+    sampleStarted.current = true;
+    setBarcode(SAMPLE_BARCODE);
+    void runScan(SAMPLE_BARCODE, profileId);
+    navigate(`/scan?profile=${profileId}`, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, loadingProfiles, profileId]);
 
   // Shared between the barcode flow and the photo flow — clears whatever the other one left behind
   // so switching between them never shows stale state.
@@ -665,6 +682,11 @@ export function Scan() {
 
       {result && shown && !awaitingRequiredPhoto && !couldntReadLabel && (
         <section>
+          {isSampleScan(result.barcode) && (
+            <p className="sample-scan" role="note">
+              {SAMPLE_LABEL}
+            </p>
+          )}
           <div className="verdict-card" data-verdict={shown.result}>
           {/* 1. THE VERDICT — the single word this whole screen exists to deliver, first. */}
           <header className="verdict-card__header">
@@ -887,7 +909,8 @@ export function Scan() {
           {/* Directly under the card it disputes — never at the foot of the page. */}
           {reportOutcome && <p role="status">{reportOutcome}</p>}
 
-          {!reportOutcome && (
+          {/* Never on a sample: nobody files a report about a made-up product. */}
+          {!reportOutcome && !isSampleScan(result.barcode) && (
             <>
               {reportOpen ? (
                 <form onSubmit={handleReportSubmit} className="verdict-report">
