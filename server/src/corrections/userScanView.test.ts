@@ -264,7 +264,7 @@ test("a co-manager's pending escalation is visible to the child's parent", async
   assert.equal(sesame?.classification, "contains");
   assert.equal(sesame?.circleReported, true, "marked as a circle report, so the card can say so");
   assert.deepEqual(parents.circleApplied, [
-    { allergenName: "Sesame", reporters: [{ name: "D", role: "co_manager", isViewer: false }] },
+    { allergenName: "Sesame", reporters: [{ name: "D", role: "co_manager", isViewer: false, withheld: false }] },
   ]);
   assert.deepEqual(parents.communityApplied, [], "not a community report — nobody else has confirmed it");
   assert.deepEqual(parents.corrections, [], "the parent's own corrections list stays theirs");
@@ -285,7 +285,7 @@ test("a circle's pending escalation persists onto every scan of the barcode, eve
 
       // The grandparent's own later scan says it was theirs.
       const theirs = (await loadUserScanViews([parentsLaterScan], REPORTER_PROFILE, CO_MANAGER)).get(parentsLaterScan.id)!;
-      assert.deepEqual(theirs.circleApplied[0]?.reporters, [{ name: "D", role: "co_manager", isViewer: true }]);
+      assert.deepEqual(theirs.circleApplied[0]?.reporters, [{ name: "D", role: "co_manager", isViewer: true, withheld: false }]);
     });
   } finally {
     // after() finds corrections through their scans; this one no longer has one.

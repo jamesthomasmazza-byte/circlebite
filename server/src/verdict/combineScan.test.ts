@@ -465,7 +465,7 @@ test("a combined scan carries the circle's pending report on the barcode, with C
     assert.equal(outcome.result, "safe", "the engine's verdict is untouched");
     assert.equal(outcome.effective?.result, "contains_allergen");
     assert.deepEqual(outcome.pending_circle_reports, [
-      { allergenName: "Milk", reporters: [{ name: "A", role: "owner", isViewer: true }] },
+      { allergenName: "Milk", reporters: [{ name: "A", role: "owner", isViewer: true, withheld: false }] },
     ]);
     assert.equal((await fetchScan(later.id)).result, "safe", "never written into the scan row");
   } finally {

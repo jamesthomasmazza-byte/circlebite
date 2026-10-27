@@ -1,3 +1,4 @@
+import { getProfileAccess } from "../authorization/profiles.js";
 import { pool } from "../db/pool.js";
 import { env } from "../env.js";
 import type { ProfileAllergen } from "../matcher/match.js";
@@ -23,14 +24,23 @@ import type { EffectiveScanResult, ScanForCorrection } from "./applyCorrections.
  * photo and said no. Its reporter still sees it (applyUserCorrections — a rejection never lifts a
  * warning someone attested to from the package in their own hand), but it's no longer put in front
  * of the rest of the circle as a report waiting on a second family, because it isn't one.
+ *
+ * Who reported it: by name and role to the profile's owner and co-managers, by role only to a
+ * follower (JT, 2026-10-27, on Prof. Yoest's question of that day). A follower is never shown who
+ * else is in the circle — the circle summary and change history 404 them — and this was the one
+ * place it showed. Withheld here, where every card and history entry loads it, so a follower's
+ * browser never receives another member's name. Their own report is still theirs ("You").
  */
 
 export type CircleReporter = {
-  /** Display name now. Null when the reporter deleted their account. Never an email address (R9). */
+  /** Display name now. Null when the reporter deleted their account, or when it's withheld. Never
+   *  an email address (R9). */
   name: string | null;
   /** Their role on this profile now. Null when they're no longer in its circle. */
   role: "owner" | "co_manager" | "follower" | null;
   isViewer: boolean;
+  /** True when the viewer is a follower and this is someone else's report: role only, no name. */
+  withheld: boolean;
 };
 
 export type CircleEscalation = {
@@ -70,6 +80,11 @@ export async function loadCircleEscalations(
 
   const barcodes = [...new Set(scans.map((s) => s.barcode).filter((b): b is string => b !== null))];
   const scanIds = scans.map((s) => s.id).filter((id): id is string => id !== null);
+
+  // Names only for the people who manage the profile. Anyone else — a follower, or an access this
+  // didn't expect — gets roles: withholding is the side to fail on.
+  const access = await getProfileAccess(viewerId, profileId);
+  const seesNames = access?.level === "owner" || access?.level === "co_manager";
 
   // Role is read now, not at report time: the card tells today's circle who is behind a warning
   // they're being shown, and someone who has since left it is said to have left.
@@ -111,9 +126,20 @@ export async function loadCircleEscalations(
         allergen: r.allergen,
         correctionId: r.id,
         reporterId: r.reported_by,
-        reporter: { name: r.name, role: r.role, isViewer: r.reported_by !== null && r.reported_by === viewerId },
+        reporter: circleReporter(r, viewerId, seesNames),
       })),
   );
+}
+
+function circleReporter(
+  r: { reported_by: string | null; name: string | null; role: CircleReporter["role"] },
+  viewerId: string,
+  seesNames: boolean,
+): CircleReporter {
+  const isViewer = r.reported_by !== null && r.reported_by === viewerId;
+  // A deleted account has no name to withhold; the card says it was deleted, to everyone.
+  if (isViewer || seesNames || r.reported_by === null) return { name: r.name, role: r.role, isViewer, withheld: false };
+  return { name: null, role: r.role, isViewer: false, withheld: true };
 }
 
 /**
