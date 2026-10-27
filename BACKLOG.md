@@ -11,6 +11,67 @@ often isn't the person whose allergies are at stake.
 
 ---
 
+## Plan to judging (set Oct 26) — code freeze Nov 13
+
+Set by JT on 2026-10-26. Five items move into it: three that were in "Deferred until after
+judging" (1, 5, 6) and two new ones (3, 7). None is a `CONTEST_RULES.md` §7 item. Each week's
+guard is written under it; an item that can't meet its guard by the freeze doesn't ship.
+
+**JT, anytime (no code):**
+- [ ] Rename the duplicate "James Mazza" profile.
+- [ ] Phone check of the scanner box: portrait and landscape, "Got it" before the result.
+- [ ] Owner-only acknowledgement check on production.
+
+### Week of Oct 26 — low risk
+
+1. [ ] **Label-photo fallback when the barcode won't read** (~8 s, offer only, no camera changes).
+   Moved from "Deferred". While the scanner keeps running, offer the ingredients-label photo for
+   the selected profile — an offer, not an automatic switch (the reasoning in the Week 9 scanner
+   item). The decoder and camera code don't change.
+2. [ ] **UX polish:**
+   - camera as the single primary button;
+   - a slim Changes-to-review line on Scan — stays until acknowledged (Condition 2), the full
+     version on Profile;
+   - Circle invite copy: "Invite you sent · not used yet", with Copy link / Cancel;
+   - empty states with a next step;
+   - the Scan button covering the Circle link;
+   - a remove-row control on the add-profile form.
+3. [ ] **Split the Profile page into sections** (Profiles / Account / Admin). New.
+4. [ ] **Visual pass, time-boxed:** cards not bullets, one button style.
+
+### Week of Nov 2 — medium risk, deploy the same week
+
+5. [ ] **Decode only inside the scanner box,** behind `SCANNER_REGION` (off = today's full-frame
+   read). Moved from "Deferred". `decodeFromVideoDevice` reads the whole frame with no region
+   option, so this needs our own loop — copy the box's part of each frame into a small canvas and
+   call `decodeFromCanvas` — replacing a camera path that works today. Test on 2+ phones before
+   switching it on.
+6. [ ] **Approve/decline circle requests.** Moved from "Deferred". Today an invite is a link the
+   invitee accepts, so the Circle tab lists only invites waiting to be accepted (JT, 2026-10-23); a
+   request flow is a new feature. Plan first, checked against Prof. Yoest's conditions: the
+   requester sees nothing until approved, and the owner is notified.
+
+### Week of Nov 9 — highest risk
+
+7. [ ] **Conversational sign-up,** behind its own setting. New. The chat only suggests; its
+   suggestions map onto pick-list keys; the parent confirms on a normal screen; the AI never
+   writes directly; and it falls back to the pick-list if the AI is down. Off for judging if not
+   solid.
+
+### Nov 13 — code freeze
+
+Fixes only from here.
+
+### Week of Nov 16 — judges
+
+- [ ] `--rotate-passwords` reseed, in JT's own terminal.
+- [ ] judge1 shows no banner.
+- [ ] Tick the judge item and fix the `JUDGE_PASSWORD` line.
+- [ ] Four one-time links.
+- [ ] Confirm the AI key works: Console "Last used", plus a label photo.
+
+---
+
 ## Week 0 — Sept 8–14 · Setup and submission
 
 - [x] Framework exception approved in writing by Prof. Yoest — save email to `docs/approvals/`
@@ -759,7 +820,7 @@ it is the least-worked area. Treat this whole section as the priority block it i
       read in three seconds in an aisle, one of them goes.
 - [x] **Scanner targeting box, and a fallback when the barcode won't read.** *The box shipped
       2026-10-24 as a guide only (`client/src/BarcodeScanner.tsx`); decoding only inside it and the
-      label-photo fallback below are both deferred to after judging — see that section.* The camera scanner
+      label-photo fallback below are both in "Plan to judging" (items 5 and 1).* The camera scanner
       gives no indication of where to hold the package, so it hunts across the whole frame and
       takes longer than it needs to. Draw a reticle — a bounded box with the live view dimmed
       outside it — and, if the decoding library supports a region of interest, restrict decoding
@@ -995,14 +1056,6 @@ Out of scope per `CONTEST_RULES.md` §7 — do not start these before judging en
   on `verdict_explanations.failure_reason` / `label_extractions.failure_reason`. Same gap in "That
   wasn't this product": the restored barcode verdict is re-explained from a snapshot that doesn't
   record whether that scan's own AI step failed (`combineScan.ts` `discardLabelEvidence`).
-- Scanner: decode only inside the target box. `decodeFromVideoDevice` reads the whole frame with
-  no region option, so this needs our own loop — copy the box's part of each frame into a small
-  canvas and call `decodeFromCanvas` — replacing a camera path that works today. Test on a phone.
-- Scanner: when no barcode reads within a set interval, offer the ingredients-label photo while
-  the scanner keeps running (an offer, not an automatic switch — the reasoning in the Week 9 item).
-- Circle requests to approve or decline: today an invite is a link the invitee accepts, so the
-  Circle tab lists only invites waiting to be accepted (JT, 2026-10-23). A request flow is a new
-  feature.
 - Wrong-product reports still lower the reporter's own card to "Unable to confirm" — by design (the record is for another product, so none of its claims hold), unlike a removal, which since 2026-10-23 is only noted (`applyCorrections.ts`). Revisit after judging.
 - Harden corroboration against fake families before any removal travels
   (`docs/fake-family-risk.md`, Prof. Yoest's Oct 19 ask). Both, tested, before a corroborated
