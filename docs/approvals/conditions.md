@@ -294,6 +294,15 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
   check, not yet by a follower account on production.
 - **Closed:** October 27, 2026, sent and deployed.
 
+### Due Thursday, November 13 — the code freeze (his October 27, 2:51 PM email, `2026-10-27-yoest-judges-reporter-row.md`)
+
+- **"By your November 13 code freeze, add one row: a barcode where a co-manager has a pending
+  escalation, and what the owner sees next to what the follower sees."** Planned October 27: one
+  barcode per judge, a pending Sesame report by Priya (co-manager) on Maya, where the judge is the
+  owner and sees her name, and a pending Wheat report by Sam (co-manager, new to Noor) on Noor,
+  where the judge follows and sees the role only. Seeded by the judge seed, so it holds after every
+  reseed. **Not yet built.**
+
 ## Corrections owed to Prof. Yoest
 
 The October 8 email, which his October 9 acceptance rests on, claimed more than was checked.
