@@ -56,11 +56,17 @@
   --color-surface: #f3f4f6; /* panels, notes, summaries */
   --color-text: #15171c; /* 17.93:1 on bg · 16.29:1 on surface */
   --color-text-muted: #474e5c; /* 8.36:1 on bg · 7.60:1 on surface */
-  --color-link: #0a44a0; /* 8.95:1 on bg · 8.13:1 on surface */
-  --color-accent: #0a44a0; /* primary button fill */
-  --color-on-accent: #ffffff; /* 8.95:1 on accent */
-  --color-border: #6e7788; /* 4.51:1 on bg — control outlines, non-text */
-  --color-focus: #0a44a0; /* 8.95:1 on bg · 8.13:1 on surface — non-text, 3:1 needed */
+  /* Brand and chrome: teal, the food-allergy awareness colour (2026-10-28). Buttons, links, focus,
+     the Scan tab, control and card outlines. Never a verdict: those keep their own tokens below.
+     #005c65, not the #00626b first chosen: that one is 6.45:1 on surface, under the 7:1 text bar. */
+  --color-link: #005c65; /* 7.72:1 on bg · 7.02:1 on surface */
+  --color-accent: #005c65; /* primary button fill */
+  --color-on-accent: #ffffff; /* 7.72:1 on accent */
+  --color-border: #4f7f82; /* 4.48:1 on bg · 4.07:1 on surface — control outlines, non-text */
+  --color-focus: #005c65; /* 7.72:1 on bg · 7.02:1 on surface — non-text, 3:1 needed */
+  /* The verdict card's own outline and inner rules: the neutral grey from before the teal, so
+     nothing on the card the verdict lives on takes the brand colour. */
+  --color-verdict-edge: #6e7788; /* 4.51:1 on bg · 4.10:1 on surface */
   --color-alert: #9b1010; /* 8.48:1 on bg — role="alert" text and rule */
 
   /* The four verdict states. Each has a text colour on its own tint, and a stronger "line" colour for
@@ -90,11 +96,12 @@
     --color-surface: #1b1e24;
     --color-text: #eef0f4; /* 16.43:1 on bg · 14.63:1 on surface */
     --color-text-muted: #b8bfcc; /* 10.14:1 on bg · 9.03:1 on surface */
-    --color-link: #9cc2ff; /* 10.33:1 on bg · 9.20:1 on surface */
-    --color-accent: #9cc2ff;
-    --color-on-accent: #0c1a33; /* 9.56:1 on accent */
-    --color-border: #7c8596; /* 5.05:1 on bg */
-    --color-focus: #9cc2ff; /* 10.33:1 on bg */
+    --color-link: #6fcfc8; /* 10.21:1 on bg · 9.09:1 on surface */
+    --color-accent: #6fcfc8;
+    --color-on-accent: #0c1a33; /* 9.44:1 on accent */
+    --color-border: #6e9a9c; /* 6.04:1 on bg · 5.38:1 on surface */
+    --color-focus: #6fcfc8; /* 10.21:1 on bg · 9.09:1 on surface */
+    --color-verdict-edge: #7c8596; /* 5.05:1 on bg · 4.49:1 on surface */
     --color-alert: #ffaaa3; /* 10.29:1 on bg */
 
     --color-safe-text: #86e0a6; /* 9.80:1 on safe-bg */
@@ -555,7 +562,7 @@ th {
 .verdict-card {
   margin-block: var(--space-5) var(--space-3);
   overflow: hidden;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-verdict-edge);
   border-left: var(--verdict-rule) var(--verdict-line);
   border-radius: var(--radius-lg);
   background: var(--color-bg);
@@ -820,7 +827,7 @@ th {
 /* Visible, not shouting: small, muted, set off by a hairline instead of a rule. */
 .verdict-card__provenance {
   padding: var(--space-3) 0 0;
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid var(--color-verdict-edge);
   border-left: 0;
   color: var(--color-text-muted);
   font-size: var(--text-sm);
@@ -828,6 +835,11 @@ th {
 
 .verdict-card__provenance strong {
   color: var(--color-text);
+}
+
+/* Any disclosure on the card keeps the card's neutral edge, not the teal-grey chrome outline. */
+.verdict-card details {
+  border-color: var(--color-verdict-edge);
 }
 
 /* The parent's cross-check against the physical package: full size, generous leading, the label's
