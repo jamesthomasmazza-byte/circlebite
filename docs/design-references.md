@@ -72,6 +72,27 @@ Purpose, Familiarity, Craft and Delight matter less for a contest build on a dea
 exception worth keeping: *don't mistake delight for decoration*. A safety tool earns nothing from
 whimsy, and a judge reading an anaphylaxis verdict wrapped in flourish will trust it less.
 
+## Brand colour: teal, for chrome only (2026-10-28)
+
+Teal is the colour associated with food-allergy awareness, so it replaced blue as CircleBite's
+brand colour (`e8ce2d9`). It's for **brand and interface chrome only**: links, the primary and
+outlined buttons, focus rings, the Scan tab's round button and active tab, the header rule, and
+control and card outlines (`--color-accent`, `--color-link`, `--color-focus`, `--color-border` in
+`client/src/styles.css`).
+
+- **The verdict colours are unchanged on purpose.** Every `--color-safe-*`, `--color-caution-*`,
+  `--color-contains-*` and `--color-unknown-*` token stays as it was, and so does the verdict card's
+  own outline (`--color-verdict-edge`, the old neutral grey). The card is where a parent reads an
+  allergy decision; the brand colour must never be mistaken for one of its four states. Controls
+  inside the card are chrome and do turn teal.
+- **#005c65, not #00626b, in light mode.** #00626b is 6.45:1 on `--color-surface`, under the 7:1
+  that `styles.contrast.test.ts` holds link text to. Dark mode uses #6fcfc8.
+- **Checked against the green "No listed allergens found" card** with Chromium's deuteranopia
+  matrix: the teal button reads slate blue-grey and the safe card olive, and the button is a solid
+  fill where the card has a tint, an icon and a rule.
+- **No FARE or Teal Pumpkin branding.** The colour is borrowed, the marks aren't: no logos, names,
+  pumpkins or "teal" campaign language anywhere in the app.
+
 ## Others
 
 Add references here as they come up, each with the same treatment: the link, what it's good for, and
