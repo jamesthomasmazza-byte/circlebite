@@ -28,3 +28,11 @@ test("every select, input and textarea on the profile page has an accessible nam
 test("each allergen's severity dropdown is named after its allergen", () => {
   assert.match(SOURCE, /aria-label=\{`Severity of \$\{a\.name\}`\}/);
 });
+
+test("the allergens come before the name and notes form, and the change history after both", () => {
+  // 2026-10-28 audit: at 390px the Allergens section started about 650px down. Order only.
+  const allergens = SOURCE.indexOf("<h2>Allergens</h2>");
+  const details = SOURCE.indexOf("<form onSubmit={handleSaveDetails}>");
+  const history = SOURCE.indexOf('<section id="changes"');
+  assert.ok(allergens > 0 && details > allergens && history > details);
+});

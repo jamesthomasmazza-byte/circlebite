@@ -285,23 +285,8 @@ export function ProfileDetail() {
         <Link to={`/profiles/${id}/history`}>Recent scans</Link>
       </p>
 
-      {canManage ? (
-        <form onSubmit={handleSaveDetails}>
-          <label>
-            Name
-            <input value={label} onChange={(e) => setLabel(e.target.value)} required />
-          </label>
-          <label>
-            Notes
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
-          </label>
-          {saveError && <p role="alert">{saveError}</p>}
-          <button type="submit">Save</button>
-        </form>
-      ) : (
-        profile.notes && <p>{profile.notes}</p>
-      )}
-
+      {/* First, above the name and notes: what the page is for (2026-10-28 audit — at 390px it
+          started about 650px down). Order only. */}
       <h2>Allergens</h2>
       <ul className="card-list">
         {profile.allergens.map((a) => (
@@ -394,6 +379,23 @@ export function ProfileDetail() {
           {addError && <p role="alert">{addError}</p>}
           <button type="submit">Add allergen</button>
         </form>
+      )}
+
+      {canManage ? (
+        <form onSubmit={handleSaveDetails}>
+          <label>
+            Name
+            <input value={label} onChange={(e) => setLabel(e.target.value)} required />
+          </label>
+          <label>
+            Notes
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </label>
+          {saveError && <p role="alert">{saveError}</p>}
+          <button type="submit">Save</button>
+        </form>
+      ) : (
+        profile.notes && <p>{profile.notes}</p>
       )}
 
       {canManage && (
