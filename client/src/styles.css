@@ -1280,6 +1280,31 @@ a.card:hover {
   font-size: var(--text-sm);
 }
 
+/* Scan history, one summary per entry (2026-10-28): the verdict word in its own colour — on the page
+   background, measured in styles.contrast.test.ts — and the words themselves, so colour is never the
+   only signal. What changed it and what wasn't checked stay outside the disclosure. */
+.history-entry__head {
+  margin: 0;
+}
+
+.history-entry__verdict {
+  color: var(--verdict-text);
+  font-weight: var(--verdict-weight, 700);
+}
+
+.history-entry__rows {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-5);
+}
+
+.history-entry__summary {
+  margin: var(--space-2) 0 0;
+}
+
+.history-entry__details {
+  margin: var(--space-3) 0 0;
+}
+
 /* A detail on a line of its own, such as an email that would otherwise wrap mid-sentence. */
 .card__line {
   display: block;

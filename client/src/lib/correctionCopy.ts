@@ -117,6 +117,10 @@ export function reportErrorMessage(error: { status: number; code: string }): str
  *   they're told it was reviewed and not accepted, and what would help a reviewer now. Never the
  *   admin's reason: that was written for the audit trail, not for them.
  */
+/** How a rejected report is described to the person who filed it — never the admin's reason, which
+ *  was written for the audit trail (docs/principles.md, Oct 1, 2026). */
+export const REVIEWED_NOT_ACCEPTED = "reviewed and not accepted";
+
 export function priorReportNotice(
   reports: Pick<MyReport, "allergen" | "direction" | "status" | "createdAt">[],
   claim: { correctionType: CorrectionType; allergen: string | null },
@@ -138,7 +142,7 @@ export function priorReportNotice(
   return {
     blocking: false,
     message:
-      `You reported this on ${when}, and it was reviewed and not accepted. If the product has changed, ` +
+      `You reported this on ${when}, and it was ${REVIEWED_NOT_ACCEPTED}. If the product has changed, ` +
       "you can report it again — a clear photo of the current ingredients panel is what the reviewer will look at.",
   };
 }

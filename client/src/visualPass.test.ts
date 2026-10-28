@@ -47,8 +47,10 @@ test("Circle tab: members and invites are rows inside the card; circles you're i
 });
 
 test("scan history: one card per scan, the date on its own line, the verdict label unchanged", () => {
+  // Since 2026-10-28 each card is a summary, its reasoning in a disclosure (routes/ScanHistory.test.ts).
   const page = src("./routes/ScanHistory.tsx");
   assert.match(page, /<ul className="card-list">\s*\{scans\.map/);
-  assert.match(page, /<li key=\{scan\.id\} className="card">\s*<strong>\{VERDICT_LABEL\[shown\.result\]\}<\/strong>/);
+  assert.match(page, /<li className="card history-entry">/);
+  assert.match(page, /data-verdict=\{shown\.result\}>\s*\{VERDICT_LABEL\[shown\.result\]\}\s*<\/strong>/);
   assert.match(page, /<span className="card__meta card__line">\{new Date\(scan\.created_at\)\.toLocaleString\(\)\}<\/span>/);
 });

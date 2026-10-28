@@ -61,6 +61,11 @@ const PAIRS: [fg: string, bg: string, min: number][] = [
   ["color-text", "color-caution-bg", TEXT],
   ["color-text", "color-contains-bg", TEXT],
   ["color-text", "color-unknown-bg", TEXT],
+  // Scan history's verdict word sits on the page, not its tint (ScanHistory.tsx).
+  ["color-safe-text", "color-bg", TEXT],
+  ["color-caution-text", "color-bg", TEXT],
+  ["color-contains-text", "color-bg", TEXT],
+  ["color-unknown-text", "color-bg", TEXT],
   ["color-safe-line", "color-bg", NON_TEXT],
   ["color-caution-line", "color-bg", NON_TEXT],
   ["color-contains-line", "color-bg", NON_TEXT],
