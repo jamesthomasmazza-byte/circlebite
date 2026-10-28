@@ -92,11 +92,18 @@ export function uncheckedNote(input: {
   profileLabel: string | null;
   leadsCard: boolean;
   basis?: UncheckedBasis;
+  /** The card's explanation, shown above, already says why there was nothing to check against
+   *  ("We don't have this barcode on file…"). Then this names the allergens and leaves the why to
+   *  that one sentence: the no-data card said "no product data" four times (2026-10-28 audit). Only
+   *  for "no_product_data" — a photo's limit is said nowhere else on the card. */
+  whySaidAbove?: boolean;
 }): string {
   const n = input.names.length;
   const whose = input.profileLabel ? `${input.profileLabel}'s` : "your";
+  const basis = input.basis ?? "photo";
+  const why = basis === "no_product_data" && input.whySaidAbove ? "" : ` ${uncheckedWhy(n, basis)}`;
   // "1 of your allergens" — the plural is right at every count ("one of several").
-  const line = `couldn't check ${n} of ${whose} allergens ${uncheckedWhy(n, input.basis ?? "photo")}: ${input.names.join(", ")}.`;
+  const line = `couldn't check ${n} of ${whose} allergens${why}: ${input.names.join(", ")}.`;
   return input.leadsCard ? `Not confirmed — we ${line}` : `We ${line}`;
 }
 
@@ -128,7 +135,9 @@ export function historyUncheckedNote(names: string[], basis: UncheckedBasis): st
     : `Couldn't check ${allergens} against this photo: ${names.join(", ")}. A photo isn't checked as thoroughly as a barcode — always check the package.`;
 }
 
-/** What an offered (not required) label photo is for, said before the button. Missing or thin data
+/** What an offered (not required) label photo is for, said before the button. Missing data says only
+ *  what the photo can do: the card's explanation already says there's no product data, and saying it
+ *  again here was one of four times on one card (2026-10-28 audit). Missing or thin data
  *  is only ever "prompted" when the card already says Contains or caution (scanPlan.ts) —
  *  so the copy points the photo at the allergens the barcode couldn't check, and never reads as
  *  though the warning itself is in doubt. Null for anything that isn't an offer. */
@@ -138,5 +147,6 @@ export function photoOfferCopy(decision: EvidenceDecision | null | undefined, pr
     return "This profile has a severe allergen on file. The barcode data looks fine, but a photo of the label gives a second opinion.";
   }
   const whose = profileLabel ? `${profileLabel}'s` : "your";
+  if (decision.reason === "missing_data") return `A photo of the ingredients panel can check the rest of ${whose} allergens.`;
   return `The product data couldn't check the rest of ${whose} allergens — a photo of the ingredients panel can.`;
 }

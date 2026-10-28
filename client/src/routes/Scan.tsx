@@ -868,6 +868,8 @@ export function Scan() {
               profileLabel: profiles.find((p) => p.id === profileId)?.label ?? null,
               leadsCard: onlyUncheckedGaps(shown.matched_allergens),
               basis: uncheckedBasis(unchecked),
+              // The explanation above is the one place the card says why there was nothing to check.
+              whySaidAbove: showsExplanation(result, shown.matched_allergens),
             });
             return <p role="note">{note}</p>;
           })()}

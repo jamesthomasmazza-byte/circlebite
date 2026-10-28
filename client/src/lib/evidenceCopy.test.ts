@@ -58,14 +58,19 @@ test("uncheckedNote: one allergen, no profile label, not leading", () => {
 });
 
 test("photoOfferCopy: a Contains card on missing data offers the photo for the other allergens, not the warning", () => {
-  // The 2026-10-05 seed case: a shopper report says Contains on a barcode no database has.
+  // The 2026-10-05 seed case: a shopper report says Contains on a barcode no database has. The card's
+  // explanation already says there's no product data, so this says only what the photo is for.
   const copy = photoOfferCopy({ photo: "prompted", reason: "missing_data" }, "Maya");
-  assert.equal(copy, "The product data couldn't check the rest of Maya's allergens — a photo of the ingredients panel can.");
-  assert.doesNotMatch(copy!, /severe|second opinion|confirm/);
+  assert.equal(copy, "A photo of the ingredients panel can check the rest of Maya's allergens.");
+  assert.doesNotMatch(copy!, /severe|second opinion|confirm|product data/);
 });
 
-test("photoOfferCopy: thin data reads the same, and falls back to 'your' without a label", () => {
-  assert.match(photoOfferCopy({ photo: "prompted", reason: "thin_data" }, null)!, /rest of your allergens/);
+test("photoOfferCopy: thin data still says the product data fell short, and falls back to 'your' without a label", () => {
+  // A thin record has no explanation saying so above it.
+  assert.equal(
+    photoOfferCopy({ photo: "prompted", reason: "thin_data" }, null),
+    "The product data couldn't check the rest of your allergens — a photo of the ingredients panel can.",
+  );
 });
 
 test("photoOfferCopy: the severe-allergen second opinion keeps its own copy", () => {
@@ -83,6 +88,17 @@ test("uncheckedNote: no product data says there was nothing to check against, ne
   const note = uncheckedNote({ names: ["sesame"], profileLabel: "Maya", leadsCard: false, basis: "no_product_data" });
   assert.equal(note, "We couldn't check 1 of Maya's allergens — there's no product data on file to check it against: sesame.");
   assert.doesNotMatch(note, /\bsafe\b|\bclear\b|\bphoto\b|not (found|listed|in)/i);
+});
+
+test("uncheckedNote: under the card's own no-data sentence, it names the allergens without saying why again", () => {
+  // The 2026-10-28 audit: "no product data" four times on one card. The explanation keeps the claim.
+  const note = uncheckedNote({ names: ["sesame"], profileLabel: "Maya", leadsCard: false, basis: "no_product_data", whySaidAbove: true });
+  assert.equal(note, "We couldn't check 1 of Maya's allergens: sesame.");
+  // A photo's limit is said nowhere else, so it stays even when asked.
+  assert.equal(
+    uncheckedNote({ names: ["sesame"], profileLabel: "Maya", leadsCard: false, basis: "photo", whySaidAbove: true }),
+    "We couldn't check 1 of Maya's allergens against this photo: sesame.",
+  );
 });
 
 test("uncheckedNote: no product data, several allergens, leading the card", () => {
