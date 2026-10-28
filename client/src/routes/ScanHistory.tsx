@@ -12,6 +12,7 @@ import {
 } from "../lib/correctionCopy";
 import { NO_SCANS, SCAN_A_PRODUCT } from "../lib/emptyStateCopy";
 import { HISTORY_SAMPLE_TAG, isSampleScan } from "../lib/sampleScan";
+import { shortDateTime } from "../lib/dateCopy";
 import { historyUncheckedNote, uncheckedBasis } from "../lib/evidenceCopy";
 import { historyChangedLine, historyNotCheckedLine, REPORT_NOT_SHARED } from "../lib/historyCopy";
 import { DISCLAIMER, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
@@ -97,7 +98,9 @@ export function ScanHistoryEntryCard({ scan, profileLabel }: { scan: ScanHistory
         {isSampleScan(scan.barcode) && <span className="sample-scan__tag">{HISTORY_SAMPLE_TAG}</span>}
         {scan.product_brand && ` (${scan.product_brand})`}
       </p>
-      <span className="card__meta card__line">{new Date(scan.created_at).toLocaleString()}</span>
+      <time className="card__meta card__line" dateTime={scan.created_at}>
+        {shortDateTime(scan.created_at)}
+      </time>
       {rows.length > 0 && (
         <ul className="history-entry__rows">
           {rows.map((m) => (

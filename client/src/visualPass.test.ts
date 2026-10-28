@@ -52,5 +52,5 @@ test("scan history: one card per scan, the date on its own line, the verdict lab
   assert.match(page, /<ul className="card-list">\s*\{scans\.map/);
   assert.match(page, /<li className="card history-entry">/);
   assert.match(page, /data-verdict=\{shown\.result\}>\s*\{VERDICT_LABEL\[shown\.result\]\}\s*<\/strong>/);
-  assert.match(page, /<span className="card__meta card__line">\{new Date\(scan\.created_at\)\.toLocaleString\(\)\}<\/span>/);
+  assert.match(page, /<time className="card__meta card__line" dateTime=\{scan\.created_at\}>\s*\{shortDateTime\(scan\.created_at\)\}\s*<\/time>/);
 });

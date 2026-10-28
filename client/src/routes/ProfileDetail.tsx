@@ -31,6 +31,7 @@ import { listedAllergenMessage, reviewNotice } from "../lib/allergenChoiceCopy";
 import { NO_PENDING_INVITES, PROFILE_CIRCLE_JUST_YOU } from "../lib/emptyStateCopy";
 import { describeChange } from "../lib/profileChangeCopy";
 import { PendingInvites } from "../PendingInvites";
+import { shortDateTime } from "../lib/dateCopy";
 import { SEVERITY_REQUIRED } from "../lib/severityCopy";
 import { SeverityChoice } from "../SeverityChoice";
 
@@ -416,7 +417,7 @@ export function ProfileDetail() {
                   <li key={e.id} className="change-entry" data-unseen={e.unseen ? "true" : undefined}>
                     <p className="change-entry__meta">
                       {e.unseen && <strong className="change-entry__new">New · </strong>}
-                      <time dateTime={e.createdAt}>{new Date(e.createdAt).toLocaleString()}</time>
+                      <time dateTime={e.createdAt}>{shortDateTime(e.createdAt)}</time>
                     </p>
                     <p className="change-entry__headline">{d.headline}</p>
                     {d.details.map((line) => (
