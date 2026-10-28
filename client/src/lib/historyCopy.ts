@@ -1,5 +1,6 @@
 import type { ScanHistoryEntry } from "./api";
 import { REVIEWED_NOT_ACCEPTED, UNCHANGED_BY_YOUR_REPORT, yourReportsChangedCard } from "./correctionCopy";
+import { VERDICT_LABEL } from "./verdictCopy";
 
 // Scan history's one-line summary per entry (2026-10-28 audit; BACKLOG.md Week 9, "Scan history
 // repeats itself"). The reasoning moves into a disclosure; what stays outside it is the verdict, what
@@ -15,7 +16,10 @@ export const REPORT_NOT_SHARED = "A report about an allergen on this profile tha
 
 type Entry = Pick<ScanHistoryEntry, "original" | "effective" | "corrections" | "community_reports" | "pending_circle_reports">;
 
-/** What changed this entry's verdict, in one line, or null when nothing did. */
+/** What changed this entry's verdict, in one line, or null when nothing did. A changed verdict opens
+ *  with what it was — "Was Unable to confirm — changed by shopper reports." — so the original stays
+ *  visible outside the disclosure: never silently (docs/legacy-spec.md §6; JT, Oct 28, 2026). The
+ *  verdict labels themselves, so never "Safe". */
 export function historyChangedLine(scan: Entry): string | null {
   if (!scan.effective) {
     // Only rejected reports left: the engine's own verdict again (ScanHistory.tsx).
@@ -26,7 +30,7 @@ export function historyChangedLine(scan: Entry): string | null {
   const circle = scan.pending_circle_reports.length > 0;
   if (!yours && !shoppers && !circle) {
     if (scan.corrections.length > 0) return `${UNCHANGED_BY_YOUR_REPORT.replace(/:$/, "")}.`;
-    return `Changed by ${REPORT_NOT_SHARED.charAt(0).toLowerCase()}${REPORT_NOT_SHARED.slice(1)}.`;
+    return `${was(scan)}${REPORT_NOT_SHARED.charAt(0).toLowerCase()}${REPORT_NOT_SHARED.slice(1)}.`;
   }
   const named = [
     yours && "your report",
@@ -34,7 +38,11 @@ export function historyChangedLine(scan: Entry): string | null {
     circle && "a report from your circle, not yet confirmed",
   ].filter((s): s is string => Boolean(s));
   const list = named.length === 1 ? named[0] : `${named.slice(0, -1).join(", ")} and ${named[named.length - 1]}`;
-  return `Changed by ${list}.`;
+  return `${was(scan)}${list}.`;
+}
+
+function was(scan: Entry): string {
+  return `Was ${VERDICT_LABEL[scan.original.result]} — changed by `;
 }
 
 /** "Not checked: sesame, milk." — every allergen this entry couldn't check, by name, or null. */

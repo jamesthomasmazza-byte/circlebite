@@ -78,8 +78,8 @@ export function ScanHistory() {
  */
 export function ScanHistoryEntryCard({ scan, profileLabel }: { scan: ScanHistoryEntry; profileLabel: string | null }) {
   // CONTEST_RULES.md §3: a user's own correction overrides their view immediately — but never
-  // silently (docs/legacy-spec.md §6). The effective state is the headline; the summary line says
-  // it was changed, and the original verdict is in the disclosure.
+  // silently (docs/legacy-spec.md §6). The effective state is the headline; the summary line opens
+  // with the original verdict ("Was Unable to confirm — changed by …"), and the why is in the disclosure.
   const shown = scan.effective ?? scan.original;
   const rows = shown.matched_allergens.filter((m) => m.classification !== "clear" && m.classification !== "unchecked");
   const unchecked = shown.matched_allergens.filter((m) => m.classification === "unchecked");

@@ -60,7 +60,11 @@ test("the verdict word, product, rows and what changed it are outside the disclo
   assert.match(outside, /data-verdict="contains_allergen"[^>]*>Contains an allergen</);
   assert.match(outside, /Corn Tortilla Chips/);
   assert.match(outside, /Wheat \(moderate\)/, "the allergen row stays visible");
-  assert.match(outside, /Changed by a report from your circle, not yet confirmed\./, "the unconfirmed status is never folded away");
+  assert.match(
+    outside,
+    /Was No listed allergens found — changed by a report from your circle, not yet confirmed\./,
+    "the original verdict and the unconfirmed status are never folded away",
+  );
   assert.match(inside, /<details class="history-entry__details"><summary>Details<\/summary>/);
   assert.doesNotMatch(inside, /<details[^>]* open/, "closed by default");
   assert.match(inside, /Originally <strong>No listed allergens found<\/strong> — changed because of:/);
@@ -72,7 +76,7 @@ test("a follower's summary names no reporter, even when the report itself carrie
     ...FOLLOWER_CIRCLE,
     pending_circle_reports: [{ allergenName: "Wheat", reporters: [{ name: "Sam Okafor", role: "co_manager", isViewer: false }] }],
   });
-  assert.equal(historyChangedLine(named), "Changed by a report from your circle, not yet confirmed.");
+  assert.equal(historyChangedLine(named), "Was No listed allergens found — changed by a report from your circle, not yet confirmed.");
   assert.doesNotMatch(render(FOLLOWER_CIRCLE).outside, /Sam|Okafor|Priya/);
 });
 
@@ -91,7 +95,7 @@ test("every unchecked allergen is named outside the disclosure", () => {
   const { outside, inside } = render(scan);
   assert.equal(historyNotCheckedLine(scan), "Not checked: sesame.");
   assert.match(outside, /Not checked: sesame\./);
-  assert.match(outside, /Changed by shopper reports\./);
+  assert.match(outside, /Was Unable to confirm — changed by shopper reports\./, "the original verdict is outside the disclosure");
   assert.match(inside, /Couldn(&#x27;|')t check 1 allergen/, "the explanation of it goes inside");
 });
 
@@ -113,7 +117,7 @@ test("severe_only: a change from a hidden allergen's report says only what histo
     effective: { result: "contains_allergen", matched_allergens: [row("Peanut")] },
   });
   const line = historyChangedLine(scan)!;
-  assert.equal(line, "Changed by a report about an allergen on this profile that isn't shared with you.");
+  assert.equal(line, "Was No listed allergens found — changed by a report about an allergen on this profile that isn't shared with you.");
   const { outside, inside } = render(scan);
   // Nothing beyond that sentence: no allergen name but the shared one, no severity, no reporter.
   assert.doesNotMatch(outside + inside, /Egg|mild|moderate|circle|shopper|not yet confirmed/i);
@@ -124,5 +128,27 @@ test("severe_only: a change from a hidden allergen's report says only what histo
 test("an entry nothing changed has no summary line and no disclosure", () => {
   const { outside, inside } = render(entry({}));
   assert.equal(inside, "");
-  assert.doesNotMatch(outside, /Changed by|Not checked/);
+  assert.doesNotMatch(outside, /Was |changed by|Not checked/i);
+});
+
+test("every changed verdict opens with what it was, in the verdict's own label, never 'Safe'", () => {
+  const verdicts = ["safe", "may_contain_caution", "contains_allergen", "unable_to_confirm"] as const;
+  for (const original of verdicts) {
+    const scan = entry({
+      original: { result: original, matched_allergens: [row("Peanut")] },
+      effective: { result: "contains_allergen", matched_allergens: [row("Peanut", { classification: "contains", communityReported: true })] },
+      community_reports: [{ allergenName: "Peanut", reporterCount: 2 }],
+    });
+    const line = historyChangedLine(scan)!;
+    assert.match(line, /^Was (No listed allergens found|May contain — caution|Contains an allergen|Unable to confirm) — changed by shopper reports\.$/);
+    assert.doesNotMatch(line, /\bsafe\b/i);
+  }
+  // Your own report, and several sources together.
+  const yours = entry({
+    original: { result: "safe", matched_allergens: [row("Peanut")] },
+    effective: { result: "contains_allergen", matched_allergens: [row("Peanut", { classification: "contains" })] },
+    corrections: [{ id: "c1", correctionType: "flag_missing", direction: "add_caution", allergen: "Peanut", note: null, status: "pending", createdAt: "2026-10-20T00:00:00Z" }],
+    community_reports: [{ allergenName: "Peanut", reporterCount: 2 }],
+  });
+  assert.equal(historyChangedLine(yours), "Was No listed allergens found — changed by your report and shopper reports.");
 });
