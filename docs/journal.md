@@ -2047,3 +2047,59 @@ on for judging is still open.
 the standard sign-up and add-profile flow. The switch and the classic form stay in the code as the
 rollback (principle 4); off is the emergency fallback, not a planned state
 (`docs/server-setup.md` §11d). That closes item 7's last open question.
+
+## 2026-10-28 — A UI audit, and ten fixes from it (not yet deployed)
+
+JT audited the app locally at `a8cd060` and on production at circlebite.app. He found nine fixes,
+and a tenth came during the work: moving the brand color to teal. Each fix is one commit, with the
+client and server tests run before it. Nothing has been deployed; JT runs `release.sh` himself.
+Rules held throughout:
+- no change to verdict logic, corroboration, who can report what, or what a follower sees;
+- no new dependency;
+- the disclaimer and 911 on every verdict card;
+- Condition 2's notice still first under the header.
+
+- **The verdict is brought into view and announced (`797d1d5`).** At 390×844 the card started
+  under the tab bar. After "Check this product" or a label photo, focus fell to `<body>`, so a
+  screen reader heard nothing. A new result now scrolls into view, instantly under reduced motion,
+  and focuses the card's heading. A report changing the card doesn't move the page.
+- **A whole sentence before the photo button (`3a532a3`).** It used to end in a comma.
+- **Accessible names on the profile page (`5b0f93e`).** The audit found these unnamed: each
+  severity dropdown (axe select-name, critical), the invite share-level dropdown, and the message
+  input.
+- **Teal for brand and chrome (`e8ce2d9`, docs `98ddfed`).** Verdict colors are unchanged, and so
+  is the verdict card's own outline. Light mode is #005c65, not the #00626b first picked, which
+  fell under the 7:1 text bar on the surface color. Through Chromium's deuteranopia matrix, the teal
+  button reads slate blue-gray and the green "No listed allergens found" card reads olive.
+- **The no-data card says "no product data" once (`2fd92f3`, `JUDGES.md` in `7f7331e`).** It had
+  said so four times. The explanation keeps the claim; the rows and the "product data alone says"
+  block are unchanged.
+- **Scan history as one summary per entry (`2b43999`).**
+  - **Outside the disclosure:** the verdict word in its color, the product, the date, the allergen
+    rows, what changed it, and what wasn't checked.
+  - **In a closed "Details":** the reasoning.
+  - **Uncertainty stays out of the fold:** "not yet confirmed" and every unchecked allergen's name.
+  - **The two cases JT ruled on:** a rejected report reuses "reviewed and not accepted", and a
+    severe_only follower's summary says only what their history already did.
+
+  Checked at 320 and 390px in a harness page using the real component and stylesheet.
+- **Times without seconds (`920be4d`).** "Oct 28, 9:43 AM", with the year only when it isn't this
+  year.
+- **A failed lookup is not "not on file" (`898c7bb`, principle 2 in `7340eb4`).**
+  - **The rule:** only Open Food Facts' own `status: 0` means not found. A timeout, error or bad
+    reply is "failed": the card says the database couldn't be reached, and the failure is never
+    cached.
+  - **Refreshes:** when a refresh fails, a stale found row is served. JT chose that over serving
+    any stale row.
+  - **The verdict** is still Unable to confirm.
+- **The barcode field clears after a standalone label photo (`a940b17`).** On production it had
+  still shown 2990000000038 above a card read from an unrelated photo.
+- **Allergens above name and notes on the profile page (`39aa8a9`).** Order only.
+
+BACKLOG ticked in `7f37447`. "Four small findings" stays open: only the comma is done. One
+difference is recorded there. The old history item asked to keep the original verdict visible.
+It's now inside "Details", per this audit's spec. The change itself is still stated outside
+("Changed by shopper reports."), so it's never silent.
+
+Still to check on a phone after the deploy: VoiceOver announcing the verdict after a scan and after
+a label photo, the teal on a real screen in both modes, and scan history at phone width.
