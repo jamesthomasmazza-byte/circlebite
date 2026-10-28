@@ -438,6 +438,8 @@ it is the least-worked area. Treat this whole section as the priority block it i
         label" button is used as the end of the sentence. It doesn't read as one thing, and a screen
         reader gets a fragment followed by an unconnected button label. Seen on the app's most
         important screen in three separate captures.
+        *Done 2026-10-28 (`3a532a3`): "This profile has a severe allergen on file. A photo of the
+        ingredients label is an extra check." The other three findings here are still open.*
       - **The rejection-reason field sits between Reject and Accept** in the review queue, so it
         reads as applying to either. A reason typed before pressing Accept is silently discarded. It
         belongs to Reject alone — move it under that button, or reveal it only once Reject is
@@ -450,7 +452,7 @@ it is the least-worked area. Treat this whole section as the priority block it i
         "The product data alone says Safe." separately from `Scan.tsx`'s and `ScanHistory.tsx`'s
         `safe: "Safe"` entries. The rename below is a sweep for every place the verdict word is
         produced, not a two-line change, and a grep for the literal won't find all of it.
-- [ ] **Scan history repeats itself, and the no-data card says one thing four times.** Both found
+- [x] **Scan history repeats itself, and the no-data card says one thing four times.** Both found
       live 2026-10-05, both copy rather than logic, both on screens a judge will open.
       - Every community-escalated entry in scan history repeats its whole explanation block — the
         unchecked note, the "originally Unable to confirm — changed because of" block, the reporter
@@ -461,6 +463,15 @@ it is the least-worked area. Treat this whole section as the priority block it i
         line, the unchecked note, the photo offer, and the "product data alone says" block. Each is
         individually justified and together it's the three-second-read problem already fixed twice
         (2026-09-28, 2026-10-01). Say it once, in the place that earns it.
+      *Done 2026-10-28, from the UI audit of that day.*
+      - *History: `2b43999`. Each entry is the verdict word in its color, the product, the date,
+        the allergen rows, and a line each for what changed it and what wasn't checked; the
+        reasoning is in a closed "Details". Uncertainty stays outside it ("not yet confirmed",
+        "Not checked: sesame"). Dates without seconds: `920be4d`.*
+      - *No-data card: `2fd92f3`. The explanation keeps the claim; the unchecked note names
+        sesame without repeating why, and the photo offer says only what the photo is for. The
+        rows and the "product data alone says … Changed by …" block are unchanged. `JUDGES.md`
+        updated in `7f7331e`.*
 - [ ] **An allergen added to a profile after a scan doesn't appear on that scan's history card.**
       The 2026-10-05 fix covers scans that checked nothing; this is the case where the scan *did*
       have product data and the profile changed afterwards. Same "rows are the contract" problem,
@@ -501,8 +512,11 @@ it is the least-worked area. Treat this whole section as the priority block it i
       tell unknown from no, resolving to the scarier answer. One difference to keep: on a verdict,
       principle 1 makes the cautious answer the right one when data is missing. Here nothing about
       safety rests on the wording, so an alarming claim buys nothing.
-- [ ] **A failed product lookup is shown as "We don't have this barcode on file", and cached for a
-      day.** Found 2026-10-08. `fetchProduct` (`server/src/lib/openFoodFacts.ts`) collapses a
+- [x] **A failed product lookup is shown as "We don't have this barcode on file", and cached for a
+      day.** *Done 2026-10-28 (`898c7bb`), as sized below, with one refinement (JT): when a refresh
+      fails, only a stale row that **found** the product is served; a stale not-found row gives
+      "failed", since its answer is as old as the row and may itself have been a cached failure.
+      Principle 2's line updated in `7340eb4`.* Found 2026-10-08. `fetchProduct` (`server/src/lib/openFoodFacts.ts`) collapses a
       network error, timeout, non-2xx or bad JSON into the same `NOT_FOUND` as a genuine not-found.
       `getProduct` caches it for `CACHE_TTL_MS` (24 h), and `explainMissingProductData` then tells the
       parent the barcode isn't on file. The verdict, Unable to confirm, is right (principle 1). The
@@ -1016,13 +1030,17 @@ it is the least-worked area. Treat this whole section as the priority block it i
       shoppers", plus "We couldn't check 1 of Maya's allergens — there's no product data on file to
       check it against: sesame." (`judgeSeed.test.ts` asserts both). The card only escalates with
       `COMMUNITY_CORRECTIONS=on`.
-- [ ] Scan history repeats the whole "Originally Unable to confirm — changed because of…" block on
+- [x] Scan history repeats the whole "Originally Unable to confirm — changed because of…" block on
       every community-escalated entry, so with several of them the page gets long fast (seen on the
       judge account, 2026-10-01: three scans of the same seeded barcode, three identical blocks).
       Consider a shorter per-entry line — the headline verdict plus a one-line "escalated by 1
       shopper report" — with the full block on the live card only, or behind a disclosure. Keep the
       original verdict visible either way: the never-silently rule (docs/legacy-spec.md §6) is the
       reason the block exists.
+      *Done 2026-10-28 (`2b43999`), with the item above. The change is stated outside the disclosure
+      ("Changed by shopper reports."), so it is never silent; the original verdict itself ("Originally
+      Unable to confirm") is now inside the closed "Details", by JT's Oct 28 spec, not on the summary
+      line this item asked to keep it on.*
 - [ ] **`scansLabel.test.ts` depends on the local `.env`.** Its kill-switch tests assert
       `LABEL_SCAN` is unset and fail when `server/.env` has `LABEL_SCAN=on`, which is exactly what
       checking the photo flow locally needs (found 2026-10-17). Tests should set the switch
