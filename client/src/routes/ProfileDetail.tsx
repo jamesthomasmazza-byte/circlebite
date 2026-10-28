@@ -306,7 +306,11 @@ export function ProfileDetail() {
         {profile.allergens.map((a) => (
           <li key={a.id} className="card">
             {a.name} — {canManage ? (
-              <select value={a.severity} onChange={(e) => handleAllergenSeverity(a.id, e.target.value as Severity)}>
+              <select
+                aria-label={`Severity of ${a.name}`}
+                value={a.severity}
+                onChange={(e) => handleAllergenSeverity(a.id, e.target.value as Severity)}
+              >
                 <option value="mild">Mild</option>
                 <option value="moderate">Moderate</option>
                 <option value="severe">Severe</option>
@@ -450,11 +454,16 @@ export function ProfileDetail() {
 
           <h3>Invite someone to follow this profile</h3>
           <form onSubmit={handleCreateFollowInvite}>
-            <select value={followShareLevel} onChange={(e) => setFollowShareLevel(e.target.value as ShareLevel)}>
+            <select
+              aria-label="What they can see"
+              value={followShareLevel}
+              onChange={(e) => setFollowShareLevel(e.target.value as ShareLevel)}
+            >
               <option value="all">Full profile</option>
               <option value="severe_only">Severe allergens only</option>
             </select>
             <input
+              aria-label="Message (optional)"
               placeholder="Message (optional)"
               value={followMessage}
               onChange={(e) => setFollowMessage(e.target.value)}
