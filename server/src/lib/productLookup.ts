@@ -20,6 +20,7 @@ type ProductRow = {
 
 function rowToLookup(row: ProductRow): ProductLookup {
   return {
+    status: row.found ? "found" : "not_found",
     found: row.found,
     name: row.name,
     brand: row.brand,
@@ -56,6 +57,14 @@ export async function getProduct(barcode: string): Promise<ProductLookup> {
   }
 
   const fresh = await fetchProduct(barcode);
+  // A failed lookup is never cached: written as a row it would read as "not on file" for a day, and
+  // overwrite a real product's data once that row passed its TTL. A stale row that found the product
+  // beats no data at all, so it's served instead. A stale not-found isn't: its answer is as old as
+  // the row, and one written before failures were told apart may itself have been a failure — so
+  // the failure is said as what it is.
+  if (fresh.status === "failed") {
+    return cached?.found ? rowToLookup(cached) : fresh;
+  }
   await pool.query(
     `INSERT INTO products
        (barcode, found, name, brand, ingredients_text, allergens_tags, traces_tags, raw_data, product_last_updated, fetched_at)

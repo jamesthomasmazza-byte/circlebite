@@ -290,6 +290,7 @@ test("a barcode carried forward is dropped to NULL when Open Food Facts now has 
       extractLabelDeps: fakeExtractOk(),
       reasonVerdictDeps: REASON_DEPS_OK,
       getProduct: async () => ({
+        status: "found",
         found: true,
         name: "Now Found",
         brand: null,
@@ -312,6 +313,7 @@ test("a carried-forward barcode still absent/thin in Open Food Facts is kept and
       extractLabelDeps: fakeExtractOk(),
       reasonVerdictDeps: REASON_DEPS_OK,
       getProduct: async () => ({
+        status: "not_found",
         found: false,
         name: null,
         brand: null,

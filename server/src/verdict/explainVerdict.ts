@@ -74,14 +74,21 @@ const PHOTO_SOURCED_NOTHING_FOUND =
 const COMBINED_NOTHING_FOUND =
   "Neither the product record nor the label you photographed listed any allergens from this profile.";
 
+// The product lookup itself didn't finish (lib/openFoodFacts.ts, status "failed"). The verdict is
+// still Unable to confirm; this only stops the sentence claiming what the database holds.
+export const LOOKUP_FAILED =
+  "We couldn't reach the product database just now, so there was nothing to check this against. Try again in a moment.";
+
 /**
- * Why a barcode scan had nothing to check — the two cases principle 2 says to tell apart, because
+ * Why a barcode scan had nothing to check — the cases principle 2 says to tell apart, because
  * they mean different things to the person holding the package: we don't know this barcode at all,
  * or we know the product but have no ingredient or allergen data for it. Only called when the
  * product record has no usable data (matcher/match.ts's hasUsableData), which is exactly when
  * computeVerdict fails closed to unable_to_confirm with no rows to explain it.
  */
-export function explainMissingProductData(product: { found: boolean }): string {
+export function explainMissingProductData(product: { found: boolean; status?: "found" | "not_found" | "failed" }): string {
+  // Third case: nobody found out. Said as that, never as "not on file" (principle 2, Oct 8 2026).
+  if (product.status === "failed") return LOOKUP_FAILED;
   return product.found
     ? "We have this product on file, but without its ingredients or allergen information, so there was nothing to check it against."
     : "We don't have this barcode on file, so there was nothing to check it against.";

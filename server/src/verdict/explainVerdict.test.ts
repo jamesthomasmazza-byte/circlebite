@@ -200,3 +200,11 @@ test("the record-only sentence appears nowhere else", () => {
     assert.notEqual(explainVerdict(merged, options), LABEL_CHECK_FAILED_RECORD_ONLY, name);
   }
 });
+
+test("explainMissingProductData: a lookup that failed says so, never that the barcode isn't on file", () => {
+  const failed = explainMissingProductData({ found: false, status: "failed" });
+  assert.equal(failed, "We couldn't reach the product database just now, so there was nothing to check this against. Try again in a moment.");
+  assert.doesNotMatch(failed, /on file|don't have|safe|probably|no allergens/i);
+  // A genuine not-found keeps its own sentence.
+  assert.match(explainMissingProductData({ found: false, status: "not_found" }), /don't have this barcode on file/);
+});
