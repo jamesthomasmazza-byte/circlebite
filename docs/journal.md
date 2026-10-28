@@ -2103,3 +2103,8 @@ It's now inside "Details", per this audit's spec. The change itself is still sta
 
 Still to check on a phone after the deploy: VoiceOver announcing the verdict after a scan and after
 a label photo, the teal on a real screen in both modes, and scan history at phone width.
+
+*Superseded 2026-10-28, the same day:* `aea942e` puts the original verdict back on the summary
+line, outside Details: each changed history entry now opens "Was Unable to confirm — changed by
+shopper reports." (JT). The difference recorded above no longer stands; the BACKLOG note says so
+in `02470ea`. The entry above is kept as written.
