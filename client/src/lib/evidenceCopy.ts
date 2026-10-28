@@ -59,6 +59,8 @@ export function explanationAfterRows(
 }
 
 /** The words before the "Photograph the ingredients label" button, or null for the button alone.
+ *  Always a whole sentence: the button is never the end of one, since a screen reader hears its
+ *  label as a separate control (BACKLOG.md Week 9, "a sentence ending in a comma before a button").
  *  When the check didn't finish, the missing-data sentence ("The product data couldn't check the
  *  rest of …") goes: the card already says why the check fell short, and a second sentence would
  *  give a different cause and remedy. The button stays either way. */
@@ -69,7 +71,7 @@ export function photoOfferLead(
 ): string | null {
   if (decision?.photo === "required") return "We couldn't check this against a photo yet.";
   if (decision?.photo === "prompted" && decision.reason === "severe_allergen") {
-    return "This profile has a severe allergen on file — for extra confidence,";
+    return "This profile has a severe allergen on file. A photo of the ingredients label is an extra check.";
   }
   if (checkIncomplete) return null;
   return photoOfferCopy(decision, profileLabel);

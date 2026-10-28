@@ -148,3 +148,17 @@ test("photoOfferLead: a check that didn't finish drops the missing-data sentence
   assert.match(photoOfferLead({ photo: "prompted", reason: "severe_allergen" }, "Maya", true)!, /severe allergen/);
   assert.equal(photoOfferLead({ photo: "required", reason: "missing_data" }, "Maya", true), "We couldn't check this against a photo yet.");
 });
+
+test("photoOfferLead: the severe-allergen lead is a whole sentence, never one the button finishes", () => {
+  const lead = photoOfferLead({ photo: "prompted", reason: "severe_allergen" }, "Maya", false);
+  assert.equal(lead, "This profile has a severe allergen on file. A photo of the ingredients label is an extra check.");
+  for (const decision of [
+    { photo: "prompted", reason: "severe_allergen" },
+    { photo: "prompted", reason: "missing_data" },
+    { photo: "prompted", reason: "thin_data" },
+    { photo: "required", reason: "missing_data" },
+  ] as const) {
+    const text = photoOfferLead(decision, "Maya", false);
+    if (text) assert.match(text, /\.$/, `${decision.reason}: ends in a full stop`);
+  }
+});
