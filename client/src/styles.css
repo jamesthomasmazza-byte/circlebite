@@ -399,6 +399,16 @@ button {
   outline-offset: 2px;
 }
 
+/* A new scan result is scrolled to and its heading focused (lib/revealResult.ts). Off the very top
+   edge, since the header isn't sticky; and no ring for focus a script moved, only :focus-visible's. */
+[data-reveal-target] {
+  scroll-margin-top: var(--space-3);
+}
+
+[data-reveal-target] h2[tabindex="-1"]:focus:not(:focus-visible) {
+  outline: none;
+}
+
 /* ---------- Disclosure ----------------------------------------------------------------------- */
 
 details {

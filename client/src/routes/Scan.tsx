@@ -10,6 +10,7 @@ import { requestedProfile } from "../lib/tabs";
 import { scanningForId } from "../lib/tabs";
 import { useAuth } from "../lib/AuthContext";
 import { readOverride, scannerRegionOn } from "../lib/scannerRegion";
+import { prefersReducedMotion, revealResult } from "../lib/revealResult";
 import {
   ApiRequestError,
   CORRECTION_PHOTO_MAX_DIMENSION,
@@ -180,6 +181,15 @@ export function Scan() {
   const [discardingMismatch, setDiscardingMismatch] = useState(false);
   const [discardMismatchError, setDiscardMismatchError] = useState<string | null>(null);
 
+  // A new result asks to be revealed: scrolled into view, its heading focused (lib/revealResult.ts).
+  // Asked for only where a new verdict arrives — a scan, a standalone photo, a combined photo — never
+  // when a report or a discarded photo changes the card already on screen. A request waits while no
+  // heading is rendered (a required photo still pending), and is served when the card first appears.
+  const resultHeadingRef = useRef<HTMLHeadingElement>(null);
+  const [revealRequest, setRevealRequest] = useState(0);
+  const revealServed = useRef(0);
+  const requestReveal = () => setRevealRequest((n) => n + 1);
+
   // The scanner's "Can't read the barcode?" offer opens the photo form below the barcode form, so it
   // brings the form into view once it's rendered.
   const photoFormRef = useRef<HTMLFormElement>(null);
@@ -284,6 +294,7 @@ export function Scan() {
       const scan = await createScan(targetProfileId, rawBarcode.trim());
       setResult(scan);
       setResultProfileId(targetProfileId);
+      requestReveal();
       // "required" is the next mandatory step, not an offer — go straight into the capture form
       // rather than making the family read a barcode-only card first (docs/verdict-engine.md Path
       // D's decision rules; server/src/verdict/scanPlan.ts is the single source of this rule).
@@ -414,12 +425,14 @@ export function Scan() {
         applyCombineOutcome(outcome);
         setPhotoCaptureOpen(false);
         setPhotoFile(null);
+        requestReveal();
       } else {
         const scan = await createLabelScan(profileId, downscaled);
         setPhotoCaptureOpen(false);
         setPhotoFile(null);
         setResult(scan);
         setResultProfileId(profileId);
+        requestReveal();
       }
     } catch (err) {
       if (err instanceof ApiRequestError && err.status === 400 && err.message === "photo_too_large") {
@@ -557,6 +570,12 @@ export function Scan() {
 
   const selectedProfile = profiles.find((p) => p.id === profileId);
 
+  useEffect(() => {
+    if (revealRequest === revealServed.current || !resultHeadingRef.current) return;
+    revealServed.current = revealRequest;
+    revealResult(resultHeadingRef.current, prefersReducedMotion());
+  }, [revealRequest, result, awaitingRequiredPhoto, couldntReadLabel, photoCaptureOpen]);
+
   if (loadingProfiles) return <p>Loading…</p>;
 
   return (
@@ -692,8 +711,10 @@ export function Scan() {
         // those happened; this just offers a retake rather than rendering a verdict card that has
         // nothing real to show. Standalone Path C only — a combine-mode unreadable read never
         // reaches this state at all, since it's a form-level error on the still-open capture form.
-        <section>
-          <h2>{couldntReadHeading(result!.ingredient_check_incomplete)}</h2>
+        <section data-reveal-target>
+          <h2 ref={resultHeadingRef} tabIndex={-1}>
+            {couldntReadHeading(result!.ingredient_check_incomplete)}
+          </h2>
           <p role="alert">{result!.explanation}</p>
           <button type="button" onClick={openStandalonePhotoCapture}>
             Try again
@@ -702,7 +723,7 @@ export function Scan() {
       )}
 
       {result && shown && !awaitingRequiredPhoto && !couldntReadLabel && (
-        <section>
+        <section data-reveal-target>
           {isSampleScan(result.barcode) && (
             <p className="sample-scan" role="note">
               {SAMPLE_LABEL}
@@ -711,7 +732,9 @@ export function Scan() {
           <div className="verdict-card" data-verdict={shown.result}>
           {/* 1. THE VERDICT — the single word this whole screen exists to deliver, first. */}
           <header className="verdict-card__header">
-            <h2>{VERDICT_LABEL[shown.result]}</h2>
+            <h2 ref={resultHeadingRef} tabIndex={-1}>
+              {VERDICT_LABEL[shown.result]}
+            </h2>
             <p className="verdict-card__product">
               {result.product_name ?? "Unknown product"}
               {result.product_brand && ` — ${result.product_brand}`}
