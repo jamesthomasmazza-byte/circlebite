@@ -1037,10 +1037,10 @@ it is the least-worked area. Treat this whole section as the priority block it i
       shopper report" — with the full block on the live card only, or behind a disclosure. Keep the
       original verdict visible either way: the never-silently rule (docs/legacy-spec.md §6) is the
       reason the block exists.
-      *Done 2026-10-28 (`2b43999`), with the item above. The change is stated outside the disclosure
-      ("Changed by shopper reports."), so it is never silent; the original verdict itself ("Originally
-      Unable to confirm") is now inside the closed "Details", by JT's Oct 28 spec, not on the summary
-      line this item asked to keep it on.*
+      *Done 2026-10-28 (`2b43999`), with the item above. The original verdict is visible again since
+      `aea942e`: each changed entry's summary opens with it, outside the disclosure — "Was Unable to
+      confirm — changed by shopper reports." — for your report, shopper reports, circle reports and
+      a report a severe_only follower can't see. The explanation stays in the closed "Details".*
 - [ ] **`scansLabel.test.ts` depends on the local `.env`.** Its kill-switch tests assert
       `LABEL_SCAN` is unset and fail when `server/.env` has `LABEL_SCAN=on`, which is exactly what
       checking the photo flow locally needs (found 2026-10-17). Tests should set the switch
