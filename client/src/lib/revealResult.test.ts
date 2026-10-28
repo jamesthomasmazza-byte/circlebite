@@ -45,7 +45,7 @@ const SCAN = readFileSync(new URL("../routes/Scan.tsx", import.meta.url), "utf8"
 
 test("Scan asks for a reveal where a new result arrives: a scan, a standalone photo, a combined photo", () => {
   assert.match(SCAN, /const scan = await createScan\(targetProfileId, rawBarcode\.trim\(\)\);\s*setResult\(scan\);\s*setResultProfileId\(targetProfileId\);\s*requestReveal\(\);/);
-  assert.match(SCAN, /const scan = await createLabelScan\(profileId, downscaled\);[\s\S]{0,200}setResult\(scan\);\s*setResultProfileId\(profileId\);\s*requestReveal\(\);/);
+  assert.match(SCAN, /const scan = await createLabelScan\(profileId, downscaled\);[\s\S]{0,200}setResult\(scan\);\s*setResultProfileId\(profileId\);\s*(\/\/[^\n]*\n\s*)*setBarcode\(""\);\s*requestReveal\(\);/);
   assert.match(SCAN, /applyCombineOutcome\(outcome\);\s*setPhotoCaptureOpen\(false\);\s*setPhotoFile\(null\);\s*requestReveal\(\);/);
   assert.equal(SCAN.match(/requestReveal\(\);/g)?.length, 3, "exactly those three places");
 });

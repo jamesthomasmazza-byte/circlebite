@@ -432,6 +432,10 @@ export function Scan() {
         setPhotoFile(null);
         setResult(scan);
         setResultProfileId(profileId);
+        // A standalone photo is its own product, not the barcode still in the field: left there, that
+        // barcode sat above a card for whatever the photo showed (2026-10-28 audit). Combine mode
+        // keeps it — that photo belongs to the barcode's own scan.
+        setBarcode("");
         requestReveal();
       }
     } catch (err) {
