@@ -212,6 +212,17 @@ revert is just re-pointing a symlink. Two scripts, both in `scripts/`:
 
 **To deploy:** `ssh -i ~/.ssh/circlebite-prod.pem ubuntu@circlebite.app "~/circlebite/deploy.sh"`.
 
+**After every deploy, the false-safety check.** Sign in as a normal account, not a judge, with
+Peanut on one of its profiles. Choose that profile and scan `2990000000076`, the judge seed's
+community demo barcode. The card must read **Contains an allergen**, with peanut "reported by 2
+shoppers". That warning is two seeded families' confirmed report in the real world, so it proves
+a real family still gets confirmed warnings. Since migration 0049 that read filters by judge world
+(`server/src/corrections/communityAdditions.ts`), and a mistake there would hide real warnings
+without breaking anything else. If the warning is missing, roll back (§9) before anything else.
+It needs `COMMUNITY_CORRECTIONS` on (§11) and a judge seed run since the deploy that brought 0049
+(§16). Before that reseed, the two seeded families' reports are still real-world rows, so the check
+holds.
+
 **One-time bootstrap** (already done; here for when the box is ever rebuilt from this file):
 
 ```bash
@@ -261,6 +272,14 @@ ln -sfn <previous-release-dir> ~/circlebite/current && sudo systemctl restart ci
 
 `<previous-release-dir>` is `ls -1dt ~/circlebite/releases/*/ | sed -n 2p` (second-newest — the
 newest is the one being reverted away from).
+
+**Past a migration.** Migrations aren't reversed by a revert: the older release runs against the
+newer schema. That's safe only for a migration the older code can live with, so check before
+reverting past one. **Migration 0049 (judge worlds) is safe to revert past:** the older code never
+reads or writes `users.judge_world` or `product_corrections.judge_world_at_report`, and the trigger
+that fills the second column on insert still does so for reports the older release writes. A
+symlink rollback still works. The only effect is that, until you deploy forward again, judge
+worlds aren't kept apart: the older code counts and shows reports across worlds, as before 0049.
 
 **2. Node itself is down for any other reason** (crash loop, out-of-memory, database unreachable) —
 the app-level revert above doesn't help without a healthy release to point at, or if the problem
@@ -621,6 +640,11 @@ What it touches, and only this (details in `server/src/db/seed/judgeSeed.ts`):
 - Corrections those accounts filed (a judge testing on a real product) are **rejected**, not
   deleted, with the reason "Judge test data — cleared by reseed" — that stops any live warning
   immediately and keeps the overrule log. NPS responses they filed are deleted.
+- Every seeded account in its judge's world (`users.judge_world`, migration 0049), so a report
+  filed by a judge, or by anyone in their circle, counts only toward that judge's own confirmations,
+  never another judge's or a real family's. That is what lets every judge scan the same barcode
+  (`JUDGES.md`). The two reporting families are in no world. Their warning on `2990000000076` is
+  real-world, so every judge, and every real account, sees it.
 - Fixed seed barcodes (GTINs with deliberately invalid check digits — no real product has them) in
   the `products` cache, and the seed's own NPS and correction rows by fixed id. The seeded warning is
   corroborated by the same threshold step a real report runs; if the threshold ever outgrows the
@@ -686,7 +710,9 @@ scans of those are never touched.
 **Known limit.** If a judge deletes the account *before* a reseed, the reports they filed are
 already anonymous (`reported_by` is set to NULL on account deletion) and the seed can no longer find
 them. Check the review queue (`/admin/review-queue`) daily during judging week for reports on real
-products that don't look like real families'.
+products that don't look like real families'. Since migration 0049 this matters less: a report keeps
+its judge world after the account is gone, so it still counts only in that world and never reaches a
+real family. A report filed before 0049 has no world, and the limit applies to it in full.
 
 ## 17. Backups
 
