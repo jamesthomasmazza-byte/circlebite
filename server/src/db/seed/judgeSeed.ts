@@ -366,7 +366,8 @@ async function createSeed(client: PoolClient, options: { judgeHashes: Record<str
     COMMUNITY_REPORTS.map((r) => {
       const barcode = PRODUCTS[r.product].barcode;
       const key = claimKey(r.allergen, "add_caution");
-      return [`${barcode}|${key}`, { barcode, key, direction: "add_caution" as const }];
+      // Real-world claims (world null): the reporting families stand in for real ones, in no judge's world.
+      return [`${barcode}|${key}`, { barcode, key, direction: "add_caution" as const, world: null }];
     }),
   );
   for (const claim of claims.values()) {
@@ -374,10 +375,20 @@ async function createSeed(client: PoolClient, options: { judgeHashes: Record<str
   }
 
   // The circle's reports stay pending, so each must stay below the threshold the rule would confirm
-  // it at — counted by the rule itself, after every seeded report is in.
+  // it at — counted by the rule itself, after every seeded report is in, in the world the report was
+  // stored with (migration 0049's trigger sets it, not the seed).
   for (const report of CIRCLE_REPORTS) await insertPendingReport(client, report);
   for (const report of CIRCLE_REPORTS) {
-    const claim = { barcode: PRODUCTS[report.product].barcode, key: claimKey(report.allergen, "add_caution"), direction: "add_caution" as const };
+    const { rows } = await client.query<{ world: number | null }>(
+      "SELECT judge_world_at_report AS world FROM product_corrections WHERE id = $1",
+      [report.id],
+    );
+    const claim = {
+      barcode: PRODUCTS[report.product].barcode,
+      key: claimKey(report.allergen, "add_caution"),
+      direction: "add_caution" as const,
+      world: rows[0].world,
+    };
     if ((await countCorroboratingFamilies(client, claim)) >= CORROBORATION_THRESHOLD.add_caution) {
       throw new SeedCircleReportCorroboratedError(report);
     }

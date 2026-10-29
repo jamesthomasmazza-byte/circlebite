@@ -448,8 +448,10 @@ export async function acceptCorrection(correctionId: string, acceptedBy: string)
       refiles_rejected_id: string | null;
       accepted_at: string | null;
       identity_mismatch_at_report: boolean;
+      judge_world_at_report: number | null;
     }>(
-      `SELECT barcode, allergen_fold_key, allergen_family_key, direction, status, refiles_rejected_id, accepted_at, identity_mismatch_at_report
+      `SELECT barcode, allergen_fold_key, allergen_family_key, direction, status, refiles_rejected_id, accepted_at, identity_mismatch_at_report,
+              judge_world_at_report
        FROM product_corrections WHERE id = $1 FOR UPDATE`,
       [correctionId],
     );
@@ -473,6 +475,7 @@ export async function acceptCorrection(correctionId: string, acceptedBy: string)
       barcode: existing.barcode,
       key: existing[claimKeyColumn(existing.direction)],
       direction: existing.direction,
+      world: existing.judge_world_at_report,
     });
     const { rows: adminRows } = await client.query<{ email: string }>("SELECT email FROM users WHERE id = $1", [
       acceptedBy,

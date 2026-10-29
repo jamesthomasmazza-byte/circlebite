@@ -31,8 +31,10 @@ export const CORROBORATION_THRESHOLD: Record<Direction, number> = {
 export type CorrectionOrigin = "user_initiated" | "disagreement_prompt";
 
 /** One corroboration bucket. `key` is the reported allergen's key for this direction (claimKey) —
- *  never the verbatim spelling — or null for wrong_product. */
-export type Claim = { barcode: string; key: string | null; direction: Direction };
+ *  never the verbatim spelling — or null for wrong_product. `world` is the judge world its reports
+ *  were filed in (migration 0049), null for real users: a claim only ever counts reports from its
+ *  own world. */
+export type Claim = { barcode: string; key: string | null; direction: Direction; world: number | null };
 
 /**
  * Which stored key a direction's claims are counted on (migration 0043). An addition counts on the
@@ -196,7 +198,7 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
       refilesRejectedId = rejectedRows[0]?.id ?? null;
     }
 
-    const { rows: insertRows } = await client.query<{ id: string; status: CorrectionStatus }>(
+    const { rows: insertRows } = await client.query<{ id: string; status: CorrectionStatus; judge_world_at_report: number | null }>(
       `INSERT INTO product_corrections
          (scan_id, barcode, reported_by, correction_type, direction, allergen, target,
           verdict_explanation_id, verdict_at_report, model_at_report, prompt_version_at_report,
@@ -206,7 +208,7 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
                (SELECT p.manager_id FROM scans s JOIN allergen_profiles p ON p.id = s.allergen_profile_id WHERE s.id = $1),
                (SELECT allergen_profile_id FROM scans WHERE id = $1),
                $18, $19)
-       RETURNING id, status`,
+       RETURNING id, status, judge_world_at_report`,
       [
         scanId,
         scan.barcode,
@@ -251,7 +253,7 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
     // identity check already flagged this specific evidence as questionable."
     const corroborated =
       scan.barcode !== null && !identityMismatched
-        ? await corroborateClaimIfThresholdMet(client, { barcode: scan.barcode, key, direction })
+        ? await corroborateClaimIfThresholdMet(client, { barcode: scan.barcode, key, direction, world: inserted.judge_world_at_report })
         : false;
 
     await client.query("COMMIT");
@@ -289,24 +291,33 @@ export async function recordCorrection(input: RecordCorrectionInput): Promise<Re
  * mismatched one; without these two clauses the same report still counted as a family whenever
  * someone else's report ran the threshold, and was then marked 'corroborated' along with the claim
  * — feeding communityAdditions.ts's family-facing count. 0032's gate covers both halves.
+ *
+ * Judge worlds (migration 0049): only the claim's own world's rows are counted and flipped, so one
+ * judge reaching the threshold never confirms another judge's reports, or a real user's.
  */
 export async function corroborateClaimIfThresholdMet(client: PoolClient, claim: Claim): Promise<boolean> {
-  const { barcode, key, direction } = claim;
+  const { barcode, key, direction, world } = claim;
   if ((await countCorroboratingFamilies(client, claim)) < CORROBORATION_THRESHOLD[direction]) return false;
 
   // The warning survives: a removal never corroborates against a corroborated addition of the same
   // allergen FAMILY — compared on the removal rows' own family keys, so a "Milk" removal is blocked
   // by a corroborated "Whey" warning. Broader than the removal's own (spelling) bucket on purpose:
   // over-blocking a removal is the safe direction.
+  //
+  // Real warnings block every world's removals; a judge's warning blocks only removals in its own
+  // world, never a real user's (migration 0049). For a real claim, world is null and only real
+  // warnings count, as before.
   if (direction === "remove_caution" && key) {
     const { rows: conflictRows } = await client.query(
       `SELECT 1 FROM product_corrections a
        WHERE a.barcode = $1 AND a.direction = 'add_caution' AND a.status = 'corroborated'
+         AND (a.judge_world_at_report IS NULL OR a.judge_world_at_report = $3)
          AND a.allergen_family_key IN (
            SELECT r.allergen_family_key FROM product_corrections r
-           WHERE r.barcode = $1 AND r.direction = 'remove_caution' AND r.allergen_fold_key = $2)
+           WHERE r.barcode = $1 AND r.direction = 'remove_caution' AND r.allergen_fold_key = $2
+             AND r.judge_world_at_report IS NOT DISTINCT FROM $3)
        LIMIT 1`,
-      [barcode, key],
+      [barcode, key, world],
     );
     if (conflictRows.length > 0) return false;
   }
@@ -314,10 +325,12 @@ export async function corroborateClaimIfThresholdMet(client: PoolClient, claim: 
   await client.query(
     key
       ? `UPDATE product_corrections SET status = 'corroborated'
-         WHERE barcode = $1 AND ${claimKeyColumn(direction)} = $2 AND direction = $3 AND status = 'pending' AND NOT identity_mismatch_at_report`
+         WHERE barcode = $1 AND ${claimKeyColumn(direction)} = $2 AND direction = $3 AND status = 'pending' AND NOT identity_mismatch_at_report
+           AND judge_world_at_report IS NOT DISTINCT FROM $4`
       : `UPDATE product_corrections SET status = 'corroborated'
-         WHERE barcode = $1 AND allergen IS NULL AND direction = $2 AND status = 'pending' AND NOT identity_mismatch_at_report`,
-    key ? [barcode, key, direction] : [barcode, direction],
+         WHERE barcode = $1 AND allergen IS NULL AND direction = $2 AND status = 'pending' AND NOT identity_mismatch_at_report
+           AND judge_world_at_report IS NOT DISTINCT FROM $3`,
+    key ? [barcode, key, direction, world] : [barcode, direction, world],
   );
   return true;
 }
@@ -333,15 +346,20 @@ export async function corroborateClaimIfThresholdMet(client: PoolClient, claim: 
  * Same row filters as the threshold has always had — rejected, unaccepted re-files and mismatched
  * labels don't count (corroborateClaimIfThresholdMet has why). Exported so the judge seed can prove
  * its demo claim is corroborated by the rule itself, not by a status it wrote.
+ *
+ * Only reports from the claim's own world (migration 0049): a judge's reports count with that
+ * judge's world alone, and a real claim (world null) counts real reports alone. IS NOT DISTINCT
+ * FROM, so null matches null.
  */
 export async function countCorroboratingFamilies(client: PoolClient, claim: Claim): Promise<number> {
-  const { barcode, key, direction } = claim;
+  const { barcode, key, direction, world } = claim;
   const { rows } = await client.query<{ count: string }>(
     `SELECT count(DISTINCT COALESCE(profile_owner_at_report, reported_by)) FROM product_corrections
-     WHERE barcode = $1 AND ${key ? `${claimKeyColumn(direction)} = $3` : "allergen IS NULL"} AND direction = $2
+     WHERE barcode = $1 AND ${key ? `${claimKeyColumn(direction)} = $4` : "allergen IS NULL"} AND direction = $2
        AND status <> 'rejected' AND (refiles_rejected_id IS NULL OR accepted_at IS NOT NULL)
-       AND NOT identity_mismatch_at_report`,
-    key ? [barcode, direction, key] : [barcode, direction],
+       AND NOT identity_mismatch_at_report
+       AND judge_world_at_report IS NOT DISTINCT FROM $3`,
+    key ? [barcode, direction, world, key] : [barcode, direction, world],
   );
   return Number(rows[0]?.count ?? 0);
 }

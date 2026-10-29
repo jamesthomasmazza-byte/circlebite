@@ -297,7 +297,7 @@ test("the seeded escalation is corroborated by the real threshold — two famili
   const barcode = PRODUCTS.reported.barcode;
   const client = await pool.connect();
   try {
-    const families = await countCorroboratingFamilies(client, { barcode, key: claimKey("Peanut", "add_caution"), direction: "add_caution" });
+    const families = await countCorroboratingFamilies(client, { barcode, key: claimKey("Peanut", "add_caution"), direction: "add_caution", world: null });
     assert.ok(
       families >= CORROBORATION_THRESHOLD.add_caution,
       `${families} reporting families, threshold ${CORROBORATION_THRESHOLD.add_caution}`,
@@ -348,7 +348,8 @@ test("the circle's pending reports stay pending: one family each, on each judge'
   const client = await pool.connect();
   try {
     for (const report of CIRCLE_REPORTS) {
-      const claim = { barcode: PRODUCTS[report.product].barcode, key: claimKey(report.allergen, "add_caution"), direction: "add_caution" as const };
+      const { rows } = await client.query("SELECT judge_world_at_report AS world FROM product_corrections WHERE id = $1", [report.id]);
+      const claim = { barcode: PRODUCTS[report.product].barcode, key: claimKey(report.allergen, "add_caution"), direction: "add_caution" as const, world: rows[0].world };
       assert.equal(await countCorroboratingFamilies(client, claim), 1, report.id);
     }
   } finally {
