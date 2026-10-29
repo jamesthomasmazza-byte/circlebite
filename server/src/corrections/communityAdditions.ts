@@ -1,3 +1,5 @@
+import type { Pool, PoolClient } from "pg";
+
 import { pool } from "../db/pool.js";
 import type { CommunityAddition } from "./applyCommunityCorrections.js";
 
@@ -16,12 +18,24 @@ import type { CommunityAddition } from "./applyCommunityCorrections.js";
  * count(*), not count(DISTINCT reported_by): reported_by is SET NULL when a reporter deletes their
  * account, and the report stays evidence about the product. The unique index on (barcode,
  * allergen, direction, reported_by) already stops one live account counting twice.
+ *
+ * Judge worlds (migration 0049): what a profile sees is real-world claims, plus its owner's own
+ * judge world's when the owner is a judge or in a judge's circle. A real profile, or no profile,
+ * sees real-world claims only — a judge's confirmed warning never reaches a real family. A judge's
+ * profile still sees every real warning. Real and own-world reports of one allergen show as one
+ * claim on a judge's card; the threshold counted them separately (countCorroboratingFamilies).
+ *
+ * `db` is for tests that need rows nobody else can see; the app always reads through the pool.
  */
-export async function loadCommunityAdditions(barcodes: string[]): Promise<Map<string, CommunityAddition[]>> {
+export async function loadCommunityAdditions(
+  barcodes: string[],
+  profileId: string | null = null,
+  db: Pool | PoolClient = pool,
+): Promise<Map<string, CommunityAddition[]>> {
   const byBarcode = new Map<string, CommunityAddition[]>();
   if (barcodes.length === 0) return byBarcode;
 
-  const { rows } = await pool.query<{ barcode: string } & CommunityAddition>(
+  const { rows } = await db.query<{ barcode: string } & CommunityAddition>(
     `SELECT barcode,
             min(allergen) AS allergen,
             array_agg(id::text ORDER BY created_at, id) AS "correctionIds",
@@ -31,8 +45,11 @@ export async function loadCommunityAdditions(barcodes: string[]): Promise<Map<st
        AND direction = 'add_caution'
        AND status = 'corroborated'
        AND allergen IS NOT NULL
+       AND (judge_world_at_report IS NULL
+            OR judge_world_at_report = (SELECT u.judge_world FROM allergen_profiles p
+                                        JOIN users u ON u.id = p.manager_id WHERE p.id = $2))
      GROUP BY barcode, COALESCE(allergen_family_key, 'unkeyed:' || id::text)`,
-    [barcodes],
+    [barcodes, profileId],
   );
 
   for (const { barcode, ...addition } of rows) {

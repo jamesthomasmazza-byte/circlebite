@@ -200,11 +200,13 @@ export async function applyCommunityCorrectionsIfEnabled(
   verdict: Verdict,
   matchedAllergens: MatchedAllergenLike[],
   profileAllergens: Pick<ProfileAllergen, "name" | "severity">[],
+  /** The scanned profile — whose judge world, if any, decides which confirmed claims it sees. */
+  profileId: string,
 ): Promise<{ community: CommunityEffectiveResult | null; communityApplied: AppliedCommunityAddition[] | null }> {
   if (!env.communityCorrections || !barcode) {
     return { community: null, communityApplied: null };
   }
-  const additions = (await loadCommunityAdditions([barcode])).get(barcode) ?? [];
+  const additions = (await loadCommunityAdditions([barcode], profileId)).get(barcode) ?? [];
   const community = applyCommunityCorrections({ result: verdict, matchedAllergens }, profileAllergens, additions);
   return { community, communityApplied: community?.applied ?? [] };
 }

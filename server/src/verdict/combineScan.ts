@@ -269,6 +269,7 @@ export async function combineLabelScan(input: CombineScanInput, deps: CombineSca
     reconciled.verdict,
     reconciled.matchedAllergens as MatchedAllergenLike[],
     allergens,
+    scan.allergen_profile_id,
   );
   // The circle's pending reports on top, as on the barcode scan (routes/scans.ts). This scan exists,
   // so a report filed from it counts even without a barcode.
@@ -415,6 +416,7 @@ export async function discardLabelEvidence(input: DiscardLabelEvidenceInput): Pr
     preCombine.verdict,
     preCombine.matchedAllergens as MatchedAllergenLike[],
     allergens,
+    row.allergen_profile_id,
   );
   const circle = await applyCircleEscalationsIfEnabled(
     { profileId: row.allergen_profile_id, scanId: row.scan_id, barcode: row.barcode, viewerId: input.viewerId },

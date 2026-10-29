@@ -104,6 +104,7 @@ scansRouter.post(
       verdict,
       matchedAllergens as MatchedAllergenLike[],
       allergens,
+      allergenProfileId,
     );
     // Then this profile's circle's pending reports on the barcode, on top — the view only, never the
     // scan row, same as above (circleEscalations.ts). scanId null: this scan isn't written yet, and

@@ -80,7 +80,7 @@ export async function loadUserScanViews(
   let additionsByBarcode = new Map<string, CommunityAddition[]>();
   if (env.communityCorrections) {
     const barcodes = [...new Set(scans.map((s) => s.barcode).filter((b): b is string => b !== null))];
-    additionsByBarcode = await loadCommunityAdditions(barcodes);
+    additionsByBarcode = await loadCommunityAdditions(barcodes, profileId);
   }
   const circleEscalations = env.circleEscalations ? await loadCircleEscalations(profileId, scans, userId) : [];
   // The same loader the live scan uses, so history recomputes the same card — not a second copy

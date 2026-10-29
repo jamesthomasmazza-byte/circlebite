@@ -141,6 +141,7 @@ export async function runLabelScan(input: LabelScanInput, deps: LabelScanDeps = 
     verdict,
     matchedAllergens as MatchedAllergenLike[],
     allergens,
+    input.allergenProfileId,
   );
   // The circle's pending reports on top, as on a barcode scan (routes/scans.ts). A scan not written
   // yet has no reports of its own, so a barcode-less one gets nothing here.
