@@ -2108,3 +2108,55 @@ a label photo, the teal on a real screen in both modes, and scan history at phon
 line, outside Details: each changed history entry now opens "Was Unable to confirm — changed by
 shopper reports." (JT). The difference recorded above no longer stands; the BACKLOG note says so
 in `02470ea`. The entry above is kept as written.
+
+## 2026-10-29 — One barcode for every judge, kept apart in the data (not yet deployed)
+
+Prof. Yoest's 7:55 PM email of Oct 27 (`docs/approvals/2026-10-27-yoest-one-shared-barcode.md`,
+recorded in `7eb0bcf`) asked to replace the per-judge barcodes with one shared barcode, and to keep
+judges' reports apart in the data instead. JT approved the plan on Oct 29.
+
+- **Judge worlds (`c32c3c0`, migration 0049).**
+  - **Accounts:** `users.judge_world` is set only by the judge seed and allowed only on the seed's
+    reserved domain, which signup refuses.
+  - **Reports:** each report is stamped with its world by trigger at insert: the reporter's, else
+    the profile owner's. The trigger overwrites any value supplied and refuses later changes.
+  - **Why a snapshot:** a reseed deletes the judge accounts, and a live join would drop their
+    reports back into the real world.
+- **Counting (`fa98427`).** The family count, the step that confirms a claim, and the
+  warning-survives check read only the claim's own world.
+  - A judge never confirms another judge's claim, or a real user's.
+  - A real warning still blocks a removal in every world. A judge's warning blocks only its own.
+- **What a card shows (`0922861`).** A real profile sees real-world confirmed warnings only. A
+  judge's profile sees those plus its own world's. That covers the live card, label and combined
+  scans, and history.
+- **Review queue (`f52733c`).** Claims are keyed by world, as the threshold is, and labelled
+  "judge N's test data, counted apart from everyone else's".
+- **Seed and `JUDGES.md` (`e9dec87`, `f256065`).** Every judge's Priya and Sam reports are on
+  `2990000000083`. A reseed removes the product rows it wrote for the retired `…090`, `…106` and
+  `…113`. The seed still fails if any judge-world claim would be confirmed.
+- **Mixed circles left as they are** (JT): a real person in a judge's circle files into that
+  judge's world. A pending circle report still shows in its own circle, as for anyone.
+- **Docs:**
+  - `c3212e1`, runbook: a symlink rollback past 0049 still works (§9), and a false-safety check to
+    run after every deploy: a normal account on `…076` must still be warned (§8).
+  - `56299a1`, the principles precedent.
+  - `caebfb8`, `conditions.md` and BACKLOG.
+
+**Real users' corroboration is unchanged:** `recordCorrection.test.ts`, `communityAdditions.test.ts`
+and `applyCommunityCorrections.test.ts` pass unedited. Client 265 pass; server 538 pass, plus the 2
+known `LABEL_SCAN` failures from the local `.env`.
+
+**Checked locally at 390px, on a fresh local seed**, against a second local server with
+`CIRCLE_ESCALATIONS` on. Sign-in was by short-lived local sessions, revoked afterwards; no password
+was shown or stored.
+- judge1 and judge2, each on `…083`: Maya says "Priya Nair (co-manager) reported Sesame present…"
+  and Noor says "A co-manager in Noor's circle reported Wheat present…". Each card says "No other
+  family has confirmed it yet", and none shows a community warning.
+- A real test account (a peanut profile, since deleted) on `…076` still read **Contains an
+  allergen**, "reported by 2 shoppers".
+
+The test that a judge's own peanut report on `…083` never reaches a real peanut profile is in
+`judgeSeed.test.ts`. The local screenshots don't show that case.
+
+Still owed: push, deploy before Nov 13, the false-safety check after it, and the judging-week
+reseed that puts production's seeded accounts into their worlds.
