@@ -134,15 +134,20 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
 
 ### Nov 13 — code freeze
 
-- [ ] **Deploy the reporter row before the freeze** (Prof. Yoest's Oct 27 ask,
+- [x] **Deploy the reporter row before the freeze** (Prof. Yoest's Oct 27 ask,
   `docs/approvals/2026-10-27-yoest-judges-reporter-row.md`): `255f867` (the seed) and `f91691a`
   (the `JUDGES.md` row), pushed Oct 27 in `cd97de2`. A deploy alone doesn't make the row true on
   production; the judging-week reseed below does.
-- [ ] **Deploy one shared barcode with judge worlds before the freeze** (Prof. Yoest's Oct 27,
+  *Deployed Oct 29 in `154a6ba`, in its shared-barcode form (next item).*
+- [x] **Deploy one shared barcode with judge worlds before the freeze** (Prof. Yoest's Oct 27,
   7:55 PM ask, `docs/approvals/2026-10-27-yoest-one-shared-barcode.md`): migration 0049 and the
   seed on `2990000000083` for every judge (`c32c3c0` … `f256065`, built Oct 29). Brings migration
   0049; a symlink rollback past it still works (`docs/server-setup.md` §9). After the deploy, run
   the false-safety check in `docs/server-setup.md` §8.
+  *Deployed Oct 29, about 12:10 PM ET: `154a6ba`, release `20261029160944`, migration 0049
+  applied, backup taken first. The false-safety check passed: James's peanut profile on `…076`
+  still "Contains an allergen", reported by 2 shoppers. Takes effect on production at the
+  judging-week reseed.*
 
 Fixes only from here.
 

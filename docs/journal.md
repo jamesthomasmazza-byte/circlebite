@@ -2160,3 +2160,20 @@ The test that a judge's own peanut report on `…083` never reaches a real peanu
 
 Still owed: push, deploy before Nov 13, the false-safety check after it, and the judging-week
 reseed that puts production's seeded accounts into their worlds.
+
+## 2026-10-29 — Deployed: judge worlds, and everything since Oct 27
+
+JT deployed `154a6ba` to production at about 12:10 PM ET (release `20261029160944`), with a backup
+taken first. Migration 0049 was applied.
+
+The false-safety check passed (`docs/server-setup.md` §8): James's peanut profile on
+`2990000000076` still read "Contains an allergen", reported by 2 shoppers. Real families still get
+confirmed warnings with the judge-world filter live.
+
+The release also carries the work the repo had recorded as not yet deployed:
+- the Oct 28 UI audit fixes;
+- the reporter row (`255f867`, `f91691a`), now in its shared-barcode form.
+
+Prof. Yoest's shared-barcode ask is built and deployed. It takes effect on production at the
+judging-week `--rotate-passwords` reseed. Until then production's seeded accounts have no world,
+and the circle reports are still on the old per-judge barcodes.

@@ -307,10 +307,12 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
   October 27 (`cd97de2`).
 - **Reply sent the evening of October 27** (`2026-10-27-jt-judges-reporter-row.md`). It also
   described circle requests and guided sign-up.
-- **Still owed:** deploy before the November 13 freeze. Deploying doesn't make the row true on
-  production: the seed only writes these rows when it runs. The production reseed that does is the
-  judging-week `--rotate-passwords` reseed (week of November 16), run by JT in his own terminal
-  (`BACKLOG.md`, "Week of Nov 16 — judges"). Until then, production has no such barcode.
+- **Deployed October 29**, about 12:10 PM ET, in `154a6ba` (release `20261029160944`), as the
+  shared-barcode version below.
+- **Still owed:** the reseed that makes it true on production. Deploying doesn't, because the seed
+  only writes these rows when it runs. The production reseed that does is the judging-week
+  `--rotate-passwords` reseed (week of November 16), run by JT in his own terminal (`BACKLOG.md`,
+  "Week of Nov 16 — judges"). Until then, production has no such barcode.
 
 ### Due Thursday, November 13 — the code freeze (his October 27, 7:55 PM email, `2026-10-27-yoest-one-shared-barcode.md`)
 
@@ -330,9 +332,12 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
   `f256065` (the `JUDGES.md` row). Real users' thresholds are pinned by
   `server/src/corrections/recordCorrection.test.ts`, unchanged. The worlds are tested in
   `judgeWorldCorroboration.test.ts`, `judgeWorldVisibility.test.ts`, `db/judgeWorld.test.ts` and
-  `judgeSeed.test.ts`. Not pushed or deployed.
-- **Still owed:** deploy before November 13. As with the row above, production shows it only after
-  the judging-week reseed.
+  `judgeSeed.test.ts`. Pushed October 29 (`154a6ba`).
+- **Built and deployed to production October 29, about 12:10 PM ET, in `154a6ba` (release `20261029160944`), migration 0049 applied, backup taken first. The production false-safety check passed after the deploy
+  (`docs/server-setup.md` §8): James's peanut profile on `2990000000076` still read "Contains an
+  allergen", reported by 2 shoppers.
+- **Takes effect on production at the judging-week reseed.** Until then, production's seeded
+  accounts have no world, and its circle reports are still on the per-judge barcodes.
 
 ## Corrections owed to Prof. Yoest
 
