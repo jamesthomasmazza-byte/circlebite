@@ -336,6 +336,8 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
 - **Built and deployed to production October 29, about 12:10 PM ET, in `154a6ba` (release `20261029160944`), migration 0049 applied, backup taken first. The production false-safety check passed after the deploy
   (`docs/server-setup.md` §8): James's peanut profile on `2990000000076` still read "Contains an
   allergen", reported by 2 shoppers.
+- **Reply sent October 29** (`2026-10-29-jt-one-shared-barcode.md`), after the deploy: built,
+  deployed, and in effect from the judging-week reseed.
 - **Takes effect on production at the judging-week reseed.** Until then, production's seeded
   accounts have no world, and it has no seeded circle reports: the reporter row's seed has never run
   there.
