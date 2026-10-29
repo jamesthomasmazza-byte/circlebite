@@ -11,10 +11,11 @@ import {
 } from "../lib/api";
 import { reportCountLine } from "../lib/correctionCopy";
 
-function claimTitle(claim: ReviewQueueClaim): string {
+export function claimTitle(claim: ReviewQueueClaim): string {
   const what = claim.allergen ?? "product identity (wrong_product)";
   const directionLabel = claim.direction === "add_caution" ? "reported as present" : "reported as not present";
-  return `${claim.barcode ?? "no barcode"} — ${what} — ${directionLabel}`;
+  const world = claim.judgeWorld === null ? "" : ` — judge ${claim.judgeWorld}'s test data, counted apart from everyone else's`;
+  return `${claim.barcode ?? "no barcode"} — ${what} — ${directionLabel}${world}`;
 }
 
 function ReportRow({

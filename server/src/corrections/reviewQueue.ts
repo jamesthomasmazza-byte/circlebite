@@ -84,6 +84,10 @@ export type ReviewQueueClaim = {
   // reviewer sees both" true by definition. A wrong_product removal is linked to every confirmed
   // warning on the product, a superset of what its note names (the queue doesn't hold the profile).
   heldByWarning: string[];
+  // The judge world the claim's reports were filed in (migration 0049), null for real users. Part
+  // of the claim's key, as it is of the threshold's (countCorroboratingFamilies): four judges'
+  // Sesame on the shared demo barcode are four claims of one family each, not one of four.
+  judgeWorld: number | null;
   reports: ReviewQueueReport[]; // full list, every status, including deleted-account reports
 };
 
@@ -108,6 +112,7 @@ type CorrectionRow = {
   refiles_rejected_id: string | null;
   accepted_at: string | null;
   accepted_by_email: string | null;
+  judge_world_at_report: number | null;
 };
 
 /**
@@ -123,7 +128,7 @@ async function fetchCorrectionRows(): Promise<CorrectionRow[]> {
        pc.id, pc.barcode, pc.allergen, pc.allergen_fold_key, pc.allergen_family_key, pc.direction, pc.correction_type, pc.target, pc.note,
        pc.status, pc.created_at, pc.reported_by, pc.rejected_by, pc.rejected_at,
        pc.rejection_reason, pc.origin, rejector.email AS rejected_by_email,
-       pc.refiles_rejected_id, pc.accepted_at, acceptor.email AS accepted_by_email
+       pc.refiles_rejected_id, pc.accepted_at, acceptor.email AS accepted_by_email, pc.judge_world_at_report
      FROM product_corrections pc
      LEFT JOIN users rejector ON rejector.id = pc.rejected_by
      LEFT JOIN users acceptor ON acceptor.id = pc.accepted_by
@@ -236,7 +241,7 @@ export function groupIntoClaims(
 ): ReviewQueueClaim[] {
   const buckets = new Map<
     string,
-    { barcode: string | null; direction: Direction; rows: CorrectionRow[] }
+    { barcode: string | null; direction: Direction; world: number | null; rows: CorrectionRow[] }
   >();
 
   for (const row of rows) {
@@ -245,10 +250,10 @@ export function groupIntoClaims(
     const key =
       row.barcode === null
         ? JSON.stringify(["no-barcode", row.id])
-        : JSON.stringify([row.barcode, row.direction, claimGroupKey(row)]);
+        : JSON.stringify([row.barcode, row.direction, claimGroupKey(row), row.judge_world_at_report]);
     const bucket = buckets.get(key);
     if (bucket) bucket.rows.push(row);
-    else buckets.set(key, { barcode: row.barcode, direction: row.direction, rows: [row] });
+    else buckets.set(key, { barcode: row.barcode, direction: row.direction, world: row.judge_world_at_report, rows: [row] });
   }
 
   // Confirmed warnings by barcode, for heldByWarning below.
@@ -257,7 +262,7 @@ export function groupIntoClaims(
   );
 
   const claims: ReviewQueueClaim[] = [];
-  for (const { barcode, direction, rows: claimRows } of buckets.values()) {
+  for (const { barcode, direction, world, rows: claimRows } of buckets.values()) {
     const spellings = [...new Set(claimRows.map((r) => r.allergen).filter((a): a is string => a !== null))];
     const allergen = spellings.length > 0 ? spellings.join(" / ") : null;
     // One letter per reporter, not per row: since migration 0034 a reporter can have a rejected
@@ -306,6 +311,8 @@ export function groupIntoClaims(
                 .filter(
                   (w) =>
                     w.barcode === barcode &&
+                    // The warnings recordCorrection.ts lets block it: real ones, or its own world's.
+                    (w.judge_world_at_report === null || w.judge_world_at_report === world) &&
                     (allergen === null ||
                       liveRows.some((r) => r.allergen !== null && allergensOverlap(w.allergen!, r.allergen))),
                 )
@@ -323,6 +330,7 @@ export function groupIntoClaims(
       liveReporterCount: liveReporterIds.length,
       deletedAccountReportCount,
       sameCircleWarning: hasSharedProfile(liveReporterIds, circleMemberships),
+      judgeWorld: world,
       reports,
     });
   }

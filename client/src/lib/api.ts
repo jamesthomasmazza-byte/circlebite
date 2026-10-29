@@ -873,6 +873,9 @@ export type ReviewQueueClaim = {
   // A pending removal blocked by a confirmed warning in the same allergen family on this product:
   // that warning's spellings. Empty otherwise (server/src/corrections/reviewQueue.ts).
   heldByWarning: string[];
+  // The judge world the claim's reports were filed in (migration 0049), null for real users. Judge
+  // test data, counted apart from everyone else's.
+  judgeWorld: number | null;
   reports: ReviewQueueReport[];
 };
 

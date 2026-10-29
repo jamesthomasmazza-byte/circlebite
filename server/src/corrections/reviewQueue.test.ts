@@ -145,6 +145,7 @@ function makeRow(overrides: Partial<Row> = {}): Row {
     refiles_rejected_id: null,
     accepted_at: null,
     accepted_by_email: null,
+    judge_world_at_report: null,
     ...overrides,
   };
 }
@@ -641,4 +642,43 @@ test("a Walnut removal under a confirmed Tree nuts warning: the parent's card na
   // Reviewer: the same pair, linked.
   const claim = (await loadReviewQueue()).find((c) => c.barcode === barcode && c.direction === "remove_caution");
   assert.deepEqual(claim?.heldByWarning, ["Tree nuts"]);
+});
+
+// Judge worlds (migration 0049): the queue's claims are the threshold's claims, world included.
+test("groupIntoClaims: judges' reports of one allergen on the shared barcode are a claim per world, apart from real users'", () => {
+  const claims = groupIntoClaims(
+    [
+      makeRow({ status: "pending", judge_world_at_report: 1 }),
+      makeRow({ status: "pending", judge_world_at_report: 2 }),
+      makeRow({ status: "pending", judge_world_at_report: 1 }),
+      makeRow({ status: "pending" }),
+    ],
+    new Map(),
+  );
+  assert.deepEqual(
+    claims.map((c) => [c.judgeWorld, c.liveReporterCount]),
+    [
+      [1, 2],
+      [2, 1],
+      [null, 1],
+    ],
+  );
+});
+
+test("groupIntoClaims: a judge's confirmed warning never holds a real removal; a real warning holds a judge's", () => {
+  const claims = groupIntoClaims(
+    [
+      makeRow({ allergen: "Sesame", status: "corroborated", judge_world_at_report: 1 }),
+      makeRow({ allergen: "Peanut", status: "corroborated" }),
+      makeRow({ allergen: "Sesame", direction: "remove_caution", correction_type: "flag_wrong", status: "pending" }),
+      makeRow({ allergen: "Peanut", direction: "remove_caution", correction_type: "flag_wrong", status: "pending", judge_world_at_report: 2 }),
+      makeRow({ allergen: "Sesame", direction: "remove_caution", correction_type: "flag_wrong", status: "pending", judge_world_at_report: 1 }),
+    ],
+    new Map(),
+  );
+  const removal = (allergen: string, world: number | null) =>
+    claims.find((c) => c.direction === "remove_caution" && c.allergen === allergen && c.judgeWorld === world)!;
+  assert.deepEqual(removal("Sesame", null).heldByWarning, []);
+  assert.deepEqual(removal("Peanut", 2).heldByWarning, ["Peanut"]);
+  assert.deepEqual(removal("Sesame", 1).heldByWarning, ["Sesame"], "inside its own world, as before");
 });
