@@ -2177,3 +2177,47 @@ The release also carries the work the repo had recorded as not yet deployed:
 Prof. Yoest's shared-barcode ask is built and deployed. It takes effect on production at the
 judging-week `--rotate-passwords` reseed. Until then production's seeded accounts have no world, and
 production has no seeded circle reports on any barcode: the reporter row's seed has never run there.
+
+## 2026-10-29 — "Scan another product", pinned over a result (not yet deployed)
+
+After a scan, the next scan meant scrolling back up to "Scan with camera". `f8c18f2` pins "Scan
+another product" just above the tab bar whenever a result is on screen: a card, the sample's, a
+label photo's, or "couldn't read this label".
+
+- **Options weighed.**
+  - (a), the Scan tab opening the camera, was rejected: one control with two meanings, and the
+    camera opening from a navigation icon.
+  - (b), a button at the end of the result, was planned. JT changed it to pinned, so it's in view
+    with no scrolling.
+- **One path to the camera.** The tap calls the scanner's `start()`, which does three things:
+  - scrolls the scanner into view;
+  - takes the same `requestCamera()` path as "Scan with camera": the camera sentence on a device
+    that hasn't seen it, else the camera;
+  - makes that call synchronously inside the tap.
+
+  Nothing else reaches the camera: no effect starts it, and a test fails if one does.
+  `SCANNER_REGION` and the sentence are unchanged.
+- **When it hides:**
+  - when the report form is open, where it would abandon the report;
+  - in the required-photo state;
+  - while the camera or its sentence is up.
+
+  A screen reader follows the tap: the sentence's heading takes focus.
+- **Nothing covered.** While it shows, the page pads to the pinned strip's top plus a margin.
+  Scrolled to the bottom, "Report a problem" ends 88px above it at 390px.
+  - **Why the bar needed measuring:** the tab bar turned out to be 86px tall, not the 4.5rem (72px)
+    estimate, because every link gets `padding-block: 0.8rem`. Its raised Scan circle reaches 101px
+    up.
+  - **The fix:** both are now tokens (`--tab-bar-height`, `--tab-bar-reach`) built from the bar's
+    own rules. `routes/ScanAnother.test.ts` fails if those rules change without them, and checks the
+    geometry with and without a home indicator. The existing page padding (4.5rem) is unchanged.
+- **Checked locally** in Chrome, at 390px and 1280px, light and dark. Dark mode was applied by
+  injecting the stylesheet's own dark rules.
+  - Right after a scan, the button shows with no scrolling.
+  - At the bottom, nothing is covered.
+  - A tap brought the camera sentence to the top with focus on its heading, and the pin stepped
+    aside. "Not now" brought it back.
+  - The live camera after Continue wasn't exercised: that needs a camera permission.
+
+Also `ac94aa9`: the judge-world tests moved off the seed's shared barcode. On a local database
+holding the seed, every world already has reports on …083, and the count picked them up.

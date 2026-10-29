@@ -49,6 +49,14 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
    *Done: `5749fca`, deployed Oct 26 in `5b3d4c3`.*
 4. [x] **Visual pass, time-boxed:** cards not bullets, one button style.
    *Done: `619cda7`–`801ac67`, deployed Oct 26 in `5b3d4c3`.*
+- [ ] **"Scan another product", one tap from a result** (JT, Oct 29). New. Pinned just above the
+  tab bar whenever a result is on screen: a card, the sample's, a label photo's, or "couldn't read
+  this label". It's hidden over an open report form, in the required-photo state, and while the
+  camera or its sentence is up. The tap takes the same path as "Scan with camera". The Scan tab is
+  unchanged.
+  *Built Oct 29 in `f8c18f2`, not deployed. After the deploy, check on a phone: a scan, then
+  "Scan another product" from the foot of the card starts the camera, and the 911 note and
+  "Report a problem" scroll clear of the button.*
 
 ### Week of Nov 2 — medium risk, deploy the same week
 
