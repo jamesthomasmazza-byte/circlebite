@@ -49,7 +49,7 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
    *Done: `5749fca`, deployed Oct 26 in `5b3d4c3`.*
 4. [x] **Visual pass, time-boxed:** cards not bullets, one button style.
    *Done: `619cda7`–`801ac67`, deployed Oct 26 in `5b3d4c3`.*
-- [ ] **"Scan another product", one tap from a result** (JT, Oct 29). New. Pinned just above the
+- [x] **"Scan another product", one tap from a result** (JT, Oct 29). New. Pinned just above the
   tab bar whenever a result is on screen: a card, the sample's, a label photo's, or "couldn't read
   this label". It's hidden over an open report form, in the required-photo state, and while the
   camera or its sentence is up. The tap takes the same path as "Scan with camera". The Scan tab is
@@ -59,9 +59,10 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
   *Built Oct 29 in `f8c18f2`, the fade in `fcdbe97`. Deployed Oct 29: `5277925` at about
   1:15 PM ET (release `20261029171541`), then `306a19c` at about 1:32 PM ET (release
   `20261029173215`). Each had a backup first and no migration. The false-safety check on
-  `…076` was last confirmed after the 12:10 PM deploy of `154a6ba`, not after either of these;
-  the result after `306a19c` (James's profile on `…076`) is still to record. Also still to record:
-  the phone check. A scan, then "Scan another
+  `…076` was not run after `5277925`. After `306a19c`, at about 1:35 PM ET, James's profile on
+  `2990000000076` read "Contains an allergen", peanut, reported by 2 shoppers. Phone check passed:
+  a scan, then "Scan another product", then Continue started the camera; nothing was covered;
+  landscape was fine. A scan, then "Scan another
   product" from the foot of the card starts the camera, and the 911 note and "Report a problem"
   scroll clear of the button.*
 

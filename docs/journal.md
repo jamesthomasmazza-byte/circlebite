@@ -2259,3 +2259,11 @@ The phone check of the button is not recorded yet. BACKLOG's item stays open unt
 two deploys. It was last confirmed after the 12:10 PM deploy of `154a6ba`. The result after
 `306a19c`, with James's peanut profile on `…076`, is not recorded yet, and nor is the phone
 check. The entry above is kept as written.
+
+*Added 2026-10-29, the same day:* both checks after `306a19c` passed.
+- **False-safety check:** at about 1:35 PM ET, James's peanut profile on `2990000000076` read
+  "Contains an allergen", peanut, reported by 2 shoppers.
+- **Phone check:** passed. A scan, then "Scan another product", then Continue started the
+  camera. Nothing was covered, and landscape was fine.
+
+No false-safety check was run after `5277925`. BACKLOG's "Scan another product" item is ticked.
