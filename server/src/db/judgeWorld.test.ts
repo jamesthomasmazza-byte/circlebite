@@ -130,5 +130,5 @@ test("only the judge seed writes judge_world onto an account", async () => {
     const statements = text.match(/(INSERT INTO users|UPDATE users)[^`]*/g) ?? [];
     if (statements.some((s) => s.includes("judge_world"))) writers.push(path.relative(src, file));
   }
-  assert.deepEqual(writers.filter((w) => w !== path.join("db", "seed", "judgeSeed.ts")), []);
+  assert.deepEqual(writers, [path.join("db", "seed", "judgeSeed.ts")]);
 });

@@ -20,6 +20,11 @@ function seedId(namespace: number, n: number): string {
 // children by any role. Only the products, the reporting families and their reports are shared: the
 // reported warning is meant to be the same cross-family claim for everyone.
 //
+// Each cast is also a judge world in the data (migration 0049, users.judge_world = n): a report filed
+// by anyone in it counts only with that world's reports, never another judge's or a real user's
+// (corrections/recordCorrection.ts). That is what lets every judge scan the same barcode
+// (Prof. Yoest, 2026-10-27, 7:55 PM). The reporting families are in no judge's world.
+//
 // Ids: cast n's rows are the template's ids offset by (n - 1) * CAST_ID_STRIDE in each namespace, so
 // judge 1's are the ids the single-judge seed used. The reporting families' ids sit just past the
 // template's in the same namespaces, below the stride.
@@ -27,7 +32,7 @@ function seedId(namespace: number, n: number): string {
 export const JUDGE_COUNT = 4;
 const CAST_ID_STRIDE = 100;
 
-export type Person = { id: string; email: string; displayName: string; isJudge: boolean };
+export type Person = { id: string; email: string; displayName: string; isJudge: boolean; judgeWorld: number | null };
 type SeedAllergen = { id: string; name: string; severity: Severity; treatTracesAsUnsafe: boolean };
 export type SeedProfile = { id: string; label: string; owner: string; allergens: SeedAllergen[] };
 type CoManager = { id: string; profile: string; person: string; addedBy: string };
@@ -54,10 +59,11 @@ for (const cast of JUDGE_CASTS) {
   const id = (namespace: number, k: number) => seedId(namespace, (n - 1) * CAST_ID_STRIDE + k);
 
   // ---- People. Only the judge can sign in (judgeSeed.ts). ----
-  PEOPLE[cast.judge] = { id: id(1, 1), email: `judge${n}@${SEED_EMAIL_DOMAIN}`, displayName: `Judge ${n}`, isJudge: true };
-  PEOPLE[cast.priya] = { id: id(1, 2), email: `priya.nair.${n}@${SEED_EMAIL_DOMAIN}`, displayName: "Priya Nair", isJudge: false };
-  PEOPLE[cast.sam] = { id: id(1, 3), email: `sam.okafor.${n}@${SEED_EMAIL_DOMAIN}`, displayName: "Sam Okafor", isJudge: false };
-  PEOPLE[cast.elena] = { id: id(1, 4), email: `elena.varga.${n}@${SEED_EMAIL_DOMAIN}`, displayName: "Elena Varga", isJudge: false };
+  // Everyone in the cast is in judge n's world.
+  PEOPLE[cast.judge] = { id: id(1, 1), email: `judge${n}@${SEED_EMAIL_DOMAIN}`, displayName: `Judge ${n}`, isJudge: true, judgeWorld: n };
+  PEOPLE[cast.priya] = { id: id(1, 2), email: `priya.nair.${n}@${SEED_EMAIL_DOMAIN}`, displayName: "Priya Nair", isJudge: false, judgeWorld: n };
+  PEOPLE[cast.sam] = { id: id(1, 3), email: `sam.okafor.${n}@${SEED_EMAIL_DOMAIN}`, displayName: "Sam Okafor", isJudge: false, judgeWorld: n };
+  PEOPLE[cast.elena] = { id: id(1, 4), email: `elena.varga.${n}@${SEED_EMAIL_DOMAIN}`, displayName: "Elena Varga", isJudge: false, judgeWorld: n };
 
   // ---- Profiles (invented children) and their allergens. ----
   // The judge's own. Covers both trace settings: peanut traces count as "contains", sesame traces
@@ -120,27 +126,28 @@ for (const cast of JUDGE_CASTS) {
     { id: id(6, 7), profile: cast.leo, scanner: cast.sam, product: "crackers", daysAgo: 5 },
     { id: id(6, 8), profile: cast.noor, scanner: cast.elena, product: "granola", daysAgo: 7 },
     // Ids 9 and 10 are the reporting families' scans (below), in cast 1's range only.
-    { id: id(6, 11), profile: cast.maya, scanner: cast.priya, product: `circleReported${n}`, daysAgo: 3 },
-    { id: id(6, 12), profile: cast.noor, scanner: cast.sam, product: `circleReported${n}`, daysAgo: 2 },
+    { id: id(6, 11), profile: cast.maya, scanner: cast.priya, product: "circleReported", daysAgo: 3 },
+    { id: id(6, 12), profile: cast.noor, scanner: cast.sam, product: "circleReported", daysAgo: 2 },
   );
 
   // ---- A co-manager's pending report on each of two children (Prof. Yoest, 2026-10-27) ----
   // The reporter rule in one barcode: the owner and co-managers see who filed a report, a follower
-  // only their role (corrections/circleEscalations.ts). On this judge's own circleReported barcode,
-  // Priya reports Sesame on Maya, where the judge is the owner and sees her name; Sam reports Wheat
-  // on Noor, where the judge follows and sees "a co-manager in Noor's circle".
+  // only their role (corrections/circleEscalations.ts). On the shared circleReported barcode, Priya
+  // reports Sesame on Maya, where the judge is the owner and sees her name; Sam reports Wheat on
+  // Noor, where the judge follows and sees "a co-manager in Noor's circle".
   //
-  // Pending, and they must stay pending: one family each. That's why every judge has their own
-  // barcode (four casts' Sesame reports on one barcode would be four families, and the threshold
-  // would confirm them) and why the two children's allergens differ (Maya's and Noor's owners are
-  // two families). judgeSeed.ts fails the seed if either ever stops holding.
+  // Pending, and they must stay pending: one family each. Every judge scans the same barcode
+  // (Prof. Yoest, 2026-10-27, 7:55 PM): four casts' Sesame reports on it would be four families, and
+  // the threshold would confirm them, but each cast is its own judge world, so each counts only
+  // with its own. The two children's allergens differ because Maya's and Noor's owners are two
+  // families in the same world. judgeSeed.ts fails the seed if either ever stops holding.
   // Ids 1 and 2 are the community reports' (below), in cast 1's range only.
   CIRCLE_REPORTS.push(
     {
       id: id(7, 3),
       scan: id(6, 11),
       reporter: cast.priya,
-      product: `circleReported${n}`,
+      product: "circleReported",
       allergen: "Sesame",
       note: "Seeded example: sesame seeds are in the ingredients on the bag, and the product record doesn't list them.",
       photoPath: `corrections/5eed0007-circle-report-${n}-maya.png`,
@@ -149,7 +156,7 @@ for (const cast of JUDGE_CASTS) {
       id: id(7, 4),
       scan: id(6, 12),
       reporter: cast.sam,
-      product: `circleReported${n}`,
+      product: "circleReported",
       allergen: "Wheat",
       note: "Seeded example: wheat flour is in the ingredients on the bag, and the product record doesn't list it.",
       photoPath: `corrections/5eed0007-circle-report-${n}-noor.png`,
@@ -162,8 +169,10 @@ for (const cast of JUDGE_CASTS) {
 // sees on PRODUCTS.reported genuinely comes from other households, and it's the same claim for all
 // four. Each files from their own child's scan, so each counts as their own family.
 
-PEOPLE.tomas = { id: seedId(1, 5), email: `tomas.reyes@${SEED_EMAIL_DOMAIN}`, displayName: "Tomás Reyes", isJudge: false };
-PEOPLE.grace = { id: seedId(1, 6), email: `grace.lin@${SEED_EMAIL_DOMAIN}`, displayName: "Grace Lin", isJudge: false };
+// In no judge's world (judgeWorld null): they stand in for real families, so their warning is a
+// real-world claim, and every judge sees it the way a real user would.
+PEOPLE.tomas = { id: seedId(1, 5), email: `tomas.reyes@${SEED_EMAIL_DOMAIN}`, displayName: "Tomás Reyes", isJudge: false, judgeWorld: null };
+PEOPLE.grace = { id: seedId(1, 6), email: `grace.lin@${SEED_EMAIL_DOMAIN}`, displayName: "Grace Lin", isJudge: false, judgeWorld: null };
 
 // Peanut on both, spelled differently on purpose: additions corroborate on the allergen family key
 // (migration 0043), so "Peanuts" and "Peanut" are one claim — the demo depends on it, and its test
@@ -208,7 +217,7 @@ export type ProductKey =
   | "yogurtDrink"
   | "granola"
   | "reported"
-  | `circleReported${number}`;
+  | "circleReported";
 
 export type SeedProduct = {
   barcode: string;
@@ -273,24 +282,23 @@ export const PRODUCTS: Record<ProductKey, SeedProduct> = {
   // Not found, and carries the seeded community reports: the engine says "Unable to confirm", and
   // two families' corroborated reports escalate it to "Contains" for anyone with peanut on their list.
   reported: { barcode: "2990000000076", found: false, name: null, brand: null, ingredientsText: null, allergensTags: [], tracesTags: [] },
-  // One per judge, for CIRCLE_REPORTS: the same product under four barcodes, so each judge's two
-  // pending reports stay one family's. Soy only, so "No listed allergens found" for Maya and Noor
-  // until the circle's reports raise it.
-  ...Object.fromEntries(
-    JUDGE_CASTS.map((cast, i) => [
-      `circleReported${cast.n}`,
-      {
-        barcode: ["2990000000083", "2990000000090", "2990000000106", "2990000000113"][i],
-        found: true,
-        name: "Corn Tortilla Chips",
-        brand: "Millbrook",
-        ingredientsText: "ground corn, sunflower oil, sea salt, soy lecithin",
-        allergensTags: ["soybeans"],
-        tracesTags: [],
-      },
-    ]),
-  ),
+  // For CIRCLE_REPORTS, the same barcode for every judge: each judge's pending reports stay one
+  // family's because each judge is their own world, not because of the barcode. Soy only, so "No
+  // listed allergens found" for Maya and Noor until the circle's reports raise it.
+  circleReported: {
+    barcode: "2990000000083",
+    found: true,
+    name: "Corn Tortilla Chips",
+    brand: "Millbrook",
+    ingredientsText: "ground corn, sunflower oil, sea salt, soy lecithin",
+    allergensTags: ["soybeans"],
+    tracesTags: [],
+  },
 };
+
+/** The per-judge circleReported barcodes, retired 2026-10-29 for the shared one. A reseed removes the
+ *  products rows it wrote for them (judgeSeed.ts); nothing else uses them. */
+export const RETIRED_SEED_BARCODES = ["2990000000090", "2990000000106", "2990000000113"];
 
 // ---- The seeded community reports ------------------------------------------------------------------
 // Two families, because a warning reaches other families only once two have reported it

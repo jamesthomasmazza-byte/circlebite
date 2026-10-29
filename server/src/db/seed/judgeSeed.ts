@@ -27,6 +27,7 @@ import {
   PRODUCTS,
   PROFILES,
   SCANS,
+  RETIRED_SEED_BARCODES,
   SEED_BARCODES,
   SEEDED_REPORTS,
   type SeedCommunityReport,
@@ -47,7 +48,8 @@ import {
 //      live for real families) are REJECTED, not deleted, with a fixed reason: the same mechanism as a
 //      review-queue reject, and the overrule log stays intact (docs/coppa.md §2.7 keeps corrections
 //      out of deletion for the same reason).
-//   3. The seed's own correction and NPS rows, and NPS responses a seeded account filed, are deleted.
+//   3. The seed's own correction and NPS rows, NPS responses a seeded account filed, and the products
+//      rows it wrote for retired barcodes are deleted.
 //   4. Every seeded account is deleted; profiles, allergens, circle edges, scans and sessions cascade.
 //   5. Everything is created fresh from seedData.ts.
 //
@@ -225,6 +227,10 @@ export async function seedJudge(client: PoolClient, options: SeedOptions): Promi
     NPS_ROWS.map((r) => r.id),
     seededUserIds,
   ]);
+  // The per-judge barcodes' products, retired for the shared one — only rows the seed wrote.
+  await client.query(`DELETE FROM products WHERE barcode = ANY($1) AND raw_data->>'${SEED_PRODUCT_MARKER}' = 'true'`, [
+    RETIRED_SEED_BARCODES,
+  ]);
 
   // 4. Every seeded account; their profiles, circle edges, scans and sessions cascade.
   //
@@ -260,10 +266,13 @@ async function createSeed(client: PoolClient, options: { judgeHashes: Record<str
     // Only the judges can sign in, each with their own password. Everyone else gets an unusable hash
     // of random bytes nobody ever sees: they exist to be a judge's circle, or a reporting family, not
     // to be logged into.
+    //
+    // judge_world: the only place in the app that sets it (migration 0049; db/judgeWorld.test.ts
+    // keeps it that way). Every report anyone in a judge's cast files is then counted in that world.
     await client.query(
-      `INSERT INTO users (id, email, password_hash, display_name, age_attested_adult, age_attested_at, is_admin)
-       VALUES ($1, $2, $3, $4, true, now(), false)`,
-      [person.id, person.email, person.isJudge ? options.judgeHashes[key] : options.otherPasswordHash, person.displayName],
+      `INSERT INTO users (id, email, password_hash, display_name, age_attested_adult, age_attested_at, is_admin, judge_world)
+       VALUES ($1, $2, $3, $4, true, now(), false, $5)`,
+      [person.id, person.email, person.isJudge ? options.judgeHashes[key] : options.otherPasswordHash, person.displayName, person.judgeWorld],
     );
   }
 

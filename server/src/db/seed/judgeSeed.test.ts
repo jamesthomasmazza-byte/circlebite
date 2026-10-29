@@ -9,7 +9,7 @@ import { choiceForKey, recognizeAllergenName } from "../../matcher/allergenChoic
 import { hashPassword, verifyPassword } from "../../auth/password.js";
 import { getProfileAccess } from "../../authorization/profiles.js";
 import { loadCommunityAdditions } from "../../corrections/communityAdditions.js";
-import { claimKey, CORROBORATION_THRESHOLD, countCorroboratingFamilies } from "../../corrections/recordCorrection.js";
+import { claimKey, CORROBORATION_THRESHOLD, countCorroboratingFamilies, recordCorrection } from "../../corrections/recordCorrection.js";
 import { env } from "../../env.js";
 import { SEED_EMAIL_DOMAIN } from "../../lib/seedMarker.js";
 import { scansRouter } from "../../routes/scans.js";
@@ -18,6 +18,7 @@ import { pool } from "../pool.js";
 import {
   JUDGE_CORRECTION_REJECTION_REASON,
   runJudgeSeed,
+  seededAllergenKey,
   SeedCircleReportCorroboratedError,
   SeedConflictError,
   SeedNotCorroboratedError,
@@ -32,6 +33,7 @@ import {
   PEOPLE,
   PRODUCTS,
   PROFILES,
+  RETIRED_SEED_BARCODES,
   SCANS,
   SEED_BARCODES,
   SEEDED_REPORTS,
@@ -48,6 +50,10 @@ const OUTSIDER_CORRECTION = "7e570000-0000-0000-0000-000000000004";
 const OUTSIDER_NPS = "7e570000-0000-0000-0000-000000000005";
 const JUDGE_TEST_SCAN = "7e570000-0000-0000-0000-000000000006";
 const JUDGE_TEST_CORRECTION = "7e570000-0000-0000-0000-000000000007";
+// A real account, for what a real family sees on the demo barcodes.
+const REAL_PARENT = "7e570000-0000-0000-0000-000000000008";
+const REAL_CHILD = "7e570000-0000-0000-0000-000000000009";
+const REAL_CHILD_PEANUT = "7e570000-0000-0000-0000-00000000000a";
 // Any barcode outside the seed set stands in for "a real product" here — this one isn't a real GTIN.
 const STAND_IN_REAL_BARCODE = "1000000000095";
 
@@ -86,13 +92,13 @@ async function clearSeed() {
   await pool.query("DELETE FROM product_corrections WHERE id = ANY($1)", [SEEDED_REPORTS.map((r) => r.id)]);
   await pool.query("DELETE FROM nps_responses WHERE id = ANY($1)", [NPS_ROWS.map((r) => r.id)]);
   await pool.query("DELETE FROM users WHERE email LIKE $1", [`%@${SEED_EMAIL_DOMAIN}`]);
-  await pool.query("DELETE FROM products WHERE barcode = ANY($1)", [SEED_BARCODES]);
+  await pool.query("DELETE FROM products WHERE barcode = ANY($1)", [[...SEED_BARCODES, ...RETIRED_SEED_BARCODES]]);
 }
 
 /** Everything the seed owns, normalized — no timestamps or password hashes, which differ by design. */
 async function snapshot() {
   const q = async (sql: string, params: unknown[] = []) => (await pool.query(sql, params)).rows;
-  const users = await q("SELECT id, email, display_name, is_admin FROM users WHERE email LIKE $1 ORDER BY email", [
+  const users = await q("SELECT id, email, display_name, is_admin, judge_world FROM users WHERE email LIKE $1 ORDER BY email", [
     `%@${SEED_EMAIL_DOMAIN}`,
   ]);
   const userIds = users.map((u) => u.id);
@@ -115,7 +121,8 @@ async function snapshot() {
       [userIds],
     ),
     reports: await q(
-      `SELECT id, scan_id, barcode, reported_by, profile_owner_at_report, allergen, direction, status, photo_path
+      `SELECT id, scan_id, barcode, reported_by, profile_owner_at_report, allergen, direction, status, photo_path,
+              judge_world_at_report
        FROM product_corrections WHERE id = ANY($1) ORDER BY id`,
       [SEEDED_REPORTS.map((r) => r.id)],
     ),
@@ -338,8 +345,9 @@ test("a seed whose reports fall short of the threshold fails loudly, and changes
 });
 
 // Prof. Yoest, 2026-10-27: a JUDGES.md row where a judge watches a co-manager's pending report show
-// by name in one seat and by role only in the other. Each judge's own barcode, two of their children.
-test("the circle's pending reports stay pending: one family each, on each judge's own barcode", async () => {
+// by name in one seat and by role only in the other. One barcode for every judge (his 7:55 PM email
+// the same day), two of their children; the judge worlds keep each judge's reports apart.
+test("the circle's pending reports stay pending: one family each, every judge on the same barcode", async () => {
   const circleIds = new Set(CIRCLE_REPORTS.map((r) => r.id));
   const circleRows = baseline.reports.filter((r) => circleIds.has(r.id));
   assert.equal(circleRows.length, 2 * JUDGE_COUNT);
@@ -355,7 +363,45 @@ test("the circle's pending reports stay pending: one family each, on each judge'
   } finally {
     client.release();
   }
-  assert.equal(new Set(CIRCLE_REPORTS.map((r) => PRODUCTS[r.product].barcode)).size, JUDGE_COUNT, "a barcode per judge");
+  assert.deepEqual([...new Set(CIRCLE_REPORTS.map((r) => PRODUCTS[r.product].barcode))], ["2990000000083"], "one barcode for every judge");
+
+  // Each report is in its reporter's judge world, and that is all that holds them apart: counted
+  // without the worlds, the four casts' Sesame reports are four families, past the threshold.
+  for (const report of CIRCLE_REPORTS) {
+    const row = (await pool.query("SELECT judge_world_at_report AS world FROM product_corrections WHERE id = $1", [report.id])).rows[0];
+    assert.equal(row.world, PEOPLE[report.reporter].judgeWorld, report.id);
+  }
+  const { rows } = await pool.query<{ n: number }>(
+    `SELECT count(DISTINCT profile_owner_at_report)::int AS n FROM product_corrections WHERE id = ANY($1) AND allergen = 'Sesame'`,
+    [CIRCLE_REPORTS.map((r) => r.id)],
+  );
+  assert.equal(rows[0].n, JUDGE_COUNT);
+  assert.ok(rows[0].n >= CORROBORATION_THRESHOLD.add_caution);
+});
+
+test("every seeded account is in its judge's world; the reporting families are in none", async () => {
+  const { rows } = await pool.query<{ id: string; judge_world: number | null }>(
+    "SELECT id, judge_world FROM users WHERE email LIKE $1",
+    [`%@${SEED_EMAIL_DOMAIN}`],
+  );
+  const worlds = new Map(rows.map((r) => [r.id, r.judge_world]));
+  for (const cast of JUDGE_CASTS) {
+    for (const key of [cast.judge, cast.priya, cast.sam, cast.elena]) assert.equal(worlds.get(PEOPLE[key].id), cast.n, key);
+  }
+  assert.equal(worlds.get(PEOPLE.tomas.id), null);
+  assert.equal(worlds.get(PEOPLE.grace.id), null);
+  assert.equal(worlds.size, Object.keys(PEOPLE).length);
+});
+
+test("a reseed removes the retired per-judge barcodes' products, and only the ones it wrote", async () => {
+  await pool.query(
+    `INSERT INTO products (barcode, found, name, raw_data, fetched_at) VALUES ($1, true, 'Corn Tortilla Chips', $2, now())`,
+    [RETIRED_SEED_BARCODES[0], JSON.stringify({ circlebite_seed: true })],
+  );
+  await seed();
+  const { rows } = await pool.query("SELECT barcode FROM products WHERE barcode = ANY($1)", [RETIRED_SEED_BARCODES]);
+  assert.deepEqual(rows, []);
+  assert.deepEqual(await snapshot(), baseline);
 });
 
 test("a circle report the threshold would confirm fails the seed loudly, and changes nothing", async () => {
@@ -691,18 +737,21 @@ test("the seeded shopper report renders Contains for a peanut profile, with the 
 
 // The JUDGES.md row, as every judge will meet it: the same barcode, Contains on both children, the
 // reporter named to the owner and given by role only to the follower — live card and history alike.
-test("the reporter rule on a judge's own barcode: Priya by name on Maya, a co-manager by role on Noor", async () => {
+test("the reporter rule on the shared barcode: Priya by name on Maya, a co-manager by role on Noor, for every judge", async () => {
   const previous = env.circleEscalations;
   env.circleEscalations = true;
   try {
     await withoutNetwork(async () => {
       for (const cast of JUDGE_CASTS) {
         const judgeId = PEOPLE[cast.judge].id;
-        const barcode = PRODUCTS[`circleReported${cast.n}`].barcode;
+        const barcode = PRODUCTS.circleReported.barcode;
 
+        // Exactly this judge's circle's report on each child — never another judge's, though all
+        // four filed on this barcode — and no community warning: nothing was confirmed.
         const maya = await rescan(PROFILES[cast.maya].id, barcode, judgeId);
         assert.equal(maya.result, "safe", `${cast.judge}: the product data alone finds nothing`);
         assert.equal(maya.effective?.result, "contains_allergen", cast.judge);
+        assert.deepEqual(maya.community_reports, [], cast.judge);
         assert.deepEqual(maya.pending_circle_reports, [
           { allergenName: "Sesame", reporters: [{ name: "Priya Nair", role: "co_manager", isViewer: false, withheld: false }] },
         ]);
@@ -714,16 +763,11 @@ test("the reporter rule on a judge's own barcode: Priya by name on Maya, a co-ma
           { allergenName: "Wheat", reporters: [{ name: null, role: "co_manager", isViewer: false, withheld: true }] },
         ]);
         assert.ok(!JSON.stringify(noor).includes("Sam Okafor"), "the follower's response never carries the name");
-
-        // Another judge's barcode carries nothing for this judge.
-        const other = JUDGE_CASTS.find((c) => c !== cast)!;
-        const elsewhere = await rescan(PROFILES[cast.maya].id, PRODUCTS[`circleReported${other.n}`].barcode, judgeId);
-        assert.equal(elsewhere.effective, null, `${cast.judge} on ${other.judge}'s barcode`);
-        assert.deepEqual(elsewhere.pending_circle_reports, []);
+        assert.deepEqual(noor.community_reports, [], cast.judge);
       }
 
       // Judge 1's history shows the same as the live card, on the seeded scans as well.
-      const barcode = PRODUCTS.circleReported1.barcode;
+      const barcode = PRODUCTS.circleReported.barcode;
       for (const [profile, allergen, withheld] of [[MAYA, "Sesame", false], [NOOR, "Wheat", true]] as const) {
         const entries = (await history(profile.id)).filter((h) => h.barcode === barcode);
         assert.ok(entries.length >= 2, `${profile.label}: the seeded scan and the one just made`);
@@ -736,5 +780,90 @@ test("the reporter rule on a judge's own barcode: Priya by name on Maya, a co-ma
     });
   } finally {
     env.circleEscalations = previous;
+  }
+});
+
+// Judge worlds (migration 0049), end to end: a report a judge files themselves while testing, on the
+// shared barcode, through the same recordCorrection a real report runs. Inside their world it behaves
+// normally — pending, on their child's card for their circle. Outside it, nothing: not another
+// judge's confirmation, not a real family's card. And the real family still gets the real warning.
+test("a judge's own report on the shared barcode stays in their world; a real family still sees the real warning", async () => {
+  const previous = { community: env.communityCorrections, circle: env.circleEscalations };
+  env.communityCorrections = true;
+  env.circleEscalations = true;
+  const filed: string[] = [];
+  try {
+    await pool.query(
+      `INSERT INTO users (id, email, password_hash, display_name, age_attested_adult, age_attested_at)
+       VALUES ($1, 'seed-real-parent@example.com', 'x', 'Real parent', true, now())`,
+      [REAL_PARENT],
+    );
+    await pool.query("INSERT INTO allergen_profiles (id, manager_id, label) VALUES ($1, $2, 'Real child')", [REAL_CHILD, REAL_PARENT]);
+    await pool.query(
+      `INSERT INTO allergens (id, allergen_profile_id, name, severity, treat_traces_as_unsafe, allergen_key, key_needs_review)
+       VALUES ($1, $2, 'Peanut', 'severe', true, $3, false)`,
+      [REAL_CHILD_PEANUT, REAL_CHILD, seededAllergenKey("Peanut")],
+    );
+
+    // Judges 1 and 2 each report peanut on their own Maya, from her seeded scan of the shared
+    // barcode: two different owners, so without the worlds two families, and a confirmed warning
+    // in front of every peanut-allergic child in the app.
+    for (const cast of JUDGE_CASTS.slice(0, 2)) {
+      const scan = SCANS.find((s) => s.profile === cast.maya && s.product === "circleReported")!;
+      const result = await recordCorrection({
+        scanId: scan.id,
+        reportedBy: PEOPLE[cast.judge].id,
+        correctionType: "flag_missing",
+        allergen: "Peanut",
+        note: "judge testing",
+        photoPath: "corrections/none.jpg",
+        origin: "user_initiated",
+      });
+      filed.push(result.id);
+      assert.deepEqual([result.status, result.corroborated], ["pending", false], cast.judge);
+      const { rows } = await pool.query("SELECT judge_world_at_report AS world FROM product_corrections WHERE id = $1", [result.id]);
+      assert.equal(rows[0].world, cast.n, `${cast.judge}'s report is in ${cast.judge}'s world`);
+    }
+
+    await withoutNetwork(async () => {
+      const barcode = PRODUCTS.circleReported.barcode;
+
+      // In judge 1's own world: their report, pending, beside Priya's (in Maya's allergen order) — and
+      // no confirmation.
+      const maya = await rescan(MAYA.id, barcode);
+      assert.equal(maya.effective?.result, "contains_allergen");
+      assert.deepEqual(maya.community_reports, []);
+      assert.deepEqual(
+        maya.pending_circle_reports.map((r) => [r.allergenName, r.reporters.map((p) => p.isViewer)]),
+        [
+          ["Peanut", [true]],
+          ["Sesame", [false]],
+        ],
+      );
+
+      // Judge 3 never sees either judge's peanut report.
+      const judge3 = JUDGE_CASTS[2];
+      const theirs = await rescan(PROFILES[judge3.maya].id, barcode, PEOPLE[judge3.judge].id);
+      assert.deepEqual(theirs.community_reports, []);
+      assert.deepEqual(theirs.pending_circle_reports.map((r) => r.allergenName), ["Sesame"]);
+
+      // A real family with a peanut allergy: nothing from any judge on the shared barcode.
+      const real = await rescan(REAL_CHILD, barcode, REAL_PARENT);
+      assert.equal(real.result, "safe");
+      assert.equal(real.effective, null);
+      assert.deepEqual(real.community_reports, []);
+      assert.deepEqual(real.pending_circle_reports, []);
+
+      // The false-safety check: the real two-family warning on the community demo barcode still
+      // reaches the real family.
+      const demo = await rescan(REAL_CHILD, PRODUCTS.reported.barcode, REAL_PARENT);
+      assert.equal(demo.effective?.result, "contains_allergen");
+      assert.deepEqual(demo.community_reports, [{ allergenName: "Peanut", reporterCount: COMMUNITY_REPORTS.length }]);
+    });
+  } finally {
+    env.communityCorrections = previous.community;
+    env.circleEscalations = previous.circle;
+    await pool.query("DELETE FROM product_corrections WHERE id = ANY($1)", [filed]);
+    await pool.query("DELETE FROM users WHERE id = $1", [REAL_PARENT]);
   }
 });
