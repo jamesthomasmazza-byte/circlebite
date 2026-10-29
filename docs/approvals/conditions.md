@@ -312,6 +312,16 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
   judging-week `--rotate-passwords` reseed (week of November 16), run by JT in his own terminal
   (`BACKLOG.md`, "Week of Nov 16 — judges"). Until then, production has no such barcode.
 
+### Due Thursday, November 13 — the code freeze (his October 27, 7:55 PM email, `2026-10-27-yoest-one-shared-barcode.md`)
+
+- **"Please let every judge scan the same barcode, and handle the separation in the data so reports
+  from judge accounts never count toward another judge's confirmation."** It changes the row above:
+  one barcode for every judge in place of one each (`255f867`, `f91691a`), with judges' reports kept
+  apart by the data rather than by the barcode. His reason: "a barcode per judge is one more thing
+  for them to keep track of, close to handing out passwords."
+- **Status: open.** Not planned or built yet. The deploy owed for the row above still stands, and
+  should carry this change if it is built first.
+
 ## Corrections owed to Prof. Yoest
 
 The October 8 email, which his October 9 acceptance rests on, claimed more than was checked.
@@ -338,4 +348,5 @@ doesn't do. **Owed and sent the same evening** (`2026-10-27-jt-follow-request-co
 
 5. "The owner is emailed about each new request." CircleBite sends no email. Owners learn of circle
    requests in the app, from a line on Scan and a badge on the Circle tab. Corrected the evening of
-   October 27.
+   October 27. Acknowledged in his 7:55 PM reply the same evening
+   (`2026-10-27-yoest-one-shared-barcode.md`).
