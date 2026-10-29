@@ -138,14 +138,21 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
   `docs/approvals/2026-10-27-yoest-judges-reporter-row.md`): `255f867` (the seed) and `f91691a`
   (the `JUDGES.md` row), pushed Oct 27 in `cd97de2`. A deploy alone doesn't make the row true on
   production; the judging-week reseed below does.
+- [ ] **Deploy one shared barcode with judge worlds before the freeze** (Prof. Yoest's Oct 27,
+  7:55 PM ask, `docs/approvals/2026-10-27-yoest-one-shared-barcode.md`): migration 0049 and the
+  seed on `2990000000083` for every judge (`c32c3c0` … `f256065`, built Oct 29). Brings migration
+  0049; a symlink rollback past it still works (`docs/server-setup.md` §9). After the deploy, run
+  the false-safety check in `docs/server-setup.md` §8.
 
 Fixes only from here.
 
 ### Week of Nov 16 — judges
 
 - [ ] `--rotate-passwords` reseed, in JT's own terminal. This is also the reseed that makes the
-  reporter row true on production; check it as judge1 on your own barcode (`2990000000083`): Maya
-  names "Priya Nair (co-manager)", Noor says "A co-manager in Noor's circle".
+  reporter row true on production, and that puts every seeded account in its judge world. Check it
+  as judge1 and judge2 on the shared barcode (`2990000000083`): Maya names "Priya Nair
+  (co-manager)", Noor says "A co-manager in Noor's circle", and both say no other family has
+  confirmed it. Then the false-safety check (`docs/server-setup.md` §8) once more.
 - [ ] judge1 shows no banner.
 - [ ] Tick the judge item and fix the `JUDGE_PASSWORD` line.
 - [ ] Four one-time links.

@@ -319,8 +319,20 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
   one barcode for every judge in place of one each (`255f867`, `f91691a`), with judges' reports kept
   apart by the data rather than by the barcode. His reason: "a barcode per judge is one more thing
   for them to keep track of, close to handing out passwords."
-- **Status: open.** Not planned or built yet. The deploy owed for the row above still stands, and
-  should carry this change if it is built first.
+- **Planned and approved October 29** (JT): judge worlds. Each judge's account and invented circle
+  carry a world (`users.judge_world`, migration 0049, set only by the judge seed and allowed only
+  on the seed's reserved domain), and each report is stamped with its world at insert. Corroboration
+  counts and confirms only within a world. A judge's report never counts toward another judge's
+  confirmation, which is his ask, or toward or against a real user's claim. A report a judge files
+  while testing is counted the same way. Decision: `docs/principles.md`, Decision precedents.
+- **Built October 29:** `c32c3c0` (migration 0049), `fa98427` (counting), `0922861` (what a card
+  shows), `f52733c` (the review queue), `e9dec87` (the seed, every judge on `2990000000083`),
+  `f256065` (the `JUDGES.md` row). Real users' thresholds are pinned by
+  `server/src/corrections/recordCorrection.test.ts`, unchanged. The worlds are tested in
+  `judgeWorldCorroboration.test.ts`, `judgeWorldVisibility.test.ts`, `db/judgeWorld.test.ts` and
+  `judgeSeed.test.ts`. Not pushed or deployed.
+- **Still owed:** deploy before November 13. As with the row above, production shows it only after
+  the judging-week reseed.
 
 ## Corrections owed to Prof. Yoest
 
