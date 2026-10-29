@@ -59,6 +59,8 @@
   /* Scan's pinned "Scan another product" (2026-10-29): its strip ends this far above the bottom of
      the screen — the circle's reach, a gap, the button, a top margin. */
   --scan-another-top: calc(var(--tab-bar-reach) + var(--space-2) + var(--tap-min) + var(--space-2));
+  /* The soft fade above the pinned strip, so the page reads as passing under it, not cut by it. */
+  --scan-another-fade: var(--space-5);
 
   --radius-sm: 0.375rem;
   --radius-md: 0.625rem;
@@ -1180,9 +1182,12 @@ th {
    result is on screen, so the next scan is one tap from anywhere on it. Its strip runs from under
    the bar's top edge (tucked by --space-2, so no gap shows) up to --scan-another-top, by
    construction; the button sits at the top of it, clear of the bar's raised Scan circle below,
-   which shows in front of the strip as it does in front of the page.
-   While it shows, the page pads to --scan-another-top plus a margin, so the last line on the page
-   — the 911 note, "Report a problem" — scrolls fully clear of it and of the bar. */
+   which shows in front of the strip as it does in front of the page. A fade above it, in the
+   page's own background, so what passes under it reads as layered rather than cut (2026-10-29).
+   While it shows, the page pads to --scan-another-top, the fade and a margin, so the last line on
+   the page — the 911 note, "Report a problem" — scrolls fully clear of all three and of the bar.
+   The same at every width: placed in the page on a wide screen, it fell below the first screen of
+   a 1280×800 laptop window, and the point is that it's in view right after a scan (2026-10-29). */
 .scan-another {
   position: fixed;
   inset: auto 0 calc(var(--tab-bar-height) - var(--space-2)) 0;
@@ -1190,7 +1195,15 @@ th {
   height: calc(var(--scan-another-top) - (var(--tab-bar-height) - var(--space-2)));
   padding: var(--space-2) var(--space-4) 0;
   background: var(--color-bg);
-  border-top: 1px solid var(--color-border);
+}
+
+.scan-another::before {
+  content: "";
+  position: absolute;
+  inset: auto 0 100% 0;
+  height: var(--scan-another-fade);
+  background: linear-gradient(to bottom, transparent, var(--color-bg));
+  pointer-events: none;
 }
 
 .scan-another > button {
@@ -1202,7 +1215,7 @@ th {
 }
 
 .tab-shell:has(.scan-another) {
-  padding-bottom: calc(var(--scan-another-top) + var(--space-4));
+  padding-bottom: calc(var(--scan-another-top) + var(--scan-another-fade) + var(--space-4));
 }
 
 .tab-shell__notices {

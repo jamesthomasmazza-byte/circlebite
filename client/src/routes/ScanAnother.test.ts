@@ -132,21 +132,34 @@ test("the bar's height token is built from the bar's own rules", () => {
   assert.equal(Math.round(px("var(--tab-bar-reach)")), 101);
 });
 
-test("the page's last control scrolls clear of the pinned button and the tab bar, with or without a home indicator", () => {
+// The same at every width (2026-10-29): placed in the page on a wide screen instead, the button
+// fell below the first screen of a 1280×800 laptop window. Nothing in this geometry depends on the
+// width, and no width rule may change it — so the check below holds at each of these.
+const VIEWPORTS = ["390×844", "1280×800", "1440×900"];
+
+test("no width rule changes the pinned button or the page's padding for it", () => {
+  for (const m of CSS.matchAll(/@media[^{]*\(\s*(min|max)-width[^{]*\{/g)) {
+    const block = CSS.slice(m.index!, CSS.indexOf("\n}\n", m.index!));
+    assert.doesNotMatch(block, /scan-another|tab-shell/, `${m[0]} leaves it alone`);
+  }
+});
+
+test("the page's last control scrolls clear of the pinned button and the tab bar, at 390, 1280×800 and 1440×900, with or without a home indicator", () => {
   const strip = rule(".scan-another");
   const padded = rule(".tab-shell:has(.scan-another)");
   assert.equal(prop(strip, "position"), "fixed");
 
-  for (const inset of [0, 34]) {
+  for (const [viewport, inset] of VIEWPORTS.flatMap((v) => [0, 34].map((i) => [v, i] as const))) {
     // The strip: from its bottom inset up to --scan-another-top, by construction.
     const bottom = px(prop(strip, "inset").match(/calc\(.*\)/)![0], inset);
     const top = bottom + px(prop(strip, "height"), inset);
     assert.equal(top, px("var(--scan-another-top)", inset));
 
     // Scrolled to the bottom, the page's last line ends `padding-bottom` above the screen's bottom
-    // edge — above the strip's top, with room to spare, so nothing is ever under it.
+    // edge — above the strip's top and its fade, with room to spare, so nothing is ever under either.
     const padding = px(prop(padded, "padding-bottom"), inset);
-    assert.ok(padding - top >= px("var(--space-4)"), `last line ${padding}px up, strip top ${top}px`);
+    const fade = px("var(--scan-another-fade)");
+    assert.ok(padding - top - fade >= px("var(--space-4)"), `${viewport}: last line ${padding}px up, strip top ${top}px, fade ${fade}px`);
 
     // The strip's bottom is tucked under the bar's top edge, so no gap shows, and the button is
     // clear of the bar's raised Scan circle.
@@ -162,4 +175,12 @@ test("the button is a full tap target, as wide as the page's column", () => {
   const button = rule(".scan-another > button");
   assert.equal(prop(button, "min-height"), "var(--tap-min)");
   assert.equal(prop(button, "max-width"), "var(--measure)");
+});
+
+test("the strip has a soft fade above it, at every width, in the page's own background, that takes no taps", () => {
+  const fade = rule(".scan-another::before");
+  assert.equal(prop(fade, "height"), "var(--scan-another-fade)");
+  assert.equal(prop(fade, "background"), "linear-gradient(to bottom, transparent, var(--color-bg))");
+  assert.equal(prop(fade, "pointer-events"), "none");
+  assert.equal(prop(fade, "inset"), "auto 0 100% 0", "above the strip, not over the button");
 });
