@@ -2240,3 +2240,17 @@ Checked locally with judge1's Maya on …076, scrolled to the bottom:
 | 1440×900 | 627 | 715 | 747–791 | 799 |
 
 Right after the scan, the button is in view at all three sizes.
+
+## 2026-10-29 — Deployed twice: "Scan another product", then its fade
+
+JT deployed twice on Oct 29, each time with a backup first and no migration:
+
+| Commit | What | Time (ET) | Release |
+|---|---|---|---|
+| `5277925` | The pinned "Scan another product" (`f8c18f2`) | about 1:15 PM | `20261029171541` |
+| `306a19c` | The fade above the strip (`fcdbe97`) | about 1:32 PM | `20261029173215` |
+
+The false-safety check (`docs/server-setup.md` §8) passed after each: a normal account's peanut
+profile on `…076` still read "Contains an allergen", reported by 2 shoppers.
+
+The phone check of the button is not recorded yet. BACKLOG's item stays open until it is.

@@ -56,9 +56,12 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
   unchanged.
   The same at every width, with a fade above the strip (JT, Oct 29, after the pinned strip cut
   "Report a problem" in half on a 1280×800 laptop window on production).
-  *Built Oct 29 in `f8c18f2`, the fade in `fcdbe97`, not deployed. After the deploy, check on a phone: a scan, then
-  "Scan another product" from the foot of the card starts the camera, and the 911 note and
-  "Report a problem" scroll clear of the button.*
+  *Built Oct 29 in `f8c18f2`, the fade in `fcdbe97`. Deployed Oct 29: `5277925` at about
+  1:15 PM ET (release `20261029171541`), then `306a19c` at about 1:32 PM ET (release
+  `20261029173215`). Each had a backup first and no migration, and the false-safety check on
+  `…076` passed after each. Still to record: the phone check. A scan, then "Scan another
+  product" from the foot of the card starts the camera, and the 911 note and "Report a problem"
+  scroll clear of the button.*
 
 ### Week of Nov 2 — medium risk, deploy the same week
 
