@@ -259,6 +259,55 @@ see §9 for the backup this depends on).
 `WorkingDirectory` in the systemd unit points at the `current` symlink, not a specific release, so
 nothing about the unit needs to change on a normal deploy or a manual revert.
 
+## 8a. Compressing responses — nginx gzip
+
+Added 2026-10-29. Production was sending the 729 kB JS bundle uncompressed (no `Content-Encoding`).
+Gzipped it is about 206 kB. Node doesn't compress; nginx does, for HTML by default and, with these
+lines, for JS, CSS, JSON and SVG. Caching is the app's job (`server/src/lib/serveClient.ts`):
+hashed files under `/assets` are cached for a year, and `index.html` and every other route are
+re-checked on every load, so a deploy still shows at once.
+
+The lines, in the live file `/etc/nginx/sites-available/circlebite.app`, in the first (HTTPS)
+`server` block, directly after `client_max_body_size 9m;` (reference copy:
+`scripts/nginx-circlebite.conf`):
+
+```nginx
+    gzip on;
+    gzip_vary on;
+    gzip_types application/javascript text/javascript text/css application/json image/svg+xml;
+```
+
+**Apply** (on the box):
+
+```bash
+sudo cp /etc/nginx/sites-available/circlebite.app /etc/nginx/sites-available/circlebite.app.pre-gzip
+sudo nano /etc/nginx/sites-available/circlebite.app   # add the three lines above
+sudo nginx -t                                          # must say "syntax is ok" and "test is successful"
+sudo systemctl reload nginx                            # reload, not restart: open connections finish
+```
+
+If `nginx -t` fails, don't reload. Put the backup back (below) and nothing has changed.
+
+**Confirm** (from the Mac; take the bundle's current name from the page):
+
+```bash
+JS=$(curl -s https://circlebite.app/ | grep -o '/assets/index-[A-Za-z0-9_-]*\.js' | head -1); echo "$JS"
+curl -s -o /dev/null -D - -H 'Accept-Encoding: gzip' "https://circlebite.app$JS" | grep -i '^content-encoding\|^vary\|^cache-control'
+#   content-encoding: gzip
+#   vary: Accept-Encoding
+#   cache-control: public, max-age=31536000, immutable    (once a release with serveClient.ts is live)
+curl -s -H 'Accept-Encoding: gzip' "https://circlebite.app$JS" | wc -c   # about 206000, not 729000
+curl -s -o /dev/null -D - https://circlebite.app/ | grep -i '^cache-control'
+#   cache-control: no-cache
+```
+
+**Undo:**
+
+```bash
+sudo cp /etc/nginx/sites-available/circlebite.app.pre-gzip /etc/nginx/sites-available/circlebite.app
+sudo nginx -t && sudo systemctl reload nginx
+```
+
 ## 9. Rollback — two layers, for two different failure modes
 
 **1. A bad deploy never goes live in the first place.** `scripts/release.sh`'s atomicity means a
