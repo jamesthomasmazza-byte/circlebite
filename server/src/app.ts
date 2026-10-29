@@ -7,6 +7,7 @@ import express, { type Express, type NextFunction, type Request, type Response }
 import { authRouter } from "./auth/routes.js";
 import { env } from "./env.js";
 import { HttpError } from "./lib/httpError.js";
+import { serveClient } from "./lib/serveClient.js";
 import { adminRouter } from "./routes/admin.js";
 import { circleRouter } from "./routes/circle.js";
 import { circleRequestsRouter } from "./routes/circleRequests.js";
@@ -72,11 +73,8 @@ export function createApp(): Express {
     // In dev, Vite serves the client on :5173 and proxies API calls here. In production, nginx
     // sends everything to this process, so it serves the built client itself: static assets
     // directly, then an index.html fallback for any other GET so a direct load or refresh of a
-    // client-side route (/dashboard, /login, ...) doesn't 404.
-    app.use(express.static(clientDist));
-    app.get(/.*/, (_req, res) => {
-      res.sendFile(path.join(clientDist, "index.html"));
-    });
+    // client-side route (/dashboard, /login, ...) doesn't 404. Cache rules: lib/serveClient.ts.
+    serveClient(app, clientDist);
   }
 
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
