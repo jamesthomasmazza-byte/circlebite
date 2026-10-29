@@ -2254,3 +2254,8 @@ The false-safety check (`docs/server-setup.md` §8) passed after each: a normal 
 profile on `…076` still read "Contains an allergen", reported by 2 shoppers.
 
 The phone check of the button is not recorded yet. BACKLOG's item stays open until it is.
+
+*Corrected 2026-10-29, the same day:* the false-safety check did not pass "after each" of these
+two deploys. It was last confirmed after the 12:10 PM deploy of `154a6ba`. The result after
+`306a19c`, with James's peanut profile on `…076`, is not recorded yet, and nor is the phone
+check. The entry above is kept as written.
