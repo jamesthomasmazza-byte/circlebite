@@ -20,7 +20,8 @@ after(async () => {
   await pool.end();
 });
 
-const BARCODE = "2990000000083";
+// Not the seed's shared barcode: a seeded local database already has every world's reports on that one.
+const BARCODE = "4900000000083";
 const id = (n: number) => `7e5b0000-0000-0000-0000-${String(n).padStart(12, "0")}`;
 
 // Each person owns their own child, so each is their own family.
