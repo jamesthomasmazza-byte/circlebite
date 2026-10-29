@@ -2221,3 +2221,22 @@ label photo's, or "couldn't read this label".
 
 Also `ac94aa9`: the judge-world tests moved off the seed's shared barcode. On a local database
 holding the seed, every world already has reports on …083, and the count picked them up.
+
+*Added 2026-10-29, the same day:* on production, on a 1280×800 laptop window (James on …076), the
+pinned strip cut "Report a problem" in half.
+- **The fix, `fcdbe97`:** a 24px fade above the strip, in the page's own background, so the page
+  reads as passing under it, not cut by it. The page pads for the fade too.
+- **The same at every width.** Putting the button in the page on wide screens was built and
+  dropped before it was pushed: on 1280×800 it fell below the first screen after a scan, which
+  defeats the point. A test now fails if a width rule ever changes the strip or the page's padding
+  for it.
+
+Checked locally with judge1's Maya on …076, scrolled to the bottom:
+
+| Window | "Report a problem" ends | Fade starts | Button | Raised circle starts |
+|---|---|---|---|---|
+| 390×800 | 527 | 615 | 647–691 | 699 |
+| 1280×800 | 527 | 615 | 647–691 | 699 |
+| 1440×900 | 627 | 715 | 747–791 | 799 |
+
+Right after the scan, the button is in view at all three sizes.

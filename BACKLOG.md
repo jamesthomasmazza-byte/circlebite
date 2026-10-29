@@ -54,7 +54,9 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
   this label". It's hidden over an open report form, in the required-photo state, and while the
   camera or its sentence is up. The tap takes the same path as "Scan with camera". The Scan tab is
   unchanged.
-  *Built Oct 29 in `f8c18f2`, not deployed. After the deploy, check on a phone: a scan, then
+  The same at every width, with a fade above the strip (JT, Oct 29, after the pinned strip cut
+  "Report a problem" in half on a 1280×800 laptop window on production).
+  *Built Oct 29 in `f8c18f2`, the fade in `fcdbe97`, not deployed. After the deploy, check on a phone: a scan, then
   "Scan another product" from the foot of the card starts the camera, and the 911 note and
   "Report a problem" scroll clear of the button.*
 
