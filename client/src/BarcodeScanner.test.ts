@@ -75,7 +75,10 @@ test("on Scan the camera is the one primary button; the typed-barcode submit is 
   assert.match(html, /<button type="button" class="button-primary">Scan with camera<\/button>/);
   const form = SCAN.slice(SCAN.indexOf("<form onSubmit={handleSubmit}>"), SCAN.indexOf("</form>", SCAN.indexOf("<form onSubmit={handleSubmit}>")));
   assert.match(form, /<button type="submit" className="button-secondary"/);
-  assert.equal(SCAN.match(/button-primary/g), null, "Scan.tsx adds no other primary button");
+  // The one other primary button on Scan is the pinned "Scan another product" over a result, and
+  // it is the same action: it starts the camera through the scanner (2026-10-29).
+  assert.equal(SCAN.match(/button-primary/g)?.length, 1, "Scan.tsx adds one primary button");
+  assert.match(SCAN, /className="button-primary" onClick=\{\(\) => scannerRef\.current\?\.start\(\)\}/);
 });
 
 // A landscape phone (2026-10-26): "Scan with camera", the offer and Stop camera clear of the tab bar.

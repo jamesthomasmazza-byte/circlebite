@@ -33,7 +33,10 @@ test("the camera sentence shows until it's been seen on this device; broken stor
 });
 
 test("the first tap shows the sentence instead of starting the camera; Continue starts it", () => {
-  assert.match(SCANNER, /onClick=\{\(\) => \(cameraPrimerSeen\(\) \? void startCamera\(\) : setPrimerOpen\(true\)\)\}/);
+  // One path for every tap that asks for the camera — "Scan with camera" and Scan's pinned "Scan
+  // another product" (start()) — so the sentence comes first either way.
+  assert.match(SCANNER, /function requestCamera\(\) \{\s*if \(cameraPrimerSeen\(\)\) void startCamera\(\);\s*else setPrimerOpen\(true\);\s*\}/);
+  assert.match(SCANNER, /className="button-primary" onClick=\{requestCamera\}>/);
   assert.match(SCANNER, /markCameraPrimerSeen\(\);\s*setPrimerOpen\(false\);\s*void startCamera\(\);/);
   const start = SCANNER.slice(SCANNER.indexOf("  async function startCamera()"), SCANNER.indexOf("\n  }\n", SCANNER.indexOf("  async function startCamera()")));
   assert.doesNotMatch(start, /primer|Primer/, "the camera code itself is unchanged");

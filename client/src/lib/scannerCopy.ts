@@ -6,3 +6,6 @@
 export const NO_READ_OFFER_MS = 8000;
 
 export const NO_READ_OFFER = "Can't read the barcode? Photograph the ingredients label";
+
+/** Scan's pinned button over a result (2026-10-29): the next scan, one tap from anywhere on it. */
+export const SCAN_ANOTHER = "Scan another product";

@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser";
 
 import { BoxRegionReader } from "./boxRegionReader";
 import { CAMERA_PRIMER_HEADING, CAMERA_PRIMER_LINE, cameraPrimerSeen, markCameraPrimerSeen } from "./lib/cameraPrimer";
+import { prefersReducedMotion, revealBehavior } from "./lib/revealResult";
 import { NO_READ_OFFER, NO_READ_OFFER_MS } from "./lib/scannerCopy";
 
 // How long "Got it" shows on the box before the camera stops and the scan runs.
@@ -23,16 +24,25 @@ const READ_CONFIRM_MS = 250;
  * With onOfferLabelPhoto, a camera that has read nothing for NO_READ_OFFER_MS offers the label
  * photo under the hint, while it keeps running (2026-10-26). Only a tap takes it: the camera stops
  * and onOfferLabelPhoto runs. A read after the offer shows still goes through as usual.
+ *
+ * `start()`, through a ref, is Scan's pinned "Scan another product" (2026-10-29): the same tap as
+ * "Scan with camera", from wherever the person is on a result. It scrolls the scanner into view,
+ * then takes the same path as the button (requestCamera) — the camera sentence on a device that
+ * hasn't seen it, else the camera — synchronously, inside the tap. Nothing calls it but a click:
+ * the camera never opens by itself. onBusyChange tells Scan when the camera or the sentence is up,
+ * so the pinned button gets out of the way.
  */
-export function BarcodeScanner({
-  onDetected,
-  onOfferLabelPhoto,
-  region = false,
-}: {
-  onDetected: (text: string) => void;
-  onOfferLabelPhoto?: () => void;
-  region?: boolean;
-}) {
+export type BarcodeScannerHandle = { start: () => void };
+
+export const BarcodeScanner = forwardRef<
+  BarcodeScannerHandle,
+  {
+    onDetected: (text: string) => void;
+    onOfferLabelPhoto?: () => void;
+    region?: boolean;
+    onBusyChange?: (busy: boolean) => void;
+  }
+>(function BarcodeScanner({ onDetected, onOfferLabelPhoto, region = false, onBusyChange }, ref) {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [read, setRead] = useState(false);
@@ -40,6 +50,10 @@ export function BarcodeScanner({
   // The one sentence before this device's first camera use (lib/cameraPrimer.ts), ahead of
   // startCamera and the system prompt — nothing in the camera code changes.
   const [primerOpen, setPrimerOpen] = useState(false);
+  // Set by start(): the sentence was opened from the pinned button, far from the finger, so focus
+  // follows it there. The scanner's own button sits right beside the sentence and needs no move.
+  const focusPrimerRef = useRef(false);
+  const primerHeadingRef = useRef<HTMLHeadingElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -87,6 +101,33 @@ export function BarcodeScanner({
       setCameraActive(false);
     }
   }
+
+  /** The one way to the camera, from "Scan with camera" and from start(): the camera sentence
+   *  before this device's first use (lib/cameraPrimer.ts), else the camera itself. Synchronous up
+   *  to the camera request, so a phone that wants a tap for the camera gets this one. */
+  function requestCamera() {
+    if (cameraPrimerSeen()) void startCamera();
+    else setPrimerOpen(true);
+  }
+
+  useImperativeHandle(ref, () => ({
+    start() {
+      if (cameraActive) return;
+      containerRef.current?.scrollIntoView({ block: "start", behavior: revealBehavior(prefersReducedMotion()) });
+      focusPrimerRef.current = true;
+      requestCamera();
+    },
+  }));
+
+  useEffect(() => {
+    if (primerOpen && focusPrimerRef.current) primerHeadingRef.current?.focus({ preventScroll: true });
+    focusPrimerRef.current = false;
+  }, [primerOpen]);
+
+  const busy = cameraActive || primerOpen;
+  useEffect(() => {
+    onBusyChange?.(busy);
+  }, [busy, onBusyChange]);
 
   // Stop the camera on unmount so it doesn't keep the device open after navigating away.
   useEffect(() => () => controlsRef.current?.stop(), []);
@@ -166,7 +207,9 @@ export function BarcodeScanner({
       ) : (
         primerOpen ? (
           <div className="camera-primer" role="group" aria-labelledby="camera-primer-heading">
-            <h2 id="camera-primer-heading">{CAMERA_PRIMER_HEADING}</h2>
+            <h2 id="camera-primer-heading" ref={primerHeadingRef} tabIndex={-1}>
+              {CAMERA_PRIMER_HEADING}
+            </h2>
             <p>{CAMERA_PRIMER_LINE}</p>
             <p className="camera-primer__actions">
               <button
@@ -187,7 +230,7 @@ export function BarcodeScanner({
           </div>
         ) : (
           <p>
-            <button type="button" className="button-primary" onClick={() => (cameraPrimerSeen() ? void startCamera() : setPrimerOpen(true))}>
+            <button type="button" className="button-primary" onClick={requestCamera}>
               Scan with camera
             </button>
           </p>
@@ -196,4 +239,4 @@ export function BarcodeScanner({
       {cameraError && <p role="alert">{cameraError}</p>}
     </section>
   );
-}
+});

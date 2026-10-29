@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
-import { BarcodeScanner } from "../BarcodeScanner";
+import { BarcodeScanner, type BarcodeScannerHandle } from "../BarcodeScanner";
 import { useScanningFor } from "../TabShell";
 import { guidedSetupSkipped, sendToGuidedSetup } from "../lib/guidedSetupEntry";
 import { addProfileHref, NEW_PROFILE_PATH } from "../lib/profileSections";
@@ -10,6 +10,7 @@ import { requestedProfile } from "../lib/tabs";
 import { scanningForId } from "../lib/tabs";
 import { useAuth } from "../lib/AuthContext";
 import { readOverride, scannerRegionOn } from "../lib/scannerRegion";
+import { SCAN_ANOTHER } from "../lib/scannerCopy";
 import { prefersReducedMotion, revealResult } from "../lib/revealResult";
 import {
   ApiRequestError,
@@ -143,6 +144,10 @@ export function Scan() {
 
 
   const [reportOpen, setReportOpen] = useState(false);
+  // The camera or its first-use sentence is up (BarcodeScanner's onBusyChange): the pinned "Scan
+  // another product" steps aside, so it never sits over the preview or Stop camera.
+  const [scannerBusy, setScannerBusy] = useState(false);
+  const scannerRef = useRef<BarcodeScannerHandle>(null);
   const [reportType, setReportType] = useState<CorrectionType>("flag_wrong");
   const [reportAllergen, setReportAllergen] = useState("");
   const [reportNote, setReportNote] = useState("");
@@ -572,6 +577,15 @@ export function Scan() {
     (result.source === "label_photo" || result.source === "combined") &&
     (result.extraction_legible === false || result.extraction_complete === false);
 
+  // "Scan another product", pinned just above the tab bar whenever a result is on screen — a card,
+  // the sample's, a label photo's, or "couldn't read this label" — so the next scan is one tap
+  // from wherever the person is on it (2026-10-29). Not over an open report form, which it would
+  // abandon, nor in the required-photo state, where the form is the screen and sits near the top.
+  // The page pads itself while it shows (styles.css, .tab-shell:has(.scan-another)), so the 911
+  // note and "Report a problem" scroll clear of it.
+  const showScanAnother =
+    !scannerBusy && !reportOpen && (couldntReadLabel || Boolean(result && shown && !awaitingRequiredPhoto));
+
   const selectedProfile = profiles.find((p) => p.id === profileId);
 
   useEffect(() => {
@@ -612,6 +626,8 @@ export function Scan() {
             {selectedProfile && <p className="profile-line">{allergenLine(selectedProfile)}</p>}
 
             <BarcodeScanner
+              ref={scannerRef}
+              onBusyChange={setScannerBusy}
               onDetected={(text) => {
                 setBarcode(text);
                 void runScan(text, profileId);
@@ -1076,6 +1092,15 @@ export function Scan() {
             </>
           )}
         </section>
+      )}
+
+      {showScanAnother && (
+        <div className="scan-another">
+          {/* Synchronous in the tap: the same path as "Scan with camera" (BarcodeScanner start()). */}
+          <button type="button" className="button-primary" onClick={() => scannerRef.current?.start()}>
+            {SCAN_ANOTHER}
+          </button>
+        </div>
       )}
     </main>
   );
