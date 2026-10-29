@@ -337,7 +337,8 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
   (`docs/server-setup.md` §8): James's peanut profile on `2990000000076` still read "Contains an
   allergen", reported by 2 shoppers.
 - **Takes effect on production at the judging-week reseed.** Until then, production's seeded
-  accounts have no world, and its circle reports are still on the per-judge barcodes.
+  accounts have no world, and it has no seeded circle reports: the reporter row's seed has never run
+  there.
 
 ## Corrections owed to Prof. Yoest
 

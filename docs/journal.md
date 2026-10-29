@@ -2175,5 +2175,5 @@ The release also carries the work the repo had recorded as not yet deployed:
 - the reporter row (`255f867`, `f91691a`), now in its shared-barcode form.
 
 Prof. Yoest's shared-barcode ask is built and deployed. It takes effect on production at the
-judging-week `--rotate-passwords` reseed. Until then production's seeded accounts have no world,
-and the circle reports are still on the old per-judge barcodes.
+judging-week `--rotate-passwords` reseed. Until then production's seeded accounts have no world, and
+production has no seeded circle reports on any barcode: the reporter row's seed has never run there.
