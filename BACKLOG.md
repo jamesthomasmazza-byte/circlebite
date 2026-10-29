@@ -59,12 +59,10 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
   *Built Oct 29 in `f8c18f2`, the fade in `fcdbe97`. Deployed Oct 29: `5277925` at about
   1:15 PM ET (release `20261029171541`), then `306a19c` at about 1:32 PM ET (release
   `20261029173215`). Each had a backup first and no migration. The false-safety check on
-  `…076` was not run after `5277925`. After `306a19c`, at about 1:35 PM ET, James's profile on
+  `…076` is not recorded after `5277925`. After `306a19c`, at about 1:35 PM ET, James's profile on
   `2990000000076` read "Contains an allergen", peanut, reported by 2 shoppers. Phone check passed:
   a scan, then "Scan another product", then Continue started the camera; nothing was covered;
-  landscape was fine. A scan, then "Scan another
-  product" from the foot of the card starts the camera, and the 911 note and "Report a problem"
-  scroll clear of the button.*
+  landscape was fine.*
 
 ### Week of Nov 2 — medium risk, deploy the same week
 

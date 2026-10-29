@@ -2266,4 +2266,4 @@ check. The entry above is kept as written.
 - **Phone check:** passed. A scan, then "Scan another product", then Continue started the
   camera. Nothing was covered, and landscape was fine.
 
-No false-safety check was run after `5277925`. BACKLOG's "Scan another product" item is ticked.
+No false-safety check is recorded after `5277925`. BACKLOG's "Scan another product" item is ticked.
