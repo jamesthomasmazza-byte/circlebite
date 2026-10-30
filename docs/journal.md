@@ -2336,3 +2336,29 @@ Checked locally with two curl requests, not scans in the app:
 
 **Next:** after the deploy, two or three days of real scans plus a deliberate session on JT's phone,
 then the summary. B (decoder tuning) waits on those numbers.
+
+## 2026-10-30 — Deployed: timing lines and the parallel lookup; the first real timings
+
+JT deployed `248509c` at about 12:15 PM ET (release `20261030161438`), with a backup first and no
+migration. It carries step 0 (`038a07e`, `bc682df`, `f50411c`) and C (`deafff5`).
+
+- **False-safety check passed** (`docs/server-setup.md` §8): James on `2990000000076` read
+  "Contains an allergen".
+- **Production caching confirmed:** the `/assets` JS gets `public, max-age=31536000, immutable`.
+- **The earlier gap, closed:** the backup before the 9:01 AM deploy of `5bf6ffa`/`eae5033` is
+  confirmed, at 13:01:26Z (9:01 AM ET).
+
+The first production timing lines, from JT's iPhone. `AI_MODEL` on production is
+`claude-haiku-4-5-20251001`.
+
+```
+[timing] {"path":"A","total_ms":600,"lookup_ms":573,"cam_ms":330,"decode_ms":20042}
+[timing] {"path":"A","total_ms":310,"lookup_ms":295,"cam_ms":343,"decode_ms":3182}
+[timing] {"path":"C","total_ms":24768,"receive_ms":20,"extract_ms":18787,"reason_ms":5944,"image_bytes":583650,"in_tokens":4686,"out_tokens":702}
+```
+
+- The label read takes 18.8 s of a 24.8 s scan.
+- Finding the barcode takes 3–20 s; the server's part of a barcode scan is under a second.
+- The path C line has no phone numbers.
+
+The diagnosis is being worked out before any change.

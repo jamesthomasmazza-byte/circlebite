@@ -68,6 +68,9 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
   - [ ] **Step 0, timing logs:** one line per scan, durations and sizes only (principle 5).
     *Built Oct 30: `038a07e` (server), `bc682df` (phone header), `f50411c` (summary); not yet
     deployed. Done once two or three days of timings are summarized (`docs/server-setup.md` §8b).*
+    *Deployed Oct 30 at about 12:15 PM ET in `248509c` (release `20261030161438`), backup first;
+    false-safety check passed (James on `…076`, "Contains an allergen"). First lines from JT's
+    iPhone in `docs/journal.md`.*
   - [x] **A, compress and cache the static files:** nginx gzip for JS, CSS, JSON and SVG
     (`docs/server-setup.md` §8a). Hashed `/assets` files cached for a year, `immutable`; everything
     else `no-cache`.
@@ -77,10 +80,12 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
     `20261030130146`), backup first. On production, `/` gets `no-cache`, and the `/assets` JS gets
     `public, max-age=31536000, immutable`. The false-safety check on `…076` after this deploy is not
     recorded yet.*
+    *The backup before the 9:01 AM deploy is confirmed (13:01:26Z). Caching confirmed again on
+    production after the 12:15 PM deploy of `248509c`, whose false-safety check passed.*
   - [ ] **C, the product lookup alongside the label read** in `runLabelScan` and `combineScan`.
     Order only; both results used exactly as today.
-    *Built Oct 30 in `deafff5`, `runLabelScan` only: `combineLabelScan` has no lookup. Not yet
-    deployed.*
+    *Built Oct 30 in `deafff5`, `runLabelScan` only: `combineLabelScan` has no lookup. Deployed
+    Oct 30 at about 12:15 PM ET in `248509c` (release `20261030161438`).*
 
 ### Week of Nov 2 — medium risk, deploy the same week
 
