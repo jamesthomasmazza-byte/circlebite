@@ -2362,3 +2362,22 @@ The first production timing lines, from JT's iPhone. `AI_MODEL` on production is
 - The path C line has no phone numbers.
 
 The diagnosis is being worked out before any change.
+
+*Added 2026-10-30, the same day:* the slow read, looked at again.
+- **The SDK's own log is on:** `ANTHROPIC_LOG=info` in production's `.env` from about 12:36 PM ET
+  (`docs/server-setup.md` §8b). It stays on through the weekend.
+- **Two label reads, still on the old 12 s timeout:** both took one attempt, with no retry.
+
+  | Time (UTC) | Path | total_ms | extract_ms | reason_ms |
+  |---|---|---|---|---|
+  | 16:38:34 | C | 7550 | 3943 | 3576 |
+  | 16:39:37 | C | 6975 | 3623 | 3325 |
+
+  A warm read is about 7 s. The 18.8 s read at 16:22Z was the day's first, which fits a cold first
+  use pushing the first attempt past 12 s and into a retry. It wasn't caught in the act: the SDK log
+  was off then.
+- **Deployed:** `ea3f6cd` at about 12:41 PM ET (release `20261030164043`), with a backup first and no
+  migration. It carries the 30 s timeout with one retry, attempt counts, and the scanner's tries,
+  picture size and region. The false-safety check passed: `…076` read "Contains an allergen".
+- **Still open:** the 16:38:34Z line had no `downscale_ms`/`orig_bytes`. The 16:39:37Z line, after a
+  page reload, did. Being diagnosed.

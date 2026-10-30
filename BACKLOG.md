@@ -86,6 +86,12 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
     Order only; both results used exactly as today.
     *Built Oct 30 in `deafff5`, `runLabelScan` only: `combineLabelScan` has no lookup. Deployed
     Oct 30 at about 12:15 PM ET in `248509c` (release `20261030161438`).*
+  - [ ] **The AI calls' timeout and retries, and the decoder's numbers** (approved Oct 30, after the
+    first real timings): 30 s per attempt with one retry, attempt counts on the line, and the
+    decoder's tries, ms per try, picture size and region on path A.
+    *Built in `222f51f`, `2b51898`. Deployed Oct 30 at about 12:41 PM ET in `ea3f6cd` (release
+    `20261030164043`), backup first; false-safety check on `…076` passed. `ANTHROPIC_LOG=info` on in
+    production from about 12:36 PM ET, through the weekend. Warm label reads take about 7 s.*
 
 ### Week of Nov 2 — medium risk, deploy the same week
 
