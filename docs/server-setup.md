@@ -328,14 +328,18 @@ profile or scan id. A step that didn't run has no field.
 | `receive_ms` | C and D: from the route starting to the photo fully received. On a slow uplink, this is the upload. |
 | `lookup_ms` | The product lookup (cache or Open Food Facts). On C, it runs alongside the read, so it adds nothing unless it's the slower of the two. |
 | `extract_ms`, `reason_ms` | The label read and the reasoning call, as the server waited for them. |
+| `extract_attempts`, `reason_attempts` | Requests each AI call sent, retries included: 2 means the first failed or timed out. Each attempt may take 30 s, with one retry (`server/src/verdict/aiClient.ts`). |
 | `image_bytes` | The uploaded photo, after the phone shrank it. |
 | `in_tokens`, `out_tokens` | Both AI calls together, from the API's own counts. |
 | `cam_ms` | From the phone, camera scans: the tap to the camera's first frame. A first use includes the time on the browser's permission prompt. |
 | `decode_ms` | From the phone: the camera's first frame to the barcode read. |
+| `decode_attempts`, `decode_each_ms` | From the phone: the decoder's tries in that time, the read included, and the average whole ms each took, decoding only. The rest of `decode_ms` is zxing's wait between tries plus aiming. |
+| `video_w`, `video_h` | From the phone: the camera picture's size as the browser delivered it. |
+| `region` | From the phone: `SCANNER_REGION` on (1, decoding inside the box) or off (0). |
 | `downscale_ms`, `orig_bytes` | From the phone, photos: shrinking the photo, and its size before. |
 
-The phone's numbers come in an `X-CB-Timing` header on the scan request. The server keeps only
-those four keys, as whole numbers, and drops everything else.
+The phone's numbers come in an `X-CB-Timing` header on the scan request. The server keeps only its
+nine fixed keys, as whole numbers, and drops everything else.
 
 **Summary** (from the Mac, in the repo; p50, p90 and n per field, per path):
 
@@ -345,6 +349,31 @@ ssh -i ~/.ssh/circlebite-prod.pem ubuntu@circlebite.app \
 ```
 
 To see the lines themselves: `journalctl -u circlebite --since -1h --no-pager | grep '\[timing\]'`.
+
+**Each AI request, one line per attempt** (added 2026-10-30, to see retries and how long each attempt
+took). The Anthropic SDK's own log, at `info`. At that level it prints only a local log ID, the
+API's request ID, the method, URL, status and time, plus "timed out - retrying" for an attempt
+that timed out. It prints no headers (so never the key) and no request or response bodies (checked
+in the SDK's source and by a local run with a fake key, 2026-10-30). **Never `debug`:** that level
+prints request bodies.
+
+```bash
+# on the box: replaces an existing line rather than appending a second one
+grep -q '^ANTHROPIC_LOG=' ~/circlebite/.env \
+  && sed -i 's/^ANTHROPIC_LOG=.*/ANTHROPIC_LOG=info/' ~/circlebite/.env \
+  || echo "ANTHROPIC_LOG=info" >> ~/circlebite/.env
+grep '^ANTHROPIC_LOG=' ~/circlebite/.env              # must print ANTHROPIC_LOG=info, once
+sudo systemctl restart circlebite
+journalctl -u circlebite --since -10min --no-pager | grep -E '\[log_[0-9a-f]+'
+```
+
+**Off** (back to the SDK's default, `warn`):
+
+```bash
+sed -i '/^ANTHROPIC_LOG=/d' ~/circlebite/.env
+grep -c '^ANTHROPIC_LOG=' ~/circlebite/.env           # must print 0
+sudo systemctl restart circlebite
+```
 
 ## 9. Rollback — two layers, for two different failure modes
 
