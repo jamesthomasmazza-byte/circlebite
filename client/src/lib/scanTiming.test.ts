@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { afterEach, test } from "node:test";
 
 import { combineLabelScan, createLabelScan, createScan } from "./api";
-import { CLIENT_TIMING_HEADER, timingHeaders } from "./scanTiming";
+import { CLIENT_TIMING_HEADER, countDecodes, timingHeaders } from "./scanTiming";
 
 // The phone's numbers for one scan (2026-10-30, "Faster scans" step 0), in a header on the scan
 // request it was already making. The server keeps only these keys (server lib/scanTiming.ts).
@@ -60,7 +60,7 @@ test("the scanner times the tap to the camera's first frame, then that to the re
     SCANNER,
     /useEffect\(\(\) => \{\n {4}const video = videoRef\.current;\n {4}if \(!cameraActive \|\| !video\) return;\n {4}runningAtRef\.current = null;[\s\S]*?video\.addEventListener\("playing", playing\);\n {4}return \(\) => video\.removeEventListener\("playing", playing\);/,
   );
-  assert.match(SCANNER, /running === null \? \{\} : \{ cam: Math\.round\(running - requestedAtRef\.current\), decode: msSince\(running\) \}/);
+  assert.match(SCANNER, /if \(running === null\) return \{\};[\s\S]*?cam: Math\.round\(running - requestedAtRef\.current\),\n {6}decode: msSince\(running\),/);
   assert.match(SCANNER, /const timing = cameraTiming\(\);[\s\S]*?onDetectedRef\.current\(text, timing\);/);
 });
 
@@ -70,4 +70,41 @@ test("Scan passes the camera's numbers to the barcode scan, and times the photo'
   assert.match(SCAN, /const timing: ClientTiming = \{ downscale: msSince\(downscaleStart\), orig: photoFile\.size \};/);
   assert.match(SCAN, /combineLabelScan\(result\.id, downscaled, timing\)/);
   assert.match(SCAN, /createLabelScan\(profileId, downscaled, undefined, timing\)/);
+});
+
+// Ahead of B (2026-10-30): what the decoder did between the first frame and the read.
+
+test("each try is counted and timed, and what it returns or throws is passed through untouched", () => {
+  const notFound = new Error("NotFoundException");
+  const read = { text: "5000159484695" };
+  let calls = 0;
+  const reader = {
+    decodeFromCanvas(_canvas: HTMLCanvasElement): unknown {
+      calls += 1;
+      const until = performance.now() + 5;
+      while (performance.now() < until) {
+        // a try that takes about 5 ms
+      }
+      if (calls < 3) throw notFound;
+      return read;
+    },
+  };
+  const count = countDecodes(reader);
+  const canvas = {} as HTMLCanvasElement;
+  assert.throws(() => reader.decodeFromCanvas(canvas), (err) => err === notFound);
+  assert.throws(() => reader.decodeFromCanvas(canvas), (err) => err === notFound);
+  assert.equal(reader.decodeFromCanvas(canvas), read);
+  assert.equal(count.attempts, 3, "the read itself counts as a try");
+  assert.ok(count.ms >= 15 && count.ms < 200, `${count.ms}`);
+});
+
+test("the scanner counts every reader's tries, and sends tries, ms each, the picture's size and the region", () => {
+  assert.match(SCANNER, /: new BrowserMultiFormatReader\(\);\n {6}decodesRef\.current = countDecodes\(reader\);\n {6}const controls = await reader\.decodeFromVideoDevice\(/);
+  assert.match(SCANNER, /\.\.\.\(attempts > 0 && \{ attempts, each: Math\.round\(ms \/ attempts\) \}\),/);
+  assert.match(SCANNER, /\.\.\.\(video && video\.videoWidth > 0 && \{ w: video\.videoWidth, h: video\.videoHeight \}\),/);
+  assert.match(SCANNER, /region: region \? 1 : 0,/);
+  assert.deepEqual(
+    timingHeaders({ cam: 330, decode: 3182, attempts: 7, each: 38, w: 640, h: 480, region: 1 }),
+    { "X-CB-Timing": "cam=330;decode=3182;attempts=7;each=38;w=640;h=480;region=1" },
+  );
 });

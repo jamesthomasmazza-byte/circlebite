@@ -14,6 +14,15 @@ test("the phone's header: the fixed keys, whole numbers only", () => {
     downscale: 95,
     orig: 3145728,
   });
+  assert.deepEqual(parseClientTiming("cam=330;decode=3182;attempts=7;each=38;w=640;h=480;region=1"), {
+    cam: 330,
+    decode: 3182,
+    attempts: 7,
+    each: 38,
+    w: 640,
+    h: 480,
+    region: 1,
+  });
   assert.deepEqual(parseClientTiming("cam=412"), { cam: 412 });
   assert.deepEqual(parseClientTiming(undefined), {});
   assert.deepEqual(parseClientTiming(""), {});
@@ -27,6 +36,8 @@ test("anything else in the header is dropped: other keys, text, fractions, negat
   );
   assert.deepEqual(parseClientTiming("cam=1;cam=2"), { cam: 2 });
   assert.deepEqual(parseClientTiming("cam=1;" + "x".repeat(200)), {}, "an over-long header is ignored whole");
+  const longest = "cam=99999999;decode=99999999;downscale=99999999;orig=99999999;attempts=99999999;each=99999999;w=99999;h=99999;region=1";
+  assert.equal(Object.keys(parseClientTiming(longest)).length, 9, "every key at once still fits");
   assert.deepEqual(parseClientTiming(["cam=1"]), {}, "a repeated header arrives as an array; ignored");
 });
 
@@ -64,8 +75,26 @@ test("one line, JSON, numbers and the path letter only; a step that didn't run h
     orig_bytes: 3145728,
   });
 
-  const barcode = JSON.parse(scanTimingLine({ path: "A", totalMs: 120, lookupMs: 90, client: { cam: 400, decode: 900 } }).slice(9));
-  assert.deepEqual(barcode, { path: "A", total_ms: 120, lookup_ms: 90, cam_ms: 400, decode_ms: 900 });
+  const barcode = JSON.parse(
+    scanTimingLine({
+      path: "A",
+      totalMs: 120,
+      lookupMs: 90,
+      client: { cam: 400, decode: 900, attempts: 3, each: 41, w: 1280, h: 720, region: 0 },
+    }).slice(9),
+  );
+  assert.deepEqual(barcode, {
+    path: "A",
+    total_ms: 120,
+    lookup_ms: 90,
+    cam_ms: 400,
+    decode_ms: 900,
+    decode_attempts: 3,
+    decode_each_ms: 41,
+    video_w: 1280,
+    video_h: 720,
+    region: 0,
+  });
 });
 
 test("the line can't carry an identifier: every field but the path letter is a number", () => {

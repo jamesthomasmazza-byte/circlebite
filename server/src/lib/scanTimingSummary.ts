@@ -14,6 +14,11 @@ const FIELDS = [
   "out_tokens",
   "cam_ms",
   "decode_ms",
+  "decode_attempts",
+  "decode_each_ms",
+  "video_w",
+  "video_h",
+  "region",
   "downscale_ms",
   "orig_bytes",
 ] as const;

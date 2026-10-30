@@ -12,6 +12,15 @@ export type ClientTiming = {
   downscale?: number;
   /** The label photo's size before shrinking, in bytes. */
   orig?: number;
+  /** The decoder's tries before the read, the read included. */
+  attempts?: number;
+  /** The average whole ms each try took, decoding only (not zxing's wait between tries). */
+  each?: number;
+  /** The camera picture's width and height, as the browser delivered it. */
+  w?: number;
+  h?: number;
+  /** SCANNER_REGION: 1 decoding inside the box, 0 the whole frame. */
+  region?: number;
 };
 
 export const CLIENT_TIMING_HEADER = "X-CB-Timing";
@@ -22,6 +31,29 @@ export function timingHeaders(timing: ClientTiming | undefined): Record<string, 
     .filter(([, value]) => typeof value === "number" && Number.isFinite(value) && value >= 0)
     .map(([key, value]) => `${key}=${Math.round(value)}`);
   return pairs.length > 0 ? { [CLIENT_TIMING_HEADER]: pairs.join(";") } : {};
+}
+
+export type DecodeCount = { attempts: number; ms: number };
+
+/**
+ * Counts and times each of the camera decoder's tries. zxing's scan loop draws a frame, then calls
+ * the reader's decodeFromCanvas once, with the plain reader and BoxRegionReader alike (which crops
+ * the box inside it). So this times the decoding (and the crop), not the drawing or zxing's wait
+ * between tries. What decodeFromCanvas returns or throws is unchanged.
+ */
+export function countDecodes(reader: { decodeFromCanvas: (canvas: HTMLCanvasElement) => unknown }): DecodeCount {
+  const decode = reader.decodeFromCanvas.bind(reader);
+  const count: DecodeCount = { attempts: 0, ms: 0 };
+  reader.decodeFromCanvas = (canvas) => {
+    const start = performance.now();
+    try {
+      return decode(canvas);
+    } finally {
+      count.attempts += 1;
+      count.ms += performance.now() - start;
+    }
+  };
+  return count;
 }
 
 /** Whole milliseconds since a performance.now() reading. */

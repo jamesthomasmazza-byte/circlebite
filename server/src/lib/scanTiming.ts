@@ -10,13 +10,16 @@ export type ScanPath = "A" | "B" | "C" | "D";
 
 /** The phone's own numbers, sent with the scan request it was already making (X-CB-Timing). */
 export const CLIENT_TIMING_HEADER = "x-cb-timing";
-export const CLIENT_TIMING_KEYS = ["cam", "decode", "downscale", "orig"] as const;
+// attempts, each: the decoder's tries on a camera scan and the average whole ms each took; w, h: the
+// camera picture's size; region: SCANNER_REGION on (1) or off (0) — added 2026-10-30, ahead of B.
+export const CLIENT_TIMING_KEYS = ["cam", "decode", "downscale", "orig", "attempts", "each", "w", "h", "region"] as const;
 export type ClientTimingKey = (typeof CLIENT_TIMING_KEYS)[number];
 export type ClientTiming = Partial<Record<ClientTimingKey, number>>;
 
-// Longer than any real header ("cam=12345;decode=123456;downscale=1234;orig=12345678" is 51), and
-// big enough for a 100 MB original or a camera left open for a day; anything past these is dropped.
-const MAX_HEADER_LENGTH = 120;
+// Longer than any real header ("cam=12345;decode=123456;attempts=1234;each=123;w=1920;h=1080;region=1"
+// is 70), and big enough for a 100 MB original or a camera left open for a day; anything past these
+// is dropped.
+const MAX_HEADER_LENGTH = 160;
 const MAX_VALUE = 100_000_000;
 
 /** Only the fixed keys, each a whole number from 0 to MAX_VALUE. Anything else is dropped. */
@@ -91,6 +94,11 @@ export function scanTimingLine(t: ScanTiming): string {
     out_tokens: t.tokensOut,
     cam_ms: t.client.cam,
     decode_ms: t.client.decode,
+    decode_attempts: t.client.attempts,
+    decode_each_ms: t.client.each,
+    video_w: t.client.w,
+    video_h: t.client.h,
+    region: t.client.region,
     downscale_ms: t.client.downscale,
     orig_bytes: t.client.orig,
   };

@@ -5,7 +5,7 @@ import { BoxRegionReader } from "./boxRegionReader";
 import { CAMERA_PRIMER_HEADING, CAMERA_PRIMER_LINE, cameraPrimerSeen, markCameraPrimerSeen } from "./lib/cameraPrimer";
 import { prefersReducedMotion, revealBehavior } from "./lib/revealResult";
 import { NO_READ_OFFER, NO_READ_OFFER_MS } from "./lib/scannerCopy";
-import { msSince, type ClientTiming } from "./lib/scanTiming";
+import { countDecodes, msSince, type ClientTiming, type DecodeCount } from "./lib/scanTiming";
 
 // How long "Got it" shows on the box before the camera stops and the scan runs.
 const READ_CONFIRM_MS = 250;
@@ -68,12 +68,25 @@ export const BarcodeScanner = forwardRef<
 
   // Step 0's timings (lib/scanTiming.ts): from the tap to the camera's first frame — so a first use
   // includes the time on the browser's permission prompt — and from then to the read.
+  // Then, ahead of B, what the decoder did in that time: its tries, the ms each took, the picture
+  // it was given and whether it read only the box.
   const requestedAtRef = useRef(0);
   const runningAtRef = useRef<number | null>(null);
+  const decodesRef = useRef<DecodeCount>({ attempts: 0, ms: 0 });
   function cameraTiming(): ClientTiming {
     const running = runningAtRef.current;
-    return running === null ? {} : { cam: Math.round(running - requestedAtRef.current), decode: msSince(running) };
+    if (running === null) return {};
+    const { attempts, ms } = decodesRef.current;
+    const video = videoRef.current;
+    return {
+      cam: Math.round(running - requestedAtRef.current),
+      decode: msSince(running),
+      ...(attempts > 0 && { attempts, each: Math.round(ms / attempts) }),
+      ...(video && video.videoWidth > 0 && { w: video.videoWidth, h: video.videoHeight }),
+      region: region ? 1 : 0,
+    };
   }
+
 
   function stopCamera() {
     controlsRef.current?.stop();
@@ -94,6 +107,7 @@ export const BarcodeScanner = forwardRef<
             videoRef.current && boxRef.current ? { video: videoRef.current, box: boxRef.current } : null,
           )
         : new BrowserMultiFormatReader();
+      decodesRef.current = countDecodes(reader);
       const controls = await reader.decodeFromVideoDevice(undefined, videoRef.current!, (detected) => {
         if (!detected || readRef.current) return;
         readRef.current = true;
