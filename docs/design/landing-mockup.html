@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CircleBite: check labels against your child's allergies</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#FFFFFF}
+a{color:#0C5E63}a:hover{color:#08464A}
+.cb-wrap{max-width:1120px;margin:0 auto;padding:0 32px;box-sizing:border-box}
+.cb-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:64px;align-items:center}
+.cb-split{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:64px;align-items:start}
+.cb-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:40px}
+.cb-trust{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:48px 64px}
+.cb-btn{display:inline-flex;align-items:center;justify-content:center;min-height:52px;padding:0 28px;border-radius:12px;font-weight:700;font-size:17px;text-decoration:none;box-sizing:border-box}
+.cb-btn:focus-visible{outline:3px solid #0C5E63;outline-offset:3px}
+@media (max-width:860px){
+.cb-hero,.cb-split,.cb-trust{grid-template-columns:minmax(0,1fr);gap:40px}
+.cb-steps{grid-template-columns:minmax(0,1fr);gap:32px}
+.cb-wrap{padding:0 16px}
+.cb-h1{font-size:40px !important}
+.cb-h2{font-size:30px !important}
+}
+</style>
+</helmet>
+<div style="font-family: 'Public Sans', system-ui, -apple-system, sans-serif; color: #17201F; background: #FFFFFF; min-height: 100vh;">
+
+<header style="border-bottom: 1px solid #DCE5E4;">
+<div class="cb-wrap" style="display: flex; align-items: center; justify-content: space-between; min-height: 72px; gap: 16px;">
+<a href="#top" style="font-weight: 800; font-size: 20px; color: #17201F; text-decoration: none;">CircleBite</a>
+<nav aria-label="Account" style="display: flex; gap: 12px; align-items: center;">
+<a href="#login" style="font-weight: 600; font-size: 16px; padding: 12px 8px;">Log in</a>
+<a href="#signup" class="cb-btn" style="background: #0C5E63; color: #FFFFFF; min-height: 44px; padding: 0 18px; font-size: 16px;">Create an account</a>
+</nav>
+</div>
+</header>
+
+<main id="top">
+
+<section style="padding: 88px 0 96px;">
+<div class="cb-wrap cb-hero">
+<div style="display: flex; flex-direction: column; gap: 24px;">
+<h1 class="cb-h1" style="margin: 0; font-size: 60px; line-height: 1.04; font-weight: 800; letter-spacing: -0.02em;">Check every label against your child's allergies.</h1>
+<p style="margin: 0; font-size: 20px; line-height: 1.5; color: #3B4A49; max-width: 34em;">Scan a barcode or photograph the ingredients. CircleBite shows what it found, where it found it, and what your circle has reported, so the grandparents and the babysitter check the same way you do.</p>
+<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+<a href="#signup" class="cb-btn" style="background: #0C5E63; color: #FFFFFF;">Create an account</a>
+<a href="#how" class="cb-btn" style="border: 2px solid #0C5E63; color: #0C5E63; background: #FFFFFF;">See how it works</a>
+</div>
+<p style="margin: 0; font-size: 15px; line-height: 1.5; color: #4F5E5D;">A screening aid, not a guarantee. Always check the physical label.</p>
+</div>
+
+<div style="position: relative; padding: 0 0 72px 0;">
+<figure style="margin: 0; background: #FBFAF6; border: 1px solid #D9D3C3; border-radius: 6px; padding: 28px 28px 32px; font-family: 'Public Sans', system-ui, sans-serif; color: #2A2A26; box-shadow: 0 1px 0 #EAE5D7;">
+<figcaption style="font-size: 13px; color: #6B6A60; margin-bottom: 12px;">Oat Biscuits, Millbrook (sample label)</figcaption>
+<p style="margin: 0; font-size: 15px; line-height: 1.65;"><strong style="font-weight: 800;">Ingredients:</strong> whole grain oats, <strong>wheat</strong> flour, sugar, sunflower oil, golden syrup, <span style="background: #FBE6E3; color: #8E1C16; font-weight: 700; padding: 0 3px; border-radius: 3px; box-shadow: inset 0 -2px 0 #A0201A;">sesame</span> seeds, raising agent (sodium bicarbonate), salt.</p>
+<p style="margin: 12px 0 0; font-size: 15px; line-height: 1.65;"><strong style="font-weight: 800;">May contain:</strong> <span style="background: #FFF1CC; color: #6A4000; font-weight: 700; padding: 0 3px; border-radius: 3px; box-shadow: inset 0 -2px 0 #B07700;">milk</span>, tree nuts.</p>
+</figure>
+
+<div role="img" aria-label="CircleBite result: Contains an allergen. Sesame, severe, contains." style="position: absolute; right: -8px; bottom: 0; width: 78%; background: #FFFFFF; border: 1px solid #C9D3D2; border-left: 6px solid #A0201A; border-radius: 14px; box-shadow: 0 18px 40px rgba(23, 32, 31, 0.16); overflow: hidden;">
+<div style="background: #FBE6E3; padding: 16px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 2px solid #A0201A;">
+<svg aria-hidden="true" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#A0201A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86"></polygon><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>
+<div>
+<div style="font-size: 24px; font-weight: 800; color: #8E1C16; line-height: 1.1;">Contains an allergen</div>
+<div style="font-size: 14px; color: #3B4A49; margin-top: 2px;">Oat Biscuits, Millbrook</div>
+</div>
+</div>
+<div style="padding: 16px 20px 18px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+<div>
+<div style="font-size: 18px; font-weight: 700;">Sesame</div>
+<div style="font-size: 15px; font-weight: 700; color: #8E1C16; margin-top: 2px;">contains</div>
+<div style="font-size: 13px; color: #4F5E5D; margin-top: 6px; font-style: italic;">found in ingredient text</div>
+</div>
+<span style="background: #17201F; color: #FFFFFF; font-size: 12px; font-weight: 700; padding: 5px 9px; border-radius: 6px; letter-spacing: 0.04em;">SEVERE</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<section style="background: #EEF3F2; padding: 88px 0;">
+<div class="cb-wrap cb-split">
+<h2 class="cb-h2" style="margin: 0; font-size: 40px; line-height: 1.12; font-weight: 800; letter-spacing: -0.015em;">Reading labels is a second job.</h2>
+<div style="display: flex; flex-direction: column; gap: 18px; font-size: 18px; line-height: 1.6; color: #2C3A39;">
+<p style="margin: 0;">Recipes change without notice. Allergens hide under other names: whey and casein are milk, semolina is wheat, tahini is sesame. The "may contain" line is easy to miss in a busy aisle.</p>
+<p style="margin: 0;">And you are not the only one buying food. Every grandparent, babysitter and coach has to know the same list and read the same small print.</p>
+<div role="img" aria-label="Examples of hidden names: whey and casein mean milk, semolina means wheat, tahini means sesame, albumin means egg" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 8px;">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #FFFFFF; border: 1px solid #C9D3D2; border-radius: 10px; padding: 12px 16px; font-size: 16px;"><span style="font-style: italic; color: #3B4A49;">whey, casein</span><span style="font-weight: 700; color: #8E1C16;">milk</span></div>
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #FFFFFF; border: 1px solid #C9D3D2; border-radius: 10px; padding: 12px 16px; font-size: 16px;"><span style="font-style: italic; color: #3B4A49;">semolina</span><span style="font-weight: 700; color: #8E1C16;">wheat</span></div>
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #FFFFFF; border: 1px solid #C9D3D2; border-radius: 10px; padding: 12px 16px; font-size: 16px;"><span style="font-style: italic; color: #3B4A49;">tahini</span><span style="font-weight: 700; color: #8E1C16;">sesame</span></div>
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #FFFFFF; border: 1px solid #C9D3D2; border-radius: 10px; padding: 12px 16px; font-size: 16px;"><span style="font-style: italic; color: #3B4A49;">albumin</span><span style="font-weight: 700; color: #8E1C16;">egg</span></div>
+</div>
+</div>
+</div>
+</section>
+
+<section id="how" style="padding: 96px 0;">
+<div class="cb-wrap" style="display: flex; flex-direction: column; gap: 48px;">
+<h2 class="cb-h2" style="margin: 0; font-size: 40px; line-height: 1.12; font-weight: 800; letter-spacing: -0.015em;">How it works</h2>
+<ol class="cb-steps" style="list-style: none; margin: 0; padding: 0;">
+<li style="display: flex; flex-direction: column; gap: 12px;">
+<div role="img" aria-label="Phone camera view with a barcode lined up inside the scanning box" style="height: 220px; background: #17201F; border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; margin-bottom: 8px;">
+<svg aria-hidden="true" width="200" height="120" viewBox="0 0 200 120" fill="none"><path d="M10 30 V10 H30 M170 10 H190 V30 M190 90 V110 H170 M30 110 H10 V90" stroke="#5FC4BE" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></path><g fill="#FFFFFF"><rect x="38" y="28" width="4" height="56"></rect><rect x="45" y="28" width="2" height="56"></rect><rect x="50" y="28" width="6" height="56"></rect><rect x="59" y="28" width="2" height="56"></rect><rect x="64" y="28" width="4" height="56"></rect><rect x="72" y="28" width="2" height="56"></rect><rect x="77" y="28" width="6" height="56"></rect><rect x="86" y="28" width="2" height="56"></rect><rect x="91" y="28" width="4" height="56"></rect><rect x="98" y="28" width="2" height="56"></rect><rect x="103" y="28" width="6" height="56"></rect><rect x="112" y="28" width="2" height="56"></rect><rect x="117" y="28" width="4" height="56"></rect><rect x="125" y="28" width="2" height="56"></rect><rect x="130" y="28" width="6" height="56"></rect><rect x="139" y="28" width="2" height="56"></rect><rect x="144" y="28" width="4" height="56"></rect><rect x="151" y="28" width="2" height="56"></rect><rect x="156" y="28" width="6" height="56"></rect></g><rect x="30" y="56" width="140" height="2" fill="#5FC4BE"></rect></svg>
+<span style="font-size: 14px; color: #D8E8E7;">Line up the barcode inside the box</span>
+</div>
+<span aria-hidden="true" style="font-size: 44px; font-weight: 800; color: #0C5E63; line-height: 1;">1</span>
+<h3 style="margin: 0; font-size: 22px; font-weight: 700;">Scan the barcode</h3>
+<p style="margin: 0; font-size: 17px; line-height: 1.6; color: #3B4A49;">Point your phone at the package. No barcode, or the product isn't on file? Photograph the ingredients panel instead.</p>
+</li>
+<li style="display: flex; flex-direction: column; gap: 12px;">
+<div role="img" aria-label="Result card: May contain, caution. Milk, may contain traces, from the product's allergen warning" style="height: 220px; background: #EEF3F2; border-radius: 18px; display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; margin-bottom: 8px;">
+<div style="width: 100%; background: #FFFFFF; border: 1px solid #C9D3D2; border-left: 6px dashed #B07700; border-radius: 12px; overflow: hidden;">
+<div style="background: #FFF1CC; padding: 12px 16px; display: flex; align-items: center; gap: 10px; border-bottom: 2px solid #B07700;">
+<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6A4000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+<span style="font-size: 18px; font-weight: 800; color: #6A4000;">May contain: caution</span>
+</div>
+<div style="padding: 12px 16px;">
+<div style="font-size: 16px; font-weight: 700;">Milk</div>
+<div style="font-size: 14px; font-weight: 700; color: #6A4000;">may contain traces</div>
+<div style="font-size: 13px; color: #4F5E5D; font-style: italic; margin-top: 4px;">allergen warning on the product record</div>
+</div>
+</div>
+</div>
+<span aria-hidden="true" style="font-size: 44px; font-weight: 800; color: #0C5E63; line-height: 1;">2</span>
+<h3 style="margin: 0; font-size: 22px; font-weight: 700;">Read the result and the reason</h3>
+<p style="margin: 0; font-size: 17px; line-height: 1.6; color: #3B4A49;">Each allergen on your child's profile is checked. The result says what was found and where: the ingredients, a "may contain" warning, or a report from a parent who photographed the label.</p>
+</li>
+<li style="display: flex; flex-direction: column; gap: 12px;">
+<div role="img" aria-label="Four people sharing one child's profile: you, a co-parent, a grandparent and a sitter" style="height: 220px; background: #0C5E63; border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; margin-bottom: 8px;">
+<div style="display: flex; gap: 10px;">
+<span style="width: 52px; height: 52px; border-radius: 50%; background: #FFFFFF; color: #0C5E63; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px;">You</span>
+<span style="width: 52px; height: 52px; border-radius: 50%; background: #CFE6E4; color: #08464A; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px;">CP</span>
+<span style="width: 52px; height: 52px; border-radius: 50%; background: #FFF1CC; color: #6A4000; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px;">G</span>
+<span style="width: 52px; height: 52px; border-radius: 50%; background: #FBE6E3; color: #8E1C16; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px;">S</span>
+</div>
+<svg aria-hidden="true" width="200" height="24" viewBox="0 0 200 24" fill="none"><path d="M26 0 C26 14 100 10 100 24 M74 0 C74 10 100 12 100 24 M126 0 C126 10 100 12 100 24 M174 0 C174 14 100 10 100 24" stroke="#8FC9C5" stroke-width="2"></path></svg>
+<span style="background: #FFFFFF; color: #17201F; border-radius: 999px; padding: 8px 18px; font-weight: 700; font-size: 15px;">Maya's profile: peanut, sesame</span>
+</div>
+<span aria-hidden="true" style="font-size: 44px; font-weight: 800; color: #0C5E63; line-height: 1;">3</span>
+<h3 style="margin: 0; font-size: 22px; font-weight: 700;">Share it with your circle</h3>
+<p style="margin: 0; font-size: 17px; line-height: 1.6; color: #3B4A49;">Invite the people who feed your child. They scan against the same profile, so everyone checks for the same allergens.</p>
+</li>
+</ol>
+</div>
+</section>
+
+<section style="background: #0C5E63; color: #FFFFFF; padding: 96px 0;">
+<div class="cb-wrap cb-split" style="align-items: center;">
+<div style="display: flex; flex-direction: column; gap: 18px;">
+<h2 class="cb-h2" style="margin: 0; font-size: 40px; line-height: 1.12; font-weight: 800; letter-spacing: -0.015em;">One profile, everyone who feeds your child.</h2>
+<p style="margin: 0; font-size: 18px; line-height: 1.6; color: #D8E8E7;">You own your child's profile and decide who joins. A co-parent can help manage it. Grandparents and sitters can follow it and scan with it. When someone in the circle reports an allergen on a label, the circle sees the warning, and a follower sees their role, never their name.</p>
+</div>
+<div role="img" aria-label="Example circle report as a follower sees it" style="background: #FFFFFF; color: #17201F; border-radius: 14px; padding: 22px 24px; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22); display: flex; flex-direction: column; gap: 14px;">
+<div style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: #FBE6E3; border-radius: 10px;">
+<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A0201A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86"></polygon><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>
+<div>
+<div style="font-size: 17px; font-weight: 700;">Wheat</div>
+<div style="font-size: 13px; color: #4F5E5D; font-style: italic;">reported in your circle, not yet confirmed</div>
+</div>
+</div>
+<p style="margin: 0; font-size: 15px; line-height: 1.6; color: #2C3A39; border-left: 3px solid #7C9796; padding-left: 14px;">A co-manager in Noor's circle reported Wheat present and photographed the label. No other family has confirmed it yet.</p>
+<p style="margin: 0; font-size: 13px; color: #4F5E5D;">Sample data. Names are illustrative.</p>
+</div>
+</div>
+</section>
+
+<section style="padding: 96px 0;">
+<div class="cb-wrap" style="display: flex; flex-direction: column; gap: 48px;">
+<h2 class="cb-h2" style="margin: 0; font-size: 40px; line-height: 1.12; font-weight: 800; letter-spacing: -0.015em; max-width: 18em;">It shows its work, so you can judge it.</h2>
+<div class="cb-trust">
+<div style="display: flex; flex-direction: column; gap: 10px; border-top: 3px solid #17201F; padding-top: 18px;">
+<h3 style="margin: 0; font-size: 21px; font-weight: 700;">Every result gives its reason</h3>
+<p style="margin: 0; font-size: 17px; line-height: 1.6; color: #3B4A49;">You see whether a warning came from the ingredients, the product's allergen statement, or another parent's report. When the data can't answer, it says "Unable to confirm" instead of guessing.</p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px; border-top: 3px solid #17201F; padding-top: 18px;">
+<h3 style="margin: 0; font-size: 21px; font-weight: 700;">Reports need a photo of the label</h3>
+<p style="margin: 0; font-size: 17px; line-height: 1.6; color: #3B4A49;">A parent who spots an allergen the product data missed reports it with a photo of the package, so the evidence comes with the warning.</p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px; border-top: 3px solid #17201F; padding-top: 18px;">
+<h3 style="margin: 0; font-size: 21px; font-weight: 700;">Warnings are easy to raise, hard to remove</h3>
+<p style="margin: 0; font-size: 17px; line-height: 1.6; color: #3B4A49;">It takes two separate families to confirm a warning for everyone. Taking a warning away is never automatic: a report that an allergen isn't there waits for review, so one mistaken report can't remove it.</p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px; border-top: 3px solid #17201F; padding-top: 18px;">
+<h3 style="margin: 0; font-size: 21px; font-weight: 700;">A second look, not a replacement</h3>
+<p style="margin: 0; font-size: 17px; line-height: 1.6; color: #3B4A49;">CircleBite is a screening aid. Product data can be wrong or out of date, so always check the physical label, especially for "may contain" warnings.</p>
+</div>
+</div>
+</div>
+</section>
+
+<section style="background: #EEF3F2; padding: 80px 0;">
+<div class="cb-wrap cb-split">
+<h2 class="cb-h2" style="margin: 0; font-size: 34px; line-height: 1.15; font-weight: 800; letter-spacing: -0.015em;">Your family's data</h2>
+<ul style="margin: 0; padding: 0 0 0 20px; display: flex; flex-direction: column; gap: 12px; font-size: 18px; line-height: 1.55; color: #2C3A39;">
+<li>Accounts are for adults. A child's profile holds their name and allergy details.</li>
+<li>The camera runs only while you scan.</li>
+<li>Followers never see who else is in the circle.</li>
+<li>No ads, and your data is never sold.</li>
+</ul>
+</div>
+</section>
+
+<section id="signup" style="padding: 104px 0 96px;">
+<div class="cb-wrap" style="display: flex; flex-direction: column; align-items: flex-start; gap: 22px;">
+<h2 class="cb-h2" style="margin: 0; font-size: 48px; line-height: 1.08; font-weight: 800; letter-spacing: -0.02em; max-width: 16em;">Set up your child's profile before your next grocery run.</h2>
+<p style="margin: 0; font-size: 19px; line-height: 1.55; color: #3B4A49; max-width: 34em;">Create your account, add your child's allergens one question at a time, then invite the people who feed them.</p>
+<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+<a href="#signup" class="cb-btn" style="background: #0C5E63; color: #FFFFFF;">Create an account</a>
+<a href="#login" style="font-weight: 600; font-size: 17px; padding: 12px 8px;">Already have an account? Log in</a>
+</div>
+</div>
+</section>
+
+</main>
+
+<footer style="border-top: 1px solid #DCE5E4; padding: 32px 0 40px;">
+<div class="cb-wrap" style="display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.55; color: #3B4A49;">
+<p style="margin: 0;">CircleBite is a screening aid, not a guarantee. Always check the physical label.</p>
+<p style="margin: 0; font-weight: 700; color: #17201F;">If anyone has an allergic reaction, call 911.</p>
+</div>
+</footer>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":4200}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
