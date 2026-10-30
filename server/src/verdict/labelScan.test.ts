@@ -330,3 +330,48 @@ test("a carried-forward barcode still absent/thin in Open Food Facts is kept and
   const { rows } = await pool.query("SELECT barcode FROM scans WHERE id = $1", [result.id]);
   assert.equal(rows[0].barcode, "4000000000098");
 });
+
+test("the carried-forward barcode's lookup and the label read run at the same time, and both results are still used", async () => {
+  const extractDeps = fakeExtractOk();
+  let readStarted!: () => void;
+  const readStart = new Promise<void>((resolve) => (readStarted = resolve));
+  let timer: NodeJS.Timeout | undefined;
+
+  const result = await runLabelScan(
+    { userId: USER_A, allergenProfileId: PROFILE_ID, barcode: "4000000000097", imageBuffer: IMAGE, mimeType: "image/jpeg" },
+    {
+      extractLabelDeps: {
+        ...extractDeps,
+        callAiVision: async () => {
+          readStarted();
+          return extractDeps.callAiVision();
+        },
+      },
+      reasonVerdictDeps: REASON_DEPS_OK,
+      // Answers only once the label read has started. Run one after the other, this would wait forever.
+      getProduct: async () => {
+        await Promise.race([
+          readStart,
+          new Promise((_, reject) => {
+            timer = setTimeout(() => reject(new Error("the lookup waited alone: the read never started")), 2000);
+          }),
+        ]);
+        clearTimeout(timer);
+        return {
+          status: "not_found",
+          found: false,
+          name: null,
+          brand: null,
+          ingredientsText: null,
+          allergensTags: [],
+          tracesTags: [],
+          lastUpdated: null,
+          raw: null,
+        };
+      },
+    },
+  );
+
+  assert.equal(result.barcode, "4000000000097", "the lookup's answer");
+  assert.equal(result.extracted_text, "Water, sugar, salt.", "the read's answer");
+});

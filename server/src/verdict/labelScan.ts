@@ -84,10 +84,16 @@ export async function runLabelScan(input: LabelScanInput, deps: LabelScanDeps = 
   // path. Otherwise a stale or mismatched client-remembered barcode (wrong package, mislabeled
   // shelf, or the record simply got fixed since the earlier scan) could end up attached to a photo
   // of a different product's label.
-  const barcode: string | null =
+  const checkCarriedBarcode = async (): Promise<string | null> =>
     input.barcode !== null && !hasUsableData(await getProduct(input.barcode)) ? input.barcode : null;
 
-  const extraction = await extractLabel(input.imageBuffer, input.mimeType, deps.extractLabelDeps);
+  // The lookup and the label read don't depend on each other, so they run at the same time
+  // (2026-10-30): the scan waits for the slower of the two, not both one after the other. Both
+  // results are used exactly as before.
+  const [barcode, extraction] = await Promise.all([
+    checkCarriedBarcode(),
+    extractLabel(input.imageBuffer, input.mimeType, deps.extractLabelDeps),
+  ]);
 
   let verdict: Verdict = "unable_to_confirm";
   let confidence: "high" | "medium" | "low" | null = null;
