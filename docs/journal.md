@@ -2286,3 +2286,50 @@ the app sets the cache headers (`5bf6ffa`, `server/src/lib/serveClient.ts`).
   - the `/assets` JS gets `public, max-age=31536000, immutable`.
 
 The false-safety check on `…076` after this deploy is not recorded yet.
+
+## 2026-10-30 — Faster scans: measuring first, and one wait removed (not yet deployed)
+
+Before changing anything that could make scans faster, find where the time goes. Step 0 adds one
+`[timing]` line per scan to the journal (`docs/server-setup.md` §8b). C removes one wait that needed
+no measuring.
+
+- **Step 0, the server (`038a07e`):** one JSON line per scan after its response. It covers:
+  - the whole request, the upload, the lookup, the label read and the reasoning;
+  - the uploaded photo's size;
+  - both AI calls' tokens.
+
+  Durations and sizes only (principle 5): the line's type has nowhere to put a barcode or an id.
+- **Step 0, the phone (`bc682df`):** an `X-CB-Timing` header on the scan request it was already
+  making, with no new endpoint.
+  - Camera scans: tap to first frame, then first frame to the read.
+  - Photos: the shrink time and the original size.
+
+  The server keeps four fixed keys as whole numbers and drops the rest. A local probe sending
+  `barcode=…` in the header showed it dropped.
+- **The summary (`f50411c`):** `npm run -s timings -w server` turns the journal into p50/p90 per path.
+  JT runs it from the Mac over ssh.
+- **C (`deafff5`):** a label photo carrying a barcode looked the barcode up first, then read the
+  photo. The two now run at the same time, and both results are used as before.
+  - A test fails if the lookup waits for the read to start. It timed out against the old code.
+  - `combineLabelScan` has no lookup, and still checks the scan before spending on a read, so it is
+    unchanged.
+
+**Plan changes, and why:**
+- `image_px` was dropped from the line: the phone always uploads at most 1568 px on the long edge,
+  and `image_bytes` and the tokens carry what matters.
+- The header has no `src`: whether the camera was used is already in the line (`cam_ms` is there or
+  not).
+- The scanner's first-frame timestamp comes from its own effect. A test keeps listeners out of
+  `startCamera`, the camera code checked on JT's phone, and it caught the first version.
+
+Two fixes on the way:
+- `apiFetch` replaced Content-Type when a caller passed headers; no caller did before.
+- The kill-switch test found its guard by position in the route's chain. The timer now runs first,
+  so it finds it by name. Under `LABEL_SCAN=off` the old lookup failed and the new one passes;
+  locally that test never reaches it, because the local `.env` turns `LABEL_SCAN` on.
+
+Checked locally: a typed barcode logged path A with the probe's camera numbers. A label photo with a
+carried barcode logged path C, with a 416 ms Open Food Facts lookup running alongside the read.
+
+**Next:** after the deploy, two or three days of real scans plus a deliberate session on JT's phone,
+then the summary. B (decoder tuning) waits on those numbers.

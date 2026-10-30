@@ -309,6 +309,43 @@ sudo cp /etc/nginx/sites-available/circlebite.app.pre-gzip /etc/nginx/sites-avai
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
+## 8b. Scan timings — where a scan's time goes
+
+Added 2026-10-30 ("Faster scans", step 0). Every scan logs one line to the journal after its
+response, as JSON (`server/src/lib/scanTiming.ts`):
+
+```
+[timing] {"path":"C","total_ms":4210,"receive_ms":640,"lookup_ms":85,"extract_ms":2900,"reason_ms":1100,"image_bytes":412000,"in_tokens":1900,"out_tokens":310,"downscale_ms":95,"orig_bytes":3145728}
+```
+
+Durations and sizes only (principle 5): no image, label or ingredient text, barcode, or person,
+profile or scan id. A step that didn't run has no field.
+
+| Field | What it is |
+|---|---|
+| `path` | A: barcode, no AI. B: barcode, AI reasoning over its ingredients. C: label photo. D: label photo on a barcode scan. |
+| `total_ms` | From the route starting to the response sent. |
+| `receive_ms` | C and D: from the route starting to the photo fully received. On a slow uplink, this is the upload. |
+| `lookup_ms` | The product lookup (cache or Open Food Facts). On C, it runs alongside the read, so it adds nothing unless it's the slower of the two. |
+| `extract_ms`, `reason_ms` | The label read and the reasoning call, as the server waited for them. |
+| `image_bytes` | The uploaded photo, after the phone shrank it. |
+| `in_tokens`, `out_tokens` | Both AI calls together, from the API's own counts. |
+| `cam_ms` | From the phone, camera scans: the tap to the camera's first frame. A first use includes the time on the browser's permission prompt. |
+| `decode_ms` | From the phone: the camera's first frame to the barcode read. |
+| `downscale_ms`, `orig_bytes` | From the phone, photos: shrinking the photo, and its size before. |
+
+The phone's numbers come in an `X-CB-Timing` header on the scan request. The server keeps only
+those four keys, as whole numbers, and drops everything else.
+
+**Summary** (from the Mac, in the repo; p50, p90 and n per field, per path):
+
+```bash
+ssh -i ~/.ssh/circlebite-prod.pem ubuntu@circlebite.app \
+  "journalctl -u circlebite --since '2 days ago' -o cat --no-pager" | npm run -s timings -w server
+```
+
+To see the lines themselves: `journalctl -u circlebite --since -1h --no-pager | grep '\[timing\]'`.
+
 ## 9. Rollback — two layers, for two different failure modes
 
 **1. A bad deploy never goes live in the first place.** `scripts/release.sh`'s atomicity means a

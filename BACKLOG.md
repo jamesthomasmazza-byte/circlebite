@@ -66,6 +66,8 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
 - **Faster scans** (JT, Oct 29). New. Measure first; nothing that could change what the model
   reads before a synthetic label test set exists.
   - [ ] **Step 0, timing logs:** one line per scan, durations and sizes only (principle 5).
+    *Built Oct 30: `038a07e` (server), `bc682df` (phone header), `f50411c` (summary); not yet
+    deployed. Done once two or three days of timings are summarized (`docs/server-setup.md` §8b).*
   - [x] **A, compress and cache the static files:** nginx gzip for JS, CSS, JSON and SVG
     (`docs/server-setup.md` §8a). Hashed `/assets` files cached for a year, `immutable`; everything
     else `no-cache`.
@@ -77,6 +79,8 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
     recorded yet.*
   - [ ] **C, the product lookup alongside the label read** in `runLabelScan` and `combineScan`.
     Order only; both results used exactly as today.
+    *Built Oct 30 in `deafff5`, `runLabelScan` only: `combineLabelScan` has no lookup. Not yet
+    deployed.*
 
 ### Week of Nov 2 — medium risk, deploy the same week
 
