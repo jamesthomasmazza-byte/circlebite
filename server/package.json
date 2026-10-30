@@ -9,6 +9,7 @@
     "migrate": "tsx src/db/migrate.ts",
     "seed:judge": "tsx src/db/seedJudge.ts",
     "seed:circle-demo": "tsx src/db/seedCircleDemo.ts",
+    "timings": "tsx src/scanTimings.ts",
     "test": "node --import tsx --test --test-timeout=30000 --test-force-exit src"
   },
   "dependencies": {
