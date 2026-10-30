@@ -339,7 +339,9 @@ profile or scan id. A step that didn't run has no field.
 | `downscale_ms`, `orig_bytes` | From the phone, photos: shrinking the photo, and its size before. |
 
 The phone's numbers come in an `X-CB-Timing` header on the scan request. The server keeps only its
-nine fixed keys, as whole numbers, and drops everything else.
+nine fixed keys, as whole numbers, and drops everything else. A line with no phone numbers may come
+from a page opened before the last deploy: it runs the old JavaScript until it reloads. Reload
+before a deliberate timing session.
 
 **Summary** (from the Mac, in the repo; p50, p90 and n per field, per path):
 
