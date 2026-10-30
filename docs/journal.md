@@ -2267,3 +2267,22 @@ check. The entry above is kept as written.
   camera. Nothing was covered, and landscape was fine.
 
 No false-safety check is recorded after `5277925`. BACKLOG's "Scan another product" item is ticked.
+
+## 2026-10-29/30 — Compressed and cached: the 729 kB bundle
+
+The JS bundle was going out uncompressed with `Cache-Control: public, max-age=0`, so every visit
+re-checked all 729 kB of it. Two parts fix that: nginx compresses (`docs/server-setup.md` §8a), and
+the app sets the cache headers (`5bf6ffa`, `server/src/lib/serveClient.ts`).
+
+- **nginx gzip:** JT applied it Oct 29 at about 2:07 PM ET. The backup (`circlebite.app.pre-gzip`)
+  was taken first, `nginx -t` passed, then a reload. The JS now goes over the wire as 242,812
+  bytes, down from 729 kB.
+  - That's more than §8a's "about 206000", which was gzip's default level (6). nginx's default
+    is level 1: faster, but less compression. Locally the same bundle is 242,830 bytes at level 1
+    and 205,579 at level 6. The live config keeps nginx's default.
+- **Cache headers:** `5bf6ffa` and `eae5033` were deployed Oct 30 at about 9:01 AM ET (release
+  `20261030130146`), with a backup first and no migration. On production now:
+  - `/` gets `no-cache`;
+  - the `/assets` JS gets `public, max-age=31536000, immutable`.
+
+The false-safety check on `…076` after this deploy is not recorded yet.

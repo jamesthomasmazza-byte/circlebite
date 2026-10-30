@@ -63,6 +63,20 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
   `2990000000076` read "Contains an allergen", peanut, reported by 2 shoppers. Phone check passed:
   a scan, then "Scan another product", then Continue started the camera; nothing was covered;
   landscape was fine.*
+- **Faster scans** (JT, Oct 29). New. Measure first; nothing that could change what the model
+  reads before a synthetic label test set exists.
+  - [ ] **Step 0, timing logs:** one line per scan, durations and sizes only (principle 5).
+  - [x] **A, compress and cache the static files:** nginx gzip for JS, CSS, JSON and SVG
+    (`docs/server-setup.md` §8a). Hashed `/assets` files cached for a year, `immutable`; everything
+    else `no-cache`.
+    *Done: `5bf6ffa`, `eae5033`. nginx gzip applied Oct 29 at about 2:07 PM ET (backup
+    `.pre-gzip`, `nginx -t` passed, reload): the JS goes over the wire as 242,812 bytes, down from
+    729 kB, at nginx's default level. Deployed Oct 30 at about 9:01 AM ET (release
+    `20261030130146`), backup first. On production, `/` gets `no-cache`, and the `/assets` JS gets
+    `public, max-age=31536000, immutable`. The false-safety check on `…076` after this deploy is not
+    recorded yet.*
+  - [ ] **C, the product lookup alongside the label read** in `runLabelScan` and `combineScan`.
+    Order only; both results used exactly as today.
 
 ### Week of Nov 2 — medium risk, deploy the same week
 
