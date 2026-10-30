@@ -2304,8 +2304,7 @@ no measuring.
   - Camera scans: tap to first frame, then first frame to the read.
   - Photos: the shrink time and the original size.
 
-  The server keeps four fixed keys as whole numbers and drops the rest. A local probe sending
-  `barcode=…` in the header showed it dropped.
+  The server keeps four fixed keys as whole numbers and drops the rest.
 - **The summary (`f50411c`):** `npm run -s timings -w server` turns the journal into p50/p90 per path.
   JT runs it from the Mac over ssh.
 - **C (`deafff5`):** a label photo carrying a barcode looked the barcode up first, then read the
@@ -2328,8 +2327,12 @@ Two fixes on the way:
   so it finds it by name. Under `LABEL_SCAN=off` the old lookup failed and the new one passes;
   locally that test never reaches it, because the local `.env` turns `LABEL_SCAN` on.
 
-Checked locally: a typed barcode logged path A with the probe's camera numbers. A label photo with a
-carried barcode logged path C, with a 416 ms Open Food Facts lookup running alongside the read.
+Checked locally with two curl requests, not scans in the app:
+- **Path A:** one barcode request with made-up camera numbers and a slipped-in `barcode=` in the
+  header. It logged path A with the camera numbers; `barcode=` was dropped.
+- **Path C:** a label photo with a carried barcode logged path C with a 416 ms Open Food Facts
+  lookup. The local label read failed fast with no AI key (19 ms, no tokens), so this run doesn't
+  show the overlap; `deafff5`'s test does.
 
 **Next:** after the deploy, two or three days of real scans plus a deliberate session on JT's phone,
 then the summary. B (decoder tuning) waits on those numbers.
