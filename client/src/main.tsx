@@ -10,6 +10,7 @@ import { AcceptFollow } from "./routes/AcceptFollow";
 import { AdminNps } from "./routes/AdminNps";
 import { AiAccuracy } from "./routes/AiAccuracy";
 import { Circle } from "./routes/Circle";
+import { Home } from "./routes/Home";
 import { NewProfile } from "./routes/NewProfile";
 import { Login } from "./routes/Login";
 import { ProfileDetail } from "./routes/ProfileDetail";
@@ -61,7 +62,9 @@ function App() {
           </Route>
           {/* Sign-in lands on Scan (2026-10-23). The dashboard is gone; its old address still works. */}
           <Route path="/dashboard" element={<Navigate to={LANDING_PATH} replace />} />
-          <Route path="/" element={<Navigate to={LANDING_PATH} replace />} />
+          {/* Public: the landing page for someone signed out, Scan for someone signed in (Home.tsx,
+              2026-10-30). Outside RequireAuth, which would send a signed-out visitor to /login. */}
+          <Route path="/" element={<Home />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

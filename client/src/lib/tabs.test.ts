@@ -7,14 +7,15 @@ import { activeTab, badgeLabel, LANDING_PATH, noticesShownOn, profileBadgeCount,
 
 const MAIN = readFileSync(new URL("../main.tsx", import.meta.url), "utf8");
 
-test("sign-in lands on Scan: the default return path, and where / and /dashboard redirect", () => {
+test("sign-in lands on Scan: the default return path, and where /dashboard redirects", () => {
   assert.equal(LANDING_PATH, "/scan");
   assert.equal(safeReturnTo(null), "/scan");
   assert.equal(safeReturnTo("/profiles/abc"), "/profiles/abc");
   assert.equal(safeReturnTo("//evil.example"), "/scan");
   assert.equal(safeReturnTo("https://evil.example"), "/scan");
   assert.match(MAIN, /path="\/dashboard" element={<Navigate to={LANDING_PATH} replace \/>}/);
-  assert.match(MAIN, /path="\/" element={<Navigate to={LANDING_PATH} replace \/>}/);
+  // "/" is Home: Scan when signed in, the landing page when not (routes/Home.test.ts).
+  assert.match(MAIN, /path="\/" element={<Home \/>} \/>/);
   assert.doesNotMatch(MAIN, /<Dashboard/, "the dashboard page is gone");
 });
 
