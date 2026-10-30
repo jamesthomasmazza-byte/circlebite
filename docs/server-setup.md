@@ -262,8 +262,9 @@ nothing about the unit needs to change on a normal deploy or a manual revert.
 ## 8a. Compressing responses — nginx gzip
 
 Added 2026-10-29. Production was sending the 729 kB JS bundle uncompressed (no `Content-Encoding`).
-Gzipped it is about 206 kB. Node doesn't compress; nginx does, for HTML by default and, with these
-lines, for JS, CSS, JSON and SVG. Caching is the app's job (`server/src/lib/serveClient.ts`):
+Gzipped at nginx's default level (1) it is about 243 kB, as measured on production on Oct 29
+(about 206 kB at gzip's level 6). Node doesn't compress; nginx does, for HTML by default and, with
+these lines, for JS, CSS, JSON and SVG. Caching is the app's job (`server/src/lib/serveClient.ts`):
 hashed files under `/assets` are cached for a year, and `index.html` and every other route are
 re-checked on every load, so a deploy still shows at once.
 
@@ -296,7 +297,7 @@ curl -s -o /dev/null -D - -H 'Accept-Encoding: gzip' "https://circlebite.app$JS"
 #   content-encoding: gzip
 #   vary: Accept-Encoding
 #   cache-control: public, max-age=31536000, immutable    (once a release with serveClient.ts is live)
-curl -s -H 'Accept-Encoding: gzip' "https://circlebite.app$JS" | wc -c   # about 206000, not 729000
+curl -s -H 'Accept-Encoding: gzip' "https://circlebite.app$JS" | wc -c   # about 243000, not 729000
 curl -s -o /dev/null -D - https://circlebite.app/ | grep -i '^cache-control'
 #   cache-control: no-cache
 ```
