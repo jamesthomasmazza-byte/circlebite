@@ -2381,3 +2381,59 @@ The diagnosis is being worked out before any change.
   picture size and region. The false-safety check passed: `…076` read "Contains an allergen".
 - **Still open:** the 16:38:34Z line had no `downscale_ms`/`orig_bytes`. The 16:39:37Z line, after a
   page reload, did. Being diagnosed.
+
+## 2026-10-30 — A landing page for signed-out visitors, and wheat by its other names
+
+`/` used to send everyone to Scan, so a signed-out visitor landed on the login form with no word
+about the app. Now a signed-out visitor sees a landing page, built from JT's approved mockup
+(`docs/design/landing-mockup.html`, `7f4f084`). Signed in, `/` is still Scan.
+- **Copy:** word for word from the mockup, after its claims were checked against the code. Three
+  were corrected in the mockup first:
+  - **"three families to clear":** a removal never clears a warning for anyone; it waits for review.
+  - **A child's profile:** it holds "their name and allergy details", not just a name and allergens.
+  - **"never shared":** a profile is shared with the circle and label photos go to the AI provider,
+    so the line became "No ads, and your data is never sold."
+- **Pictured result cards:** the real card's classes and copy functions (`VERDICT_LABEL`,
+  `classificationLabel`, `sourceLabel`, `circleReportLine`) with synthetic data. So they read "May
+  contain — caution" and `found in ingredient text — "sesame"`, as a real card does, and both carry
+  the disclaimer (Prof. Yoest's directive, `CONTEST_RULES.md` §3).
+- **Font:** Public Sans v2.001, self-hosted from the official `uswds/public-sans` repository with
+  its OFL licence (`850189a`, `client/src/fonts/README.md`). Used on this page only; no Google Fonts
+  request.
+- **Commits:**
+  - `358898e`: the page.
+  - `ea336e2`: layout fixes.
+  - `fcb15ea`: the `/` gate. It shows RequireAuth's "Loading…" while the session is read, so the
+    page never flashes for someone signed in.
+  - `e6e5b69`: the title and meta description.
+- **Layout fixes:** the first version used `body:has(.landing)` to remove the body's gutter, which
+  browsers without `:has()` ignore. Local screenshots came from this Mac's `Google Chrome.app`,
+  which turned out to be Chrome 90, and showed the gutter. The page now cancels the padding with
+  the body's own expressions. Screenshots from a current Chrome for Testing (151) at 390px and
+  1280×800, light and dark: no horizontal scroll, the steps aligned, a visible focus ring on every
+  link.
+- **Not yet deployed.**
+
+**Safety fix, adds caution only (principle 1):** wheat by its other names (`7ed5b0a`). The
+mockup's "semolina is wheat" wasn't true of the matcher: a Wheat profile matched only wheat,
+gluten, barley and rye.
+- **The check:** 86 Open Food Facts products naming these grains. The current matcher, tags
+  included, missed wheat on real bulgur products whose ingredient text is just "Midyat bulgur" or
+  "Bulgur Tarwe."
+- **Added as keywords:** durum and spelt (wheat species), bulgur (cracked wheat), seitan (wheat
+  gluten) and semolina. With them, nothing in the sample was missed.
+- **Semolina** can be rice or maize ("Rice Semolina" is sold), so it may over-warn. JT accepted
+  that, since unqualified semolina is durum wheat.
+- **Left out:** farina (Italian for any flour: "Farina di lenticchie rosse" is red lentil flour) and
+  couscous ("Corn Couscous", no allergen tags). Either would have flagged real non-wheat products.
+- **No moved keys:** keywords only, not aliases, so no stored correction key moves. The pick-list
+  hint now names them.
+
+Two more gaps turned up, queued in BACKLOG for before the freeze:
+- **Allergens marked with underscores:** Open Food Facts marks them in ingredient text (`_milk_`),
+  which defeats the word match for every allergen.
+- **One-word "wholewheat":** it hides "wheat".
+
+**The seed brand Millbrook is now Fernhallow** (`affa38d`). Millbrook is a real name in food: a US
+regional bread brand, bread trademarks, a dairy. A web search found no food brand called
+Fernhallow. Production picks it up at the judging-week reseed.

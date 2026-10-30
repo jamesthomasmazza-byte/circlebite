@@ -148,6 +148,21 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
    *Done: mentioned to Prof. Yoest in JT's reply of the evening of Oct 27
    (`docs/approvals/2026-10-27-jt-judges-reporter-row.md`).*
 
+- [x] **The signed-out landing page.** `/` shows it to a signed-out visitor; signed in, it's Scan as
+  before. Built 2026-10-30 from `docs/design/landing-mockup.html` (`7f4f084`): Public Sans
+  self-hosted (`850189a`), the page (`358898e`, `ea336e2`), the `/` gate (`fcb15ea`), title and
+  meta description (`e6e5b69`). Its copy assumes `LABEL_SCAN` and `GUIDED_SETUP` are on
+  (`docs/server-setup.md`, under the `.env` keys). Not yet deployed.
+- [x] **Wheat by its other names** (`7ed5b0a`, 2026-10-30): durum, spelt, semolina, bulgur and seitan
+  match a Wheat profile. A safety fix that adds caution only. Not yet deployed.
+- [ ] **Allergens marked with underscores in ingredient text** (`_milk_`, `_Wheat_`): Open Food
+  Facts' allergen markup puts a word character either side, so `\bmilk\b` misses it, for every
+  allergen. Found 2026-10-30; the allergen tags covered every case in that sample. Before the
+  freeze, its own commit, adding caution only; real-product evidence, and any new false cautions,
+  shown to JT first.
+- [ ] **"wholewheat"/"wholemeal" hiding wheat:** one word, so `\bwheat\b` misses it. Durum and
+  semolina cover "durum wholewheat semolina", not "wholewheat flour" alone. Same terms as above.
+
 ### Week of Nov 9 — highest risk
 
 7. [x] **Conversational sign-up,** behind its own setting. New. The chat only suggests; its
@@ -197,7 +212,9 @@ Fixes only from here.
 ### Week of Nov 16 — judges
 
 - [ ] `--rotate-passwords` reseed, in JT's own terminal. This is also the reseed that makes the
-  reporter row true on production, and that puts every seeded account in its judge world. Check it
+  reporter row true on production, and that puts every seeded account in its judge world. It also
+  renames the seed brand Millbrook to Fernhallow on production (`affa38d`; the seed upserts brand by
+  barcode). Check it
   as judge1 and judge2 on the shared barcode (`2990000000083`): Maya names "Priya Nair
   (co-manager)", Noor says "A co-manager in Noor's circle", and both say no other family has
   confirmed it. Then the false-safety check (`docs/server-setup.md` §8) once more.

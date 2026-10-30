@@ -127,6 +127,11 @@ scan feature deployed — Open Food Facts requires a descriptive user agent on e
 bucket name is ever in the repo — and `RESTORE_TEST_DB_PASSWORD`, generated on the box. `.env.example`
 is the complete list.
 
+**The landing page assumes two switches are on (2026-10-30).** Its approved copy says you can
+"photograph the ingredients" (`LABEL_SCAN`) and "add your child's allergens one question at a time"
+(`GUIDED_SETUP`, §11d). Turning either off makes that line untrue for a signed-out visitor; if one
+has to go off before judging, change the landing copy (`client/src/routes/Landing.tsx`) the same day.
+
 `release.sh` loads this file with a plain bash `source`, not a key=value parser — a value with
 spaces or special characters (like `OFF_USER_AGENT`'s `CircleBite-Prod/1.0 (email)` form) **must be
 double-quoted** or the deploy fails at the sourcing step with a shell syntax error. The atomic deploy
@@ -607,6 +612,9 @@ profiles saved either way are ordinary profiles.
 sed -i 's/^GUIDED_SETUP=.*/GUIDED_SETUP=off/' ~/circlebite/.env
 sudo systemctl restart circlebite
 ```
+
+Off also makes one line of the signed-out landing page untrue: "add your child's allergens one
+question at a time" (see the note under the `.env` keys above).
 
 The finish screen's "Try a sample scan" needs the judge seed's synthetic products
 (`npm run seed:judge`); without them the sample scan shows "Unable to confirm".

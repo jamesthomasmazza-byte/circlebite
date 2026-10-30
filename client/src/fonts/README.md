@@ -22,4 +22,5 @@ signed-out landing page only; every signed-in page keeps the system font stack (
 | `OFL.txt` | | `157a9e77f7580246e97c769490e2e977ae94399f9d30f4556015c41fe8c28bac` |
 
 Each `.woff2` begins with the `wOF2` signature and matches the size GitHub lists for it at that
-commit. A browser fetches a weight only when the page uses it; the landing page doesn't use 500.
+commit. A browser fetches a weight only when the page uses it. The landing page uses all six, about
+204 kB: 500 through the real verdict card's disclaimer style, which its pictured cards reuse.
