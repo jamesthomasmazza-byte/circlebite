@@ -1,6 +1,7 @@
 import { applyCommunityCorrectionsIfEnabled, type AppliedCommunityAddition } from "../corrections/applyCommunityCorrections.js";
 import { pool } from "../db/pool.js";
 import { getProduct as defaultGetProduct } from "../lib/productLookup.js";
+import { addTokens, timed, type StepTimings } from "../lib/scanTiming.js";
 import { computeVerdict, hasUsableData, type ProductForMatching, type Verdict } from "../matcher/match.js";
 import { loadProfileAllergens } from "../matcher/profileAllergens.js";
 import type { MatchedAllergenLike } from "../corrections/applyCorrections.js";
@@ -32,6 +33,8 @@ export type LabelScanInput = {
   barcode: string | null;
   imageBuffer: Buffer;
   mimeType: "image/jpeg" | "image/png" | "image/webp";
+  /** Filled in with what each step took, for the route's timing line (lib/scanTiming.ts). */
+  timings?: StepTimings;
 };
 
 export type LabelScanResult = {
@@ -84,16 +87,25 @@ export async function runLabelScan(input: LabelScanInput, deps: LabelScanDeps = 
   // path. Otherwise a stale or mismatched client-remembered barcode (wrong package, mislabeled
   // shelf, or the record simply got fixed since the earlier scan) could end up attached to a photo
   // of a different product's label.
-  const checkCarriedBarcode = async (): Promise<string | null> =>
-    input.barcode !== null && !hasUsableData(await getProduct(input.barcode)) ? input.barcode : null;
+  const timings = input.timings ?? {};
+  const checkCarriedBarcode = async (): Promise<string | null> => {
+    if (input.barcode === null) return null;
+    const [product, lookupMs] = await timed(() => getProduct(input.barcode!));
+    timings.lookupMs = lookupMs;
+    return hasUsableData(product) ? null : input.barcode;
+  };
 
   // The lookup and the label read don't depend on each other, so they run at the same time
   // (2026-10-30): the scan waits for the slower of the two, not both one after the other. Both
   // results are used exactly as before.
   const [barcode, extraction] = await Promise.all([
     checkCarriedBarcode(),
-    extractLabel(input.imageBuffer, input.mimeType, deps.extractLabelDeps),
+    timed(() => extractLabel(input.imageBuffer, input.mimeType, deps.extractLabelDeps)).then(([extraction, extractMs]) => {
+      timings.extractMs = extractMs;
+      return extraction;
+    }),
   ]);
+  if (extraction.ok) addTokens(timings, extraction);
 
   let verdict: Verdict = "unable_to_confirm";
   let confidence: "high" | "medium" | "low" | null = null;
@@ -130,10 +142,13 @@ export async function runLabelScan(input: LabelScanInput, deps: LabelScanDeps = 
     };
     const { matchedAllergens: deterministicAllergens } = computeVerdict(allergens, product);
 
-    aiResult = await reasonVerdict(
-      { allergens, ingredientsText: extraction.ingredientsText, deterministicHits: deterministicAllergens },
-      deps.reasonVerdictDeps,
+    [aiResult, timings.reasonMs] = await timed(() =>
+      reasonVerdict(
+        { allergens, ingredientsText: extraction.ingredientsText, deterministicHits: deterministicAllergens },
+        deps.reasonVerdictDeps,
+      ),
     );
+    addTokens(timings, aiResult);
     if (aiResult.failed) logAiFailure("C", "reasoning", aiResult.failureReason);
     const merged = mergeVerdict(deterministicAllergens, aiResult, allergens, { photoSourced: true });
     verdict = merged.verdict;

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 
 import { pool } from "../db/pool.js";
+import type { StepTimings } from "../lib/scanTiming.js";
 import type { AiClientResult } from "./types.js";
 import type { AiVisionClientResult } from "./types.js";
 import { CHECK_INCOMPLETE, PHOTO_CHECK_FAILED } from "./explainVerdict.js";
@@ -374,4 +375,38 @@ test("the carried-forward barcode's lookup and the label read run at the same ti
 
   assert.equal(result.barcode, "4000000000097", "the lookup's answer");
   assert.equal(result.extracted_text, "Water, sugar, salt.", "the read's answer");
+});
+
+test("a label scan fills in what the lookup, the read and the reasoning took, and their tokens, for the timing line", async () => {
+  const timings: StepTimings = {};
+  await runLabelScan(
+    { userId: USER_A, allergenProfileId: PROFILE_ID, barcode: "4000000000096", imageBuffer: IMAGE, mimeType: "image/jpeg", timings },
+    {
+      extractLabelDeps: fakeExtractOk(),
+      reasonVerdictDeps: REASON_DEPS_OK,
+      getProduct: async () => ({
+        status: "not_found",
+        found: false,
+        name: null,
+        brand: null,
+        ingredientsText: null,
+        allergensTags: [],
+        tracesTags: [],
+        lastUpdated: null,
+        raw: null,
+      }),
+    },
+  );
+  for (const step of ["lookupMs", "extractMs", "reasonMs"] as const) {
+    assert.ok(Number.isInteger(timings[step]), `${step}: ${JSON.stringify(timings)}`);
+  }
+  assert.equal(timings.tokensIn, 200 + 100);
+  assert.equal(timings.tokensOut, 50 + 20);
+
+  const noBarcode: StepTimings = {};
+  await runLabelScan(
+    { userId: USER_A, allergenProfileId: PROFILE_ID, barcode: null, imageBuffer: IMAGE, mimeType: "image/jpeg", timings: noBarcode },
+    { extractLabelDeps: fakeExtractOk(), reasonVerdictDeps: REASON_DEPS_OK },
+  );
+  assert.equal(noBarcode.lookupMs, undefined, "no barcode, no lookup");
 });

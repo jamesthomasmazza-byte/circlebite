@@ -14,6 +14,16 @@ import { asyncHandler } from "../lib/asyncHandler.js";
 import { HttpError } from "../lib/httpError.js";
 import { getProduct } from "../lib/productLookup.js";
 import { getExtractionAllergenProfileId, getScanAllergenProfileId } from "../lib/scanAccess.js";
+import {
+  addTokens,
+  CLIENT_TIMING_HEADER,
+  logScanTiming,
+  markScanStart,
+  msSince,
+  parseClientTiming,
+  timed,
+  type StepTimings,
+} from "../lib/scanTiming.js";
 import { computeVerdict, hasUsableData, type Verdict } from "../matcher/match.js";
 import { loadProfileAllergens } from "../matcher/profileAllergens.js";
 import { combineLabelScan, discardLabelEvidence } from "../verdict/combineScan.js";
@@ -37,6 +47,7 @@ const BARCODE_PATTERN = /^\d{6,14}$/;
 
 scansRouter.post(
   "/scans",
+  markScanStart,
   requireAuth,
   asyncHandler(async (req, res) => {
     const { allergenProfileId, barcode } = req.body ?? {};
@@ -54,7 +65,9 @@ scansRouter.post(
     // mean a real (if mild) allergen gets missed entirely during an actual purchase decision.
     const allergens = await loadProfileAllergens(allergenProfileId);
 
-    const product = await getProduct(barcode);
+    const timings: StepTimings = {};
+    const [product, lookupMs] = await timed(() => getProduct(barcode));
+    timings.lookupMs = lookupMs;
     const { verdict: deterministicVerdict, matchedAllergens: deterministicAllergens } = computeVerdict(
       allergens,
       product,
@@ -77,11 +90,14 @@ scansRouter.post(
     let aiResult: Awaited<ReturnType<typeof reasonVerdict>> | null = null;
 
     if (isPathB) {
-      aiResult = await reasonVerdict({
-        allergens,
-        ingredientsText: product.ingredientsText!,
-        deterministicHits: deterministicAllergens,
-      });
+      [aiResult, timings.reasonMs] = await timed(() =>
+        reasonVerdict({
+          allergens,
+          ingredientsText: product.ingredientsText!,
+          deterministicHits: deterministicAllergens,
+        }),
+      );
+      addTokens(timings, aiResult);
       if (aiResult.failed) logAiFailure("B", "reasoning", aiResult.failureReason);
       const merged = mergeVerdict(deterministicAllergens, aiResult, allergens);
       verdict = merged.verdict;
@@ -192,6 +208,12 @@ scansRouter.post(
       community_reports: publicCommunityReports(community?.applied ?? []),
       pending_circle_reports: publicCircleReports(circle?.applied ?? []),
     });
+    logScanTiming({
+      path: isPathB ? "B" : "A",
+      totalMs: msSince(res.locals.scanStart),
+      ...timings,
+      client: parseClientTiming(req.get(CLIENT_TIMING_HEADER)),
+    });
   }),
 );
 
@@ -216,6 +238,7 @@ function requireLabelScanEnabled(req: unknown, res: unknown, next: (err?: unknow
 
 scansRouter.post(
   "/scans/label",
+  markScanStart,
   requireAuth,
   // Checked before multer even runs, so a disabled endpoint doesn't process an upload it's about to
   // reject anyway.
@@ -226,6 +249,7 @@ scansRouter.post(
         next(new HttpError(400, err.code === "LIMIT_FILE_SIZE" ? "photo_too_large" : "invalid_upload"));
         return;
       }
+      res.locals.receiveMs = msSince(res.locals.scanStart);
       next(err);
     });
   },
@@ -242,6 +266,16 @@ scansRouter.post(
     if (!req.file) throw new HttpError(400, "photo_required");
     const sniffed = sniffImageType(req.file.buffer);
     if (!sniffed) throw new HttpError(400, "invalid_file_type");
+    const timings: StepTimings = {};
+    const logTiming = (path: "C" | "D") =>
+      logScanTiming({
+        path,
+        totalMs: msSince(res.locals.scanStart),
+        receiveMs: res.locals.receiveMs,
+        imageBytes: req.file!.size,
+        ...timings,
+        client: parseClientTiming(req.get(CLIENT_TIMING_HEADER)),
+      });
 
     // Combine mode: a photo taken against an EXISTING barcode scan. allergenProfileId/barcode in
     // the body are ignored here on purpose — the profile and (if any) barcode both come from the
@@ -253,8 +287,15 @@ scansRouter.post(
       if (!profileId) throw new HttpError(404, "not_found");
       await assertCanReadProfile(req.user!.id, profileId);
 
-      const outcome = await combineLabelScan({ scanId, viewerId: req.user!.id, imageBuffer: req.file.buffer, mimeType: sniffed.mimeType });
+      const outcome = await combineLabelScan({
+        scanId,
+        viewerId: req.user!.id,
+        imageBuffer: req.file.buffer,
+        mimeType: sniffed.mimeType,
+        timings,
+      });
       res.status(200).json(outcome);
+      logTiming("D");
       return;
     }
 
@@ -271,9 +312,11 @@ scansRouter.post(
       barcode: typeof rawBarcode === "string" ? rawBarcode : null,
       imageBuffer: req.file.buffer,
       mimeType: sniffed.mimeType,
+      timings,
     });
 
     res.status(201).json(result);
+    logTiming("C");
   }),
 );
 

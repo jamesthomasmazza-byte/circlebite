@@ -3,6 +3,7 @@ import type { MatchedAllergenLike } from "../corrections/applyCorrections.js";
 import { applyCircleEscalationsIfEnabled, publicCircleReports, type AppliedCircleEscalation } from "../corrections/circleEscalations.js";
 import { pool } from "../db/pool.js";
 import { HttpError } from "../lib/httpError.js";
+import { addTokens, timed, type StepTimings } from "../lib/scanTiming.js";
 import { computeVerdict, type ProductForMatching, type ProfileAllergen, type Verdict } from "../matcher/match.js";
 import { loadProfileAllergens } from "../matcher/profileAllergens.js";
 import { compareProductIdentity } from "./productIdentity.js";
@@ -26,6 +27,8 @@ export type CombineScanInput = {
   viewerId: string;
   imageBuffer: Buffer;
   mimeType: "image/jpeg" | "image/png" | "image/webp";
+  /** Filled in with what each step took, for the route's timing line (lib/scanTiming.ts). */
+  timings?: StepTimings;
 };
 
 export type DiscardLabelEvidenceInput = {
@@ -194,7 +197,10 @@ export async function combineLabelScan(input: CombineScanInput, deps: CombineSca
   const scan = await loadScanForCombine(input.scanId);
   const allergens = await loadProfileAllergens(scan.allergen_profile_id);
 
-  const extraction = await extractLabel(input.imageBuffer, input.mimeType, deps.extractLabelDeps);
+  const timings = input.timings ?? {};
+  const [extraction, extractMs] = await timed(() => extractLabel(input.imageBuffer, input.mimeType, deps.extractLabelDeps));
+  timings.extractMs = extractMs;
+  if (extraction.ok) addTokens(timings, extraction);
 
   if (!extraction.ok || !extraction.legible || !extraction.complete) {
     await pool.query(
@@ -241,14 +247,18 @@ export async function combineLabelScan(input: CombineScanInput, deps: CombineSca
   // — proceeds through the exact same merge below; only the returned `identity_mismatch` differs.
   const identity = compareProductIdentity(scan.product_name, scan.product_brand, extraction.productName);
 
-  const { aiResult, merged: labelSide } = await computeLabelSide(
-    allergens,
-    extraction.ingredientsText,
-    extraction.contains,
-    extraction.mayContain,
-    reasonVerdict,
-    deps.reasonVerdictDeps,
+  const [{ aiResult, merged: labelSide }, reasonMs] = await timed(() =>
+    computeLabelSide(
+      allergens,
+      extraction.ingredientsText,
+      extraction.contains,
+      extraction.mayContain,
+      reasonVerdict,
+      deps.reasonVerdictDeps,
+    ),
   );
+  timings.reasonMs = reasonMs;
+  addTokens(timings, aiResult);
 
   const reconciled = reconcileEvidence(scan.matched_allergens, labelSide.matchedAllergens);
 

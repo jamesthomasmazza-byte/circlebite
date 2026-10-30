@@ -14,11 +14,11 @@ function findLabelScanGuard(): (req: unknown, res: unknown, next: (err?: unknown
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const layer = (scansRouter as any).stack.find((l: any) => l.route?.path === "/scans/label" && l.route.methods.post);
   assert.ok(layer, "expected a registered POST /scans/label route");
-  const handlers = layer.route.stack;
-  // [0] requireAuth, [1] the kill-switch guard, [2] multer, [3] the main async handler — see
-  // scans.ts's own route registration order.
-  assert.ok(handlers.length >= 2, "expected at least requireAuth + the kill-switch guard on this route");
-  return handlers[1].handle;
+  // By name, not position: markScanStart (lib/scanTiming.ts) runs first, then requireAuth, then this.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const guard = layer.route.stack.find((h: any) => h.handle.name === "requireLabelScanEnabled");
+  assert.ok(guard, "expected the kill-switch guard on this route");
+  return guard.handle;
 }
 
 test("POST /scans/label: the kill-switch guard 404s when LABEL_SCAN is off (env.labelScan false)", () => {

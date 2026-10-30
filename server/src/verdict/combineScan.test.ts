@@ -4,6 +4,7 @@ import { after, before, test } from "node:test";
 import { recordCorrection } from "../corrections/recordCorrection.js";
 import { pool } from "../db/pool.js";
 import { env } from "../env.js";
+import type { StepTimings } from "../lib/scanTiming.js";
 import { combineLabelScan, discardLabelEvidence } from "./combineScan.js";
 import { LABEL_CHECK_FAILED_RECORD_ONLY, PHOTO_CHECK_FAILED } from "./explainVerdict.js";
 import type { AiClientResult, AiVisionClientResult } from "./types.js";
@@ -472,4 +473,17 @@ test("a combined scan carries the circle's pending report on the barcode, with C
     env.circleEscalations = previous;
     await pool.query("DELETE FROM product_corrections WHERE id = $1", [filed.id]);
   }
+});
+
+test("a combine fills in what the read and the reasoning took, and their tokens, for the timing line", async () => {
+  const original = await insertBarcodeScan({ barcode: "3333333333335", productName: "Real Product", result: "safe", matchedAllergens: [] });
+  const timings: StepTimings = {};
+  await combineLabelScan(
+    { scanId: original.id, viewerId: USER_A, imageBuffer: IMAGE, mimeType: "image/jpeg", timings },
+    { extractLabelDeps: fakeExtractOk(), reasonVerdictDeps: REASON_DEPS_OK },
+  );
+  assert.ok(Number.isInteger(timings.extractMs) && Number.isInteger(timings.reasonMs), JSON.stringify(timings));
+  assert.equal(timings.lookupMs, undefined, "no lookup: the barcode side is the stored scan");
+  assert.equal(timings.tokensIn, 200 + 100);
+  assert.equal(timings.tokensOut, 50 + 20);
 });
