@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 
 import type { MatchedAllergen, ScanResult } from "../lib/api";
@@ -14,6 +15,8 @@ import { DISCLAIMER, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
  * report's sentence, the disclaimer — so the page can't promise wording the app doesn't use.
  * Each picture is one role="img" with the mockup's description. Synthetic names only (R9).
  */
+
+export const LANDING_TITLE = "CircleBite: check labels against your child's allergies";
 
 export const SAMPLE_PRODUCT = { name: "Oat Biscuits", brand: "Fernhallow" };
 
@@ -53,6 +56,14 @@ const WHEAT_REPORT_LINE = circleReportLine(
 );
 
 export function Landing() {
+  useEffect(() => {
+    const before = document.title;
+    document.title = LANDING_TITLE;
+    return () => {
+      document.title = before;
+    };
+  }, []);
+
   return (
     <div className="landing">
       <header className="landing__bar">

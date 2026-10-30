@@ -8,7 +8,7 @@ import { MemoryRouter } from "react-router-dom";
 
 import { CIRCLE_ROW_SOURCE } from "../lib/allergenRowCopy";
 import { DISCLAIMER, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
-import { Landing } from "./Landing";
+import { Landing, LANDING_TITLE } from "./Landing";
 
 // The signed-out landing page (2026-10-30, docs/design/landing-mockup.html), rendered as HTML.
 
@@ -87,4 +87,13 @@ test("Public Sans is self-hosted with its licence, and only the landing page use
   );
   const index = readFileSync(new URL("../../index.html", import.meta.url), "utf8");
   assert.doesNotMatch(css + index, /googleapis|gstatic/);
+});
+
+test("a title and a meta description for search, from the approved copy", () => {
+  assert.equal(LANDING_TITLE, "CircleBite: check labels against your child's allergies");
+  const index = readFileSync(new URL("../../index.html", import.meta.url), "utf8");
+  const description = index.match(/<meta\s+name="description"\s+content="([^"]+)"/)?.[1];
+  assert.ok(description && text.includes(description), "the hero's own lead sentence");
+  // Signed-in pages keep the plain name: the landing page puts it back when it unmounts.
+  assert.match(index, /<title>CircleBite<\/title>/);
 });
