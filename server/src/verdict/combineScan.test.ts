@@ -480,10 +480,15 @@ test("a combine fills in what the read and the reasoning took, and their tokens,
   const timings: StepTimings = {};
   await combineLabelScan(
     { scanId: original.id, viewerId: USER_A, imageBuffer: IMAGE, mimeType: "image/jpeg", timings },
-    { extractLabelDeps: fakeExtractOk(), reasonVerdictDeps: REASON_DEPS_OK },
+    {
+      extractLabelDeps: fakeExtractOk({ attempts: 2 }),
+      reasonVerdictDeps: { underDailySpendCap: async () => true, callAi: fakeReasonOk({ attempts: 1 }) },
+    },
   );
   assert.ok(Number.isInteger(timings.extractMs) && Number.isInteger(timings.reasonMs), JSON.stringify(timings));
   assert.equal(timings.lookupMs, undefined, "no lookup: the barcode side is the stored scan");
   assert.equal(timings.tokensIn, 200 + 100);
   assert.equal(timings.tokensOut, 50 + 20);
+  assert.equal(timings.extractAttempts, 2);
+  assert.equal(timings.reasonAttempts, 1);
 });

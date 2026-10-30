@@ -105,6 +105,7 @@ export async function runLabelScan(input: LabelScanInput, deps: LabelScanDeps = 
       return extraction;
     }),
   ]);
+  timings.extractAttempts = extraction.attempts;
   if (extraction.ok) addTokens(timings, extraction);
 
   let verdict: Verdict = "unable_to_confirm";
@@ -148,6 +149,7 @@ export async function runLabelScan(input: LabelScanInput, deps: LabelScanDeps = 
         deps.reasonVerdictDeps,
       ),
     );
+    timings.reasonAttempts = aiResult.attempts;
     addTokens(timings, aiResult);
     if (aiResult.failed) logAiFailure("C", "reasoning", aiResult.failureReason);
     const merged = mergeVerdict(deterministicAllergens, aiResult, allergens, { photoSourced: true });

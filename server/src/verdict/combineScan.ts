@@ -200,6 +200,7 @@ export async function combineLabelScan(input: CombineScanInput, deps: CombineSca
   const timings = input.timings ?? {};
   const [extraction, extractMs] = await timed(() => extractLabel(input.imageBuffer, input.mimeType, deps.extractLabelDeps));
   timings.extractMs = extractMs;
+  timings.extractAttempts = extraction.attempts;
   if (extraction.ok) addTokens(timings, extraction);
 
   if (!extraction.ok || !extraction.legible || !extraction.complete) {
@@ -258,6 +259,7 @@ export async function combineLabelScan(input: CombineScanInput, deps: CombineSca
     ),
   );
   timings.reasonMs = reasonMs;
+  timings.reasonAttempts = aiResult.attempts;
   addTokens(timings, aiResult);
 
   const reconciled = reconcileEvidence(scan.matched_allergens, labelSide.matchedAllergens);

@@ -38,6 +38,8 @@ test("one line, JSON, numbers and the path letter only; a step that didn't run h
     lookupMs: 85,
     extractMs: 2900,
     reasonMs: 1100,
+    extractAttempts: 2,
+    reasonAttempts: 1,
     imageBytes: 412000,
     tokensIn: 1900,
     tokensOut: 310,
@@ -53,6 +55,8 @@ test("one line, JSON, numbers and the path letter only; a step that didn't run h
     lookup_ms: 85,
     extract_ms: 2900,
     reason_ms: 1100,
+    extract_attempts: 2,
+    reason_attempts: 1,
     image_bytes: 412000,
     in_tokens: 1900,
     out_tokens: 310,
@@ -68,7 +72,7 @@ test("the line can't carry an identifier: every field but the path letter is a n
   const source = readFileSync(new URL("./scanTiming.ts", import.meta.url), "utf8");
   const type = source.slice(source.indexOf("export type StepTimings"), source.indexOf("/** Whole milliseconds"));
   const fields = [...type.matchAll(/^\s+(\w+)\??: ([^;]+);/gm)];
-  assert.equal(fields.length, 10, "StepTimings' five and ScanTiming's own five");
+  assert.equal(fields.length, 12, "StepTimings' seven and ScanTiming's own five");
   for (const [, field, fieldType] of fields) {
     if (field === "path") assert.equal(fieldType, "ScanPath");
     else if (field === "client") assert.equal(fieldType, "ClientTiming");
@@ -105,4 +109,5 @@ test("every scan path logs its line, after the response, with the phone's header
   assert.match(route, /res\.status\(201\)\.json\(result\);\n {4}logTiming\("C"\);/);
   assert.equal(route.match(/client: parseClientTiming\(req\.get\(CLIENT_TIMING_HEADER\)\)/g)?.length, 2);
   assert.match(route, /res\.locals\.receiveMs = msSince\(res\.locals\.scanStart\);/);
+  assert.match(route, /\[aiResult, timings\.reasonMs\] = await timed[\s\S]*?timings\.reasonAttempts = aiResult\.attempts;/, "path B's attempts");
 });

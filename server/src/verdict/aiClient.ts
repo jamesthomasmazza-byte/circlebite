@@ -4,7 +4,12 @@ import { env } from "../env.js";
 import { buildLabelPrompt, buildUserPrompt, LABEL_SYSTEM_PROMPT, SYSTEM_PROMPT, type PromptInput } from "./prompt.js";
 import type { AiClientResult, AiFinding, AiVisionClientResult, LabelExtraction } from "./types.js";
 
-const REQUEST_TIMEOUT_MS = 12_000;
+// Per attempt, and one retry (2026-10-30). The first production label read most likely hit the old
+// 12 s limit, and the SDK (two retries by default) silently started over: 18.8 s for the read, the
+// first 12 s thrown away (docs/journal.md). One longer attempt usually finishes before a fresh one would.
+// Both calls still fail closed, at worst after two attempts of 30 s each.
+export const REQUEST_TIMEOUT_MS = 30_000;
+export const MAX_RETRIES = 1;
 const MAX_OUTPUT_TOKENS = 1024;
 const TOOL_NAME = "report_allergen_findings";
 const EXTRACT_TOOL_NAME = "report_label_extraction";
@@ -86,6 +91,21 @@ export const EXTRACT_LABEL_TOOL: Anthropic.Tool = {
   },
 };
 
+/** A client that counts the requests it sends: the SDK calls `fetch` once per attempt. */
+function countingClient(apiKey: string): { client: Anthropic; attempts: () => number } {
+  let attempts = 0;
+  const client = new Anthropic({
+    apiKey,
+    timeout: REQUEST_TIMEOUT_MS,
+    maxRetries: MAX_RETRIES,
+    fetch: (...args: Parameters<typeof fetch>) => {
+      attempts += 1;
+      return fetch(...args);
+    },
+  });
+  return { client, attempts: () => attempts };
+}
+
 function isFinding(value: unknown): value is AiFinding {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
@@ -146,7 +166,7 @@ function parseExtractionToolInput(input: unknown): LabelExtraction | null {
 export async function callAi(input: PromptInput): Promise<AiClientResult> {
   if (!env.aiApiKey) return { ok: false, reason: "no_api_key" };
 
-  const client = new Anthropic({ apiKey: env.aiApiKey, timeout: REQUEST_TIMEOUT_MS });
+  const { client, attempts } = countingClient(env.aiApiKey);
   const startedAt = Date.now();
 
   try {
@@ -171,7 +191,7 @@ export async function callAi(input: PromptInput): Promise<AiClientResult> {
         stopReason: response.stop_reason,
         content: response.content,
       });
-      return { ok: false, reason: "unparseable_response" };
+      return { ok: false, reason: "unparseable_response", attempts: attempts() };
     }
 
     const tokensIn = response.usage.input_tokens;
@@ -185,6 +205,7 @@ export async function callAi(input: PromptInput): Promise<AiClientResult> {
       tokensIn,
       tokensOut,
       costCents: tokensIn * INPUT_CENTS_PER_TOKEN + tokensOut * OUTPUT_CENTS_PER_TOKEN,
+      attempts: attempts(),
     };
   } catch (err) {
     if (err instanceof APIError) {
@@ -197,10 +218,10 @@ export async function callAi(input: PromptInput): Promise<AiClientResult> {
         type: err.type,
         body: err.error,
       });
-      return { ok: false, reason: `api_error_${err.status ?? "unknown"}` };
+      return { ok: false, reason: `api_error_${err.status ?? "unknown"}`, attempts: attempts() };
     }
     console.error("[verdict] Anthropic API call failed", err);
-    return { ok: false, reason: "request_failed" };
+    return { ok: false, reason: "request_failed", attempts: attempts() };
   }
 }
 
@@ -221,7 +242,7 @@ export async function callAiVision(
 ): Promise<AiVisionClientResult> {
   if (!env.aiApiKey) return { ok: false, reason: "no_api_key" };
 
-  const client = new Anthropic({ apiKey: env.aiApiKey, timeout: REQUEST_TIMEOUT_MS });
+  const { client, attempts } = countingClient(env.aiApiKey);
   const startedAt = Date.now();
 
   try {
@@ -251,7 +272,7 @@ export async function callAiVision(
         stopReason: response.stop_reason,
         content: response.content,
       });
-      return { ok: false, reason: "unparseable_response" };
+      return { ok: false, reason: "unparseable_response", attempts: attempts() };
     }
 
     const tokensIn = response.usage.input_tokens;
@@ -264,6 +285,7 @@ export async function callAiVision(
       tokensIn,
       tokensOut,
       costCents: tokensIn * INPUT_CENTS_PER_TOKEN + tokensOut * OUTPUT_CENTS_PER_TOKEN,
+      attempts: attempts(),
     };
   } catch (err) {
     if (err instanceof APIError) {
@@ -272,9 +294,9 @@ export async function callAiVision(
         type: err.type,
         body: err.error,
       });
-      return { ok: false, reason: `api_error_${err.status ?? "unknown"}` };
+      return { ok: false, reason: `api_error_${err.status ?? "unknown"}`, attempts: attempts() };
     }
     console.error("[verdict] Anthropic API call failed", err);
-    return { ok: false, reason: "request_failed" };
+    return { ok: false, reason: "request_failed", attempts: attempts() };
   }
 }

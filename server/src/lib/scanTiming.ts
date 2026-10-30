@@ -39,6 +39,9 @@ export type StepTimings = {
   reasonMs?: number;
   tokensIn?: number;
   tokensOut?: number;
+  /** Requests each AI call sent, retries included (verdict/aiClient.ts). */
+  extractAttempts?: number;
+  reasonAttempts?: number;
 };
 
 export type ScanTiming = StepTimings & {
@@ -81,6 +84,8 @@ export function scanTimingLine(t: ScanTiming): string {
     lookup_ms: t.lookupMs,
     extract_ms: t.extractMs,
     reason_ms: t.reasonMs,
+    extract_attempts: t.extractAttempts,
+    reason_attempts: t.reasonAttempts,
     image_bytes: t.imageBytes,
     in_tokens: t.tokensIn,
     out_tokens: t.tokensOut,

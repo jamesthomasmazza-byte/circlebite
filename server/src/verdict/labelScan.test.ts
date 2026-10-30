@@ -382,8 +382,8 @@ test("a label scan fills in what the lookup, the read and the reasoning took, an
   await runLabelScan(
     { userId: USER_A, allergenProfileId: PROFILE_ID, barcode: "4000000000096", imageBuffer: IMAGE, mimeType: "image/jpeg", timings },
     {
-      extractLabelDeps: fakeExtractOk(),
-      reasonVerdictDeps: REASON_DEPS_OK,
+      extractLabelDeps: fakeExtractOk({ attempts: 2 }),
+      reasonVerdictDeps: { underDailySpendCap: async () => true, callAi: fakeReasonOk({ attempts: 1 }) },
       getProduct: async () => ({
         status: "not_found",
         found: false,
@@ -402,6 +402,8 @@ test("a label scan fills in what the lookup, the read and the reasoning took, an
   }
   assert.equal(timings.tokensIn, 200 + 100);
   assert.equal(timings.tokensOut, 50 + 20);
+  assert.equal(timings.extractAttempts, 2, "a retried read says so");
+  assert.equal(timings.reasonAttempts, 1);
 
   const noBarcode: StepTimings = {};
   await runLabelScan(

@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
+import http from "node:http";
+import type { AddressInfo } from "node:net";
 import { test } from "node:test";
 
-import { EXTRACT_LABEL_TOOL, FINDINGS_TOOL } from "./aiClient.js";
+import { env } from "../env.js";
+import { callAi, callAiVision, EXTRACT_LABEL_TOOL, FINDINGS_TOOL, MAX_RETRIES, REQUEST_TIMEOUT_MS } from "./aiClient.js";
 
 /**
  * Walks a JSON Schema node looking for every subschema with type "object", following both
@@ -81,4 +84,86 @@ test("EXTRACT_LABEL_TOOL: legible and complete are reported as separate required
   assert.ok(schema.required?.includes("legible"));
   assert.ok(schema.required?.includes("complete"));
   assert.ok(schema.required?.includes("incompleteReason"));
+});
+
+// ---- Timeout and retries (2026-10-30) ----------------------------------------------------------
+// Against a local stand-in for the API: a 30 s attempt and one retry, and every request counted.
+
+async function withStubApi(statuses: number[], body: () => Promise<void>): Promise<number> {
+  let request = 0;
+  const server = http.createServer((req, res) => {
+    req.resume();
+    req.on("end", () => {
+      const status = statuses[Math.min(request, statuses.length - 1)];
+      request += 1;
+      res.writeHead(status, { "content-type": "application/json" });
+      res.end(status === 200 ? JSON.stringify(TOOL_REPLY) : JSON.stringify({ type: "error", error: { type: "api_error", message: "stub" } }));
+    });
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const savedKey = env.aiApiKey;
+  const savedBase = process.env.ANTHROPIC_BASE_URL;
+  env.aiApiKey = "test-key-not-real";
+  process.env.ANTHROPIC_BASE_URL = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  try {
+    await body();
+  } finally {
+    env.aiApiKey = savedKey;
+    if (savedBase === undefined) delete process.env.ANTHROPIC_BASE_URL;
+    else process.env.ANTHROPIC_BASE_URL = savedBase;
+    server.close();
+  }
+  return request;
+}
+
+const TOOL_REPLY = {
+  id: "msg_stub",
+  type: "message",
+  role: "assistant",
+  model: "stub",
+  stop_reason: "tool_use",
+  stop_sequence: null,
+  usage: { input_tokens: 10, output_tokens: 5 },
+  content: [
+    {
+      type: "tool_use",
+      id: "tu_1",
+      name: "report_allergen_findings",
+      input: { findings: [], unresolvedTerms: [] },
+    },
+  ],
+};
+
+const PROMPT = { allergens: [], ingredientsText: "water", deterministicHits: [] };
+
+test("each attempt may take 30 s, and a failed one is tried once more, not twice", () => {
+  assert.equal(REQUEST_TIMEOUT_MS, 30_000);
+  assert.equal(MAX_RETRIES, 1);
+});
+
+test("a call that succeeds on its retry says it took two attempts", async () => {
+  const sent = await withStubApi([500, 200], async () => {
+    const result = await callAi(PROMPT);
+    assert.equal(result.ok, true);
+    assert.equal(result.attempts, 2);
+  });
+  assert.equal(sent, 2);
+});
+
+test("a call that keeps failing stops after two attempts, fails closed, and says so", async () => {
+  const sent = await withStubApi([500], async () => {
+    const result = await callAi(PROMPT);
+    assert.deepEqual(result, { ok: false, reason: "api_error_500", attempts: 2 });
+    const vision = await callAiVision(Buffer.from("x"), "image/jpeg");
+    assert.deepEqual(vision, { ok: false, reason: "api_error_500", attempts: 2 });
+  });
+  assert.equal(sent, 4, "two for each call, never three");
+});
+
+test("a first-time success is one attempt", async () => {
+  await withStubApi([200], async () => {
+    const result = await callAi(PROMPT);
+    assert.equal(result.ok, true);
+    assert.equal(result.attempts, 1);
+  });
 });

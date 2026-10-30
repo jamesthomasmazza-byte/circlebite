@@ -21,8 +21,9 @@ export type AiClientResult =
       tokensIn: number;
       tokensOut: number;
       costCents: number;
+      attempts?: number;
     }
-  | { ok: false; reason: string };
+  | { ok: false; reason: string; attempts?: number };
 
 /** What one successful extraction call reports about a photographed label — Path C's analogue of
  *  AiFinding[], but transcription rather than allergen reasoning; see prompt.ts's LABEL_SYSTEM_PROMPT
@@ -41,8 +42,8 @@ export type LabelExtraction = {
 /** Discriminated result from a single call to the AI provider's vision endpoint — aiClient.ts's
  *  callAiVision(), the extraction-call analogue of AiClientResult above. */
 export type AiVisionClientResult =
-  | ({ ok: true; latencyMs: number; tokensIn: number; tokensOut: number; costCents: number } & LabelExtraction)
-  | { ok: false; reason: string };
+  | ({ ok: true; latencyMs: number; tokensIn: number; tokensOut: number; costCents: number; attempts?: number } & LabelExtraction)
+  | { ok: false; reason: string; attempts?: number };
 
 export type ExtractLabelResult =
   | ({
@@ -53,8 +54,9 @@ export type ExtractLabelResult =
       tokensIn: number;
       tokensOut: number;
       costCents: number;
+      attempts?: number;
     } & LabelExtraction)
-  | { ok: false; failureReason: string; model: string; promptVersion: string };
+  | { ok: false; failureReason: string; model: string; promptVersion: string; attempts?: number };
 
 export type ReasonVerdictResult = {
   findings: AiFinding[];
@@ -74,4 +76,6 @@ export type ReasonVerdictResult = {
   tokensIn: number | null;
   tokensOut: number | null;
   costCents: number | null;
+  /** Requests sent to the provider, retries included (aiClient.ts). Absent when none was sent. */
+  attempts?: number;
 };

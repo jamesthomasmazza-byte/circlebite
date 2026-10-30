@@ -9,8 +9,8 @@ export type ExtractLabelDeps = {
   underDailySpendCap?: typeof defaultUnderDailySpendCap;
 };
 
-function failedResult(reason: string): ExtractLabelResult {
-  return { ok: false, failureReason: reason, model: env.aiModel, promptVersion: EXTRACT_PROMPT_VERSION };
+function failedResult(reason: string, attempts?: number): ExtractLabelResult {
+  return { ok: false, failureReason: reason, model: env.aiModel, promptVersion: EXTRACT_PROMPT_VERSION, attempts };
 }
 
 /**
@@ -35,7 +35,7 @@ export async function extractLabel(
   if (!(await underDailySpendCap())) return failedResult("spend_cap_exceeded");
 
   const result = await callAiVision(imageBuffer, mimeType);
-  if (!result.ok) return failedResult(result.reason);
+  if (!result.ok) return failedResult(result.reason, result.attempts);
 
   return {
     ok: true,
@@ -53,5 +53,6 @@ export async function extractLabel(
     tokensIn: result.tokensIn,
     tokensOut: result.tokensOut,
     costCents: result.costCents,
+    attempts: result.attempts,
   };
 }

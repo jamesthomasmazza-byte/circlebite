@@ -97,6 +97,7 @@ scansRouter.post(
           deterministicHits: deterministicAllergens,
         }),
       );
+      timings.reasonAttempts = aiResult.attempts;
       addTokens(timings, aiResult);
       if (aiResult.failed) logAiFailure("B", "reasoning", aiResult.failureReason);
       const merged = mergeVerdict(deterministicAllergens, aiResult, allergens);

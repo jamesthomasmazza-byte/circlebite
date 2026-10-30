@@ -7,6 +7,8 @@ const FIELDS = [
   "lookup_ms",
   "extract_ms",
   "reason_ms",
+  "extract_attempts",
+  "reason_attempts",
   "image_bytes",
   "in_tokens",
   "out_tokens",
