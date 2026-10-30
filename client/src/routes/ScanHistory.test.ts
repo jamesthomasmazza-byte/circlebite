@@ -26,7 +26,7 @@ function entry(over: Partial<ScanHistoryEntry>): ScanHistoryEntry {
     id: "s1",
     barcode: "2990000000083",
     product_name: "Corn Tortilla Chips",
-    product_brand: "Millbrook",
+    product_brand: "Fernhallow",
     created_at: "2026-10-26T14:00:00Z",
     original: { result: "safe", matched_allergens: [row("Peanut"), row("Sesame", { severity: "moderate" })] },
     effective: null,
