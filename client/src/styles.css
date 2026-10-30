@@ -101,6 +101,14 @@
   --color-unknown-bg: #e9ebfb; /* body text on it: 15.15:1 */
   --color-unknown-line: #4450b8; /* 6.81:1 on bg */
 
+  /* The signed-out landing page only (routes/Landing.tsx). The band is its brand-coloured section,
+     the viewfinder its picture of a phone camera — dark in both schemes, as a camera view is. */
+  --color-band-bg: #005c65;
+  --color-band-text: #ffffff; /* 7.72:1 on band-bg */
+  --color-viewfinder-bg: #15171c;
+  --color-viewfinder-text: #eef0f4; /* 15.72:1 on viewfinder-bg */
+  --color-viewfinder-mark: #6fcfc8; /* 9.76:1 on viewfinder-bg */
+
   --shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 2px 8px rgb(0 0 0 / 0.06);
 
   /* Native <select> chevron, coloured per scheme (a data URI can't read currentColor). */
@@ -133,6 +141,14 @@
     --color-unknown-text: #c3c8ff; /* 9.80:1 on unknown-bg */
     --color-unknown-bg: #1c1f44; /* body text on it: 13.85:1 */
     --color-unknown-line: #8c95f0; /* 6.85:1 on bg */
+
+    /* Teal band darkened rather than the bright accent: a page-wide block of #6fcfc8 at night. */
+    --color-band-bg: #0d3d41;
+    --color-band-text: #eef0f4; /* 10.45:1 on band-bg */
+    /* The same in both schemes: a camera view is dark either way. */
+    --color-viewfinder-bg: #15171c;
+    --color-viewfinder-text: #eef0f4; /* 15.72:1 on viewfinder-bg */
+    --color-viewfinder-mark: #6fcfc8; /* 9.76:1 on viewfinder-bg */
 
     --shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 2px 8px rgb(0 0 0 / 0.4);
 
@@ -593,7 +609,8 @@ th {
   background: var(--verdict-bg);
 }
 
-.verdict-card__header h2 {
+.verdict-card__header h2,
+.verdict-card__headline {
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -604,7 +621,8 @@ th {
   line-height: 1.1;
 }
 
-.verdict-card__header h2::before {
+.verdict-card__header h2::before,
+.verdict-card__headline::before {
   content: "";
   flex: none;
   width: 1em;
@@ -1881,4 +1899,574 @@ a.card:hover {
   display: grid;
   gap: var(--space-2);
   margin-bottom: 0;
+}
+
+/* ---------- Landing page --------------------------------------------------------------------- */
+
+/*
+ * The signed-out landing page (routes/Landing.tsx, from docs/design/landing-mockup.html). Public
+ * Sans here only, self-hosted (fonts/README.md); a browser fetches a weight only when this page
+ * uses it, so signed-in pages download none of it. Full-width bands, so the page takes over the
+ * body's gutter and keeps the safe areas itself.
+ */
+
+@font-face {
+  font-family: "Public Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/PublicSans-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Public Sans";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/PublicSans-Italic.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Public Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./fonts/PublicSans-Medium.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Public Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("./fonts/PublicSans-SemiBold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Public Sans";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./fonts/PublicSans-Bold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Public Sans";
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url("./fonts/PublicSans-ExtraBold.woff2") format("woff2");
+}
+
+body:has(.landing) {
+  padding: 0;
+}
+
+.landing {
+  --landing-gutter: var(--space-4);
+  min-height: 100vh;
+  font-family: "Public Sans", var(--font-sans);
+}
+
+.landing__wrap {
+  max-width: 70rem;
+  margin-inline: auto;
+  padding-right: max(var(--landing-gutter), env(safe-area-inset-right));
+  padding-left: max(var(--landing-gutter), env(safe-area-inset-left));
+}
+
+.landing main {
+  max-width: none;
+}
+
+.landing section {
+  margin: 0;
+  padding-block: 4.5rem;
+}
+
+.landing h1,
+.landing h2,
+.landing h3 {
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+}
+
+.landing h1 {
+  font-size: 2.5rem;
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+}
+
+.landing h2 {
+  font-size: var(--text-2xl);
+  line-height: 1.12;
+}
+
+.landing h3 {
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.landing p {
+  margin: 0;
+}
+
+.landing ul,
+.landing ol {
+  margin: 0;
+}
+
+.landing__lead {
+  max-width: 34em;
+  color: var(--color-text-muted);
+  font-size: var(--text-lg);
+}
+
+.landing__fine {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.landing__stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.landing__tinted {
+  background: var(--color-surface);
+}
+
+/* Header: the name, then Log in and Create an account. */
+.landing__bar {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.landing__bar .landing__wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  min-height: 4.5rem;
+  padding-top: env(safe-area-inset-top);
+}
+
+.landing__name {
+  padding-block: var(--space-2);
+  color: var(--color-text);
+  font-size: var(--text-lg);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.landing__account {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.landing__text-link {
+  padding: var(--space-3) var(--space-2);
+  font-weight: 600;
+}
+
+/* Links that look like the app's buttons: a filled primary, an outlined secondary. */
+.landing__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.25rem;
+  padding: 0 1.75rem;
+  border: 2px solid var(--color-accent);
+  border-radius: 0.75rem;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-size: var(--text-base);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+}
+
+.landing__button:hover {
+  text-decoration: underline;
+}
+
+.landing__button--small {
+  min-height: var(--tap-min);
+  padding: 0 1.125rem;
+}
+
+.landing__button--secondary {
+  background: var(--color-bg);
+  color: var(--color-link);
+}
+
+.landing__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* Hero: the words, then a label with the result card laid over its corner. */
+.landing__hero {
+  display: grid;
+  gap: 2.5rem;
+  align-items: center;
+}
+
+.landing__label {
+  margin: 0;
+  padding: 1.75rem 1.75rem 2rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-size: var(--text-sm);
+  line-height: 1.65;
+}
+
+.landing__label figcaption {
+  margin-bottom: var(--space-3);
+  color: var(--color-text-muted);
+}
+
+.landing__label p + p {
+  margin-top: var(--space-3);
+}
+
+.landing__label strong {
+  font-weight: 800;
+}
+
+.landing__mark {
+  padding: 0 0.2em;
+  border-radius: 0.2em;
+  font-weight: 700;
+}
+
+.landing__mark--contains {
+  background: var(--color-contains-bg);
+  box-shadow: inset 0 -2px 0 var(--color-contains-line);
+  color: var(--color-contains-text);
+}
+
+.landing__mark--caution {
+  background: var(--color-caution-bg);
+  box-shadow: inset 0 -2px 0 var(--color-caution-line);
+  color: var(--color-caution-text);
+}
+
+/* A pictured card is the real verdict card's markup, smaller: the same classes, so it can't drift
+   from what a scan shows. */
+.landing__card.verdict-card {
+  margin: 0;
+}
+
+.landing__card .verdict-card__headline {
+  font-size: var(--text-xl);
+}
+
+.landing__card .verdict-card__header,
+.landing__card .verdict-card__body {
+  padding: var(--space-3) var(--space-4);
+}
+
+.landing__card .allergen-rows {
+  margin-bottom: var(--space-3);
+}
+
+.landing__card .verdict-card__disclaimer {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.landing__hero-card {
+  position: relative;
+  width: 92%;
+  margin: -2rem 0 0 auto;
+  box-shadow: 0 18px 40px rgb(0 0 0 / 0.16);
+}
+
+/* Hidden names, as a two-column grid of pairs. */
+.landing__names {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.625rem;
+  margin-top: var(--space-2);
+}
+
+.landing__name-pair {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+
+.landing__name-pair span:first-child {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.landing__name-pair span:last-child {
+  color: var(--color-contains-text);
+  font-weight: 700;
+}
+
+.landing__split {
+  display: grid;
+  gap: 2.5rem;
+  align-items: start;
+}
+
+.landing__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.125rem;
+  font-size: 1.125rem;
+  line-height: 1.6;
+}
+
+/* How it works: three steps, each a picture, a number, a heading and a line. */
+.landing__steps {
+  display: grid;
+  gap: var(--space-6);
+  padding: 0;
+  list-style: none;
+}
+
+.landing__steps li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.landing__steps p {
+  color: var(--color-text-muted);
+}
+
+.landing__step-number {
+  color: var(--color-link);
+  font-size: 2.75rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.landing__tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  min-height: 13.75rem;
+  margin-bottom: var(--space-2);
+  padding: var(--space-5);
+  border-radius: 1.125rem;
+}
+
+.landing__tile--camera {
+  border: 1px solid var(--color-border);
+  background: var(--color-viewfinder-bg);
+  color: var(--color-viewfinder-text);
+  font-size: var(--text-sm);
+}
+
+.landing__tile--camera svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.landing__tile--card {
+  align-items: stretch;
+  background: var(--color-surface);
+}
+
+.landing__tile--circle {
+  background: var(--color-band-bg);
+  color: var(--color-band-text);
+}
+
+.landing__avatars {
+  display: flex;
+  gap: 0.625rem;
+}
+
+.landing__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 50%;
+  font-weight: 800;
+}
+
+.landing__avatar--you {
+  background: var(--color-bg);
+  color: var(--color-link);
+  font-size: var(--text-sm);
+}
+
+.landing__avatar--co {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.landing__avatar--grand {
+  background: var(--color-caution-bg);
+  color: var(--color-caution-text);
+}
+
+.landing__avatar--sitter {
+  background: var(--color-contains-bg);
+  color: var(--color-contains-text);
+}
+
+.landing__pill {
+  padding: var(--space-2) 1.125rem;
+  border-radius: 999px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  text-align: center;
+}
+
+/* The circle band. */
+.landing__band {
+  background: var(--color-band-bg);
+  color: var(--color-band-text);
+}
+
+.landing__band .landing__split {
+  align-items: center;
+}
+
+.landing__report {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 1.375rem var(--space-5);
+  border-radius: 0.875rem;
+  background: var(--color-bg);
+  box-shadow: 0 18px 40px rgb(0 0 0 / 0.22);
+  color: var(--color-text);
+}
+
+.landing__report .allergen-rows {
+  margin: 0;
+}
+
+.landing__report-line {
+  padding-left: 0.875rem;
+  border-left: 3px solid var(--color-border);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
+/* Trust: four short claims under a rule each. */
+.landing__trust {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.landing__trust > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding-top: 1.125rem;
+  border-top: 3px solid var(--color-text);
+}
+
+.landing__trust p {
+  color: var(--color-text-muted);
+}
+
+.landing__data ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-left: 1.25rem;
+  font-size: 1.125rem;
+  line-height: 1.55;
+}
+
+.landing__data li + li {
+  margin-top: 0;
+}
+
+.landing__closing h2 {
+  max-width: 16em;
+  font-size: 2.25rem;
+  line-height: 1.08;
+}
+
+.landing__footer {
+  padding-top: var(--space-6);
+  padding-bottom: max(2.5rem, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.landing__footer p + p {
+  margin-top: var(--space-2);
+  color: var(--color-text);
+}
+
+@media (min-width: 54rem) {
+  .landing {
+    --landing-gutter: var(--space-6);
+  }
+
+  .landing section {
+    padding-block: 6rem;
+  }
+
+  .landing h1 {
+    font-size: 3.75rem;
+  }
+
+  .landing h2 {
+    font-size: 2.5rem;
+  }
+
+  .landing__closing h2 {
+    font-size: 3rem;
+  }
+
+  .landing__hero {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 4rem;
+  }
+
+  .landing__hero-card {
+    width: 82%;
+    margin: -4.5rem -0.5rem 0 auto;
+  }
+
+  .landing__split {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    gap: 4rem;
+  }
+
+  .landing__steps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 2.5rem;
+  }
+
+  .landing__trust {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 3rem 4rem;
+  }
 }
