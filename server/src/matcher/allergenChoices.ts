@@ -29,7 +29,7 @@ export const ALLERGEN_CHOICES: AllergenChoice[] = [
   { key: "egg", displayName: "Egg", group: "common", hint: null },
   { key: "peanut", displayName: "Peanut", group: "common", hint: null },
   { key: "tree-nut", displayName: "Tree nuts", group: "common", hint: "Matches any tree nut: almond, cashew, walnut and more." },
-  { key: "gluten", displayName: "Wheat", group: "common", hint: "Also matches barley and rye." },
+  { key: "gluten", displayName: "Wheat", group: "common", hint: "Also matches barley, rye, spelt, durum, semolina, bulgur and seitan." },
   { key: "soy", displayName: "Soy", group: "common", hint: null },
   { key: "sesame", displayName: "Sesame", group: "common", hint: null },
   { key: "fish", displayName: "Fish", group: "common", hint: null },

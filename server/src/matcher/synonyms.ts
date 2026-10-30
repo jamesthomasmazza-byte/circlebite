@@ -26,6 +26,15 @@ export type SynonymCluster = {
 // from real products before adding — not guessed.
 const DAIRY = ["milk", "dairy", "lactose", "whey", "casein", "caseinate", "caseinates", "buttermilk"];
 const GLUTEN = ["wheat", "gluten", "barley", "rye"];
+// Wheat named without the word "wheat" (2026-10-30): durum, spelt and bulgur are wheat (durum and
+// spelt are wheat species, bulgur is cracked wheat), seitan is wheat gluten, and semolina unqualified
+// is durum wheat. Real labels name them alone: "spelt flour, water, yeast, salt" (8718906169890),
+// "Water, spelt, green lentils" (0099482455118), "Midyat bulgur" (8691440710172), all with no
+// allergen tags, so they were silent misses. Semolina can be made from rice or maize ("rice
+// semolina"), so it can over-warn; accepted, principle 1. Not farina, which is Italian for any
+// flour ("Farina di lenticchie rosse", 8019730069524), or couscous ("Corn Couscous", 5017601041009).
+// Keywords only, never aliases: an alias would move a "Spelt" profile allergen's correction key.
+const WHEAT_BY_OTHER_NAMES = ["durum", "spelt", "bulgur", "seitan", "semolina"];
 const CRUSTACEAN = ["shellfish", "crustacean", "crustaceans", "shrimp", "prawn", "crab", "crabmeat", "lobster"];
 // "nuts" is Open Food Facts' own tag for tree nuts ("en:nuts", normalized by openFoodFacts.ts), so
 // a record tagged only that way was a silent miss for a correctly spelled "Tree nuts" profile — found
@@ -58,7 +67,7 @@ const MOLLUSCS = ["oyster", "oysters", "mussel", "mussels", "clam", "clams", "sc
 
 export const SYNONYM_CLUSTERS: SynonymCluster[] = [
   { id: "dairy", aliases: DAIRY, keywords: DAIRY },
-  { id: "gluten", aliases: GLUTEN, keywords: GLUTEN },
+  { id: "gluten", aliases: GLUTEN, keywords: [...GLUTEN, ...WHEAT_BY_OTHER_NAMES] },
   { id: "crustacean", aliases: CRUSTACEAN, keywords: CRUSTACEAN },
   // Peanut is deliberately its own cluster, never merged with tree nuts — a real safety error to
   // conflate them, per legacy-spec.md.

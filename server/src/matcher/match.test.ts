@@ -81,6 +81,35 @@ test("recognizes 'eggnog' (one word) as egg", () => {
   assert.equal(matchAllergen("Egg", productWithIngredients(text)).matched, true);
 });
 
+test("recognizes wheat named without the word: durum, spelt, bulgur, seitan, semolina", () => {
+  // Each from a real Open Food Facts product's ingredient text (2026-10-30), all but the last with
+  // no allergen tags, or with "wheat" only inside a compound ("wholewheat", Dutch "tarwegluten") —
+  // the matcher's silent misses on text alone. Each is matched by the new name itself.
+  const real: [string, string][] = [
+    ["spelt", "spelt flour, water, yeast, salt, dextrose."], // 8718906169890
+    ["spelt", "Water, spelt, green lentils, long grain brown rice, extra virgin olive oil"], // 0099482455118
+    ["bulgur", "Midyat bulgur"], // 8691440710172
+    ["Durum", "Durum Wholewheat Semolina"], // 5000119319906
+    ["seitan", "seitan* 90% [water, tarwegluten* 31%, tarwebloem*, sojavezel"], // 5400119593175
+    ["semolina", "Organic wholewheat semolina"], // 8008343700665
+  ];
+  for (const [word, text] of real) {
+    const result = matchAllergen("Wheat", productWithIngredients(text));
+    assert.equal(result.matched, true, text);
+    assert.equal(result.matchedText, word, text);
+  }
+});
+
+test("wheat's other names are word-bounded and not aliases: buckwheat, farina and couscous stay misses", () => {
+  // Farina is Italian for any flour; couscous can be corn. Both real products, both not wheat.
+  for (const text of ["100% Farina di lenticchie rosse.", "Corn Couscous", "buckwheat groats", "spelter"]) {
+    assert.equal(matchAllergen("Wheat", productWithIngredients(text)).matched, false, text);
+  }
+  // A profile allergen named "Spelt" keeps its own family key: the new names are keywords only.
+  assert.equal(allergenFamilyKey("Spelt"), allergenFamilyKey("spelt"));
+  assert.notEqual(allergenFamilyKey("Spelt"), allergenFamilyKey("Wheat"));
+});
+
 test("regression: a product with none of these terms is still a clean miss", () => {
   const text =
     "CARBONATED WATER, CARAMEL COLOR, ASPARTAME acts PHOSPHORIC ACID, POTASSIUM BENZOATE, NATURAL FLAVORS, CITRIC ACID, CAFFEINE";
