@@ -5,6 +5,7 @@ import { BoxRegionReader } from "./boxRegionReader";
 import { CAMERA_PRIMER_HEADING, CAMERA_PRIMER_LINE, cameraPrimerSeen, markCameraPrimerSeen } from "./lib/cameraPrimer";
 import { prefersReducedMotion, revealBehavior } from "./lib/revealResult";
 import { NO_READ_OFFER, NO_READ_OFFER_MS } from "./lib/scannerCopy";
+import { msSince, type ClientTiming } from "./lib/scanTiming";
 
 // How long "Got it" shows on the box before the camera stops and the scan runs.
 const READ_CONFIRM_MS = 250;
@@ -37,7 +38,8 @@ export type BarcodeScannerHandle = { start: () => void };
 export const BarcodeScanner = forwardRef<
   BarcodeScannerHandle,
   {
-    onDetected: (text: string) => void;
+    /** With the phone's camera timings for this read (lib/scanTiming.ts). */
+    onDetected: (text: string, timing: ClientTiming) => void;
     onOfferLabelPhoto?: () => void;
     region?: boolean;
     onBusyChange?: (busy: boolean) => void;
@@ -64,6 +66,15 @@ export const BarcodeScanner = forwardRef<
   const onDetectedRef = useRef(onDetected);
   onDetectedRef.current = onDetected;
 
+  // Step 0's timings (lib/scanTiming.ts): from the tap to the camera's first frame — so a first use
+  // includes the time on the browser's permission prompt — and from then to the read.
+  const requestedAtRef = useRef(0);
+  const runningAtRef = useRef<number | null>(null);
+  function cameraTiming(): ClientTiming {
+    const running = runningAtRef.current;
+    return running === null ? {} : { cam: Math.round(running - requestedAtRef.current), decode: msSince(running) };
+  }
+
   function stopCamera() {
     controlsRef.current?.stop();
     controlsRef.current = null;
@@ -72,6 +83,7 @@ export const BarcodeScanner = forwardRef<
   }
 
   async function startCamera() {
+    requestedAtRef.current = performance.now();
     setCameraError(null);
     setRead(false);
     readRef.current = false;
@@ -86,11 +98,12 @@ export const BarcodeScanner = forwardRef<
         if (!detected || readRef.current) return;
         readRef.current = true;
         const text = detected.getText();
+        const timing = cameraTiming();
         setRead(true);
         navigator.vibrate?.(50);
         window.setTimeout(() => {
           stopCamera();
-          onDetectedRef.current(text);
+          onDetectedRef.current(text, timing);
         }, READ_CONFIRM_MS);
       });
       controlsRef.current = controls;
@@ -154,6 +167,18 @@ export const BarcodeScanner = forwardRef<
       video.removeEventListener("loadedmetadata", scroll);
       video.removeEventListener("resize", scroll);
     };
+  }, [cameraActive]);
+
+  // The camera's first frame, for cameraTiming — apart from the camera code, like the scroll above.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!cameraActive || !video) return;
+    runningAtRef.current = null;
+    const playing = () => {
+      if (runningAtRef.current === null) runningAtRef.current = performance.now();
+    };
+    video.addEventListener("playing", playing);
+    return () => video.removeEventListener("playing", playing);
   }, [cameraActive]);
 
   // The offer's timer, apart from the camera code: it runs while the camera does and nothing has

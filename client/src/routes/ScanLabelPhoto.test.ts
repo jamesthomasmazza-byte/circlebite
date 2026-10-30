@@ -11,7 +11,7 @@ const combine = submit.slice(submit.indexOf('if (photoCaptureMode === "combine")
 const standalone = submit.slice(submit.indexOf("} else {"));
 
 test("a standalone label photo clears the barcode field once its result is in", () => {
-  assert.match(standalone, /const scan = await createLabelScan\(profileId, downscaled\);[\s\S]*setResult\(scan\);[\s\S]*setBarcode\(""\);/);
+  assert.match(standalone, /const scan = await createLabelScan\(profileId, downscaled, undefined, timing\);[\s\S]*setResult\(scan\);[\s\S]*setBarcode\(""\);/);
 });
 
 test("a photo combined with a barcode scan keeps the barcode", () => {

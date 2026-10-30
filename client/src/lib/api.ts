@@ -1,3 +1,5 @@
+import { timingHeaders, type ClientTiming } from "./scanTiming";
+
 export class ApiRequestError extends Error {
   status: number;
   /** The error body's other fields (server HttpError.detail) — e.g. which listed allergen a typed
@@ -16,8 +18,9 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   // with a client page route of the same name — callers here just use the bare resource path.
   const res = await fetch(`/api${path}`, {
     credentials: "include",
-    headers: { "Content-Type": "application/json", ...options?.headers },
     ...options,
+    // After the spread, so a caller's own headers add to Content-Type rather than replace it.
+    headers: { "Content-Type": "application/json", ...options?.headers },
   });
   const body = await res.json().catch(() => undefined);
 
@@ -543,8 +546,12 @@ export type ScanHistoryEntry = {
   pending_circle_reports: CircleReport[];
 };
 
-export function createScan(allergenProfileId: string, barcode: string): Promise<ScanResult> {
-  return apiFetch("/scans", { method: "POST", body: JSON.stringify({ allergenProfileId, barcode }) });
+export function createScan(allergenProfileId: string, barcode: string, timing?: ClientTiming): Promise<ScanResult> {
+  return apiFetch("/scans", {
+    method: "POST",
+    headers: timingHeaders(timing),
+    body: JSON.stringify({ allergenProfileId, barcode }),
+  });
 }
 
 // Anthropic's own resize threshold for Claude's vision input — images are downsized to roughly
@@ -602,13 +609,19 @@ export async function createLabelScan(
   allergenProfileId: string,
   photo: File,
   barcode?: string,
+  timing?: ClientTiming,
 ): Promise<LabelScanResult> {
   const form = new FormData();
   form.set("allergenProfileId", allergenProfileId);
   if (barcode) form.set("barcode", barcode);
   form.set("photo", photo);
 
-  const res = await fetch("/api/scans/label", { method: "POST", credentials: "include", body: form });
+  const res = await fetch("/api/scans/label", {
+    method: "POST",
+    credentials: "include",
+    headers: timingHeaders(timing),
+    body: form,
+  });
   const body = await res.json().catch(() => undefined);
 
   if (!res.ok) {
@@ -676,12 +689,17 @@ export type CombineOutcome =
  * signature: the two request shapes don't share any required field, and conflating them invites
  * sending both by accident.
  */
-export async function combineLabelScan(scanId: string, photo: File): Promise<CombineOutcome> {
+export async function combineLabelScan(scanId: string, photo: File, timing?: ClientTiming): Promise<CombineOutcome> {
   const form = new FormData();
   form.set("scanId", scanId);
   form.set("photo", photo);
 
-  const res = await fetch("/api/scans/label", { method: "POST", credentials: "include", body: form });
+  const res = await fetch("/api/scans/label", {
+    method: "POST",
+    credentials: "include",
+    headers: timingHeaders(timing),
+    body: form,
+  });
   const body = await res.json().catch(() => undefined);
 
   if (!res.ok) {

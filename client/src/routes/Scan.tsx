@@ -11,6 +11,7 @@ import { scanningForId } from "../lib/tabs";
 import { useAuth } from "../lib/AuthContext";
 import { readOverride, scannerRegionOn } from "../lib/scannerRegion";
 import { SCAN_ANOTHER } from "../lib/scannerCopy";
+import { msSince, type ClientTiming } from "../lib/scanTiming";
 import { prefersReducedMotion, revealResult } from "../lib/revealResult";
 import {
   ApiRequestError,
@@ -282,7 +283,7 @@ export function Scan() {
   }
 
   // Manual entry and the camera both end up here — same validation, same request, same rendering.
-  async function runScan(rawBarcode: string, targetProfileId: string) {
+  async function runScan(rawBarcode: string, targetProfileId: string, timing?: ClientTiming) {
     resetForNewScan();
 
     if (!targetProfileId) {
@@ -296,7 +297,7 @@ export function Scan() {
 
     setSubmitting(true);
     try {
-      const scan = await createScan(targetProfileId, rawBarcode.trim());
+      const scan = await createScan(targetProfileId, rawBarcode.trim(), timing);
       setResult(scan);
       setResultProfileId(targetProfileId);
       requestReveal();
@@ -416,11 +417,13 @@ export function Scan() {
 
     setPhotoReading(true);
     try {
+      const downscaleStart = performance.now();
       const downscaled = await downscaleLabelPhoto(photoFile);
+      const timing: ClientTiming = { downscale: msSince(downscaleStart), orig: photoFile.size };
 
       if (photoCaptureMode === "combine") {
         if (!result) return; // Not reachable — combine mode only opens with a result on screen.
-        const outcome = await combineLabelScan(result.id, downscaled);
+        const outcome = await combineLabelScan(result.id, downscaled, timing);
         if (outcome.status === "unreadable") {
           // Genuinely dry: nothing was written to the scan, so stay on this same form and let the
           // family try again immediately rather than dropping them into a dead-end screen.
@@ -432,7 +435,7 @@ export function Scan() {
         setPhotoFile(null);
         requestReveal();
       } else {
-        const scan = await createLabelScan(profileId, downscaled);
+        const scan = await createLabelScan(profileId, downscaled, undefined, timing);
         setPhotoCaptureOpen(false);
         setPhotoFile(null);
         setResult(scan);
@@ -628,9 +631,9 @@ export function Scan() {
             <BarcodeScanner
               ref={scannerRef}
               onBusyChange={setScannerBusy}
-              onDetected={(text) => {
+              onDetected={(text, timing) => {
                 setBarcode(text);
-                void runScan(text, profileId);
+                void runScan(text, profileId, timing);
               }}
               // No offer without the label scan: there'd be no photo flow to open.
               onOfferLabelPhoto={
