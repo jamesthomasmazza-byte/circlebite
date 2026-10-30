@@ -73,7 +73,8 @@ test("the copy the mockup approved, line by line", () => {
   }
 });
 
-const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
+// Rules only: a comment may name a selector it explains.
+const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
 
 test("Public Sans is self-hosted with its licence, and only the landing page uses it", () => {
   const faces = [...css.matchAll(/@font-face\s*{[^}]*}/g)].map(([f]) => f);
@@ -96,4 +97,14 @@ test("a title and a meta description for search, from the approved copy", () => 
   assert.ok(description && text.includes(description), "the hero's own lead sentence");
   // Signed-in pages keep the plain name: the landing page puts it back when it unmounts.
   assert.match(index, /<title>CircleBite<\/title>/);
+});
+
+test("the bands reach both edges by cancelling the body's own padding, not with :has()", () => {
+  const body = css.match(/\nbody \{([^}]*)\}/)![1];
+  const landing = css.match(/\n\.landing \{([^}]*)\}/)![1];
+  for (const side of ["top", "right", "bottom", "left"]) {
+    const padding = body.match(new RegExp(`padding-${side}: (max\\([^;]+\\));`))![1];
+    assert.ok(landing.includes(`calc(-1 * ${padding})`), side);
+  }
+  assert.doesNotMatch(css, /:has\(\.landing\)/);
 });

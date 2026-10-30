@@ -1958,12 +1958,12 @@ a.card:hover {
   src: url("./fonts/PublicSans-ExtraBold.woff2") format("woff2");
 }
 
-body:has(.landing) {
-  padding: 0;
-}
-
+/* Cancels the body's padding (Document, above) so the bands reach both edges: the same expressions,
+   negated. Not body:has(.landing), which Firefox before 121 and Safari before 15.4 ignore. */
 .landing {
   --landing-gutter: var(--space-4);
+  margin: calc(-1 * max(var(--space-4), env(safe-area-inset-top))) calc(-1 * max(var(--space-4), env(safe-area-inset-right)))
+    calc(-1 * max(var(--space-7), env(safe-area-inset-bottom))) calc(-1 * max(var(--space-4), env(safe-area-inset-left)));
   min-height: 100vh;
   font-family: "Public Sans", var(--font-sans);
 }
@@ -2049,7 +2049,7 @@ body:has(.landing) {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-2) var(--space-4);
+  gap: var(--space-2) var(--space-3);
   min-height: 4.5rem;
   padding-top: env(safe-area-inset-top);
 }
@@ -2062,11 +2062,12 @@ body:has(.landing) {
   text-decoration: none;
 }
 
+/* Name, Log in and the button on one line at 390px (measured 2026-10-30); they wrap only below it. */
 .landing__account {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2) var(--space-3);
+  gap: var(--space-2) var(--space-1);
 }
 
 .landing__text-link {
@@ -2098,7 +2099,7 @@ body:has(.landing) {
 
 .landing__button--small {
   min-height: var(--tap-min);
-  padding: 0 1.125rem;
+  padding: 0 var(--space-3);
 }
 
 .landing__button--secondary {
@@ -2460,9 +2461,19 @@ body:has(.landing) {
     gap: 4rem;
   }
 
+  /* Side by side, each step's picture, number, heading and line share rows, so a taller picture
+     (step 2's card) doesn't push its number below the others'. */
   .landing__steps {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 2.5rem;
+    grid-template-rows: repeat(4, auto);
+    gap: var(--space-3) 2.5rem;
+  }
+
+  .landing__steps li {
+    display: grid;
+    grid-row: span 4;
+    grid-template-rows: subgrid;
+    align-content: start;
   }
 
   .landing__trust {
