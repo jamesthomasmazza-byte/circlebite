@@ -1211,3 +1211,8 @@ Out of scope per `CONTEST_RULES.md` §7 — do not start these before judging en
   (a) count only families with scan history beyond the scan the report is filed from;
   (b) flag reports on one claim whose photos or origin look like the same hand, into the review
   queue. (b) needs a `docs/coppa.md` decision on keeping origin data first. Neither is built.
+- Known flaky test: `server/src/routes/corrections.test.ts`, "a follower's removal is refused with
+  403, and leaves no row and no photo", failed once in three full server runs on 2026-10-30 (while
+  testing `2b51898`). It passed alone three times out of three, and the next two full runs were
+  clean. Likely a clash with another test file sharing the database or the upload folder; the
+  failing assertion wasn't captured. Investigate after judging.
