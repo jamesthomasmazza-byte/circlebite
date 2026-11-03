@@ -2096,6 +2096,10 @@ Rules held throughout:
   still shown 2990000000038 above a card read from an unrelated photo.
 - **Allergens above name and notes on the profile page (`39aa8a9`).** Order only.
 
+The audit's label-photo checks used a synthetic label, kept as evidence:
+`docs/approvals/img/synthetic-test-label.jpg` ("TEST LABEL — synthetic product, not real", footed
+"CircleBite audit test, Oct 28 2026"). Committed November 3; it had stayed untracked until then.
+
 BACKLOG ticked in `7f37447`. "Four small findings" stays open: only the comma is done. One
 difference is recorded there. The old history item asked to keep the original verdict visible.
 It's now inside "Details", per this audit's spec. The change itself is still stated outside
