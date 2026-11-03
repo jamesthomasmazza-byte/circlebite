@@ -170,6 +170,17 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
   *Fixed 2026-11-03 in `b2e1eea`, with wheatflour, emmer and the label spelling "bulgar": 9 more
   wheat products caught, no new false cautions (`docs/evidence/2026-11-03-wheat-words.md`). Not
   yet deployed.*
+- [x] **R9: JT's test accounts off production** (2026-11-03). Purged: 5 accounts, 5 profiles, 104
+  scans, 5 corrections (one a false sesame warning on Smjörvi), their photos, and 5 older orphan
+  photos. Kept: 2 synthetic example.com accounts, the operator admin, every seed row. First clean
+  backup 18:53:30Z. Journal, 2026-11-03.
+- [ ] **Remove the pre-purge backups** from the box and S3 (all versions), keeping one pre-purge set
+  on JT's Mac (`docs/server-setup.md` §17.14). Until then they still hold the test accounts.
+- [ ] **After November 20: delete the Mac's pre-purge copy** (§17.14, last step).
+- [ ] **Report correction photos no row refers to.** Five were found during the R9 purge, most
+  likely from the Oct 1 duplicate-report failures before `1a6a638` added the cleanup. A crash
+  between writing a photo and recording the report can still leave one. Proposal: `backup.sh`
+  writes an `.orphan-photos` list beside `.missing-photos`, report only, never deletes.
 - [x] **Open Food Facts tags the matcher can't read:** tags match keywords by exact equality, so
   `en:sesame-seeds`, `en:sulphur-dioxide-and-sulphites` and `en:molluscs` never match. Mustard has
   no cluster but isn't a miss: a "Mustard" profile matches the literal tag (all 133 in the sample).

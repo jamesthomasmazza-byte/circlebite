@@ -2492,3 +2492,36 @@ Done first, so the purge removes no tool the app needs:
 - **The operator admin:** a normal sign-up with a role address, granted admin by §12's SQL, checked
   on every admin page before James is removed.
 - **A contest-demo notice** at every sign-up (`37eb25d`), so new accounts bring no real data.
+
+## 2026-11-03 — R9 purge: done
+
+JT ran `purge.sql` on production himself, after a backup. The dry run matched what was expected,
+and the real run committed:
+- **Removed:** 5 accounts (James, the Timmy login, two gmail test addresses, a test.com sign-up),
+  5 profiles, 104 scans, and 5 corrections. One of those was the false Smjörvi sesame warning;
+  none was a confirmed removal. The 5 photos the script listed were deleted from the box.
+- **Confirmed warnings:** 2 before, 1 after. The Smjörvi one is gone; the seeded `…076` families'
+  peanut warning stays.
+- **Five more photos** no row referred to, all from October 1 and JT's own test uploads (4,878,644
+  bytes together), were found and deleted. Most likely cause: on October 1, before `1a6a638` added
+  the cleanup, a refused report (the duplicate-report bug in that day's entry) had already written
+  its photo and never wrote a row. Their times weren't recorded before deletion, so this is the
+  likely cause, not a proven one. Proposal in BACKLOG.
+
+Checked after, read-only:
+- **Accounts:** 3 non-demo (the 2 synthetic example.com and the operator admin) and 19 demo (the
+  judge seed's 18 and `deploy.check`).
+- **Profiles managed by a non-demo account:** 1, the operator's made-up "admin test" (Egg, Milk),
+  made by the first-visit redirect.
+- **Real-world corrections:** 2, the seeded `…076` families'. No real account is on a judge's
+  profile.
+- **Photos:** none without a row, none missing. No restore-test scratch database left.
+- **§8 check** as `deploy.check` on Rowan: `…076` still read "Contains an allergen", peanut
+  reported by 2 shoppers.
+
+The first clean backup is 18:53:30Z (dump 92 KiB, photos 430 B), local and offsite. The older sets,
+on the box and in S3, still hold the test accounts until they are removed (`docs/server-setup.md`
+§17.14).
+
+The screenshots in `docs/approvals` stay as dated records; `conditions.md` now says the accounts
+they show were removed.

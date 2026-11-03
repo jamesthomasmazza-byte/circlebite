@@ -1171,3 +1171,61 @@ It creates and removes its own database, role and temp directory, never touches 
 refuses to run on the production box. Its stand-ins for `aws`, `df`, `date` and `pg_restore` live in
 `scripts/tests/shims/` and refuse to run unless the harness invoked them, so one can never quietly
 replace the real command if that directory ends up on a `PATH`.
+
+### 17.14 Removing the pre-purge backups (R9, November 2026, one-off)
+
+The R9 purge of November 3 (`docs/journal.md`) took JT's test accounts off production, but every
+backup set older than the first clean one still holds them: on the box, up to 7 sets; in S3, about
+a month, plus older versions. This removes them, keeping **one** pre-purge set on JT's Mac until
+judging is over, so the purge can still be undone (principle 4). R9 is about the contest
+deployment; a copy on JT's own encrypted disk is not on it.
+
+The first clean set is `circlebite-20261103T185330Z`. Every set whose name sorts before it is
+pre-purge. The newest of those is the one taken just before the purge, and is the one kept.
+
+**1. Keep one pre-purge set on the Mac**, in an encrypted disk image (it holds password hashes and
+the test accounts). On the Mac:
+
+```bash
+hdiutil create -encryption AES-256 -size 200m -fs APFS -volname circlebite-prepurge ~/circlebite-prepurge.dmg   # asks for a passphrase: keep it in your password manager
+hdiutil attach ~/circlebite-prepurge.dmg
+ssh -i ~/.ssh/circlebite-prod.pem ubuntu@circlebite.app 'cd ~/circlebite/backups && ls -1 circlebite-*.sha256 | sed "s/\.sha256$//" | awk "\$0 < \"circlebite-20261103T185330Z\"" | tail -1'   # the pre-purge set to keep
+PRE=circlebite-<stamp printed above>
+scp -i ~/.ssh/circlebite-prod.pem "ubuntu@circlebite.app:~/circlebite/backups/$PRE.*" /Volumes/circlebite-prepurge/
+cd /Volumes/circlebite-prepurge && shasum -a 256 -c "$PRE.sha256"   # every file: OK
+cd ~ && hdiutil detach /Volumes/circlebite-prepurge
+```
+
+**2. The box.** Preview, then delete, every file of every set that sorts before the clean one:
+
+```bash
+cd ~/circlebite/backups
+CLEAN=circlebite-20261103T185330Z
+for f in circlebite-*; do s=${f%%.*}; [[ "$s" < "$CLEAN" ]] && echo "$f"; done          # preview: pre-purge files only
+for f in circlebite-*; do s=${f%%.*}; [[ "$s" < "$CLEAN" ]] && rm -v -- "$f"; done        # delete them
+ls -1 ~/circlebite/backups                                                               # only the clean set and later
+~/circlebite/current/scripts/backup-status.sh                                            # still reports the newest set as fresh
+```
+
+**3. S3, every version.** The box can't delete from the bucket (§17.2), so this is done in the
+console:
+
+1. Open the bucket, then `circlebite/`, and turn on **Show versions**.
+2. Select every set folder whose name sorts before `circlebite-20261103T185330Z`. Never select that
+   one or anything after it.
+3. **Delete**, type `permanently delete`, and confirm.
+4. With **Show versions** still on, check that none of those folders remain, as objects, older
+   versions or delete markers. If any rows remain, select them and delete them the same way.
+
+If a delete leaves older versions behind anyway, the lifecycle rule (§17.2) permanently deletes
+noncurrent versions 7 days after they become noncurrent, so none outlasts a week. Step 4 is what
+makes it immediate.
+
+**4. After November 20, delete the Mac copy:**
+
+```bash
+rm ~/circlebite-prepurge.dmg
+```
+
+A Time Machine backup of the Mac may still hold the disk image. It stays encrypted with the same
+passphrase; delete the passphrase too once you're sure no restore will be needed.

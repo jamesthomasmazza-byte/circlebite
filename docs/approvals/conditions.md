@@ -17,6 +17,12 @@ status.
 So **Condition 3 is the cross-family README sentence.** It is also the only one of the four that
 JT's October 8 email left out, and the gap is why he asked.
 
+**About the screenshots cited below** (`docs/approvals/img/` and the October 8 `.jpg`): they are
+dated records of production as it was, kept as sent. The accounts they show (James Mazza, the
+Timmy login) and their profiles were JT's own test accounts, and were later removed from production
+in the R9 purge of November 3, 2026 (`docs/journal.md`). The behaviour each one shows is still the
+app's; only those accounts are gone.
+
 ---
 
 ## Condition 1 — Log every downgrade
@@ -261,7 +267,9 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
     (cream, rapeseed oil, salt, vitamins), so it was a false caution, not a real one; milk stays
     flagged from the product's own tag. It shows the asymmetry holding: the fake pair could only
     add a warning. **Decided** (JT, November 3): the R9 purge deletes it with its photo, the one
-    confirmed warning the purge may remove, checked by id. **Not yet run.**
+    confirmed warning the purge may remove, checked by id. **Done November 3:** the purge ran and
+    deleted it with its photo; confirmed warnings on production went from 2 to 1, and the one left
+    is the seeded `2990000000076` families' peanut warning.
 
 ### Due Friday, October 30 (his October 24 email, `2026-10-24-yoest-green-card-screenshot.md`)
 
