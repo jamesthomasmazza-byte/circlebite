@@ -6,6 +6,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import type { MatchedAllergen, ScanHistoryEntry } from "../lib/api";
 import { historyChangedLine, historyNotCheckedLine, REPORT_NOT_SHARED } from "../lib/historyCopy";
+import { DISCLAIMER_SHORT } from "../lib/verdictCopy";
 import { ScanHistoryEntryCard } from "./ScanHistory";
 
 // Scan history as one summary per entry, the reasoning in a closed disclosure (2026-10-28 audit;
@@ -151,4 +152,17 @@ test("every changed verdict opens with what it was, in the verdict's own label, 
     community_reports: [{ allergenName: "Peanut", reporterCount: 2 }],
   });
   assert.equal(historyChangedLine(yours), "Was No listed allergens found — changed by your report and shopper reports.");
+});
+
+test("every card carries the short disclaimer, outside the disclosure, whatever its verdict", () => {
+  // CONTEST_RULES.md §3: the disclaimer is on the verdict card itself; the full panel and the 911
+  // line stay once above the list.
+  const verdicts = ["safe", "may_contain_caution", "contains_allergen", "unable_to_confirm"] as const;
+  for (const result of verdicts) {
+    const { outside, inside } = render(entry({ original: { result, matched_allergens: [row("Peanut")] } }));
+    assert.equal(outside.split(DISCLAIMER_SHORT).length - 1, 1, result);
+    assert.doesNotMatch(inside, new RegExp(DISCLAIMER_SHORT), result);
+  }
+  const { outside } = render(FOLLOWER_CIRCLE);
+  assert.match(outside, /<p class="history-entry__disclaimer">Screening aid, not a guarantee — check the label\.<\/p>/);
 });

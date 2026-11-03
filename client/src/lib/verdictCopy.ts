@@ -23,6 +23,10 @@ export const VERDICT_LABEL: Record<Verdict, string> = {
 export const DISCLAIMER =
   "This is a screening aid, not a guarantee — always check the physical label, especially for “may contain” warnings.";
 
+/** On each scan history card, under the full DISCLAIMER and EMERGENCY panel above the list: every
+ *  card read on its own still says what the verdict is (CONTEST_RULES.md §3, §9 "every verdict card"). */
+export const DISCLAIMER_SHORT = "Screening aid, not a guarantee — check the label.";
+
 /** The heading over a photo that didn't produce a verdict card. "Couldn't read that label" when the
  *  photo was checked and fell short (illegible, cut off); "Couldn't check that photo" when the
  *  check itself failed, which says nothing about the photo or the label. */

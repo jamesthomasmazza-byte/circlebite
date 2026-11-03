@@ -15,7 +15,7 @@ import { HISTORY_SAMPLE_TAG, isSampleScan } from "../lib/sampleScan";
 import { shortDateTime } from "../lib/dateCopy";
 import { historyUncheckedNote, uncheckedBasis } from "../lib/evidenceCopy";
 import { historyChangedLine, historyNotCheckedLine, REPORT_NOT_SHARED } from "../lib/historyCopy";
-import { DISCLAIMER, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
+import { DISCLAIMER, DISCLAIMER_SHORT, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
 
 export function ScanHistory() {
   const { id } = useParams<{ id: string }>();
@@ -41,7 +41,7 @@ export function ScanHistory() {
         <Link to={id ? `/profiles/${id}` : "/profiles"}>← Back to profile</Link>
       </p>
       <h1>Recent scans</h1>
-      {/* Once for the whole list, not per entry: every verdict below is read under it. */}
+      {/* In full once for the whole list; each entry also carries the short line (DISCLAIMER_SHORT). */}
       <div role="note" className="verdict-card__disclaimer scan-history__disclaimer">
         <p>{DISCLAIMER}</p>
         <p>
@@ -112,6 +112,7 @@ export function ScanHistoryEntryCard({ scan, profileLabel }: { scan: ScanHistory
       )}
       {changed && <p className="history-entry__summary">{changed}</p>}
       {notChecked && <p className="history-entry__summary">{notChecked}</p>}
+      <p className="history-entry__disclaimer">{DISCLAIMER_SHORT}</p>
       {hasDetails && (
         <details className="history-entry__details">
           <summary>Details</summary>

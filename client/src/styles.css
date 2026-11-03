@@ -904,7 +904,8 @@ th {
   margin-bottom: 0;
 }
 
-/* The same panel once above the scan history list, rather than on every entry. */
+/* The same panel once above the scan history list; each entry carries the short line
+   (.history-entry__disclaimer). */
 .scan-history__disclaimer {
   margin-bottom: var(--space-4);
 }
@@ -1374,6 +1375,15 @@ a.card:hover {
 
 .history-entry__summary {
   margin: var(--space-2) 0 0;
+}
+
+/* The short disclaimer on each card: full size and contrast like the panel above the list, set
+   off by a hairline so it never reads as part of the verdict. */
+.history-entry__disclaimer {
+  margin: var(--space-3) 0 0;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+  font-weight: 500;
 }
 
 .history-entry__details {
