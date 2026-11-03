@@ -95,10 +95,16 @@ export function allergenFamilyKey(allergenName: string): string {
   return cluster ? `cluster:${cluster.id}` : `name:${allergenFoldKey(allergenName)}`;
 }
 
-/** The matched characters as they appear in `text`, or null. */
+/**
+ * The matched characters as they appear in `text`, or null. Bounded by letters and digits only, not
+ * \b: \b counts "_" as a letter, and Open Food Facts marks allergens with it ("_Wheat_ Flour",
+ * "(_Sulphites_)"), so \bwheat\b missed every marked allergen (2026-11-03, docs/evidence/). That is
+ * the only difference: every keyword starts and ends with a letter or digit, and \b already treats
+ * accented letters as boundaries.
+ */
 function wordBoundaryMatch(text: string, keyword: string): string | null {
   const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`\\b${escaped}\\b`, "i").exec(text)?.[0] ?? null;
+  return new RegExp(`(?<![a-z0-9])${escaped}(?![a-z0-9])`, "i").exec(text)?.[0] ?? null;
 }
 
 /**

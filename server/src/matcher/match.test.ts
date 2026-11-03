@@ -110,6 +110,41 @@ test("wheat's other names are word-bounded and not aliases: buckwheat, farina an
   assert.notEqual(allergenFamilyKey("Spelt"), allergenFamilyKey("Wheat"));
 });
 
+test("allergens Open Food Facts marks with underscores match, for every allergen, with the marks left out", () => {
+  // Real Open Food Facts ingredient text (2026-11-03, docs/evidence/2026-11-03-underscore-allergens.md).
+  // \b counts "_" as a letter, so each was a miss on text alone; the first five have no tag the
+  // matcher can read either (OFF's "sesame-seeds" and "sulphur-dioxide-and-sulphites" equal no keyword).
+  const real: [string, string, string][] = [
+    ["Sesame", "84% Wholegrain _Rye_ Flour, _Rye_ Flour, 12% _Sesame_ Seeds, Salt.", "Sesame"], // 40874302
+    ["Sulphites", "Dried Mango, Preservative (_Sulphur Dioxide_).", "Sulphur Dioxide"], // 10067819
+    ["Sulphites", "White Wine Vinegar (_Sulphites_), Dried Garlic.", "Sulphites"], // 5012818160154
+    ["Sulphites", "Chickpeas, Water, Antioxidant (_Sodium Metabisulphite_).", "Metabisulphite"], // 5000232844217
+    ["Sesame", "_WHEAT_ Flour (_WHEAT_ Flour, Calcium Carbonate, Folic Acid), Water, _SESAME_ Seeds (4%)", "SESAME"], // 5020364010151
+    ["Wheat", "Wholegrain _Wheat_ (95%), Malted _Barley_ Extract, Sugar, Salt", "Wheat"], // 5010029000801
+    ["Milk", "Natural Yogurt (_Milk_, Cream (_Milk_)), Yogurt Cultures", "Milk"], // 4088600060880
+    ["Peanuts", "Roasted _Peanuts_ (100%).", "Peanuts"], // 5014213711290
+    ["Soy", "emulsifier: lecithins (_SOYA_), vanillin.", "SOYA"], // 5020411121151
+    ["Hazelnut", "Sugar, palm oil, _HAZELNUTS_ (13%), skimmed _milk_ powder", "HAZELNUTS"], // 5020411121151
+    ["Fish", "Alaska Pollock 65% (_Fish_), _Wheat_ Flour, Sunflower Oil", "Fish"], // 4056489431039
+    ["Celery", "Spice and Herb Extracts (contain _Celery_), Spice", "Celery"], // 50457236
+  ];
+  for (const [allergen, text, quoted] of real) {
+    const result = matchAllergen(allergen, productWithIngredients(text));
+    assert.equal(result.matched, true, text);
+    assert.equal(result.source, "ingredients", text);
+    assert.equal(result.matchedText, quoted, text);
+  }
+});
+
+test("underscores are boundaries, not a way into a longer word: letters and digits still join", () => {
+  for (const text of ["_buckwheat_ groats", "_coconuts_", "_doughnuts_", "_spelter_"]) {
+    assert.equal(matchAllergen("Wheat", productWithIngredients(text)).matched, false, text);
+    assert.equal(matchAllergen("Peanut", productWithIngredients(text)).matched, false, text);
+    assert.equal(matchAllergen("Tree nuts", productWithIngredients(text)).matched, false, text);
+  }
+  assert.equal(matchAllergen("Sulphites", productWithIngredients("_e2201_")).matched, false);
+});
+
 test("regression: a product with none of these terms is still a clean miss", () => {
   const text =
     "CARBONATED WATER, CARAMEL COLOR, ASPARTAME acts PHOSPHORIC ACID, POTASSIUM BENZOATE, NATURAL FLAVORS, CITRIC ACID, CAFFEINE";
