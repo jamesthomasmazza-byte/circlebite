@@ -253,6 +253,15 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
   photo flags) as the gate before removals may ever cross families. Written October 23:
   `docs/fake-family-risk.md`. The hardening it describes is not built (`BACKLOG.md`, deferred until
   after judging). Sent October 23; his October 24 email confirms receipt.
+  - *A real instance, found November 3, 2026, during the R9 purge.* Production held one confirmed
+    warning that two families never confirmed: sesame in Smjörvi (`5690516025007`, a real
+    Icelandic butter spread), correction `dedc7298-867b-4e25-9bec-29dd65f32e0d`. It was a test
+    report, "corroborated" only by JT's own two accounts (James and the Timmy login), so one tester
+    counted as two families, the risk this page describes. The ingredient list contradicts it
+    (cream, rapeseed oil, salt, vitamins), so it was a false caution, not a real one; milk stays
+    flagged from the product's own tag. It shows the asymmetry holding: the fake pair could only
+    add a warning. **Decided** (JT, November 3): the R9 purge deletes it with its photo, the one
+    confirmed warning the purge may remove, checked by id. **Not yet run.**
 
 ### Due Friday, October 30 (his October 24 email, `2026-10-24-yoest-green-card-screenshot.md`)
 

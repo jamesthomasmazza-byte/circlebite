@@ -2450,3 +2450,41 @@ Checked on production after the deploy:
   to `/login`. On a phone, the whole page renders.
 - **Signed in:** James goes straight to Scan.
 - **False-safety check** (`docs/server-setup.md` §8): `…076` still read "Contains an allergen".
+
+## 2026-11-03 — R9: test data on production, and a false sesame warning in it
+
+R9 allows no real user or tester personal information on the contest deployment. Production still
+held JT's own test accounts. Read-only counts, run by JT: 7 non-demo accounts, all his. Two
+example.com accounts are synthetic and stay; the other five go: James (the admin), the Timmy login,
+two more gmail test addresses and a test.com sign-up. The 24 NPS rows with no user are the judge
+seed's own demo responses (`source = 'seed'`) and stay. The screenshots in `docs/approvals/img`
+show James and Timmy; they stay as dated records, and `conditions.md` will say those accounts were
+removed once they are.
+
+**A false sesame warning.** The removed accounts held up one confirmed warning: sesame in Smjörvi
+(`5690516025007`), a real Icelandic butter spread, correction
+`dedc7298-867b-4e25-9bec-29dd65f32e0d`.
+- **Who confirmed it:** a test report, "corroborated" only by JT's own James and Timmy accounts.
+  One tester counted as two families, the risk in `docs/fake-family-risk.md`.
+- **The product says otherwise:** the cached record lists cream, rapeseed oil, salt and vitamins,
+  and tags milk only. The matcher reads "No listed allergens found" for a sesame profile and
+  "Contains" for any milk-family profile, from the tag.
+- **Decision (JT):** the purge deletes it, with its photo. It removes a false caution, not a real
+  one; milk stays flagged from the product's own tag. Every other confirmed warning tied to a
+  removed account is kept, with reporter, profile, scan and note cleared, the way account deletion
+  already keeps a report as evidence about the product.
+
+**The purge script** (`purge.sql`, kept outside the repo; JT runs it on the box after a backup) is
+a dry run unless told to commit. It refuses unless exactly five accounts would go, the operator
+admin (`admin@circlebite.app`) exists, nobody who stays shares a removed profile, no kept profile's
+history names a removed account, and the sesame report is the one identified. It refuses to commit
+if any confirmed warning changes except that one. Tested on a throwaway copy of the local database
+with synthetic fixtures for each case, including a deliberately broken copy to see the warning
+check refuse. **Not yet run on production.**
+
+Done first, so the purge removes no tool the app needs:
+- **The post-deploy check's account** (`bdc6756`): `deploy.check@demo.circlebite.test`, seeded, in
+  no judge's world, with a Peanut profile. Until now §8 borrowed James.
+- **The operator admin:** a normal sign-up with a role address, granted admin by §12's SQL, checked
+  on every admin page before James is removed.
+- **A contest-demo notice** at every sign-up (`37eb25d`), so new accounts bring no real data.
