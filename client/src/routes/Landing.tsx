@@ -320,7 +320,8 @@ export function Landing() {
           <div className="landing__wrap landing__split">
             <h2>Your family's data</h2>
             <ul>
-              <li>Accounts are for adults. A child's profile holds their name and allergy details.</li>
+              {/* No age line before sign-up: the date-of-birth gate gives no hint which answers pass (docs/coppa.md §2.1). */}
+              <li>A child's profile holds their name and allergy details.</li>
               <li>The camera runs only while you scan.</li>
               <li>Followers never see who else is in the circle.</li>
               <li>No ads, and your data is never sold.</li>

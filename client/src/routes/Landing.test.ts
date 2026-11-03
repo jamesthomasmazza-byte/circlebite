@@ -56,6 +56,10 @@ test("never 'Safe', synthetic names only, the invented brand, no emoji", () => {
   assert.doesNotMatch(text, /\p{Extended_Pictographic}/u);
 });
 
+test("nothing about age before sign-up: the date-of-birth gate stays neutral (docs/coppa.md §2.1)", () => {
+  assert.doesNotMatch(text, /\badults?\b|\b18\b|grown-ups?|old enough|\bage\b/i);
+});
+
 test("the copy the mockup approved, line by line", () => {
   for (const line of [
     "Check every label against your child's allergies.",
