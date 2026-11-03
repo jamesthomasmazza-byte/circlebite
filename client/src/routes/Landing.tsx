@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import type { MatchedAllergen, ScanResult } from "../lib/api";
 import { classificationLabel, sourceLabel } from "../lib/allergenRowCopy";
 import { circleReportLine } from "../lib/correctionCopy";
+import { DEMO_NOTICE } from "../lib/demoNoticeCopy";
 import { DISCLAIMER, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
 
 /**
@@ -66,6 +67,10 @@ export function Landing() {
 
   return (
     <div className="landing">
+      {/* Above the header, so it sits with the header's "Create an account" (R9, lib/demoNoticeCopy.ts). */}
+      <p role="note" className="demo-notice demo-notice--strip">
+        {DEMO_NOTICE}
+      </p>
       <header className="landing__bar">
         <div className="landing__wrap">
           <a href="#top" className="landing__name">
@@ -99,6 +104,9 @@ export function Landing() {
                   See how it works
                 </a>
               </div>
+              <p role="note" className="demo-notice">
+                {DEMO_NOTICE}
+              </p>
               <p className="landing__fine">A screening aid, not a guarantee. Always check the physical label.</p>
             </div>
 
@@ -344,6 +352,9 @@ export function Landing() {
                 Already have an account? Log in
               </Link>
             </div>
+            <p role="note" className="demo-notice">
+              {DEMO_NOTICE}
+            </p>
           </div>
         </section>
       </main>

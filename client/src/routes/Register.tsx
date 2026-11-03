@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { ApiRequestError } from "../lib/api";
 import { useAuth } from "../lib/AuthContext";
+import { DEMO_NOTICE } from "../lib/demoNoticeCopy";
 import { safeReturnTo } from "../lib/returnTo";
 
 const ERROR_COPY: Record<string, string> = {
@@ -75,6 +76,10 @@ export function Register() {
       <h1>Create your account</h1>
       <p>Your account is yours to manage — you can add a profile for someone in your care after signing up.</p>
       <form onSubmit={handleSubmit}>
+        {/* Above the name field, as far from the date of birth as the form allows (lib/demoNoticeCopy.ts). */}
+        <p role="note" className="demo-notice">
+          {DEMO_NOTICE}
+        </p>
         <label>
           Display name
           <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />

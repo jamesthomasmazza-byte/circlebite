@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { ApiRequestError } from "../lib/api";
 import { useAuth } from "../lib/AuthContext";
+import { DEMO_NOTICE } from "../lib/demoNoticeCopy";
 import {
   backRegisterStep,
   canContinueRegister,
@@ -143,6 +144,10 @@ export function GuidedRegister() {
         {step === "name" && (
           <>
             <p className="guided__sub">Your account is yours to manage — you can add a profile for someone in your care after signing up.</p>
+            {/* The name step only, never the date-of-birth step (lib/demoNoticeCopy.ts). */}
+            <p role="note" className="demo-notice">
+              {DEMO_NOTICE}
+            </p>
             <label>
               Display name
               <input value={answers.displayName} onChange={(e) => set({ displayName: e.target.value })} autoComplete="name" required />

@@ -16,7 +16,9 @@ const SETUP = readFileSync(new URL("./NewProfile.tsx", import.meta.url), "utf8")
 const text = (source: string) => source.replace(/\s+/g, " ");
 
 test("switch off is today's page exactly: Register.tsx untouched, and chosen unless the flag says on", () => {
-  assert.equal(createHash("sha256").update(CLASSIC).digest("hex"), "cc0f0b32d6542c5956ea6803997104b0000c21b326c1b8c1209a77288c889238");
+  // Re-pinned 2026-11-03 for one deliberate change: the contest-demo notice above the name field
+  // (lib/demoNoticeCopy.ts, JT's approval). Any other edit to the classic page still fails here.
+  assert.equal(createHash("sha256").update(CLASSIC).digest("hex"), "15e11e14998f7480afa18ef441a8ef2d667eae90a0d535421b9a094be5df36e3");
   assert.match(MAIN, /<Route path="\/register" element=\{<RegisterEntry \/>\} \/>/);
   assert.match(ENTRY, /\.then\(\(f\) => live && setGuided\(f\.guidedSetupEnabled === true\)\)\s*\.catch\(\(\) => live && setGuided\(false\)\)/);
   assert.match(ENTRY, /if \(guided === null\) return null;\s*return guided \? <GuidedRegister \/> : <Register \/>;/);
@@ -66,4 +68,19 @@ test("from sign-up or a first visit the setup offers Skip for now and carries th
   assert.match(SETUP, /const arrival = setupArrival\(useLocation\(\)\.search\);/);
   assert.match(SETUP, /arrival === "signup" \? signupSetupProgress\(percent\) : percent/);
   assert.match(SETUP, /markGuidedSetupSkipped\(user\.id\);\s*navigate\(LANDING_PATH\);/);
+});
+
+test("the contest-demo notice is on the name step only, never the date-of-birth step", () => {
+  assert.equal(GUIDED.split("{DEMO_NOTICE}").length - 1, 1);
+  const nameStep = GUIDED.slice(GUIDED.indexOf('{step === "name" && ('), GUIDED.indexOf('{step === "email" && ('));
+  assert.ok(nameStep.includes("{DEMO_NOTICE}"));
+  const dobStep = GUIDED.slice(GUIDED.indexOf('{step === "dob" && ('));
+  assert.ok(!dobStep.includes("DEMO_NOTICE"));
+});
+
+test("on the classic form the notice is above the name field, ahead of everything down to the date of birth", () => {
+  const notice = CLASSIC.indexOf("{DEMO_NOTICE}");
+  assert.ok(notice > 0);
+  assert.ok(notice < CLASSIC.indexOf("Display name"));
+  assert.ok(notice < CLASSIC.indexOf("Date of birth"));
 });

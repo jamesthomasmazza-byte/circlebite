@@ -7,6 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 
 import { CIRCLE_ROW_SOURCE } from "../lib/allergenRowCopy";
+import { DEMO_NOTICE } from "../lib/demoNoticeCopy";
 import { DISCLAIMER, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
 import { Landing, LANDING_TITLE } from "./Landing";
 
@@ -111,4 +112,11 @@ test("the bands reach both edges by cancelling the body's own padding, not with 
     assert.ok(landing.includes(`calc(-1 * ${padding})`), side);
   }
   assert.doesNotMatch(css, /:has\(\.landing\)/);
+});
+
+test("the contest-demo notice sits with every 'Create an account': above the header, and under both buttons", () => {
+  const creates = html.split(">Create an account<").length - 1;
+  assert.equal(creates, 3);
+  assert.equal(html.split(DEMO_NOTICE).length - 1, creates);
+  assert.ok(html.indexOf(DEMO_NOTICE) < html.indexOf("<header"), "the strip comes before the header's button");
 });
