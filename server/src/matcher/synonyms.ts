@@ -34,7 +34,13 @@ const GLUTEN = ["wheat", "gluten", "barley", "rye"];
 // semolina"), so it can over-warn; accepted, principle 1. Not farina, which is Italian for any
 // flour ("Farina di lenticchie rosse", 8019730069524), or couscous ("Corn Couscous", 5017601041009).
 // Keywords only, never aliases: an alias would move a "Spelt" profile allergen's correction key.
-const WHEAT_BY_OTHER_NAMES = ["durum", "spelt", "bulgur", "seitan", "semolina"];
+// One-word wheat (2026-11-03): "wholewheat" and "wheatflour" hide "wheat" from the word match
+// ("Wholewheat couscous.", 29329724; "Wheatflour", 5010142008692). Wholemeal flour unqualified is
+// wheat; "wholemeal rice flour" (9310023144034) is the one non-wheat use found, so it can over-warn,
+// accepted like semolina. Emmer is a wheat species ("Wholemeal Emmer Wheat Flour", 5060149576069),
+// and "bulgar" is a real label's spelling of bulgur ("wholewheat bulgar", 5000169293201).
+// docs/evidence/2026-11-03-wheat-words.md.
+const WHEAT_BY_OTHER_NAMES = ["durum", "spelt", "bulgur", "bulgar", "seitan", "semolina", "emmer", "wholewheat", "wheatflour", "wholemeal"];
 const CRUSTACEAN = ["shellfish", "crustacean", "crustaceans", "shrimp", "prawn", "crab", "crabmeat", "lobster"];
 // "nuts" is Open Food Facts' own tag for tree nuts ("en:nuts", normalized by openFoodFacts.ts), so
 // a record tagged only that way was a silent miss for a correctly spelled "Tree nuts" profile — found

@@ -110,6 +110,36 @@ test("wheat's other names are word-bounded and not aliases: buckwheat, farina an
   assert.notEqual(allergenFamilyKey("Spelt"), allergenFamilyKey("Wheat"));
 });
 
+test("recognizes one-word wheat and its other names: wholewheat, wheatflour, wholemeal, emmer, bulgar", () => {
+  // Real Open Food Facts ingredient text (2026-11-03, docs/evidence/2026-11-03-wheat-words.md), each a
+  // miss on text alone before; the first three have no wheat or gluten tag either.
+  const real: [string, string][] = [
+    ["Wholewheat", "Wholewheat couscous."], // 29329724
+    ["wholewheat", "milk, wholewheat flour, organic unrefined sugarcane, coconut powder, cashews"], // 8809020307500
+    ["bulgar", "wholewheat bulgar"], // 5000169293201 (first keyword in list order wins)
+    ["Wheatflour", "Wheatflour"], // 5010142008692
+    ["Wholewheat", "Wholewheat Flour (89%), Water, Salt."], // 00322775
+    ["wholewheat", "Shredded wholewheat(83%), sugar, humectant(sorbitol)"], // 5059319002781
+  ];
+  for (const [word, text] of real) {
+    const result = matchAllergen("Wheat", productWithIngredients(text));
+    assert.equal(result.matched, true, text);
+    assert.equal(result.matchedText, word, text);
+  }
+  // Each new name on its own, from real labels with the word "wheat" taken out of the way.
+  assert.equal(matchAllergen("Wheat", productWithIngredients("bulgar")).matchedText, "bulgar"); // 5000169293201
+  assert.equal(matchAllergen("Wheat", productWithIngredients("Wholemeal Emmer Flour")).matched, true); // 5060149576069
+  assert.equal(matchAllergen("Wheat", productWithIngredients("Emmer Flour")).matchedText, "Emmer");
+  // Over-warns on the one non-wheat wholemeal found (9310023144034), accepted under principle 1.
+  assert.equal(matchAllergen("Wheat", productWithIngredients("water, wholemeal rice flour (18%)")).matchedText, "wholemeal");
+});
+
+test("the new wheat words are word-bounded: buckwheat and longer words stay misses", () => {
+  for (const text of ["buckwheat flour", "wholemeals", "Emmerich", "bulgaria", "wheatflours"]) {
+    assert.equal(matchAllergen("Wheat", productWithIngredients(text)).matched, false, text);
+  }
+});
+
 test("allergens Open Food Facts marks with underscores match, for every allergen, with the marks left out", () => {
   // Real Open Food Facts ingredient text (2026-11-03, docs/evidence/2026-11-03-underscore-allergens.md).
   // \b counts "_" as a letter, so each was a miss on text alone; the first five have no tag the
