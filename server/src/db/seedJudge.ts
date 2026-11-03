@@ -7,13 +7,15 @@
 //     other judges' logins. A missing judge (first run, or one who deleted their account) gets a
 //     new one.
 //   - `--rotate-passwords` gives all four new ones — the run before credentials go out.
+//   - The post-deploy check account (docs/server-setup.md §8) is kept and rotated the same way, and
+//     printed on a line of its own: it is the operator's, never in a judge's link.
 //   - New passwords are generated here and printed once, to this terminal only. Nothing is ever
 //     supplied from outside; a leftover JUDGE_PASSWORD from the old one-password runbook is refused.
 
 import { randomBytes } from "node:crypto";
 
 import { hashPassword } from "../auth/password.js";
-import { JUDGE_CASTS } from "./seed/seedData.js";
+import { LOGIN_KEYS } from "./seed/seedData.js";
 import { runJudgeSeed, SeedConflictError } from "./seed/judgeSeed.js";
 import { credentialLines, generateJudgePasswords, legacyPasswordEnvError } from "./seed/judgePasswords.js";
 import { pool } from "./pool.js";
@@ -29,10 +31,9 @@ async function main(): Promise<void> {
     return;
   }
 
-  const judgeKeys = JUDGE_CASTS.map((c) => c.judge);
-  const passwords = generateJudgePasswords(judgeKeys);
+  const passwords = generateJudgePasswords(LOGIN_KEYS);
   const judgePasswordHashes = Object.fromEntries(
-    await Promise.all(judgeKeys.map(async (key) => [key, await hashPassword(passwords[key])] as const)),
+    await Promise.all(LOGIN_KEYS.map(async (key) => [key, await hashPassword(passwords[key])] as const)),
   );
 
   try {
@@ -58,6 +59,8 @@ async function main(): Promise<void> {
     );
     console.log("Judge logins — each line goes in that judge's own one-time link, and nowhere else:");
     for (const line of credentialLines(summary.judgeCredentials, passwords)) console.log(`  ${line}`);
+    console.log("Post-deploy check login (docs/server-setup.md §8) — yours only, never in a judge's link:");
+    for (const line of credentialLines([summary.checkCredential], passwords)) console.log(`  ${line}`);
   } catch (err) {
     if (err instanceof SeedConflictError) {
       const c = err.conflicts;

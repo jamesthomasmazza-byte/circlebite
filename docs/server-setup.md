@@ -217,9 +217,11 @@ revert is just re-pointing a symlink. Two scripts, both in `scripts/`:
 
 **To deploy:** `ssh -i ~/.ssh/circlebite-prod.pem ubuntu@circlebite.app "~/circlebite/deploy.sh"`.
 
-**After every deploy, the false-safety check.** Sign in as a normal account, not a judge, with
-Peanut on one of its profiles. Choose that profile and scan `2990000000076`, the judge seed's
-community demo barcode. The card must read **Contains an allergen**, with peanut "reported by 2
+**After every deploy, the false-safety check.** Sign in as the seed's check account,
+`deploy.check@demo.circlebite.test` (§16: a normal account, not a judge, in no judge's world; its
+password is printed by the seed, to you only). Choose its profile **Rowan**, which has Peanut, and
+scan `2990000000076`, the judge seed's community demo barcode. Until November 3 this check borrowed
+JT's own account, which R9 removes from production. The card must read **Contains an allergen**, with peanut "reported by 2
 shoppers". That warning is two seeded families' confirmed report in the real world, so it proves
 a real family still gets confirmed warnings. Since migration 0049 that read filters by judge world
 (`server/src/corrections/communityAdditions.ts`), and a mistake there would hide real warnings
@@ -754,7 +756,9 @@ One command creates four judge accounts — `judge1@demo.circlebite.test` throug
 judge has a world of their own: their own invented families, every circle role, and scan history
 across all four verdicts, so four judges testing at once never see each other's history, banner,
 acknowledgements or downgrades. Shared by all four: a community warning reported by two families
-outside every judge's circle, and the NPS rows. It is also the **recovery path** — if a judge deletes
+outside every judge's circle, and the NPS rows. It also creates the account §8's false-safety check
+signs in as, `deploy.check@demo.circlebite.test`, in no judge's world, with one profile (Rowan,
+Peanut) and nothing else. It is also the **recovery path** — if a judge deletes
 their account mid-week, run it again and everything is back. A reseed resets all four judges' worlds,
 not just one, so warn the others first. Rerunnable: a second run over a seeded database ends in
 exactly the same state.
@@ -802,6 +806,10 @@ only one login. A judge whose account still existed reads "kept existing passwor
 link. A plain run keeps every existing judge's password, so if the run before the email prints
 "kept" for all four, `--rotate-passwords` was left off. Don't pipe the output to `tee`, a file,
 `script`, or anything else that keeps it.
+
+After the judges, a line of its own gives the check account's login, kept or new by the same rule
+(`--rotate-passwords` replaces it too). It is yours, for §8: keep it in your password manager, and
+never put it in a judge's link.
 
 `JUDGE_PASSWORD` is no longer read. If it is still set from the old one-password runbook, the seed
 refuses and changes nothing: `unset JUDGE_PASSWORD` and rerun.

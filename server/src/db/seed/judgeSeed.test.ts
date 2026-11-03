@@ -25,10 +25,12 @@ import {
 } from "./judgeSeed.js";
 import { generateJudgePasswords } from "./judgePasswords.js";
 import {
+  CHECK_ACCOUNT_KEY,
   CIRCLE_REPORTS,
   COMMUNITY_REPORTS,
   JUDGE_CASTS,
   JUDGE_COUNT,
+  LOGIN_KEYS,
   NPS_ROWS,
   PEOPLE,
   PRODUCTS,
@@ -66,7 +68,8 @@ const NOOR = PROFILES[CAST.noor];
 
 // Generated per run, never written down — the seed itself never sees a literal either (R8).
 const JUDGE_KEYS = JUDGE_CASTS.map((c) => c.judge);
-const judgePasswords = generateJudgePasswords(JUDGE_KEYS);
+// Every account that signs in needs a hash, the check account included (seedData.ts).
+const judgePasswords = generateJudgePasswords(LOGIN_KEYS);
 let judgePasswordHashes: Record<string, string>;
 let otherPasswordHash: string;
 
@@ -390,6 +393,7 @@ test("every seeded account is in its judge's world; the reporting families are i
   }
   assert.equal(worlds.get(PEOPLE.tomas.id), null);
   assert.equal(worlds.get(PEOPLE.grace.id), null);
+  assert.equal(worlds.get(PEOPLE[CHECK_ACCOUNT_KEY].id), null, "the check account reads as a real family does");
   assert.equal(worlds.size, Object.keys(PEOPLE).length);
 });
 
@@ -433,11 +437,12 @@ test("after the judge deletes their own account, Maya transfers to Priya — and
 // Each reseed below is handed a different set of fresh hashes, so a judge signing in with the
 // original password proves the seed kept their hash rather than writing the one it was given.
 test("a plain reseed keeps every judge's password, and says so", async () => {
-  const offered = generateJudgePasswords(JUDGE_KEYS);
+  const offered = generateJudgePasswords(LOGIN_KEYS);
   const summary = await seed(false, { hashes: await hashAll(offered) });
 
   assert.deepEqual(summary.judgeCredentials.map((c) => c.status), ["kept", "kept", "kept", "kept"]);
-  for (const key of JUDGE_KEYS) {
+  assert.equal(summary.checkCredential.status, "kept");
+  for (const key of LOGIN_KEYS) {
     assert.equal(await signsInAs(key, judgePasswords[key]), true, key);
     assert.equal(await signsInAs(key, offered[key]), false, key);
   }
@@ -447,7 +452,7 @@ test("a judge who deleted their account gets a new password on reseed; the other
   const deleted = JUDGE_KEYS[1];
   await deleteAccount(PEOPLE[deleted].id);
 
-  const offered = generateJudgePasswords(JUDGE_KEYS);
+  const offered = generateJudgePasswords(LOGIN_KEYS);
   const summary = await seed(false, { hashes: await hashAll(offered) });
 
   assert.deepEqual(
@@ -463,14 +468,15 @@ test("a judge who deleted their account gets a new password on reseed; the other
 });
 
 test("--rotate-passwords replaces all four, and no earlier password signs in", async () => {
-  const before = generateJudgePasswords(JUDGE_KEYS);
+  const before = generateJudgePasswords(LOGIN_KEYS);
   await seed(false, { rotatePasswords: true, hashes: await hashAll(before) });
 
-  const rotated = generateJudgePasswords(JUDGE_KEYS);
+  const rotated = generateJudgePasswords(LOGIN_KEYS);
   const summary = await seed(false, { rotatePasswords: true, hashes: await hashAll(rotated) });
 
   assert.deepEqual(summary.judgeCredentials.map((c) => c.status), ["new", "new", "new", "new"]);
-  for (const key of JUDGE_KEYS) {
+  assert.equal(summary.checkCredential.status, "new");
+  for (const key of LOGIN_KEYS) {
     assert.equal(await signsInAs(key, rotated[key]), true, key);
     assert.equal(await signsInAs(key, before[key]), false, key);
     assert.equal(await signsInAs(key, judgePasswords[key]), false, key);
@@ -866,4 +872,31 @@ test("a judge's own report on the shared barcode stays in their world; a real fa
     await pool.query("DELETE FROM product_corrections WHERE id = ANY($1)", [filed]);
     await pool.query("DELETE FROM users WHERE id = $1", [REAL_PARENT]);
   }
+});
+
+test("the post-deploy check account: its own login, kept apart from the judges', and §8's card on Rowan", async () => {
+  // docs/server-setup.md §8: sign in as this account, scan the shared barcode on Rowan, and the card
+  // must read Contains an allergen, with peanut reported by 2 shoppers.
+  const summary = await seed();
+  assert.deepEqual(summary.checkCredential, { judgeKey: CHECK_ACCOUNT_KEY, email: PEOPLE[CHECK_ACCOUNT_KEY].email, status: "kept" });
+  assert.ok(!summary.judgeCredentials.some((c) => c.judgeKey === CHECK_ACCOUNT_KEY), "never in a judge's line");
+  assert.equal(await signsInAs(CHECK_ACCOUNT_KEY, judgePasswords[CHECK_ACCOUNT_KEY]), true);
+  assert.equal(PEOPLE[CHECK_ACCOUNT_KEY].isJudge, false);
+
+  const previous = { community: env.communityCorrections, labelScan: env.labelScan };
+  env.communityCorrections = true;
+  env.labelScan = true;
+  try {
+    await withoutNetwork(async () => {
+      const rowan = await rescan(PROFILES.rowan.id, PRODUCTS.reported.barcode, PEOPLE[CHECK_ACCOUNT_KEY].id);
+      assert.equal(rowan.effective?.result, "contains_allergen");
+      assert.deepEqual(rowan.community_reports, [{ allergenName: "Peanut", reporterCount: 2 }]);
+    });
+  } finally {
+    env.communityCorrections = previous.community;
+    env.labelScan = previous.labelScan;
+  }
+  // The check's own scan is cleared by the next reseed, like any seeded account's.
+  await seed();
+  assert.deepEqual(await snapshot(), baseline);
 });

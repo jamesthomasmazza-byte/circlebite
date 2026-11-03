@@ -198,6 +198,25 @@ SCANS.push(
   { id: seedId(6, 10), profile: "ben", scanner: "grace", product: "reported", daysAgo: 6 },
 );
 
+// The post-deploy false-safety check's account (2026-11-03, docs/server-setup.md §8). The check needs
+// a normal account in no judge's world with Peanut on a profile, and used to borrow JT's own; R9
+// leaves no real account on production to borrow. In no world, so it reads the reporting families'
+// warning as a real family does. It can sign in, with a password handed out like a judge's
+// (judgePasswords.ts) but to the operator only, never in a judge's link. No circle, no scans of its
+// own: each check's scan is the operator's, and the next reseed clears it.
+PEOPLE.checker = { id: seedId(1, 7), email: `deploy.check@${SEED_EMAIL_DOMAIN}`, displayName: "Deploy Check", isJudge: false, judgeWorld: null };
+PROFILES.rowan = {
+  id: seedId(2, 6),
+  label: "Rowan",
+  owner: "checker",
+  // Traces not unsafe, so the card's "Contains an allergen" can only come from the families' report.
+  allergens: [{ id: seedId(3, 10), name: "Peanut", severity: "severe", treatTracesAsUnsafe: false }],
+};
+
+/** The accounts that can sign in, each with its own password: the four judges, then the check account. */
+export const CHECK_ACCOUNT_KEY = "checker";
+export const LOGIN_KEYS = [...JUDGE_CASTS.map((c) => c.judge), CHECK_ACCOUNT_KEY];
+
 // ---- Products ----------------------------------------------------------------------------------------
 // Every barcode is a 13-digit GTIN with a deliberately WRONG check digit (judgeSeed.test.ts proves
 // it). GS1 requires a valid one, so no real product can ever carry these — and the scan route only

@@ -19,8 +19,10 @@ import { pool } from "../pool.js";
 import {
   CIRCLE_REPORTS,
   CO_MANAGERS,
+  CHECK_ACCOUNT_KEY,
   COMMUNITY_REPORTS,
   FOLLOWERS,
+  LOGIN_KEYS,
   NPS_ROWS,
   PEOPLE,
   PLACEHOLDER_PHOTO_PNG,
@@ -98,11 +100,14 @@ export class SeedConflictError extends Error {
   }
 }
 
-/** Which judges got a new password on this run and which kept theirs. Never the password itself. */
+/** Which accounts got a new password on this run and which kept theirs. Never the password itself.
+ *  judgeKey is the PEOPLE key: a judge's, or CHECK_ACCOUNT_KEY for the check account. */
 export type JudgeCredential = { judgeKey: string; email: string; status: "new" | "kept" };
 
 export type SeedSummary = {
   judgeCredentials: JudgeCredential[];
+  /** The post-deploy check account's (seedData.ts), apart from the judges' so it never goes in a judge's link. */
+  checkCredential: JudgeCredential;
   forcedRemovals: SeedConflicts | null;
   judgeCorrectionsRejected: number;
   accounts: number;
@@ -161,15 +166,15 @@ async function removeConflicts(client: PoolClient, seededUserIds: string[]): Pro
 }
 
 export type SeedOptions = {
-  /** A fresh hash for every judge key in PEOPLE, used wherever that judge gets a new password. */
+  /** A fresh hash for every key in LOGIN_KEYS (the judges and the check account), used wherever
+   *  that account gets a new password. */
   judgePasswordHashes: Record<string, string>;
   otherPasswordHash: string;
   force: boolean;
-  /** Replace every judge's password. Off, a judge whose account exists keeps theirs. */
+  /** Replace every judge's password, and the check account's. Off, an account that exists keeps its own. */
   rotatePasswords: boolean;
 };
 
-const JUDGE_KEYS = Object.keys(PEOPLE).filter((key) => PEOPLE[key].isJudge);
 
 /**
  * Clears and recreates the seed inside the caller's transaction. Throws SeedConflictError (before
@@ -177,10 +182,10 @@ const JUDGE_KEYS = Object.keys(PEOPLE).filter((key) => PEOPLE[key].isJudge);
  *
  * Passwords: a judge whose account exists keeps its password hash across the delete-and-recreate,
  * unless `rotatePasswords`. A recovery reseed after one judge deletes their account then changes
- * only that judge's login, not the other three mid-week.
+ * only that judge's login, not the other three mid-week. The check account is kept the same way.
  */
 export async function seedJudge(client: PoolClient, options: SeedOptions): Promise<SeedSummary> {
-  const missing = JUDGE_KEYS.filter((key) => !options.judgePasswordHashes[key]);
+  const missing = LOGIN_KEYS.filter((key) => !options.judgePasswordHashes[key]);
   if (missing.length > 0) throw new Error(`No password hash for ${missing.join(", ")} — nothing was changed.`);
 
   const { rows: seededUsers } = await client.query<{ id: string }>("SELECT id FROM users WHERE email LIKE $1", [
@@ -189,18 +194,18 @@ export async function seedJudge(client: PoolClient, options: SeedOptions): Promi
   const seededUserIds = seededUsers.map((u) => u.id);
 
   // Read before step 4 deletes the accounts.
-  const { rows: existingJudges } = await client.query<{ email: string; password_hash: string }>(
+  const { rows: existingLogins } = await client.query<{ email: string; password_hash: string }>(
     "SELECT email, password_hash FROM users WHERE email = ANY($1)",
-    [JUDGE_KEYS.map((key) => PEOPLE[key].email)],
+    [LOGIN_KEYS.map((key) => PEOPLE[key].email)],
   );
-  const existingHashes = new Map(existingJudges.map((r) => [r.email, r.password_hash]));
-  const judgeCredentials: JudgeCredential[] = JUDGE_KEYS.map((key) => ({
+  const existingHashes = new Map(existingLogins.map((r) => [r.email, r.password_hash]));
+  const credentials: JudgeCredential[] = LOGIN_KEYS.map((key) => ({
     judgeKey: key,
     email: PEOPLE[key].email,
     status: !options.rotatePasswords && existingHashes.has(PEOPLE[key].email) ? "kept" : "new",
   }));
-  const judgeHashes = Object.fromEntries(
-    judgeCredentials.map((c) => [
+  const loginHashes = Object.fromEntries(
+    credentials.map((c) => [
       c.judgeKey,
       c.status === "kept" ? existingHashes.get(c.email)! : options.judgePasswordHashes[c.judgeKey],
     ]),
@@ -248,10 +253,11 @@ export async function seedJudge(client: PoolClient, options: SeedOptions): Promi
   await client.query("DELETE FROM users WHERE id = ANY($1)", [seededUserIds]);
 
   // 5. Fresh.
-  await createSeed(client, { judgeHashes, otherPasswordHash: options.otherPasswordHash });
+  await createSeed(client, { loginHashes, otherPasswordHash: options.otherPasswordHash });
 
   return {
-    judgeCredentials,
+    judgeCredentials: credentials.filter((c) => c.judgeKey !== CHECK_ACCOUNT_KEY),
+    checkCredential: credentials.find((c) => c.judgeKey === CHECK_ACCOUNT_KEY)!,
     forcedRemovals: hasConflicts(conflicts) ? conflicts : null,
     judgeCorrectionsRejected: judgeCorrectionsRejected ?? 0,
     accounts: Object.keys(PEOPLE).length,
@@ -261,18 +267,18 @@ export async function seedJudge(client: PoolClient, options: SeedOptions): Promi
   };
 }
 
-async function createSeed(client: PoolClient, options: { judgeHashes: Record<string, string>; otherPasswordHash: string }) {
+async function createSeed(client: PoolClient, options: { loginHashes: Record<string, string>; otherPasswordHash: string }) {
   for (const [key, person] of Object.entries(PEOPLE)) {
-    // Only the judges can sign in, each with their own password. Everyone else gets an unusable hash
-    // of random bytes nobody ever sees: they exist to be a judge's circle, or a reporting family, not
-    // to be logged into.
+    // Only the judges and the check account can sign in, each with their own password. Everyone else
+    // gets an unusable hash of random bytes nobody ever sees: they exist to be a judge's circle, or a
+    // reporting family, not to be logged into.
     //
     // judge_world: the only place in the app that sets it (migration 0049; db/judgeWorld.test.ts
     // keeps it that way). Every report anyone in a judge's cast files is then counted in that world.
     await client.query(
       `INSERT INTO users (id, email, password_hash, display_name, age_attested_adult, age_attested_at, is_admin, judge_world)
        VALUES ($1, $2, $3, $4, true, now(), false, $5)`,
-      [person.id, person.email, person.isJudge ? options.judgeHashes[key] : options.otherPasswordHash, person.displayName, person.judgeWorld],
+      [person.id, person.email, options.loginHashes[key] ?? options.otherPasswordHash, person.displayName, person.judgeWorld],
     );
   }
 
