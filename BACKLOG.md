@@ -171,8 +171,9 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
   wheat products caught, no new false cautions (`docs/evidence/2026-11-03-wheat-words.md`). Not
   yet deployed.*
 - [ ] **Open Food Facts tags the matcher can't read:** tags match keywords by exact equality, so
-  `en:sesame-seeds`, `en:sulphur-dioxide-and-sulphites` and `en:molluscs` never match, and mustard
-  has no cluster. Found 2026-11-03. Evidence first, shown to JT before any change.
+  `en:sesame-seeds`, `en:sulphur-dioxide-and-sulphites` and `en:molluscs` never match. Mustard has
+  no cluster but isn't a miss: a "Mustard" profile matches the literal tag (all 133 in the sample).
+  Found 2026-11-03. Evidence first, shown to JT before any change.
 
 ### Week of Nov 9 — highest risk
 
