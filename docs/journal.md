@@ -2525,3 +2525,20 @@ on the box and in S3, still hold the test accounts until they are removed (`docs
 
 The screenshots in `docs/approvals` stay as dated records; `conditions.md` now says the accounts
 they show were removed.
+
+## 2026-11-03 — Deployed: the matcher fixes, the sign-up notice and the check account
+
+JT deployed `553832e` at about 1:35 PM ET (release `20261103183450`). A backup was taken first, at
+18:34:37Z, kept locally and offsite. This was before the R9 purge, which ran on this release. The
+release carries everything since `688917f`:
+- **The matcher fixes:** underscores (`cf05bf9`), one-word wheat (`b2e1eea`), and Open Food Facts'
+  sesame, sulphite and mollusc tags (`5a3decd`). Measured together over 1,810 products:
+  `docs/evidence/2026-11-03-matcher-before-after.md`.
+- **The sign-up notice** (`37eb25d`) and the landing page without "Accounts are for adults."
+  (`c74577b`).
+- **The short disclaimer on every scan history card** (`401ae21`).
+- **The seed's check account** (`bdc6756`). JT ran the plain judge seed after the deploy, and the
+  judges kept their passwords.
+
+The false-safety check (`docs/server-setup.md` §8) ran with the new account: `deploy.check` on
+Rowan, `…076` read "Contains an allergen", with peanut reported by 2 shoppers.

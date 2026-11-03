@@ -164,12 +164,12 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
   freeze, its own commit, adding caution only; real-product evidence, and any new false cautions,
   shown to JT first. *Fixed 2026-11-03 in `cf05bf9` after JT reviewed the evidence: across 1,808
   real products, 156 misses fixed, 13 of them caught by nothing before, no new false cautions
-  (`docs/evidence/2026-11-03-underscore-allergens.md`). Not yet deployed.*
+  (`docs/evidence/2026-11-03-underscore-allergens.md`). Deployed Nov 3 in `553832e`.*
 - [x] **"wholewheat"/"wholemeal" hiding wheat:** one word, so `\bwheat\b` misses it. Durum and
   semolina cover "durum wholewheat semolina", not "wholewheat flour" alone. Same terms as above.
   *Fixed 2026-11-03 in `b2e1eea`, with wheatflour, emmer and the label spelling "bulgar": 9 more
-  wheat products caught, no new false cautions (`docs/evidence/2026-11-03-wheat-words.md`). Not
-  yet deployed.*
+  wheat products caught, no new false cautions (`docs/evidence/2026-11-03-wheat-words.md`).
+  Deployed Nov 3 in `553832e`.*
 - [x] **R9: JT's test accounts off production** (2026-11-03). Purged: 5 accounts, 5 profiles, 104
   scans, 5 corrections (one a false sesame warning on Smjörvi), their photos, and 5 older orphan
   photos. Kept: 2 synthetic example.com accounts, the operator admin, every seed row. First clean
@@ -185,9 +185,10 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
   `en:sesame-seeds`, `en:sulphur-dioxide-and-sulphites` and `en:molluscs` never match. Mustard has
   no cluster but isn't a miss: a "Mustard" profile matches the literal tag (all 133 in the sample).
   Found 2026-11-03. Evidence first, shown to JT before any change.
-  *Fixed 2026-11-03 after JT reviewed the evidence: the three tag spellings are keywords. 131 of
-  1,810 real products read clear before and now warn (113 for sesame); one known false caution, a
-  wrong OFF tag we trust (`docs/evidence/2026-11-03-tag-gap.md`). Not yet deployed.*
+  *Fixed 2026-11-03 after JT reviewed the evidence: the three tag spellings are keywords. In
+  1,810 real products, 121 read clear before for an allergen they're tagged with and now warn: 131
+  product–allergen pairs, 113 of them sesame. One known false caution, a wrong OFF tag we trust
+  (`docs/evidence/2026-11-03-tag-gap.md`). Deployed Nov 3 in `553832e`.*
 
 ### Week of Nov 9 — highest risk
 
