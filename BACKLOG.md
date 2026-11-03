@@ -170,10 +170,13 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
   *Fixed 2026-11-03 in `b2e1eea`, with wheatflour, emmer and the label spelling "bulgar": 9 more
   wheat products caught, no new false cautions (`docs/evidence/2026-11-03-wheat-words.md`). Not
   yet deployed.*
-- [ ] **Open Food Facts tags the matcher can't read:** tags match keywords by exact equality, so
+- [x] **Open Food Facts tags the matcher can't read:** tags match keywords by exact equality, so
   `en:sesame-seeds`, `en:sulphur-dioxide-and-sulphites` and `en:molluscs` never match. Mustard has
   no cluster but isn't a miss: a "Mustard" profile matches the literal tag (all 133 in the sample).
   Found 2026-11-03. Evidence first, shown to JT before any change.
+  *Fixed 2026-11-03 after JT reviewed the evidence: the three tag spellings are keywords. 131 of
+  1,810 real products read clear before and now warn (113 for sesame); one known false caution, a
+  wrong OFF tag we trust (`docs/evidence/2026-11-03-tag-gap.md`). Not yet deployed.*
 
 ### Week of Nov 9 — highest risk
 

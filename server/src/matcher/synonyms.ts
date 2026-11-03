@@ -69,7 +69,15 @@ const TREE_NUTS = [
   "macadamias",
 ];
 const FISH_SPECIES = ["fish", "cod", "salmon", "tuna", "anchovy", "anchovies", "sardine", "sardines", "haddock"];
-const MOLLUSCS = ["oyster", "oysters", "mussel", "mussels", "clam", "clams", "scallop", "scallops", "squid", "octopus"];
+// Open Food Facts' own allergen tags, as openFoodFacts.ts normalizes them (2026-11-03): tags match
+// keywords by exact equality, so "en:sesame-seeds", "en:sulphur-dioxide-and-sulphites" and
+// "en:molluscs" matched nothing, and a product tagged only that way read as clear. 131 of 1,810
+// real products did (docs/evidence/2026-11-03-tag-gap.md). In ingredient text they add little: the
+// first two contain a keyword already, and "molluscs" is mostly an allergen statement. Keywords
+// only, never aliases, so no correction key moves. Same call as "nuts" above.
+const OFF_TAG_SESAME = "sesame seeds";
+const OFF_TAG_SULPHITES = "sulphur dioxide and sulphites";
+const MOLLUSCS = ["mollusc", "molluscs", "oyster", "oysters", "mussel", "mussels", "clam", "clams", "scallop", "scallops", "squid", "octopus"];
 
 export const SYNONYM_CLUSTERS: SynonymCluster[] = [
   { id: "dairy", aliases: DAIRY, keywords: DAIRY },
@@ -100,7 +108,7 @@ export const SYNONYM_CLUSTERS: SynonymCluster[] = [
   // named species — the literal-fallback rule alone wouldn't get there.
   { id: "fish", aliases: ["fish"], keywords: FISH_SPECIES },
   { id: "mollusc", aliases: ["molluscs", "mollusks", "mollusc", "mollusk"], keywords: MOLLUSCS },
-  { id: "sesame", aliases: ["sesame"], keywords: ["sesame", "tahini"] },
+  { id: "sesame", aliases: ["sesame"], keywords: ["sesame", "tahini", OFF_TAG_SESAME] },
   { id: "celery", aliases: ["celery", "celeriac"], keywords: ["celery", "celeriac"] },
   { id: "lupin", aliases: ["lupin", "lupine"], keywords: ["lupin", "lupine"] },
   {
@@ -127,6 +135,7 @@ export const SYNONYM_CLUSTERS: SynonymCluster[] = [
       "sulphur dioxide",
       "sulfur dioxide",
       "e220",
+      OFF_TAG_SULPHITES,
     ],
   },
 ];

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { allergenFamilyKey, allergenFoldKey, matchAllergen, type ProductForMatching } from "./match.js";
+import { allergenFamilyKey, allergenFoldKey, computeVerdict, matchAllergen, type ProductForMatching } from "./match.js";
 import { SYNONYM_CLUSTERS } from "./synonyms.js";
 
 function productWithIngredients(ingredientsText: string): ProductForMatching {
@@ -250,4 +250,46 @@ test("'nuts' only adds matches: a single nut too (it doesn't say which), never p
   assert.equal(matchAllergen("Peanut", tagged).matched, false);
   assert.equal(matchAllergen("Tree nuts", productWithIngredients("roasted peanuts, doughnuts, coconuts")).matched, false);
   assert.equal(matchAllergen("Tree nuts", productWithIngredients("mixed nuts, salt")).matchedText, "nuts");
+});
+
+test("Open Food Facts' sesame, sulphite and mollusc tags are read, as they come from openFoodFacts.ts", () => {
+  // Real products (2026-11-03, docs/evidence/2026-11-03-tag-gap.md), tags normalized as stored and the
+  // text that came with them. Each read "No listed allergens found" for that allergen before: its only
+  // mention was a tag no keyword equalled. Traces not treated as unsafe, the default shape.
+  const real: [string, string, ProductForMatching, "contains" | "caution"][] = [
+    // 4088600108063 Rich Tea: sesame only in the traces.
+    ["Rich Tea", "Sesame", { found: true, allergensTags: ["gluten"], tracesTags: ["milk", "sesame seeds"], ingredientsText: "Wheat Flour, Sugar, Palm Oil, Invert Sugar Syrup, Raising Agents: Sodium Carbonates, Ammonium Carbonates; Salt." }, "caution"],
+    // 4033634061020 Organic Crisp Bread: sesame as an allergen, text not given here.
+    ["Organic Crisp Bread", "Sesame", { found: true, allergensTags: ["sesame seeds"], tracesTags: [], ingredientsText: null }, "contains"],
+    // 20815394 Mix di frutta secca: Italian text, the sulphites only in the tag.
+    ["Mix di frutta secca", "Sulphites", { found: true, allergensTags: ["nuts", "peanuts", "sulphur dioxide and sulphites"], tracesTags: ["nuts", "peanuts"], ingredientsText: "25% noci, 25% mandorle, 25% uva sultanina (99,5% uva sultanina, olio di semi di girasole), 25% mirtilli rossi americani" }, "contains"],
+    // 5997523315511 Soba Wok Style: molluscs as an allergen.
+    ["Soba Wok Style", "Molluscs", { found: true, allergensTags: ["crustaceans", "fish", "gluten", "milk", "molluscs", "mustard", "sesame seeds", "soybeans"], tracesTags: [], ingredientsText: "noodles 72,3%: wheat flour, palm oil salt, flavour enhancer e621" }, "contains"],
+    // 4056489127284 Bami Goreng: molluscs only in the traces, German text.
+    ["Bami Goreng", "Molluscs", { found: true, allergensTags: ["gluten", "soybeans"], tracesTags: ["celery", "crustaceans", "fish", "milk", "molluscs", "mustard"], ingredientsText: "39% gegarte Nudeln (Wasser, Hartweizenmehl)." }, "caution"],
+  ];
+  for (const [product, allergen, data, expected] of real) {
+    const { matchedAllergens } = computeVerdict([{ name: allergen, severity: "severe", treatTracesAsUnsafe: false }], data);
+    assert.equal(matchedAllergens[0].classification, expected, product);
+  }
+});
+
+test("a tag we trust can be wrong: Nutritional Yeast Flakes is tagged sulphites, and now warns", () => {
+  // 5016084000374. Its text names "Zinc sulfate", and sulfate isn't sulphite, so the tag is probably
+  // Open Food Facts' mistake. A false caution, accepted: the matcher trusts every tag the same way
+  // (principle 1), and no text keyword fires here, so the warning is the tag's alone.
+  const yeast: ProductForMatching = {
+    found: true,
+    allergensTags: ["celery", "milk", "mustard", "soybeans", "sulphur dioxide and sulphites"],
+    tracesTags: [],
+    ingredientsText: "Dried inactive yeast (99%), Thiamine (B1), Riboflavin (B2), Niacin (B3), Cyanocobalamin (B12), Zinc sulfate.",
+  };
+  assert.deepEqual(matchAllergen("Sulphites", yeast), { allergenName: "Sulphites", matched: true, source: "tag" });
+  assert.equal(matchAllergen("Sulphites", { ...yeast, allergensTags: [] }).matched, false, "the text alone says sulfate");
+});
+
+test("the tag spellings add no correction keys: a 'Molluscs' or 'Sesame' profile keeps its family key", () => {
+  assert.equal(allergenFamilyKey("Molluscs"), "cluster:mollusc");
+  assert.equal(allergenFamilyKey("Sesame seeds"), "name:sesame seed");
+  assert.notEqual(allergenFamilyKey("Sulphur dioxide and sulphites"), allergenFamilyKey("Sulphites"));
 });

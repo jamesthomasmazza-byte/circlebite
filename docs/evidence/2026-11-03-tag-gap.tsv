@@ -1,0 +1,199 @@
+profile	classification_change	source_change	barcode	product_name	off_tags	text_excerpt
+Sesame	clear→caution	null→trace	4088600108063	Rich Tea	T:sesame seeds	
+Sesame	clear→caution	null→trace	5015168000019	Thin Orkney Oatcakes	T:sesame seeds	
+Sesame	clear→caution	null→trace	5000119003034	Custard Creams	T:sesame seeds	
+Sulphites	contains→contains	ingredients→tag	9310072034607	Tim Tam	A:sulphur dioxide and sulphites	r Treatment Agent (E223 (Sulphites)).
+Sesame	clear→caution	null→trace	0652655300006	Butterscotch Crunch	T:sesame seeds	
+Sesame	clear→contains	null→tag	8410376040739	Maria biscuits	A:sesame seeds,T:sesame seeds,T:sulphur dioxide and sulphites	ntloxydant (sodium metabisulphite).
+Sesame	clear→contains	null→tag	3800087101921	Крънч	A:sesame seeds	
+Sesame	clear→caution	null→trace	8008698007389	MAESTRO CEREALE - Pain aux céréa	T:mustard,T:sesame seeds	
+Sesame	clear→caution	null→trace	6410500090014	Knäckebrot mit Roggensauerteig	T:sesame seeds	
+Sesame	clear→caution	null→trace	13356194	SPICY CHICKEN & 'NDUJA PIZZA	T:sesame seeds	
+Sesame	clear→caution	null→trace	20006105	Roggenvollkornbrot	T:sesame seeds	
+Sesame	clear→caution	null→trace	5010044000701	Original Crumpets	T:sesame seeds	
+Sesame	clear→caution	null→trace	5010265002911	Dark Rye Crispbread	T:sesame seeds	
+Sesame	clear→caution	null→trace	5020364010113	New York Bakery Co The Original 	T:sesame seeds	
+Sesame	clear→caution	null→trace	5000129341041	Hand finished seeded sourdough b	T:sesame seeds	
+Sesame	clear→caution	null→trace	5010044005126	Original Crumpets	T:sesame seeds	
+Sesame	contains→contains	ingredients→tag	5010044002552	Original Seeded Batch	A:sesame seeds	, Water, Seed Mix (15%) (Sesame Seed, Brown Linseed, Sunflow
+Sesame	contains→contains	ingredients→tag	5050974505259	Multigrain Crispbread	A:sesame seeds	uckwheat, Brown Linseed, SESAME SEEDS, Kibbled RYE), Salt
+Sesame	contains→contains	ingredients→tag	5010044007588	Protein Thin Bagels	A:sesame seeds	Fibre), Seed Mix (4.5%) (Sesame Seed, Sunflower Seed, Brown 
+Sesame	clear→caution	null→trace	5000129341034	White Sourdough	T:sesame seeds	
+Sesame	clear→caution	null→trace	7300400118101	Original	T:sesame seeds	
+Sesame	clear→contains	null→tag	4033634061020	Organic Crisp Bread	A:sesame seeds	
+Sesame	clear→caution	null→trace	5027952012573	Seeded Rye Bread	T:mustard,T:sesame seeds	
+Sesame	contains→contains	ingredients→tag	40874302	Sesame Crispbread	A:sesame seeds	Flour, _Rye_ Flour, 12% _Sesame_ Seeds, Salt.
+Sesame	contains→contains	ingredients→tag	5050974503712	Pumpkin Seed & Oat Crispbread	A:sesame seeds,T:sesame seeds	er Gluten Sources, Soya, Sesame Seeds.
+Sesame	contains→contains	ingredients→tag	5050974505297	Sesame Crispbread	A:sesame seeds	E Flour (81%), RYE Bran, SESAME SEEDS (11%) Salt.
+Sesame	clear→contains	null→tag	9322969000015	Corn Thins Original	A:sesame seeds,T:sesame seeds	
+Sesame	clear→caution	null→trace	3800082900567	Солети Златна Добруджа	T:sesame seeds	
+Sesame	contains→contains	ingredients→tag	5020364010151	NYC Bagels Sesame	A:sesame seeds	iacin, Thiamin), Water, _SESAME_ Seeds (4%), Sugar, Yeast, S
+Sesame	clear→caution	null→trace	5018374285577	Original Breadsticks	T:sesame seeds	
+Sesame	clear→caution	null→trace	5020364010144	Raisin and Cinnamon Bagels	T:sesame seeds	
+Sesame	contains→contains	ingredients→tag	5010044009650	Wholemeal Loaf	A:sesame seeds	avy Bean, Yellow Lentil, Sesame Seed, Brown Linseed, Red Len
+Sesame	clear→caution	null→trace	10086988	Schar Maestro Cereale	T:mustard,T:sesame seeds	
+Sesame	clear→contains	null→tag	4033634028689	Protein Knäcke Kürbiskern	A:sesame seeds	
+Sesame	clear→caution	null→trace	5010044000039	Medium Toastie Soft & Sliced Whi	T:sesame seeds	
+Sesame	clear→caution	null→trace	8008698010259	CIABATTINE - Petits pavés précui	T:mustard,T:sesame seeds	
+Sesame	contains→contains	ingredients→tag	5010044002446	Original Seeded Batch	A:sesame seeds	, Water, Seed Mix (16%) (Sesame Seed, Brown Linseed, Sunflow
+Sesame	clear→caution	null→trace	00440783	Grissini Breadsticks	T:sesame seeds	
+Sesame	contains→contains	ingredients→tag	5010044010175	Crumpet Thins	A:sesame seeds	 bakery which uses milk, sesame seeds, soya
+Sesame	clear→caution	null→trace	4088600305592	Original Breadsticks	T:sesame seeds	
+Sesame	clear→caution	null→trace	5010044008707	Bagels	T:sesame seeds	
+Sesame	clear→caution	null→trace	20720018	Plain Bagels	T:sesame seeds	
+Sesame	contains→contains	ingredients→tag	5010044010861	Seeds And Grains Our Dough	A:sesame seeds	r, Water, Seed Mix (9%) (Sesame Seed, Brown Linseed, Sunflow
+Sesame	contains→contains	ingredients→tag	5099077005013	Everything Bagels	A:sesame seeds	ar, Everything Mix (4%) [Sesame Seeds, Dried Onion, Black Se
+Sesame	clear→caution	null→trace	6410500091868	Finn Crisp | Multigrain	T:sesame seeds	
+Sesame	clear→caution	null→trace	3168930010265	cruesly mélange de noix	T:sesame seeds	
+Sesame	clear→caution	null→trace	8402001010873	Muesli Crunchy	T:mustard,T:sesame seeds,T:sulphur dioxide and sulphites	tes, semillas de sésamo, sulfitos y mostaza.
+Sulphites	clear→caution	null→trace	8402001010873	Muesli Crunchy	T:mustard,T:sesame seeds,T:sulphur dioxide and sulphites	tes, semillas de sésamo, sulfitos y mostaza.
+Sesame	clear→caution	null→trace	3421557910203	Flocons d'avoine complets	T:mustard,T:sesame seeds	
+Sulphites	contains→contains	ingredients→tag	5018357012534	Simply Fruity muesli	A:sulphur dioxide and sulphites	ric acid), preservative (sulphur dioxide)), sultanas (9%), r
+Sulphites	contains→contains	ingredients→tag	5018357012350	Gloriously nutty muesli	A:sulphur dioxide and sulphites	(apricots, preservative (sulphur dioxide)), raisins, golden 
+Sulphites	contains→contains	ingredients→tag	20060831	Premium Fruit & Nut Muesli	A:sulphur dioxide and sulphites	tric Acid, Preservative: Sulphur Dioxide), 4.5% Dried Banana
+Sesame	clear→caution	null→trace	5013803001070	low sugar granola whole grain oa	T:sesame seeds	
+Sulphites	contains→contains	ingredients→tag	20719319	Tropical Granola	A:sulphur dioxide and sulphites	ric Acid, Preservatives: Sulphur Dioxide, Sodium Metabisulph
+Sulphites	contains→contains	ingredients→tag	20086855	PREMIUM MUESLI LUXURY FRUIT	A:sulphur dioxide and sulphites	[Apricot, Preservative: _Sulphur Dioxide_], 8% Chopped Dates
+Sesame	clear→caution	null→trace	4056489321170	Donuts	T:sesame seeds	
+Sulphites	contains→contains	ingredients→tag	5060001830001	Welshcakes	A:sulphur dioxide and sulphites	e) (Wheat), Lemon Juice (Sulphites)
+Sulphites	contains→contains	ingredients→tag	5000221001386	6 Cherry Bakewells	A:sulphur dioxide and sulphites	ves (Potassium Sorbate, _Sulphur Dioxide_), Colour (Carmine)
+Sesame	clear→caution	null→trace	4823077646287	Lovita Blondie Brownie Lemon	T:sesame seeds	
+Sulphites	contains→contains	ingredients→tag	5000221604846	6 Deep Filled Mince Pies	A:sulphur dioxide and sulphites	ric Acid), Preservative (Sulphur Dioxide)), Vegetable Oils (
+Sesame	clear→caution	null→trace	5060925291339	Huel Complete Nutrition Bar - Ch	T:mustard,T:sesame seeds	
+Sulphites	contains→contains	ingredients→tag	5000221002338	Mr Kipling Bramley Apple Pies 6p	A:sulphur dioxide and sulphites	um sorbate, sodium metabisulphite (sulphites), sulfur dioxid
+Sulphites	contains→contains	ingredients→tag	5000221004639	Kipling Mini Battenbergs X5	A:sulphur dioxide and sulphites	ent conservateur (_métabisulfite_ de sodium (_sulfites_))), 
+Sulphites	contains→contains	ingredients→tag	4088600195193	Fruit tea loaf	A:sulphur dioxide and sulphites	ives: Potassium Sorbate, Sulphur Dioxide; Acidity Regulator:
+Sulphites	contains→contains	ingredients→tag	4056489555315	Mince Pies	A:sulphur dioxide and sulphites	tric Acid; Preservative: Sulphur Dioxide], Vegetable Oils [P
+Sulphites	contains→contains	ingredients→tag	5000221609322	4 Birthday Cake Tarts	A:sulphur dioxide and sulphites	ives (Potassium Sorbate, Sulphur Dioxide), Flavouring. ALLER
+Sesame	contains→contains	ingredients→tag	8482764430538	Organic crispbread emmental & pu	A:sesame seeds	eds, linseeds, sea salt, sesame seeds, yeast, barley malt ex
+Sesame	clear→caution	null→trace	4056489009191	Tortelloni Ricotta et épinards	T:mustard,T:sesame seeds,T:sulphur dioxide and sulphites	s, de fruits à coque, de sulfites, de céleri, de moutarde et
+Sesame	clear→contains	null→tag	8801073110502	Buldak Ramen	A:sesame seeds,T:molluscs,T:mustard	
+Molluscs	clear→caution	null→trace	8801073110502	Buldak Ramen	A:sesame seeds,T:molluscs,T:mustard	
+Sesame	clear→caution	null→trace	8801043150620	Shin Ramyun Instant Noedels, Hee	T:molluscs,T:mustard,T:sesame seeds	
+Molluscs	clear→caution	null→trace	8801043150620	Shin Ramyun Instant Noedels, Hee	T:molluscs,T:mustard,T:sesame seeds	
+Sesame	clear→caution	null→trace	4056489009184	Tortelloni Pesto Basilico	T:mustard,T:sesame seeds,T:sulphur dioxide and sulphites	
+Sulphites	clear→caution	null→trace	4056489009184	Tortelloni Pesto Basilico	T:mustard,T:sesame seeds,T:sulphur dioxide and sulphites	
+Sesame	clear→contains	null→tag	8712429350100	Demae Ramen Chicken	A:sesame seeds,T:molluscs,T:mustard	
+Molluscs	clear→caution	null→trace	8712429350100	Demae Ramen Chicken	A:sesame seeds,T:molluscs,T:mustard	
+Sesame	clear→contains	null→tag	8712429350407	Demae ramen, sésame	A:sesame seeds,T:molluscs,T:mustard	
+Molluscs	clear→caution	null→trace	8712429350407	Demae ramen, sésame	A:sesame seeds,T:molluscs,T:mustard	
+Sesame	clear→caution	null→trace	4056489365310	Medium Egg Noodles	T:sesame seeds	
+Sesame	contains→contains	ingredients→tag	5060262485286	Rice noodles Satay flavour	A:sesame seeds,T:mustard	soya beans, rice, salt), sesame paste, tamari soy sauce [wat
+Sesame	contains→contains	ingredients→tag	5060262489741	Rice noodles chick-n ramen	A:sesame seeds,A:sulphur dioxide and sulphites,T:mustard	ans, rice, salt), water, sesame paste (10%), yeast extract, 
+Sulphites	clear→contains	null→tag	5060262489741	Rice noodles chick-n ramen	A:sesame seeds,A:sulphur dioxide and sulphites,T:mustard	ans, rice, salt), water, sesame paste (10%), yeast extract, 
+Sesame	contains→contains	ingredients→tag	5060262485583	Chicken Gyoza Dinner Dumplings	A:sesame seeds	ones, meat, fat), salt], sesame oil, textured soya protein, 
+Sesame	clear→caution	null→trace	8712429350209	Demae Ramen Beef Flavour	T:molluscs,T:mustard,T:sesame seeds	
+Molluscs	clear→caution	null→trace	8712429350209	Demae Ramen Beef Flavour	T:molluscs,T:mustard,T:sesame seeds	
+Sesame	contains→contains	ingredients→tag	5060262485309	Rice noodles chilli miso	A:sesame seeds,T:mustard	ns, rice, salt), water, _sesame_ oil, alcohol, sugar, yeast 
+Molluscs	clear→contains	null→ingredients	5997523315535	Soba noodle spicy	T:molluscs,T:mustard,T:sesame seeds	crustaceans, fish, milk, molluscs, mustard and sesame
+Sesame	clear→caution	null→trace	5060262485262	Katsu rice noodles cup	A:mustard,T:sesame seeds	
+Molluscs	clear→caution	null→trace	4056489127284	Bami Goreng	T:molluscs,T:mustard	
+Sesame	contains→contains	ingredients→tag	8994963002800	Mi Goreng Fry Noodles	A:sesame seeds	at, soybeans, seasoning, sesame oil, chili powder 0.4%
+Sesame	contains→contains	ingredients→tag	5901882110014	zupka chińska	A:sesame seeds	flavourings (_peanuts_, _sesame_), pepper, dried leek (0,82%
+Sesame	clear→caution	null→trace	8801043031011	Shin Cup Gourmet Spicy Noodle So	A:molluscs,T:molluscs,T:mustard,T:sesame seeds	
+Molluscs	clear→contains	null→tag	8801043031011	Shin Cup Gourmet Spicy Noodle So	A:molluscs,T:molluscs,T:mustard,T:sesame seeds	
+Sesame	clear→contains	null→tag	5997523315511	Soba Wok Style	A:molluscs,A:mustard,A:sesame seeds	
+Molluscs	clear→contains	null→tag	5997523315511	Soba Wok Style	A:molluscs,A:mustard,A:sesame seeds	
+Sesame	contains→contains	ingredients→tag	8801073211667	Carbonara Buldak Spicy Ramen cup	A:molluscs,A:mustard,A:sesame seeds,T:molluscs,T:mustard,T:sesame seeds	CEANS, EGGS, FISH, MILK, MOLLUSCS, MUSTARD, NUTS, PEANUTS, S
+Molluscs	clear→contains	null→tag	8801073211667	Carbonara Buldak Spicy Ramen cup	A:molluscs,A:mustard,A:sesame seeds,T:molluscs,T:mustard,T:sesame seeds	CEANS, EGGS, FISH, MILK, MOLLUSCS, MUSTARD, NUTS, PEANUTS, S
+Sesame	clear→caution	null→trace	3046920028363	Excellence 85% Cacao Rich Dark	T:sesame seeds	
+Sesame	clear→caution	null→trace	3046920028004	Excellence 70% Cocoa Intense Dar	T:sesame seeds	
+Sesame	clear→caution	null→trace	8410076481597	Tortilla Nachos Original	T:mustard,T:sesame seeds	
+Sulphites	clear→contains	null→tag	5016084000374	Nutritional Yeast Flakes	A:mustard,A:sulphur dioxide and sulphites	anocobalamin (B12), Zinc sulfate.
+Sesame	clear→caution	null→trace	5014213711290	Crunchy Peanut Butter	T:sesame seeds	
+Sesame	contains→contains	ingredients→tag	4088600003429	Houmous	A:sesame seeds	r), Water, Rapeseed Oil, Sesame Seed Paste 13%, Concentrated
+Sesame	clear→caution	null→trace	4088600272696	Chia Seeds	T:sesame seeds	
+Sesame	contains→contains	ingredients→tag	20843427	Classic Houmous	A:sesame seeds	rapeseed oil, water, 12% sesame seed paste, 3% concentrated 
+Sesame	clear→caution	null→trace	5034467000872	Tempeh	T:mustard,T:sesame seeds	
+Sesame	clear→caution	null→trace	4056489142560		T:mustard,T:sesame seeds	
+Sesame	clear→caution	null→trace	4056489296454	Lentil bites sea salt	T:sesame seeds	
+Sesame	clear→caution	null→trace	5016887003503	Cold Milled Flaxseed	T:sesame seeds	
+Sesame	contains→contains	ingredients→tag	4088600441689	Almonds	A:sesame seeds	 nuts, walnuts, peanuts, sesame.
+Sesame	clear→caution	null→trace	5060482840759	Peanut Butter Oat Bar	T:sesame seeds	
+Sesame	clear→caution	null→trace	5390691017919	VITAMIN & PROTEIN BAR	T:sesame seeds	
+Sesame	clear→caution	null→trace	4056489139713	Hamburger Brötchen Classic	T:sesame seeds	
+Sulphites	contains→contains	ingredients→tag	10067819	Mango	A:sulphur dioxide and sulphites	ed Mango, Preservative (_Sulphur Dioxide_).
+Sesame	clear→caution	null→trace	4061461951771	Rice Cakes with Milk Chocolate C	T:sesame seeds	
+Sesame	contains→contains	ingredients→tag	4088600003412	Reduced Fat Houmous	A:sesame seeds	hickpeas, Water), Water, SESAME SEED PASTE (12%), Rapeseed O
+Sesame	clear→caution	null→trace	20209759	Дзадзики	T:mustard,T:sesame seeds,T:sulphur dioxide and sulphites	
+Sulphites	clear→caution	null→trace	20209759	Дзадзики	T:mustard,T:sesame seeds,T:sulphur dioxide and sulphites	
+Sulphites	contains→contains	ingredients→tag	20148508	Vinaigre Balsamique De Modène	A:sulphur dioxide and sulphites	oncentrated Grape Must (_Sulphites_), Wine Vinegar (_Sulphit
+Sesame	contains→contains	ingredients→tag	5018297006471	Sesame Seed Bagels	A:sesame seeds	Niacin, Thiamin). Water, SESAME Seeds (3%). Yeast, Sugar, Sp
+Molluscs	contains→contains	ingredients→tag	0078895300024	16000160 Panda Brand Oyster Flav	A:molluscs	er extract 11% [oysters (molluscs) 90%, water, salt], salt, 
+Sesame	contains→contains	ingredients→tag	00349222	Organic Houmous	A:sesame seeds	wer Oil, Organic Tahini _Sesame_ Seed Paste (14%), Organic C
+Sulphites	contains→contains	ingredients→tag	5012818160154	Chopped Garlic	A:sulphur dioxide and sulphites	White Wine Vinegar (_Sulphites_), Dried Garlic.
+Sesame	clear→caution	null→trace	20412074	Dried Mango	A:sulphur dioxide and sulphites,T:sesame seeds	ntioxidant: Sodium Metabisulphite.
+Sulphites	contains→contains	ingredients→tag	20412074	Dried Mango	A:sulphur dioxide and sulphites,T:sesame seeds	ntioxidant: Sodium Metabisulphite.
+Sulphites	contains→contains	ingredients→tag	5018095011318	Tomatoey French Lentils	A:sulphur dioxide and sulphites	mato (1.4%), White Wine (Sulphites), Natural Flavour, Garlic
+Sesame	clear→caution	null→trace	4012359133007	Tofu fumesse	T:mustard,T:sesame seeds	: chlorure de magnésium, sulfate de calcium), huile de tourn
+Sulphites	contains→contains	ingredients→tag	4056489416951	Crème avec vinaigre balsamique d	A:sulphur dioxide and sulphites	inaigre de vin (contient sulfites), moût de raisin concentré
+Sesame	contains→contains	ingredients→tag	5060228323980	Jalapeño Ramona's Heavenly Houmo	A:mustard,A:sesame seeds	), Rapeseed Oil, Tahini (Sesame Seeds), Jalapenos (5%) (Jala
+Sesame	clear→caution	null→trace	5055958701054	Cocoa Vanilla Oat Boosts	T:mustard,T:sesame seeds	
+Sesame	contains→contains	ingredients→tag	7290104507045	Sabra Houmous Extra	A:sesame seeds	rbonate)), rapeseed oil, sesame seed paste (13%), water, pin
+Sesame	clear→caution	null→trace	8076809574082	Mulino bianco abbracci biscuits 	T:mustard,T:sesame seeds	
+Sesame	clear→caution	null→trace	3178530413977	Galettes au bon beurre	T:sesame seeds	
+Sesame	clear→caution	null→trace	8000380153442	Loacker	T:mustard,T:sesame seeds	
+Sesame	clear→caution	null→trace	3046920011013	Lindt Excellence Milk Chocolate 	T:sesame seeds	
+Sesame	clear→caution	null→trace	7622210740427	belVita BREAKFAST Cocoa with cho	T:sesame seeds	
+Sesame	contains→contains	ingredients→tag	00302661	Organic Houmous ~ With added ext	A:sesame seeds	ickpeas), Water, Tahini (Sesame Seed Paste) (14%), Sunflower
+Sesame	clear→caution	null→trace	7622201499679	Le Petit Beurre	T:sesame seeds	
+Sesame	clear→caution	null→trace	8410076482495	Tortilla NACHIPS Original	T:mustard,T:sesame seeds	
+Sulphites	contains→contains	ingredients→tag	8001060000261	Pesto Sun-Dried Tomato	A:sulphur dioxide and sulphites,T:sulphur dioxide and sulphites	il, garlic, antioxidant: sulphur dioxide (sulphites),
+Sulphites	contains→contains	ingredients→tag	01162622	Chickpeas in water	A:sulphur dioxide and sulphites	ntioxidant: Sodium Metabisulphite (_Sulphites_).
+Sesame	clear→caution	null→trace	4056489009207	Porcini Mushroom and Ricotta Tor	A:sulphur dioxide and sulphites,T:mustard,T:sesame seeds	r ( milk ), white wine ( sulphites ), iodised salt [salt, po
+Sulphites	contains→contains	ingredients→tag	4056489009207	Porcini Mushroom and Ricotta Tor	A:sulphur dioxide and sulphites,T:mustard,T:sesame seeds	r ( milk ), white wine ( sulphites ), iodised salt [salt, po
+Sesame	clear→caution	null→trace	3046920028721	Dark absolute 99% cacao	T:sesame seeds	
+Sesame	clear→caution	null→trace	8076809573252	Baiocchi nocciola & cacao 260g	T:mustard,T:sesame seeds	
+Sulphites	clear→contains	null→tag	20815394	Mix di frutta secca	A:sulphur dioxide and sulphites	
+Sesame	clear→caution	null→trace	3178530407396	Petit Cookies Pépites de chocola	T:sesame seeds	
+Sulphites	clear→contains	null→tag	20019907	Succo di limone	A:sulphur dioxide and sulphites	
+Sesame	clear→caution	null→trace	5013665100065	Organic Lightly Salted Wholegrai	T:sesame seeds	
+Sesame	clear→caution	null→trace	3046920010603	Framboise Intense	T:sesame seeds	
+Sesame	clear→contains	null→tag	4012359113108	Räuchertofu Mandel-Sesam	A:sesame seeds	Magnesiumchlorid, Calciumsulfat; Buchenholzreiberauch. *aus 
+Sesame	contains→contains	ingredients→tag	5060228323799	Heavenly Houmous	A:sesame seeds	SEED OIL, WATER, TAHINI (SESAME SEED PASTE), SALT, ACIDITY R
+Sesame	clear→caution	null→trace	5013665115373	Lentil and Pea Cakes with Beetro	T:sesame seeds	
+Sulphites	clear→caution	null→trace	20443375	Grüne Oliven ohne Stein	T:mustard,T:sulphur dioxide and sulphites	
+Sesame	clear→caution	null→trace	4012359144003	Filets de tofu à la japonaise	T:mustard,T:sesame seeds	: chlorure de magnésium, sulfate de calcium), huile de tourn
+Sulphites	contains→contains	ingredients→tag	3019081238650	Sardines huile d'olives et pimen	A:sulphur dioxide and sulphites,T:mustard	gre d'alcool, sel) (dont sulfites), sel, piment (2%) piment,
+Sulphites	contains→contains	ingredients→tag	5060317350033	HECK 97% 6 SAUSAGES	A:sulphur dioxide and sulphites	ar, Preservative (Sodium Sulphite**), Antioxidant (Ascorbic 
+Sesame	clear→caution	null→trace	5013665111610	Lightly Salted Low Fat Corn Cake	T:sesame seeds	
+Sesame	clear→contains	null→tag	4012359144102	Tofu à l'Ail des Ours	A:sesame seeds,T:mustard,T:sesame seeds	: chlorure de magnésium, sulfate de calcium), huile de tourn
+Sesame	clear→caution	null→trace	3178530402995	Tartelettes framboise	T:sesame seeds	
+Sesame	clear→caution	null→trace	8076809572897	Macine mb 350g int. eu	T:mustard,T:sesame seeds	
+Sesame	clear→caution	null→trace	8480000864673	Pan de molde natural trigo espel	T:mustard,T:sesame seeds	
+Sesame	clear→caution	null→trace	8412600029343	INTEGRAL 100%	T:mustard,T:sesame seeds	
+Sesame	clear→caution	null→trace	3564707129879	Pain complet au seigle bio	T:sesame seeds	
+Sesame	clear→caution	null→trace	7500810022061	PAN INTEGRAL	T:sesame seeds	
+Sesame	clear→caution	null→trace	3596710434961	Pain de mie complet sans croute	T:mustard,T:sesame seeds	
+Sesame	clear→caution	null→trace	4071800056784	Vollkorn Super Sandwich	T:sesame seeds	
+Sesame	clear→caution	null→trace	7501000131440	Cero cero multigrano	T:sesame seeds	
+Sesame	clear→caution	null→trace	5410724600113	Pain	T:sesame seeds	
+Sesame	clear→caution	null→trace	5601027973060	Integral	T:sesame seeds	
+Sesame	clear→caution	null→trace	5607233509321	Integral	T:sesame seeds	
+Sesame	clear→caution	null→trace	20176693	Whole wheat bread	T:sesame seeds	
+Sesame	clear→contains	null→tag	7501000375295	12 Granos y Semillas	A:sesame seeds	
+Sesame	contains→contains	ingredients→tag	8410706000198	Pan tostado 100 % integral	A:sesame seeds,T:sesame seeds	r and linen seeds 2% and sesame seeds 1.7% Whole WHEAT flour
+Sesame	clear→contains	null→tag	8412600300121	Pan integral Silueta 8 cereales	A:sesame seeds,T:sesame seeds	
+Sesame	contains→contains	ingredients→tag	0096619316212	ORGANIC LOAF	A:sesame seeds	HOLE FLAX SEEDS, ORGANIC SESAME SEEDS, ORGANIC GROUND FLAX, 
+Sesame	contains→contains	ingredients→tag	0073410013854	Whole Grains Healthy Multi-Grain	A:sesame seeds	ROWN RICE, BLACK & WHITE SESAME SEEDS, YEAST, SALT, CULTURED
+Sesame	clear→contains	null→tag	0033617322616	Light Rye Crispbread Swedish Sty	A:sesame seeds	
+Sesame	contains→contains	ingredients→tag	7300400117852	PAN ESPECIAL CRUJIENTE CON HARIN	A:sesame seeds	 wheat bran, oat flakes, sesame seeds, wheat germ, salt. May
+Sesame	clear→caution	null→trace	5601027946200	Integral Sem Côdea	T:mustard,T:sesame seeds	
+Sesame	clear→contains	null→tag	00982184	Wholemeal Farmhouse Loaf	A:sesame seeds,T:sesame seeds	
+Sesame	clear→caution	null→trace	3029330069942	Tartine p'tit dej complet sans s	T:sesame seeds	
+Sesame	clear→caution	null→trace	5712877457768	Sandwichtoast Vollkorn	T:sesame seeds	
+Sesame	clear→caution	null→trace	3347437059315	Madeleines with wholemeal spelt 	T:sesame seeds	
+Sesame	clear→caution	null→trace	0063400138780	Stone Milled 100% Whole Grains B	T:sesame seeds	
+Sesame	clear→caution	null→trace	5998704303242	PurPur vita teljes kiörlésű keny	T:sesame seeds	
+Sesame	clear→caution	null→trace	8420622351076	Pan Protein +	T:mustard,T:sesame seeds	
+Sesame	clear→caution	null→trace	0664164100411	Sandwich Buns	T:sesame seeds	
+Sesame	contains→contains	ingredients→tag	0063400138827	Seeds & Grains Bread with Flax, 	A:sesame seeds	in, Topping (flax seeds, sesame seeds)
+Sesame	contains→contains	ingredients→tag	8901063338623	Multi Grain Bread	A:sesame seeds	 SEEDS (4.6%) (LINSEEDS, SESAME SEEDS, SUNFLOWER SEEDS & WAT
+Sesame	clear→contains	null→tag	20918293	Bio Crisp Bread Quinoa & Seeds	A:sesame seeds	
+Sesame	clear→caution	null→trace	5000137016955	CRUNCHY SAVOURY WHOLEWHEAT STICK	T:mustard,T:sesame seeds	
+Sesame	contains→contains	ingredients→tag	29124251	Sesame & Linseed Wholegrain Flat	A:sesame seeds	Flour (contains gluten), Sesame Seeds (24%), Linseed (15%), 
+Sesame	clear→caution	null→trace	5000137001968	Jacobs Twiglets Original 45G.	T:mustard,T:sesame seeds	
+Sulphites	contains→contains	ingredients→tag	5099874077565	Fruit & Fibre Wholewheat Cereal	A:sulphur dioxide and sulphites	%) [Apple, Preservative: Sulphur Dioxide], Salt, Niacin, Iro
+Sesame	contains→contains	ingredients→tag	5090383110040	Sweet Chilli Chicken with Wholew	A:sesame seeds	d Yellow Peppers (3.5%), SESAME Seed Oil, Dark Soya Sauce (W
+Sulphites	contains→contains	ingredients→tag	5010026515919	Mornflake Crispy Muesli Nutty	A:sulphur dioxide and sulphites	) (contains Preservative SULPHUR DIOXIDE), Coconut (4%)
+Sulphites	contains→contains	ingredients→tag	5010251541264	Wholewheat muesli	A:sulphur dioxide and sulphites	ice flour, Preservative (sulphur dioxide), Flavouring.
