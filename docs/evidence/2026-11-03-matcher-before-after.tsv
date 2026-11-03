@@ -1,0 +1,156 @@
+# products with data: 1810
+# distinct products that read clear and now warn: 140
+# by allergen: sesame 119, sulphite 15, gluten 6, mollusc 10
+# product–allergen pairs: 150, of them Contains: 43, May contain: 107
+# known false cautions among them: 1
+allergen	now	source	barcode	product_name	note
+sesame	caution	trace	4088600108063	Rich Tea	
+sesame	caution	trace	5015168000019	Thin Orkney Oatcakes	
+sesame	caution	trace	5000119003034	Custard Creams	
+sesame	caution	trace	0652655300006	Butterscotch Crunch	
+sesame	contains	tag	8410376040739	Maria biscuits	
+sesame	contains	tag	3800087101921	Крънч	
+sesame	caution	trace	8008698007389	MAESTRO CEREALE - Pain aux céréales tranché	
+sesame	caution	trace	6410500090014	Knäckebrot mit Roggensauerteig	
+sesame	caution	trace	13356194	SPICY CHICKEN & 'NDUJA PIZZA	
+sesame	caution	trace	20006105	Roggenvollkornbrot	
+sesame	caution	trace	5010044000701	Original Crumpets	
+sesame	caution	trace	5010265002911	Dark Rye Crispbread	
+sesame	caution	trace	5020364010113	New York Bakery Co The Original Plain Bagels	
+sesame	caution	trace	5000129341041	Hand finished seeded sourdough bread	
+sesame	caution	trace	5010044005126	Original Crumpets	
+sesame	caution	trace	5000129341034	White Sourdough	
+sesame	caution	trace	7300400118101	Original	
+sesame	contains	tag	4033634061020	Organic Crisp Bread	
+sesame	caution	trace	5027952012573	Seeded Rye Bread	
+sesame	contains	tag	40874302	Sesame Crispbread	
+sesame	contains	tag	9322969000015	Corn Thins Original	
+sesame	caution	trace	3800082900567	Солети Златна Добруджа	
+sesame	contains	tag	5020364010151	NYC Bagels Sesame	
+sesame	caution	trace	5018374285577	Original Breadsticks	
+sesame	caution	trace	5020364010144	Raisin and Cinnamon Bagels	
+sesame	caution	trace	10086988	Schar Maestro Cereale	
+sesame	contains	tag	4033634028689	Protein Knäcke Kürbiskern	
+sesame	caution	trace	5010044000039	Medium Toastie Soft & Sliced White Loaf	
+sesame	caution	trace	8008698010259	CIABATTINE - Petits pavés précuits	
+sesame	caution	trace	00440783	Grissini Breadsticks	
+sesame	caution	trace	4088600305592	Original Breadsticks	
+sesame	caution	trace	5010044008707	Bagels	
+sesame	caution	trace	20720018	Plain Bagels	
+sesame	caution	trace	6410500091868	Finn Crisp | Multigrain	
+sesame	caution	trace	3168930010265	cruesly mélange de noix	
+sesame	caution	trace	8402001010873	Muesli Crunchy	
+sulphite	caution	trace	8402001010873	Muesli Crunchy	
+sesame	caution	trace	3421557910203	Flocons d'avoine complets	
+gluten	contains	ingredients	4056489239956	Honey and seed granola	
+sesame	caution	trace	5013803001070	low sugar granola whole grain oats, almonds & seeds	
+sesame	contains	ingredients	4088600202433	Multi-Grain Hoops	
+sulphite	contains	tag	20086855	PREMIUM MUESLI LUXURY FRUIT	
+sesame	caution	trace	4056489321170	Donuts	
+sulphite	contains	tag	5000221001386	6 Cherry Bakewells	
+sesame	caution	trace	4823077646287	Lovita Blondie Brownie Lemon	
+sesame	caution	trace	5060925291339	Huel Complete Nutrition Bar - Chocolate Fudge Brownie	
+sulphite	contains	tag	5000221004639	Kipling Mini Battenbergs X5	
+sesame	caution	trace	4056489009191	Tortelloni Ricotta et épinards	
+mollusc	caution	trace	8801073110502	Buldak Ramen	
+sesame	contains	tag	8801073110502	Buldak Ramen	
+mollusc	caution	trace	8801043150620	Shin Ramyun Instant Noedels, Heet en pittig	
+sesame	caution	trace	8801043150620	Shin Ramyun Instant Noedels, Heet en pittig	
+sesame	caution	trace	4056489009184	Tortelloni Pesto Basilico	
+sulphite	caution	trace	4056489009184	Tortelloni Pesto Basilico	
+mollusc	caution	trace	8712429350100	Demae Ramen Chicken	
+sesame	contains	tag	8712429350100	Demae Ramen Chicken	
+mollusc	caution	trace	8712429350407	Demae ramen, sésame	
+sesame	contains	tag	8712429350407	Demae ramen, sésame	
+sesame	caution	trace	4056489365310	Medium Egg Noodles	
+sulphite	contains	tag	5060262489741	Rice noodles chick-n ramen	
+mollusc	caution	trace	8712429350209	Demae Ramen Beef Flavour	
+sesame	caution	trace	8712429350209	Demae Ramen Beef Flavour	
+sesame	contains	tag	5060262485309	Rice noodles chilli miso	
+mollusc	contains	ingredients	5997523315535	Soba noodle spicy	
+sesame	caution	trace	5060262485262	Katsu rice noodles cup	
+mollusc	caution	trace	4056489127284	Bami Goreng	
+sesame	contains	tag	5901882110014	zupka chińska	
+mollusc	contains	tag	8801043031011	Shin Cup Gourmet Spicy Noodle Soup	
+sesame	caution	trace	8801043031011	Shin Cup Gourmet Spicy Noodle Soup	
+mollusc	contains	tag	5997523315511	Soba Wok Style	
+sesame	contains	tag	5997523315511	Soba Wok Style	
+mollusc	contains	tag	8801073211667	Carbonara Buldak Spicy Ramen cup	
+sesame	caution	trace	3046920028363	Excellence 85% Cacao Rich Dark	
+sesame	caution	trace	3046920028004	Excellence 70% Cocoa Intense Dark	
+sesame	caution	trace	8410076481597	Tortilla Nachos Original	
+sulphite	contains	tag	5016084000374	Nutritional Yeast Flakes	known false caution
+sesame	caution	trace	5014213711290	Crunchy Peanut Butter	
+sesame	contains	ingredients	5000168001104	Original Table Water	
+sesame	caution	trace	4088600272696	Chia Seeds	
+sesame	caution	trace	5034467000872	Tempeh	
+sesame	caution	trace	4056489142560		
+sesame	caution	trace	4056489296454	Lentil bites sea salt	
+sesame	caution	trace	5016887003503	Cold Milled Flaxseed	
+sesame	caution	trace	5060482840759	Peanut Butter Oat Bar	
+sesame	caution	trace	5390691017919	VITAMIN & PROTEIN BAR	
+sesame	caution	trace	4056489139713	Hamburger Brötchen Classic	
+sulphite	contains	tag	10067819	Mango	
+sesame	caution	trace	4061461951771	Rice Cakes with Milk Chocolate Coating	
+sesame	caution	trace	20209759	Дзадзики	
+sulphite	caution	trace	20209759	Дзадзики	
+sulphite	contains	tag	20148508	Vinaigre Balsamique De Modène	
+sulphite	contains	tag	5012818160154	Chopped Garlic	
+sesame	caution	trace	20412074	Dried Mango	
+sesame	caution	trace	4012359133007	Tofu fumesse	
+sesame	caution	trace	5055958701054	Cocoa Vanilla Oat Boosts	
+sesame	caution	trace	8076809574082	Mulino bianco abbracci biscuits au cacao et a la creme 350g	
+sesame	caution	trace	3178530413977	Galettes au bon beurre	
+sesame	caution	trace	8000380153442	Loacker	
+sesame	caution	trace	3046920011013	Lindt Excellence Milk Chocolate 100g	
+sesame	caution	trace	7622210740427	belVita BREAKFAST Cocoa with choc chips	
+sesame	caution	trace	7622201499679	Le Petit Beurre	
+sesame	caution	trace	8410076482495	Tortilla NACHIPS Original	
+sulphite	contains	ingredients	5000232844217	Chickpeas drained	
+sesame	caution	trace	4056489009207	Porcini Mushroom and Ricotta Tortelloni	
+sesame	caution	trace	3046920028721	Dark absolute 99% cacao	
+sesame	caution	trace	8076809573252	Baiocchi nocciola & cacao 260g	
+sulphite	contains	tag	20815394	Mix di frutta secca	
+sesame	caution	trace	3178530407396	Petit Cookies Pépites de chocolat	
+sulphite	contains	tag	20019907	Succo di limone	
+sesame	caution	trace	5013665100065	Organic Lightly Salted Wholegrain Low Fat Rice Cakes	
+sesame	caution	trace	3046920010603	Framboise Intense	
+sesame	contains	tag	4012359113108	Räuchertofu Mandel-Sesam	
+sesame	caution	trace	5013665115373	Lentil and Pea Cakes with Beetroot and Balsamic Flavour Seasoning	
+sulphite	caution	trace	20443375	Grüne Oliven ohne Stein	
+sesame	caution	trace	4012359144003	Filets de tofu à la japonaise	
+sesame	caution	trace	5013665111610	Lightly Salted Low Fat Corn Cakes	
+sesame	contains	tag	4012359144102	Tofu à l'Ail des Ours	
+sesame	caution	trace	3178530402995	Tartelettes framboise	
+sesame	caution	trace	8076809572897	Macine mb 350g int. eu	
+sesame	caution	trace	8480000864673	Pan de molde natural trigo espelta 100% integral	
+sesame	caution	trace	8412600029343	INTEGRAL 100%	
+sesame	caution	trace	3564707129879	Pain complet au seigle bio	
+sesame	caution	trace	7500810022061	PAN INTEGRAL	
+sesame	caution	trace	3596710434961	Pain de mie complet sans croute	
+sesame	caution	trace	4071800056784	Vollkorn Super Sandwich	
+sesame	caution	trace	7501000131440	Cero cero multigrano	
+sesame	caution	trace	5410724600113	Pain	
+sesame	caution	trace	5601027973060	Integral	
+sesame	caution	trace	5607233509321	Integral	
+sesame	caution	trace	20176693	Whole wheat bread	
+sesame	contains	tag	7501000375295	12 Granos y Semillas	
+sesame	contains	tag	8412600300121	Pan integral Silueta 8 cereales	
+sesame	contains	tag	0033617322616	Light Rye Crispbread Swedish Style	
+sesame	caution	trace	5601027946200	Integral Sem Côdea	
+sesame	contains	tag	00982184	Wholemeal Farmhouse Loaf	
+sesame	caution	trace	3029330069942	Tartine p'tit dej complet sans sucres ajoutes 410 gr offre economique	
+sesame	caution	trace	5712877457768	Sandwichtoast Vollkorn	
+sesame	caution	trace	3347437059315	Madeleines with wholemeal spelt flour	
+sesame	caution	trace	0063400138780	Stone Milled 100% Whole Grains Bread	
+sesame	caution	trace	5998704303242	PurPur vita teljes kiörlésű kenyér	
+sesame	caution	trace	8420622351076	Pan Protein +	
+sesame	caution	trace	0664164100411	Sandwich Buns	
+sesame	contains	tag	20918293	Bio Crisp Bread Quinoa & Seeds	
+sesame	caution	trace	5000137016955	CRUNCHY SAVOURY WHOLEWHEAT STICKS	
+gluten	contains	ingredients	5057373964694	Wholewheat Spaghetti	
+gluten	contains	ingredients	5000169127247	Waitrose Love Life Wholewheat Penne	
+sesame	caution	trace	5000137001968	Jacobs Twiglets Original 45G.	
+gluten	contains	ingredients	29329724	Wholewheat Giant Couscous	
+gluten	contains	ingredients	5000169293201	wholewheat bulgar	
+gluten	contains	ingredients	8809020307500	Wholewheat crackers	
