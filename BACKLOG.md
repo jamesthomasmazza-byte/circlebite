@@ -158,13 +158,21 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
   and a phone shows the whole page; signed in, `/` is Scan.*
 - [x] **Wheat by its other names** (`7ed5b0a`, 2026-10-30): durum, spelt, semolina, bulgur and seitan
   match a Wheat profile. A safety fix that adds caution only. *Deployed Oct 30 in `688917f`.*
-- [ ] **Allergens marked with underscores in ingredient text** (`_milk_`, `_Wheat_`): Open Food
+- [x] **Allergens marked with underscores in ingredient text** (`_milk_`, `_Wheat_`): Open Food
   Facts' allergen markup puts a word character either side, so `\bmilk\b` misses it, for every
   allergen. Found 2026-10-30; the allergen tags covered every case in that sample. Before the
   freeze, its own commit, adding caution only; real-product evidence, and any new false cautions,
-  shown to JT first.
-- [ ] **"wholewheat"/"wholemeal" hiding wheat:** one word, so `\bwheat\b` misses it. Durum and
+  shown to JT first. *Fixed 2026-11-03 in `cf05bf9` after JT reviewed the evidence: across 1,808
+  real products, 156 misses fixed, 13 of them caught by nothing before, no new false cautions
+  (`docs/evidence/2026-11-03-underscore-allergens.md`). Not yet deployed.*
+- [x] **"wholewheat"/"wholemeal" hiding wheat:** one word, so `\bwheat\b` misses it. Durum and
   semolina cover "durum wholewheat semolina", not "wholewheat flour" alone. Same terms as above.
+  *Fixed 2026-11-03 in `b2e1eea`, with wheatflour, emmer and the label spelling "bulgar": 9 more
+  wheat products caught, no new false cautions (`docs/evidence/2026-11-03-wheat-words.md`). Not
+  yet deployed.*
+- [ ] **Open Food Facts tags the matcher can't read:** tags match keywords by exact equality, so
+  `en:sesame-seeds`, `en:sulphur-dioxide-and-sulphites` and `en:molluscs` never match, and mustard
+  has no cluster. Found 2026-11-03. Evidence first, shown to JT before any change.
 
 ### Week of Nov 9 — highest risk
 
