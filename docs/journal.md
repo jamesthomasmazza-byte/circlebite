@@ -2437,3 +2437,16 @@ Two more gaps turned up, queued in BACKLOG for before the freeze:
 **The seed brand Millbrook is now Fernhallow** (`affa38d`). Millbrook is a real name in food: a US
 regional bread brand, bread trademarks, a dairy. A web search found no food brand called
 Fernhallow. Production picks it up at the judging-week reseed.
+
+## 2026-10-30 — Deployed: the landing page and the wheat fix
+
+JT deployed `688917f` at about 5:34 PM ET (release `20261030213343`). A backup was taken first, at
+21:33Z, kept locally and offsite. The release carries everything since `ea3f6cd`: the landing page
+and its fonts, the `/` gate, the title and meta description, wheat by its other names (`7ed5b0a`),
+and the Fernhallow seed rename. The rename shows on production only after the judging-week reseed.
+
+Checked on production after the deploy:
+- **Signed out:** `/` shows the landing page. "Create an account" goes to `/register` and "Log in"
+  to `/login`. On a phone, the whole page renders.
+- **Signed in:** James goes straight to Scan.
+- **False-safety check** (`docs/server-setup.md` §8): `…076` still read "Contains an allergen".

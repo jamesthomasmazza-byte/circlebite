@@ -152,9 +152,12 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
   before. Built 2026-10-30 from `docs/design/landing-mockup.html` (`7f4f084`): Public Sans
   self-hosted (`850189a`), the page (`358898e`, `ea336e2`), the `/` gate (`fcb15ea`), title and
   meta description (`e6e5b69`). Its copy assumes `LABEL_SCAN` and `GUIDED_SETUP` are on
-  (`docs/server-setup.md`, under the `.env` keys). Not yet deployed.
+  (`docs/server-setup.md`, under the `.env` keys).
+  *Deployed Oct 30 at about 5:34 PM ET in `688917f` (release `20261030213343`), backup first.
+  Checked on production: signed out, `/` shows the page, its links reach `/register` and `/login`,
+  and a phone shows the whole page; signed in, `/` is Scan.*
 - [x] **Wheat by its other names** (`7ed5b0a`, 2026-10-30): durum, spelt, semolina, bulgur and seitan
-  match a Wheat profile. A safety fix that adds caution only. Not yet deployed.
+  match a Wheat profile. A safety fix that adds caution only. *Deployed Oct 30 in `688917f`.*
 - [ ] **Allergens marked with underscores in ingredient text** (`_milk_`, `_Wheat_`): Open Food
   Facts' allergen markup puts a word character either side, so `\bmilk\b` misses it, for every
   allergen. Found 2026-10-30; the allergen tags covered every case in that sample. Before the
