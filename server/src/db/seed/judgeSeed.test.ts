@@ -831,6 +831,18 @@ test("a judge's own report on the shared barcode stays in their world; a real fa
       assert.equal(rows[0].world, cast.n, `${cast.judge}'s report is in ${cast.judge}'s world`);
     }
 
+    // Prof. Yoest's claim in his words (2026-10-29): two judges reporting the same allergen on the
+    // shared barcode each stay at one family, counted the way the threshold step counts.
+    const client = await pool.connect();
+    try {
+      for (const cast of JUDGE_CASTS.slice(0, 2)) {
+        const claim = { barcode: PRODUCTS.circleReported.barcode, key: claimKey("Peanut", "add_caution"), direction: "add_caution" as const, world: cast.n };
+        assert.equal(await countCorroboratingFamilies(client, claim), 1, `${cast.judge}: one family, not two`);
+      }
+    } finally {
+      client.release();
+    }
+
     await withoutNetwork(async () => {
       const barcode = PRODUCTS.circleReported.barcode;
 
