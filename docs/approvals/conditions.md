@@ -330,6 +330,9 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
   only writes these rows when it runs. The production reseed that does is the judging-week
   `--rotate-passwords` reseed (week of November 16), run by JT in his own terminal (`BACKLOG.md`,
   "Week of Nov 16 — judges"). Until then, production has no such barcode.
+  *Update, November 3:* JT ran a plain reseed on production after deploying `553832e`, which runs
+  the same seed, so the reporter row is written there now. It has not yet been checked on
+  production as judge1 and judge2.
 
 ### Due Thursday, November 13 — the code freeze (his October 27, 7:55 PM email, `2026-10-27-yoest-one-shared-barcode.md`)
 
@@ -358,6 +361,27 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
 - **Takes effect on production at the judging-week reseed.** Until then, production's seeded
   accounts have no world, and it has no seeded circle reports: the reporter row's seed has never run
   there.
+  *Update, November 3:* the plain reseed JT ran after deploying `553832e` runs the seed that sets
+  the worlds, so the seeded accounts should now carry them on production. Not yet checked there:
+  that check is the "two lines" his October 29 email asks for, below.
+
+### Due Thursday, November 13 — the code freeze (his October 29, 7:23 PM email, `2026-10-29-yoest-judge-tests-and-card.md`)
+
+JT missed this email until November 4. **Interim reply sent November 4**
+(`2026-11-04-jt-matcher-r9-landing.md`): the ask is in progress and promised before the freeze. The
+same email reported the matcher fixes, the R9 purge and the landing page.
+
+- **"Send me the names of the tests that prove two things: two judges reporting the same allergen
+  on 2990000000083 each stay at one family, and a judge's report on a real product never moves a
+  real family's count."** Planned November 4, not sent. The tests that exist, and the ones to add,
+  are in `BACKLOG.md`, "His October 29 ask".
+- **"Update JUDGES.md to show the single barcode."** Done October 29 in `f256065`: the reporter row
+  gives `2990000000083` for every judge.
+- **"Put 2990000000083 on a one-page judge card as a printed barcode. Print the digits underneath,
+  and give judges a way to type them in."** Planned November 4, not built: `docs/judge-card-plan.md`.
+- **"After the reseed, two lines confirming it held on production."** Owed after a reseed. The
+  November 3 plain reseed may already make it checkable; the judging-week reseed is the one he
+  names.
 
 ## Corrections owed to Prof. Yoest
 
