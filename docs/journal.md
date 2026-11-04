@@ -2542,3 +2542,26 @@ release carries everything since `688917f`:
 
 The false-safety check (`docs/server-setup.md` §8) ran with the new account: `deploy.check` on
 Rowan, `…076` read "Contains an allergen", with peanut reported by 2 shoppers.
+
+## 2026-11-04 — Deployed: the logo; the judge card's first phone test
+
+JT deployed `a833fc7` at about 4:00 PM ET (release `20261104210025`), with a backup first at
+21:00:09Z. The release carries everything since `553832e`:
+- **The logo:** the header, the landing page, the favicon, the home-screen icon and the manifest.
+- **The judge card's generator and its tests.** The card itself is a file in the repo, not part of
+  the app.
+- **The three judge-world test fixes.**
+- **Docs.**
+
+**False-safety check** (`docs/server-setup.md` §8): `…076` read "Contains an allergen". JT ran
+it as the operator account, on a profile with Peanut. §8 names `deploy.check`, but the operator is
+also a normal account in no judge's world, which is what the check needs.
+
+**Judge card, phone test 1 of 2** (`docs/judges/judge-card.html`, on JT's iPhone, signed in as the
+operator):
+- **Off a laptop screen:** it decoded, and the card showed Corn Tortilla Chips (Fernhallow), the
+  seed's product for `2990000000083`.
+- **The result was right for that account.** The profile has egg, milk and peanut, and the card
+  read "No listed allergens found". The judge-world reports on that barcode don't reach an account
+  outside every judge's world.
+- **Off paper:** not yet tested; printing November 5.
