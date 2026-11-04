@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="552" height="552" viewBox="124 112 552 552">
+<style>@media (prefers-color-scheme: dark) { .ring { stroke: #6FCFC8; } }</style>
+<g transform="translate(100,100)"><circle cx="300" cy="300" r="240" fill="none" class="ring" stroke="#005C65" stroke-width="6" stroke-dasharray="16 16"/>
+<circle cx="300" cy="300" r="96" fill="#6FCFC8"/>
+<circle cx="300" cy="60" r="32" fill="#6FCFC8"/>
+<circle cx="528" cy="226" r="32" fill="#6FCFC8"/>
+<circle cx="441" cy="494" r="32" fill="#6FCFC8"/>
+<circle cx="159" cy="494" r="32" fill="#6FCFC8"/>
+<circle cx="72" cy="226" r="32" fill="#6FCFC8"/></g>
+</svg>
