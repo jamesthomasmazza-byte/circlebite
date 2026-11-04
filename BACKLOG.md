@@ -18,7 +18,7 @@ judging" (1, 5, 6) and two new ones (3, 7). None is a `CONTEST_RULES.md` §7 ite
 guard is written under it; an item that can't meet its guard by the freeze doesn't ship.
 
 **JT, anytime (no code):**
-- [ ] Rename the duplicate "James Mazza" profile.
+- [x] Rename the duplicate "James Mazza" profile. *Moot: the profile went with JT's James account in the R9 purge (journal, 2026-11-03).*
 - [x] Phone check of the scanner box: portrait and landscape, "Got it" before the result.
   *Done on JT's iPhone, on production: live picture, "Got it", and landscape clear of the tab bar
   on 2026-10-26 (`076eefb`); portrait with Stop camera above the tab bar, and "Got it" then the
@@ -82,11 +82,11 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
     recorded yet.*
     *The backup before the 9:01 AM deploy is confirmed (13:01:26Z). Caching confirmed again on
     production after the 12:15 PM deploy of `248509c`, whose false-safety check passed.*
-  - [ ] **C, the product lookup alongside the label read** in `runLabelScan` and `combineScan`.
+  - [x] **C, the product lookup alongside the label read** in `runLabelScan` and `combineScan`. *Ticked Nov 4: built and deployed, as recorded below.*
     Order only; both results used exactly as today.
     *Built Oct 30 in `deafff5`, `runLabelScan` only: `combineLabelScan` has no lookup. Deployed
     Oct 30 at about 12:15 PM ET in `248509c` (release `20261030161438`).*
-  - [ ] **The AI calls' timeout and retries, and the decoder's numbers** (approved Oct 30, after the
+  - [x] **The AI calls' timeout and retries, and the decoder's numbers** *(ticked Nov 4: built and deployed, as recorded below)* (approved Oct 30, after the
     first real timings): 30 s per attempt with one retry, attempt counts on the line, and the
     decoder's tries, ms per try, picture size and region on path A.
     *Built in `222f51f`, `2b51898`. Deployed Oct 30 at about 12:41 PM ET in `ea3f6cd` (release
@@ -545,6 +545,10 @@ Prof. Yoest called this out by name. It is the cheapest bonus available.
 
 ## Week 9 — Nov 10–16 · Polish and hardening *[10% UX, 15% code quality]*
 
+**Scheduled by JT, 2026-11-04:** only three open items here are before the freeze: "safe" in
+model-written text, the real-phone layout check, and the accessibility pass. Each is marked
+**before the freeze**. Every other open item in this section waits until after judging.
+
 JT's own read, 2026-09-28, after using the app on a phone in a real session: the UI and UX are
 the weakest part of the project. That matches the rubric risk — 10% of the grade sits here and
 it is the least-worked area. Treat this whole section as the priority block it is.
@@ -697,7 +701,7 @@ it is the least-worked area. Treat this whole section as the priority block it i
       - [ ] **Look at the card locally first, at phone width** (JT, 2026-10-16). `seed:judge`,
         then `seed:circle-demo` (Priya, Maya's co-manager, reports Peanut on Oat Biscuits
         `2990000000038`), `CIRCLE_ESCALATIONS=on`, sign in as judge1.
-      - [ ] **Deploy, verify, then switch on.** Not over a weekend (JT, 2026-10-16). On
+      - [x] **Deploy, verify, then switch on.** *Done Oct 26: switched on and verified on production (`docs/approvals/conditions.md`, Condition 3).* Not over a weekend (JT, 2026-10-16). On
         production: as a co-manager, report an allergen present; as the owner, see it on that scan
         and on a fresh scan of the barcode; check a sibling profile and another family's do not.
         *As of 2026-10-17:* production is on `372dd6e` (Oct 8). It has `1818677` (seeded history
@@ -708,7 +712,7 @@ it is the least-worked area. Treat this whole section as the priority block it i
         2. Production check with the switch off: the app comes up, release.sh applied 0045, a plain
            barcode scan and a label photo both work, `journalctl` shows no `AI step failed`.
         3. Switch on (`docs/server-setup.md` §11a), then the circle check above.
-      - [ ] **Then reword the README** back to family wording — both rules still say "the
+      - [x] **Then reword the README** *(done Oct 26 in `aedc0e5`)* back to family wording — both rules still say "the
         reporter's own view of the scan they filed it from", which stays true until the switch is
         on in production. Not before: that would be the README claiming more than production does.
       - [ ] **Record circle escalations on the scan row**, as `community_corrections_applied`
@@ -803,7 +807,7 @@ it is the least-worked area. Treat this whole section as the priority block it i
         (`downgrade_reported`, migration 0037), the only entries that carry evidence, are verified
         by tests only.** No report was filed on production: the form requires a label photo, and JT
         stopped rather than upload a stand-in. Closes on the follow-up below.
-      - [ ] **Notify the owner when a co-manager downgrades — a new subsystem, not a feature.**
+      - [x] **Notify the owner when a co-manager downgrades — a new subsystem, not a feature.** *Done: Condition 2 is closed (`docs/approvals/conditions.md`).*
         There is no notification mechanism in the server at all: no mail dependency (the five
         deps are express, pg, multer, cookie-parser, dotenv), no notifications table, and circle
         invites are single-use links the parent shares by hand (migration 0008). Email also sits
@@ -921,7 +925,7 @@ it is the least-worked area. Treat this whole section as the priority block it i
         reseed after that change deploys. This email carries all four logins. Production was
         reseeded on 2026-10-08, and JT decided the same day that the logins wait for this email
         rather than going out early. Blocked by the item below.
-      - [ ] **Four distinct judge passwords — blocks the Nov 16 credentials email.** JT,
+      - [x] **Four distinct judge passwords — blocks the Nov 16 credentials email.** *Done Oct 16 in `c4c1041`.* JT,
         2026-10-08. `seedJudge.ts` sets one password for all four judges (it printed "Judge
         password (the same for all four)" on the 2026-10-08 production reseed, and `78771c2` says
         "one shared password"). That defeats the isolation four accounts exist for: judge 2 typing
@@ -969,7 +973,7 @@ it is the least-worked area. Treat this whole section as the priority block it i
       - [x] **Emergency referral in the app.** Done 2026-10-01. "If anyone has an allergic
         reaction, call 911." in bold inside the disclaimer panel on every live verdict card, and
         the same panel once at the top of scan history, which had no disclaimer at all before.
-- [ ] Model-written text that could one day say "safe". Checked 2026-10-01: none reaches a user
+- [ ] **Before the freeze.** Model-written text that could one day say "safe". Checked 2026-10-01: none reaches a user
       today. The reasoning call's free-text `reason` per finding is copied onto `matched_allergens`
       by `mergeVerdict.ts` and **is in the JSON sent to the browser**, but the client's
       `MatchedAllergen` type doesn't declare it and nothing renders it. The label call's
@@ -1063,9 +1067,9 @@ it is the least-worked area. Treat this whole section as the priority block it i
       route carrying the report form.
 - [ ] Error and empty states throughout. Design references for this whole pass live in
       `docs/design-references.md` — read it before styling anything
-- [ ] Accessibility pass — keyboard navigation, contrast, labels, screen reader on the verdict card *[bonus]*.
+- [ ] **Before the freeze.** Accessibility pass — keyboard navigation, contrast, labels, screen reader on the verdict card *[bonus]*.
       Touch-target and text-size minimums are in `docs/design-references.md`
-- [ ] Mobile layout verified on a real phone
+- [ ] **Before the freeze.** Mobile layout verified on a real phone
 - [ ] Run the full compliance check in `CONTEST_RULES.md` §9
 - [ ] Verify every kill-switched feature in its **off** state too, not just its on state — the
       `LABEL_SCAN` gating bug (`docs/journal.md` 2026-09-25) shipped past 236 passing tests and a
@@ -1269,10 +1273,9 @@ Out of scope per `CONTEST_RULES.md` §7 — do not start these before judging en
 - Scan history beyond the last handful per profile
 - Migrating real alpha tester data
 - **USDA FoodData Central as a second product source** (JT, Nov 4). Plan: `docs/usda-fdc-plan.md`.
-  About 3–4 days, and it touches every barcode scan's verdict path, so after judging. Decide
-  first whether USDA data alone may give a clean verdict (the plan recommends not). The read-only
-  measurement in that plan, about half a day with no app change, could run before the freeze if
-  JT wants the number for judging.
+  About 3–4 days, and it touches every barcode scan's verdict path, so after judging (JT, Nov 4),
+  with no measurement before. **Open decision:** whether USDA data alone may give "No listed
+  allergens found" when Open Food Facts has none. JT, Nov 4: no, for now.
 - Decide a retention rule for corrections and their photos — currently unbounded on purpose
   (`docs/coppa.md` §2.7). Needs its own number and rationale, not invented mid-build.
 - Say "the check couldn't finish" outside the live card too (`89b1e39` did the live card only).

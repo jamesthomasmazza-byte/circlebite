@@ -1,7 +1,7 @@
 # USDA FoodData Central as a second product source
 
-Plan, November 4, 2026. No code. **Recommendation: after judging.** A read-only measurement could
-come before (the end of this page).
+Plan, November 4, 2026. No code. **Decided (JT, November 4): after judging, with no measurement
+before it.**
 
 ## What it would add
 
@@ -89,6 +89,8 @@ and USDA has an ingredient list that matches nothing. Two options:
    unknown to a clean verdict, so it is not "only adds caution".
 
 Recommendation: **strict** first, and option 2 only with evidence from the measurement below.
+**Open decision.** JT, November 4: no, for now. USDA data alone doesn't give "No listed allergens
+found". Revisit after judging, with the measurement.
 
 ## Which scan flows
 
