@@ -84,6 +84,24 @@ test("a judge's confirmed warning never reaches a real family; a real one reache
   });
 });
 
+test("a judge's confirmed Peanut on a real product leaves a real family's Peanut count at 2", async () => {
+  // Prof. Yoest's second claim (2026-10-29): a judge's report on a real product never moves a real
+  // family's count. Same product, same allergen, both confirmed, one in the real world and one in
+  // judge 1's.
+  await inTransaction(async (client) => {
+    await confirmed(client, REAL_1, "Peanut");
+    await confirmed(client, REAL_2, "Peanut");
+    await confirmed(client, JUDGE_1, "Peanut");
+    await confirmed(client, PRIYA_1, "Peanut");
+
+    assert.deepEqual(await seenBy(client, childOf(REAL_1)), { Peanut: 2 }, "a real family: the two real families only");
+    assert.deepEqual(await seenBy(client, null), { Peanut: 2 }, "no profile reads as real");
+    assert.deepEqual(await seenBy(client, childOf(JUDGE_2)), { Peanut: 2 }, "another judge sees the real claim only");
+    // Inside judge 1's world the real and own-world reports are one claim on the card (communityAdditions.ts).
+    assert.deepEqual(await seenBy(client, childOf(JUDGE_1)), { Peanut: 4 }, "judge 1: one Peanut claim");
+  });
+});
+
 test("a profile with no owner left reads as real", async () => {
   await inTransaction(async (client) => {
     await confirmed(client, JUDGE_1, "Sesame");
