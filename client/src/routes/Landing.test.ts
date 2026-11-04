@@ -33,8 +33,13 @@ test("one h1, and every picture is one described image", () => {
   const pictures = [...html.matchAll(/role="img"([^>]*)>/g)];
   assert.equal(pictures.length, 6);
   for (const [, attrs] of pictures) assert.match(attrs, /aria-label="[^"]{20,}"/);
-  // Inline pictures only: no image files, no other host, no stock photos.
-  assert.doesNotMatch(html, /<img\b|https?:\/\//);
+  // Inline pictures only, no other host, no stock photos. One image file: the logo (Nov 4), our own,
+  // served from /brand/, named for screen readers as the text wordmark was.
+  assert.doesNotMatch(html, /https?:\/\//);
+  const imgs = [...html.matchAll(/<img\b[^>]*>/g)].map(([tag]) => tag);
+  assert.equal(imgs.length, 1);
+  assert.match(imgs[0], /src="\/brand\/circlebite-logo-horizontal-light\.svg"/);
+  assert.match(imgs[0], /alt="CircleBite"/);
 });
 
 test("the pictured cards use the app's own words, and carry the disclaimer", () => {

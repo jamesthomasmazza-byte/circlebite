@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation, useOutletContext } from "react-router-dom";
 
+import { BrandLogo } from "./BrandLogo";
 import { LandingNotices, type NoticeData } from "./LandingNotices";
 import { getUnseenChanges, listCircleRequests, listProfiles, type CircleRequest, type ProfileSummary } from "./lib/api";
 import { useAuth } from "./lib/AuthContext";
@@ -166,7 +167,7 @@ export function RequestNotice({ requests }: { requests: Pick<CircleRequest, "req
 export function ShellHeader({ scanningFor }: { scanningFor: string | null }) {
   return (
     <header className="shell-header">
-      <span className="shell-header__wordmark">CircleBite</span>
+      <BrandLogo className="shell-header__wordmark" />
       {scanningFor && (
         <Link to={LANDING_PATH} className="shell-header__profile">
           Scanning for: <strong>{scanningFor}</strong>

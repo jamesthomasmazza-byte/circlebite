@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 
+import { BrandLogo } from "../BrandLogo";
 import type { MatchedAllergen, ScanResult } from "../lib/api";
 import { classificationLabel, sourceLabel } from "../lib/allergenRowCopy";
 import { circleReportLine } from "../lib/correctionCopy";
@@ -74,7 +75,7 @@ export function Landing() {
       <header className="landing__bar">
         <div className="landing__wrap">
           <a href="#top" className="landing__name">
-            CircleBite
+            <BrandLogo className="landing__logo" />
           </a>
           <nav aria-label="Account" className="landing__account">
             <Link to="/login" className="landing__text-link">

@@ -1175,9 +1175,16 @@ th {
   font-size: var(--text-sm);
 }
 
+/* The logo (BrandLogo.tsx): about the text wordmark's height, its width from the drawing. */
 .shell-header__wordmark {
+  display: block;
   flex: none;
-  font-weight: 700;
+}
+
+.shell-header__wordmark img {
+  display: block;
+  width: auto;
+  height: 1.5rem;
 }
 
 .shell-header__profile {
@@ -2087,11 +2094,25 @@ a.card:hover {
 }
 
 .landing__name {
+  display: block;
   padding-block: var(--space-2);
-  color: var(--color-text);
-  font-size: var(--text-lg);
-  font-weight: 800;
   text-decoration: none;
+}
+
+/* The logo about as wide as the text wordmark was on a phone, so the name, Log in and the button
+   still share one line at 390px; larger where there's room. */
+.landing__logo,
+.landing__logo img {
+  display: block;
+  width: auto;
+  height: 1.375rem;
+}
+
+@media (min-width: 40rem) {
+  .landing__logo,
+  .landing__logo img {
+    height: 2rem;
+  }
 }
 
 /* Name, Log in and the button on one line at 390px (measured 2026-10-30); they wrap only below it. */
