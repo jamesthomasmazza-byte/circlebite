@@ -34,6 +34,7 @@ const JUDGE_2 = id(21);
 const PRIYA_2 = id(22);
 const SAM_2 = id(23); // a third family in judge 2's world, so a removal there can reach its threshold
 const JUDGE_3 = id(31);
+const JUDGE_4 = id(41);
 
 const WORLDS: Record<string, number | null> = {
   [REAL_1]: null,
@@ -45,6 +46,7 @@ const WORLDS: Record<string, number | null> = {
   [PRIYA_2]: 2,
   [SAM_2]: 2,
   [JUDGE_3]: 3,
+  [JUDGE_4]: 4,
 };
 
 async function inTransaction(body: (client: PoolClient) => Promise<void>) {
@@ -100,19 +102,19 @@ async function statusOf(client: PoolClient, correctionId: string): Promise<strin
 test("four judges reporting Sesame on the same barcode are four worlds of one family each — none is confirmed", async () => {
   await inTransaction(async (client) => {
     const ids = [];
-    for (const judge of [JUDGE_1, JUDGE_2, JUDGE_3]) {
+    for (const judge of [JUDGE_1, JUDGE_2, JUDGE_3, JUDGE_4]) {
       ids.push(await report(client, judge, "add_caution"));
       assert.equal(await countCorroboratingFamilies(client, claim(judge, "add_caution")), 1, judge);
       assert.equal(await corroborateClaimIfThresholdMet(client, claim(judge, "add_caution")), false, judge);
     }
     for (const reportId of ids) assert.equal(await statusOf(client, reportId), "pending");
 
-    // Without the worlds, the same rows are three families: the threshold is what the worlds hold off.
+    // Without the worlds, the same rows are four families: the threshold is what the worlds hold off.
     const { rows } = await client.query(
       `SELECT count(DISTINCT profile_owner_at_report)::int AS n FROM product_corrections WHERE id = ANY($1)`,
       [ids],
     );
-    assert.equal(rows[0].n, 3);
+    assert.equal(rows[0].n, 4);
   });
 });
 
