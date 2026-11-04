@@ -16,6 +16,9 @@ You hold one role on each of three children's profiles:
 
 ## Barcodes to try
 
+A printed card with the shared barcode, to scan off paper or a laptop screen, is
+`docs/judges/judge-card.html`.
+
 Choose the profile on the scan page **before** you enter a barcode. Don't rely on the one already
 selected: it can differ between accounts and after a reset. The same barcode gives a
 different result for each child, which is the point.

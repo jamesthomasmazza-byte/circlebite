@@ -99,8 +99,8 @@ Nothing changes in the seed, the judge worlds, `JUDGES.md`, the tests, §8's che
 - **On the page:**
   - the barcode, large, with quiet zones of at least 10 modules either side, sized to scan from a
     phone held 15–25 cm away;
-  - the digits underneath, `2990000000083`, large, in a monospace face, grouped
-    `2 990000 000083` so they're easy to copy by eye;
+  - the digits underneath, `2990000000083`, large, in a monospace face. *Built ungrouped: spaces
+    typed into the Barcode field would fail its digits-only check.*
   - **typed entry:** "Camera won't read it? On Scan, type `2990000000083` in **Barcode** and tap
     **Check this product**." (These are the app's own labels.)
   - which profile to choose first (**Maya**, then **Noor**), and one line each on what the card
@@ -108,6 +108,12 @@ Nothing changes in the seed, the judge worlds, `JUDGES.md`, the tests, §8's che
   - "Every product and family here is invented."
 - **Where it lives:** linked from `JUDGES.md` and sent with the credentials. A judge can scan it off
   paper, or off a laptop screen while the phone runs the app.
+
+**Built November 4** (`ffa7053`, `3afd9fa`). One change from this plan: the barcode's box has
+rules above and below only. Rendered with a full border, the card didn't decode: zxing failed the
+checksum with a dark line beside the bars, even 60 modules away. Without it, a screenshot of the
+card decodes to `2990000000083` with zxing set up as the app sets it up. `code128.test.ts` pins
+both. **JT's phone test, off paper and off a laptop screen, is still to do.**
 
 **Size:** about half a day, with the tests. **Risk:** low. Nothing in the app or the data changes,
 only a new script, its tests, and one generated page.
