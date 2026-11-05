@@ -30,6 +30,9 @@ type Props = {
  */
 export function ChangeHistory({ profileId, profile, choices, history, failed, ackFailed, onAcknowledge }: Props) {
   const { unseen, seen } = splitHistory(history ?? []);
+  // With only the collapsed list to show, its summary already says "Change history (N)": the heading
+  // stays for screen readers, and isn't printed twice.
+  const onlyCollapsed = unseen.length === 0 && seen.length > 0;
 
   function entry(e: ProfileHistoryEntry) {
     const d = describeChange(e, profile, choices);
@@ -64,7 +67,9 @@ export function ChangeHistory({ profileId, profile, choices, history, failed, ac
 
   return (
     <section id="changes" className="change-history" aria-labelledby="change-history-heading">
-      <h2 id="change-history-heading">Change history</h2>
+      <h2 id="change-history-heading" className={onlyCollapsed ? "visually-hidden" : undefined}>
+        Change history
+      </h2>
       {failed && <p role="alert">{HISTORY_FAILED}</p>}
       {history && history.length === 0 && <p>{NO_CHANGES}</p>}
       {unseen.length > 0 && (

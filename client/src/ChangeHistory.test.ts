@@ -122,6 +122,13 @@ test("a failed load, or a failed acknowledgement, is never collapsed", () => {
   assert.ok(alert > 0 && alert < ackFailed.indexOf("<details"));
 });
 
+test("the heading is printed once: kept for screen readers when the summary already says it", () => {
+  assert.match(render([SEEN_MILK]), /<h2 id="change-history-heading" class="visually-hidden">/);
+  for (const html of [render([UNSEEN_SESAME, SEEN_MILK]), render([]), render(null, { failed: true })]) {
+    assert.match(html, /<h2 id="change-history-heading">Change history<\/h2>/);
+  }
+});
+
 test("the section keeps id=changes, where Condition 2's notice links", () => {
   assert.match(render([UNSEEN_SESAME]), /<section id="changes"/);
 });
