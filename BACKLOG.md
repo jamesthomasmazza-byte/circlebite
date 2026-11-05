@@ -16,6 +16,7 @@ often isn't the person whose allergies are at stake.
 Set by JT on 2026-10-26. Five items move into it: three that were in "Deferred until after
 judging" (1, 5, 6) and two new ones (3, 7). None is a `CONTEST_RULES.md` §7 item. Each week's
 guard is written under it; an item that can't meet its guard by the freeze doesn't ship.
+Four more (8–11, UI simplification) were added by JT on Nov 5.
 
 **JT, anytime (no code):**
 - [x] Rename the duplicate "James Mazza" profile. *Moot: the profile went with JT's James account in the R9 purge (journal, 2026-11-03).*
@@ -216,6 +217,33 @@ guard is written under it; an item that can't meet its guard by the freeze doesn
    sign-up and add-profile flow from now on. The switch and the classic form stay in the code as
    the rollback (`docs/principles.md` principle 4); off is the emergency fallback, not a planned
    state (`docs/server-setup.md` §11d).*
+
+### Nov 5–12 — UI simplification (added by JT, Nov 5)
+
+Four client-side items, in this order. No server change except item 11's flag, no migration, no
+new dependency. Item 11 is the one that can slip. Decisions: `docs/principles.md`, Decision
+precedents, Nov 5.
+
+8. [ ] **Change history collapsed, Condition 2 kept.** On the profile page, unseen entries render
+   first in a block that never collapses ("New, not yet reviewed (k)", with "I've seen these").
+   Seen ones go in a closed `<details>`, "Earlier changes (N)", or "Change history (N)" when nothing
+   is unseen. N counts only the collapsed entries. A failed load is never collapsed. Tests prove
+   an unseen entry can't sit inside the collapsed list. Screenshots of the owner's view, before and
+   after acknowledging, go in `docs/approvals/img/` before the push. `docs/approvals/conditions.md`
+   gets a "Collapsed history" note.
+9. [ ] **"Add an allergen" as a button** that opens the existing form. The allergen list stays
+   visible, and severity still has no default. A profile with no allergens opens with the form
+   already open.
+10. [ ] **Invites and invite management move to the Circle tab:** the invite forms, the
+   one-time link, and Revoke and Remove go inside each managed circle's card. The profile page
+   keeps one link to it. A new link shows only in the card it was made for (a test).
+11. [ ] **Scan sounds, behind `SCAN_SOUNDS`** (off by default on the server). A neutral beep on a
+   camera read. An alert for "Contains an allergen" and a softer one for "May contain". Nothing for
+   "No listed allergens found" or "Unable to confirm". Generated with Web Audio, with no files and
+   no external service. A per-device toggle in Profile → Account, on by default when the flag is
+   on; unreadable storage counts as off. Never the only signal.
+   **Guard:** a test on JT's iPhone (ringer on and off) passes by Nov 12. Otherwise it deploys
+   with `SCAN_SOUNDS` off.
 
 ### Nov 13 — code freeze
 
