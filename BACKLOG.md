@@ -254,6 +254,13 @@ precedents, Nov 5.
 10. [ ] **Invites and invite management move to the Circle tab:** the invite forms, the
    one-time link, and Revoke and Remove go inside each managed circle's card. The profile page
    keeps one link to it. A new link shows only in the card it was made for (a test).
+   *Built Nov 5 (`client/src/CircleManage.tsx`). Display names only on the tab, as before (the
+   profile page used to show members' email addresses; `docs/principles.md`, Oct 27, "the circle's
+   other lines show display names only"). Checked locally at 390×844, light and dark, on the judge
+   seed as judge1, who owns Maya and co-manages Leo. The profile page's link landed on Maya's card.
+   A link made in Maya's card showed there and not in Leo's. Leo's card said "Sam Okafor — owner"
+   and "You — co-manager", with no Remove. The test invite was cancelled afterwards. Not yet
+   deployed.*
 11. [ ] **Scan sounds, behind `SCAN_SOUNDS`** (off by default on the server). A neutral beep on a
    camera read. An alert for "Contains an allergen" and a softer one for "May contain". Nothing for
    "No listed allergens found" or "Unable to confirm". Generated with Web Audio, with no files and
