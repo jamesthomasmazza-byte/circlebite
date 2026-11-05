@@ -1212,8 +1212,14 @@ deployment; a copy on JT's own encrypted disk is not on it.
 The first clean set is `circlebite-20261103T185330Z`. Every set whose name sorts before it is
 pre-purge. The newest of those is the one taken just before the purge, and is the one kept.
 
+**Done November 5, 2026** (JT; `docs/journal.md`, 2026-11-05). The box had already rotated every
+pre-purge set out, so step 1 came from S3, step 2 had nothing to delete, and step 3 ran with **Show
+versions** off. The Mac holds `circlebite-20261103T184714Z`. Step 4 is after judging.
+
 **1. Keep one pre-purge set on the Mac**, in an encrypted disk image (it holds password hashes and
-the test accounts). On the Mac:
+the test accounts). Local rotation keeps the 7 newest sets (§17.1), so a few days after the purge the box has
+none left: if the `ssh … ls` line below prints nothing, take the set from S3 instead (next block).
+On the Mac:
 
 ```bash
 hdiutil create -encryption AES-256 -size 200m -fs APFS -volname circlebite-prepurge ~/circlebite-prepurge.dmg   # asks for a passphrase: keep it in your password manager
@@ -1222,6 +1228,26 @@ ssh -i ~/.ssh/circlebite-prod.pem ubuntu@circlebite.app 'cd ~/circlebite/backups
 PRE=circlebite-<stamp printed above>
 scp -i ~/.ssh/circlebite-prod.pem "ubuntu@circlebite.app:~/circlebite/backups/$PRE.*" /Volumes/circlebite-prepurge/
 cd /Volumes/circlebite-prepurge && shasum -a 256 -c "$PRE.sha256"   # every file: OK
+cd ~ && hdiutil detach /Volumes/circlebite-prepurge
+```
+
+**1, from S3**, when the box no longer has a pre-purge set (as on November 5). The box can't read
+the bucket (§17.2), so this is the console, as in §17.10:
+
+1. In the S3 console, open `circlebite/` with **Show versions** off and find the newest folder whose
+   name sorts before `circlebite-20261103T185330Z`. That is the set to keep.
+2. Download each of its files, one at a time (the console won't download a multiple selection).
+3. Rename the tarball back if the browser dropped `.gz` (§17.10): `mv <set>.uploads.tar
+   <set>.uploads.tar.gz`. It is still gzip data.
+4. Move the files into the attached image, check them, and remove the plain copies:
+
+```bash
+hdiutil create -encryption AES-256 -size 200m -fs APFS -volname circlebite-prepurge ~/circlebite-prepurge.dmg   # passphrase into your password manager
+hdiutil attach ~/circlebite-prepurge.dmg
+PRE=circlebite-<stamp of the set kept>
+mv ~/Downloads/"$PRE".* /Volumes/circlebite-prepurge/
+cd /Volumes/circlebite-prepurge && shasum -a 256 -c "$PRE.sha256"   # every file: OK
+ls ~/Downloads/"$PRE".* 2>/dev/null                                 # nothing: no unencrypted copy left behind
 cd ~ && hdiutil detach /Volumes/circlebite-prepurge
 ```
 
@@ -1236,19 +1262,20 @@ ls -1 ~/circlebite/backups                                                      
 ~/circlebite/current/scripts/backup-status.sh                                            # still reports the newest set as fresh
 ```
 
-**3. S3, every version.** The box can't delete from the bucket (§17.2), so this is done in the
-console:
+**3. S3.** The box can't delete from the bucket (§17.2), so this is done in the console. **Show
+versions must be off:** with it on, the console won't delete a folder (found November 5).
 
-1. Open the bucket, then `circlebite/`, and turn on **Show versions**.
+1. Open the bucket, then `circlebite/`, with **Show versions** off.
 2. Select every set folder whose name sorts before `circlebite-20261103T185330Z`. Never select that
    one or anything after it.
-3. **Delete**, type `permanently delete`, and confirm.
-4. With **Show versions** still on, check that none of those folders remain, as objects, older
-   versions or delete markers. If any rows remain, select them and delete them the same way.
+3. **Delete** and confirm. With versioning on, this puts a delete marker on each object, and the
+   bytes become noncurrent versions.
+4. Check that only the clean set and later remain in the listing.
 
-If a delete leaves older versions behind anyway, the lifecycle rule (§17.2) permanently deletes
-noncurrent versions 7 days after they become noncurrent, so none outlasts a week. Step 4 is what
-makes it immediate.
+The noncurrent versions still hold the test accounts until the lifecycle rule (§17.2) permanently
+deletes them, 7 days after they became noncurrent. **A week after step 3**, turn **Show versions**
+on and check that none of those folders' versions remain. If some do, select those version rows
+and delete them, typing `permanently delete`.
 
 **4. After November 20, delete the Mac copy:**
 
