@@ -13,7 +13,6 @@ import {
   getCircle,
   getProfile,
   getProfileChanges,
-  profileChangePhotoUrl,
   removeManager,
   revokeFollow,
   updateAllergen,
@@ -25,13 +24,12 @@ import {
   type ShareLevel,
 } from "../lib/api";
 import { AllergenPicker, EMPTY_PICK, isPicked, pickInput, useAllergenChoices, type AllergenPick } from "../AllergenPicker";
+import { ChangeHistory } from "../ChangeHistory";
 import { CopyLink } from "../CopyLink";
 import { useAuth } from "../lib/AuthContext";
 import { listedAllergenMessage, reviewNotice } from "../lib/allergenChoiceCopy";
 import { NO_PENDING_INVITES, PROFILE_CIRCLE_JUST_YOU } from "../lib/emptyStateCopy";
-import { describeChange } from "../lib/profileChangeCopy";
 import { PendingInvites } from "../PendingInvites";
-import { shortDateTime } from "../lib/dateCopy";
 import { SEVERITY_REQUIRED } from "../lib/severityCopy";
 import { SeverityChoice } from "../SeverityChoice";
 
@@ -103,7 +101,7 @@ export function ProfileDetail() {
   // 404s followers. A failed load says so rather than showing an empty, reassuring history.
   const [history, setHistory] = useState<ProfileHistoryEntry[] | null>(null);
   const [historyFailed, setHistoryFailed] = useState(false);
-  const [ackError, setAckError] = useState<string | null>(null);
+  const [ackFailed, setAckFailed] = useState(false);
 
   const refreshHistory = useCallback(async () => {
     if (!id || !canManage) return;
@@ -213,13 +211,13 @@ export function ProfileDetail() {
   // Acknowledges exactly the unseen entries on screen — never "everything up to now", which could
   // swallow one that arrived after this page loaded (migration 0040).
   async function handleAcknowledge() {
-    setAckError(null);
+    setAckFailed(false);
     const shown = (history ?? []).filter((e) => e.unseen).map((e) => e.id);
     try {
       await acknowledgeProfileChanges(id!, shown);
       await refreshHistory();
     } catch {
-      setAckError("Couldn't record that. Try again.");
+      setAckFailed(true);
     }
   }
 
@@ -399,53 +397,15 @@ export function ProfileDetail() {
       )}
 
       {canManage && (
-        <section id="changes" className="change-history" aria-labelledby="change-history-heading">
-          <h2 id="change-history-heading">Change history</h2>
-          {historyFailed && <p role="alert">Couldn't load this profile's change history. Reload the page to try again.</p>}
-          {history && history.length === 0 && <p>No changes recorded yet.</p>}
-          {history && history.some((e) => e.unseen) && (
-            <p>
-              <button type="button" onClick={handleAcknowledge}>
-                I've seen these
-              </button>
-            </p>
-          )}
-          {ackError && <p role="alert">{ackError}</p>}
-          {history && history.length > 0 && (
-            <ol className="change-history__list">
-              {history.map((e) => {
-                const d = describeChange(e, { label: profile.label, isSelf: profile.is_self }, choices ?? []);
-                return (
-                  <li key={e.id} className="change-entry" data-unseen={e.unseen ? "true" : undefined}>
-                    <p className="change-entry__meta">
-                      {e.unseen && <strong className="change-entry__new">New · </strong>}
-                      <time dateTime={e.createdAt}>{shortDateTime(e.createdAt)}</time>
-                    </p>
-                    <p className="change-entry__headline">{d.headline}</p>
-                    {d.details.map((line) => (
-                      <p key={line}>{line}</p>
-                    ))}
-                    {d.check && <p className="change-entry__check">{d.check}</p>}
-                    {e.downgrade?.scannedAt && <p>Scanned {new Date(e.downgrade.scannedAt).toLocaleDateString()}.</p>}
-                    {e.downgrade?.hasPhoto && (
-                      <p>
-                        <a href={profileChangePhotoUrl(id, e.id)} target="_blank" rel="noreferrer">
-                          Label photo sent with the report
-                        </a>
-                      </p>
-                    )}
-                    {d.consequences.map((line) => (
-                      <p key={line} className="change-entry__consequence">
-                        {line}
-                      </p>
-                    ))}
-                    {d.status && <p className="change-entry__status">{d.status}</p>}
-                  </li>
-                );
-              })}
-            </ol>
-          )}
-        </section>
+        <ChangeHistory
+          profileId={id}
+          profile={{ label: profile.label, isSelf: profile.is_self }}
+          choices={choices ?? []}
+          history={history}
+          failed={historyFailed}
+          ackFailed={ackFailed}
+          onAcknowledge={() => void handleAcknowledge()}
+        />
       )}
 
       {canManage && (

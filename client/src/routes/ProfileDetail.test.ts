@@ -33,6 +33,12 @@ test("the allergens come before the name and notes form, and the change history 
   // 2026-10-28 audit: at 390px the Allergens section started about 650px down. Order only.
   const allergens = SOURCE.indexOf("<h2>Allergens</h2>");
   const details = SOURCE.indexOf("<form onSubmit={handleSaveDetails}>");
-  const history = SOURCE.indexOf('<section id="changes"');
+  const history = SOURCE.indexOf("<ChangeHistory");
   assert.ok(allergens > 0 && details > allergens && history > details);
+});
+
+test("acknowledging sends exactly the unseen entries on screen, never everything up to now", () => {
+  // Condition 2 and migration 0040: an entry that arrives after the page loaded must stay unseen.
+  assert.match(SOURCE, /\(history \?\? \[\]\)\.filter\(\(e\) => e\.unseen\)\.map\(\(e\) => e\.id\)/);
+  assert.match(SOURCE, /acknowledgeProfileChanges\(id!, shown\)/);
 });
