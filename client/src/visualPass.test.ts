@@ -26,23 +26,19 @@ test("Profile tab: each managed and followed profile is one card, one link", () 
   assert.equal(page.match(/<Link to=\{`\/profiles\/\$\{p\.id\}`\} className="card">/g)?.length, 2);
 });
 
-test("profile page: allergens and people are cards, and each button has its own line", () => {
+test("profile page: allergens are cards, and Remove has its own line", () => {
   const page = src("./routes/ProfileDetail.tsx");
   assert.match(page, /<ul className="card-list">\s*\{profile\.allergens\.map/);
   // Each allergen's card is its own component since 2026-11-05 (AllergenItem.tsx).
   assert.match(page, /<AllergenItem\s+key=\{a\.id\}/);
   assert.match(src("./AllergenItem.tsx"), /<li className="card allergen-item">/);
-  assert.match(page, /<li key=\{m\.user_id\} className="card">/);
-  assert.match(page, /<li key=\{f\.id\} className="card">/);
-  for (const label of ["Remove", "Revoke"]) {
-    const buttons = [...page.matchAll(new RegExp(`<p className="card__actions">\\s*<button type="button" onClick=\\{[^}]*\\}>\\s*${label}`, "g"))];
-    assert.ok(buttons.length >= 1, `${label} sits in a card__actions line`);
-  }
+  // The people moved to the Circle tab on 2026-11-05 (CircleManage.tsx, the next test).
+  assert.match(src("./AllergenItem.tsx"), /<p className="card__actions">[\s\S]*?\{REMOVE\}[\s\S]*?<\/p>/);
 });
 
 test("Circle tab: members and invites are rows inside the card; circles you're in are card links", () => {
   const page = src("./routes/Circle.tsx");
-  assert.match(page, /<ul className="row-list">/);
+  assert.match(src("./CircleManage.tsx"), /<ul className="row-list circle-members">/);
   assert.match(src("./PendingInvites.tsx"), /<ul className="pending-invites row-list">/);
   assert.match(page, /<Link to=\{`\/profiles\/\$\{p\.id\}`\} className="card">/);
   assert.doesNotMatch(rule(".row-list > li + li"), /--color-(safe|caution|contains|unknown)/);

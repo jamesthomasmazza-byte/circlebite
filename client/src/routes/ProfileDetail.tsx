@@ -6,39 +6,29 @@ import {
   addAllergen,
   ApiRequestError,
   OTHER_ALLERGEN_KEY,
-  createFollowInvite,
-  createManagerInvite,
   deleteAllergen,
   deleteProfile,
-  getCircle,
   getProfile,
   getProfileChanges,
-  removeManager,
-  revokeFollow,
   updateAllergen,
   updateProfile,
   type AllergenInput,
   type Allergen,
-  type CircleData,
   type ProfileDetail as ProfileDetailData,
   type ProfileHistoryEntry,
-  type ShareLevel,
 } from "../lib/api";
 import { AllergenPicker, EMPTY_PICK, isPicked, useAllergenChoices, type AllergenPick } from "../AllergenPicker";
 import { AddAllergen } from "../AddAllergen";
 import { AllergenItem } from "../AllergenItem";
 import { ChangeHistory } from "../ChangeHistory";
-import { CopyLink } from "../CopyLink";
-import { useAuth } from "../lib/AuthContext";
 import { reviewNotice } from "../lib/allergenChoiceCopy";
-import { NO_PENDING_INVITES, PROFILE_CIRCLE_JUST_YOU } from "../lib/emptyStateCopy";
-import { PendingInvites } from "../PendingInvites";
+import { circleCardHref } from "../lib/inviteCopy";
+import { profilePossessive } from "../lib/profileChangeCopy";
 
 export function ProfileDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
   const [profile, setProfile] = useState<ProfileDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -53,11 +43,6 @@ export function ProfileDetail() {
   const [replacementPick, setReplacementPick] = useState<AllergenPick>(EMPTY_PICK);
   const [reviewError, setReviewError] = useState<string | null>(null);
 
-  const [circle, setCircle] = useState<CircleData | null>(null);
-  const [followShareLevel, setFollowShareLevel] = useState<ShareLevel>("all");
-  const [followMessage, setFollowMessage] = useState("");
-  const [lastInviteLink, setLastInviteLink] = useState<string | null>(null);
-  const [circleError, setCircleError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!id) return;
@@ -78,20 +63,6 @@ export function ProfileDetail() {
   }, [refresh]);
 
   const canManage = profile?.access.level === "owner" || profile?.access.level === "co_manager";
-
-  const refreshCircle = useCallback(async () => {
-    if (!id || !canManage) return;
-    try {
-      setCircle(await getCircle(id));
-    } catch {
-      // The circle section just stays empty — the profile itself already loaded fine, so this
-      // isn't worth a page-level error.
-    }
-  }, [id, canManage]);
-
-  useEffect(() => {
-    void refreshCircle();
-  }, [refreshCircle]);
 
   // The change history (Prof. Yoest's Oct 1 conditions) — owner and co-managers only; the server
   // 404s followers. A failed load says so rather than showing an empty, reassuring history.
@@ -206,45 +177,6 @@ export function ProfileDetail() {
     if (!window.confirm(`Delete ${profile!.label}'s profile? This can't be undone.`)) return;
     await deleteProfile(id!);
     navigate("/profiles");
-  }
-
-  async function handleCreateFollowInvite(event: FormEvent) {
-    event.preventDefault();
-    setCircleError(null);
-    try {
-      const { token } = await createFollowInvite(id!, {
-        shareLevel: followShareLevel,
-        message: followMessage.trim() || undefined,
-      });
-      // Shown once — the server never returns the raw token again after this response.
-      setLastInviteLink(`${window.location.origin}/follow/${token}`);
-      setFollowMessage("");
-      await refreshCircle();
-    } catch {
-      setCircleError("Couldn't create the invite. Try again.");
-    }
-  }
-
-  async function handleCreateManagerInvite() {
-    setCircleError(null);
-    try {
-      const { token } = await createManagerInvite(id!);
-      setLastInviteLink(`${window.location.origin}/co-manager/${token}`);
-      await refreshCircle();
-    } catch {
-      setCircleError("Couldn't create the invite. Try again.");
-    }
-  }
-
-  async function handleRevokeFollow(followId: string) {
-    await revokeFollow(id!, followId);
-    await refreshCircle();
-  }
-
-  async function handleRemoveManager(userId: string) {
-    if (!window.confirm("Remove this co-manager's access?")) return;
-    await removeManager(id!, userId);
-    await refreshCircle();
   }
 
   // An allergen from before the list (migration 0046) that a manager needs to settle: shown on its
@@ -373,83 +305,16 @@ export function ProfileDetail() {
         />
       )}
 
+      {/* Invites and who's in the circle live on the Circle tab since 2026-11-05 (CircleManage.tsx);
+          id="circle" stays, so an old link still lands here, on the way there. */}
       {canManage && (
         <section id="circle">
           <h2>Circle</h2>
-
-          {lastInviteLink && <CopyLink url={lastInviteLink} />}
-          {circleError && <p role="alert">{circleError}</p>}
-
-          <h3>Invite someone to follow this profile</h3>
-          <form onSubmit={handleCreateFollowInvite}>
-            <select
-              aria-label="What they can see"
-              value={followShareLevel}
-              onChange={(e) => setFollowShareLevel(e.target.value as ShareLevel)}
-            >
-              <option value="all">Full profile</option>
-              <option value="severe_only">Severe allergens only</option>
-            </select>
-            <input
-              aria-label="Message (optional)"
-              placeholder="Message (optional)"
-              value={followMessage}
-              onChange={(e) => setFollowMessage(e.target.value)}
-            />
-            <button type="submit">Create invite link</button>
-          </form>
-
           <p>
-            <button type="button" onClick={handleCreateManagerInvite}>
-              Invite a co-manager
-            </button>
+            <Link to={circleCardHref(id)}>
+              Invite people or manage {profilePossessive({ label: profile.label, isSelf: profile.is_self })} circle
+            </Link>
           </p>
-
-          {circle && (
-            <>
-              <h3>Pending invites</h3>
-              {circle.pendingFollows.length === 0 && circle.pendingManagerInvites.length === 0 ? (
-                <p>{NO_PENDING_INVITES}</p>
-              ) : (
-                <PendingInvites
-                  profileId={id!}
-                  circle={circle}
-                  isOwner={isOwner}
-                  viewerId={user?.id}
-                  onChanged={refreshCircle}
-                />
-              )}
-
-              <h3>People who can see this profile</h3>
-              {circle.followers.length === 0 && circle.managers.length === 0 && <p>{PROFILE_CIRCLE_JUST_YOU}</p>}
-              <ul className="card-list">
-                {circle.managers.map((m) => (
-                  <li key={m.user_id} className="card">
-                    {m.display_name} — co-manager
-                    <span className="card__meta card__line">{m.email}</span>
-                    {isOwner && (
-                      <p className="card__actions">
-                        <button type="button" onClick={() => handleRemoveManager(m.user_id)}>
-                          Remove
-                        </button>
-                      </p>
-                    )}
-                  </li>
-                ))}
-                {circle.followers.map((f) => (
-                  <li key={f.id} className="card">
-                    {f.display_name} — follows ({f.share_level === "severe_only" ? "severe only" : "full profile"})
-                    <span className="card__meta card__line">{f.email}</span>
-                    <p className="card__actions">
-                      <button type="button" onClick={() => handleRevokeFollow(f.id)}>
-                        Revoke
-                      </button>
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
         </section>
       )}
 

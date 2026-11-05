@@ -1,28 +1,21 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
+import { CircleManage } from "../CircleManage";
 import { AskToFollow, FollowRequests } from "../CircleRequests";
 import { getCircle, listProfiles, type CircleData, type ProfileSummary } from "../lib/api";
 import { useAuth } from "../lib/AuthContext";
-import { CIRCLE_JUST_YOU } from "../lib/emptyStateCopy";
-import { profilePossessive } from "../lib/profileChangeCopy";
 import { addProfileHref } from "../lib/profileSections";
-import { PendingInvites } from "../PendingInvites";
 import { useScanningFor } from "../TabShell";
 
 type ManagedCircle = { profile: ProfileSummary; circle: CircleData | null };
 
-/** "Sam — owner" on a circle you co-manage; nothing on your own, where it would only say "You". */
-export function circleOwnerLine(circle: Pick<CircleData, "owner">, viewerId: string | undefined): string | null {
-  if (!circle.owner || circle.owner.user_id === viewerId) return null;
-  return `${circle.owner.display_name} — owner`;
-}
-
 /**
  * The Circle tab (2026-10-23): for each profile you manage, who's in its circle and which invites
  * nobody has accepted yet; then the profiles you follow. Invites waiting can be cancelled or given a
- * new link here (2026-10-26, PendingInvites.tsx); making invites and removing people stay on the
- * profile page, one link away.
+ * new link here (2026-10-26, PendingInvites.tsx). Since 2026-11-05 making invites and removing
+ * people are here too, one CircleManage per card (BACKLOG item 10); the profile page links to its
+ * card (`#circle-<id>`).
  *
  * With CIRCLE_REQUESTS on (2026-10-27): an owner's follow requests come first, to approve or
  * decline (CircleRequests.tsx; the shell holds them, for Scan's notice and this tab's badge), and
@@ -34,6 +27,7 @@ export function Circle() {
   const [managed, setManaged] = useState<ManagedCircle[] | null>(null);
   const [followed, setFollowed] = useState<ProfileSummary[]>([]);
   const [loadError, setLoadError] = useState(false);
+  const location = useLocation();
 
   // After an approval the new follower shows in that circle, so every circle is read again.
   async function afterRequestDecided() {
@@ -68,6 +62,15 @@ export function Circle() {
     };
   }, []);
 
+  // Arriving from a profile page's link (/circle#circle-<id>): the router doesn't scroll to a hash,
+  // and the card exists only once the circles have loaded. A jump, not a smooth scroll, for the
+  // reason in ProfileDetail.tsx's #changes.
+  useEffect(() => {
+    if (managed && location.hash.startsWith("#circle-")) {
+      document.getElementById(location.hash.slice(1))?.scrollIntoView({ behavior: "instant", block: "start" });
+    }
+  }, [managed, location.hash]);
+
   if (loadError) {
     return (
       <main>
@@ -88,55 +91,21 @@ export function Circle() {
         </p>
       )}
 
-      {managed.map(({ profile, circle }) => {
-        const whose = profilePossessive({ label: profile.label, isSelf: profile.is_self });
-        const waiting = circle ? circle.pendingFollows.length + circle.pendingManagerInvites.length : 0;
-        return (
-          <section key={profile.id} className="circle-card" aria-labelledby={`circle-${profile.id}`}>
-            <h2 id={`circle-${profile.id}`}>{profile.is_self ? "Your circle" : `${profile.label}'s circle`}</h2>
-            {!circle ? (
-              <p role="alert">Couldn't load this circle.</p>
-            ) : (
-              <>
-                {circle.managers.length === 0 && circle.followers.length === 0 ? (
-                  <p>{CIRCLE_JUST_YOU}</p>
-                ) : (
-                  <ul className="row-list">
-                    {/* Someone else's profile that you co-manage: say whose (circleOwnerLine). */}
-                    {circleOwnerLine(circle, user?.id) && <li>{circleOwnerLine(circle, user?.id)}</li>}
-                    {circle.managers.map((m) => (
-                      <li key={m.user_id}>
-                        {/* A co-manager sees themselves in the list — say so, not their own name. */}
-                        {m.user_id === user?.id ? "You" : m.display_name} — co-manager
-                      </li>
-                    ))}
-                    {circle.followers.map((f) => (
-                      <li key={f.id}>
-                        {f.display_name} — follows ({f.share_level === "severe_only" ? "severe allergens only" : "full profile"})
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {waiting > 0 && (
-                  <>
-                    <h3>Invites waiting to be accepted</h3>
-                    <PendingInvites
-                      profileId={profile.id}
-                      circle={circle}
-                      isOwner={profile.relationship === "owner"}
-                      viewerId={user?.id}
-                      onChanged={() => reloadCircle(profile.id)}
-                    />
-                  </>
-                )}
-              </>
-            )}
-            <p>
-              <Link to={`/profiles/${profile.id}#circle`}>Invite people or manage {whose} circle</Link>
-            </p>
-          </section>
-        );
-      })}
+      {managed.map(({ profile, circle }) => (
+        <section
+          key={profile.id}
+          id={`circle-${profile.id}`}
+          className="circle-card"
+          aria-labelledby={`circle-${profile.id}-heading`}
+        >
+          <h2 id={`circle-${profile.id}-heading`}>{profile.is_self ? "Your circle" : `${profile.label}'s circle`}</h2>
+          {!circle ? (
+            <p role="alert">Couldn't load this circle.</p>
+          ) : (
+            <CircleManage profile={profile} circle={circle} viewerId={user?.id} onChanged={() => reloadCircle(profile.id)} />
+          )}
+        </section>
+      ))}
 
       {followed.length > 0 && (
         <section aria-labelledby="circles-youre-in">

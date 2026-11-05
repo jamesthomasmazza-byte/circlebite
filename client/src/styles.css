@@ -1013,6 +1013,13 @@ th {
   margin-top: var(--space-1);
 }
 
+/* Revoke and Remove on the Circle tab (2026-11-05): their own line under the name, like the
+   invites' buttons above. */
+.circle-members button {
+  display: block;
+  margin-top: var(--space-1);
+}
+
 .copy-link {
   margin-block: var(--space-2) var(--space-4);
 }

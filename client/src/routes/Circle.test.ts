@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { circleOwnerLine } from "./Circle";
+import { circleOwnerLine } from "../lib/inviteCopy";
 
 test("a circle you co-manage names its owner; your own circle doesn't name you", () => {
   const circle = { owner: { user_id: "sam", display_name: "Sam" } };
