@@ -18,14 +18,15 @@ import {
   updateAllergen,
   updateProfile,
   type AllergenInput,
+  type Allergen,
   type CircleData,
   type ProfileDetail as ProfileDetailData,
   type ProfileHistoryEntry,
-  type Severity,
   type ShareLevel,
 } from "../lib/api";
 import { AllergenPicker, EMPTY_PICK, isPicked, useAllergenChoices, type AllergenPick } from "../AllergenPicker";
 import { AddAllergen } from "../AddAllergen";
+import { AllergenItem } from "../AllergenItem";
 import { ChangeHistory } from "../ChangeHistory";
 import { CopyLink } from "../CopyLink";
 import { useAuth } from "../lib/AuthContext";
@@ -175,8 +176,9 @@ export function ProfileDetail() {
     }
   }
 
-  async function handleAllergenSeverity(allergenId: string, severity: Severity) {
-    await updateAllergen(id!, allergenId, { severity });
+  // Severity, traces or notes, from a row's details (AllergenItem.tsx shows a failure on the row).
+  async function handleUpdateAllergen(allergenId: string, input: Partial<AllergenInput>) {
+    await updateAllergen(id!, allergenId, input);
     await refresh();
     await refreshHistory();
   }
@@ -245,6 +247,61 @@ export function ProfileDetail() {
     await refreshCircle();
   }
 
+  // An allergen from before the list (migration 0046) that a manager needs to settle: shown on its
+  // row without a tap (AllergenItem.tsx renders it outside the row's details).
+  function reviewFor(a: Allergen) {
+    if (!canManage || !a.key_needs_review || !choices) return null;
+    const notice = reviewNotice(a, choices.find((c) => c.key === a.allergen_key));
+    return (
+      <div role="note" className="allergen-review">
+        <p>{notice.text}</p>
+        {notice.hint && <p className="allergen-picker__hint">{notice.hint}</p>}
+        {choosingFor === a.id ? (
+          <>
+            <AllergenPicker
+              choices={choices}
+              value={replacementPick}
+              onChange={setReplacementPick}
+              allowOther={false}
+              label={`Replace “${a.name}” with`}
+            />
+            <button
+              type="button"
+              disabled={!isPicked(replacementPick)}
+              onClick={() => handleSettleAllergen(a.id, replacementPick.key)}
+            >
+              Use this
+            </button>{" "}
+            <button type="button" onClick={() => setChoosingFor(null)}>
+              Cancel
+            </button>
+          </>
+        ) : (
+          <p>
+            {notice.keepLabel && (
+              <button
+                type="button"
+                onClick={() => handleSettleAllergen(a.id, a.allergen_key ?? OTHER_ALLERGEN_KEY)}
+              >
+                {notice.keepLabel}
+              </button>
+            )}{" "}
+            <button
+              type="button"
+              onClick={() => {
+                setChoosingFor(a.id);
+                setReplacementPick(EMPTY_PICK);
+              }}
+            >
+              {notice.chooseLabel}
+            </button>
+          </p>
+        )}
+        {reviewError && <p role="alert">{reviewError}</p>}
+      </div>
+    );
+  }
+
   return (
     <main>
       <p>
@@ -265,83 +322,17 @@ export function ProfileDetail() {
       {/* First, above the name and notes: what the page is for (2026-10-28 audit — at 390px it
           started about 650px down). Order only. */}
       <h2>Allergens</h2>
+      {/* Compact rows (2026-11-05, AllergenItem.tsx); the "needs a look" notice stays on the row, outside its details. */}
       <ul className="card-list">
         {profile.allergens.map((a) => (
-          <li key={a.id} className="card">
-            {a.name} — {canManage ? (
-              <select
-                aria-label={`Severity of ${a.name}`}
-                value={a.severity}
-                onChange={(e) => handleAllergenSeverity(a.id, e.target.value as Severity)}
-              >
-                <option value="mild">Mild</option>
-                <option value="moderate">Moderate</option>
-                <option value="severe">Severe</option>
-              </select>
-            ) : (
-              a.severity
-            )}
-            {a.treat_traces_as_unsafe && " · traces treated as unsafe"}
-            {/* On its own line, never wrapped into the sentence above (the visual pass, 2026-10-26). */}
-            {canManage && (
-              <p className="card__actions">
-                <button type="button" onClick={() => handleRemoveAllergen(a.id)}>
-                  Remove
-                </button>
-              </p>
-            )}
-            {canManage && a.key_needs_review && choices && (() => {
-              const notice = reviewNotice(a, choices.find((c) => c.key === a.allergen_key));
-              return (
-                <div role="note" className="allergen-review">
-                  <p>{notice.text}</p>
-                  {notice.hint && <p className="allergen-picker__hint">{notice.hint}</p>}
-                  {choosingFor === a.id ? (
-                    <>
-                      <AllergenPicker
-                        choices={choices}
-                        value={replacementPick}
-                        onChange={setReplacementPick}
-                        allowOther={false}
-                        label={`Replace “${a.name}” with`}
-                      />
-                      <button
-                        type="button"
-                        disabled={!isPicked(replacementPick)}
-                        onClick={() => handleSettleAllergen(a.id, replacementPick.key)}
-                      >
-                        Use this
-                      </button>{" "}
-                      <button type="button" onClick={() => setChoosingFor(null)}>
-                        Cancel
-                      </button>
-                    </>
-                  ) : (
-                    <p>
-                      {notice.keepLabel && (
-                        <button
-                          type="button"
-                          onClick={() => handleSettleAllergen(a.id, a.allergen_key ?? OTHER_ALLERGEN_KEY)}
-                        >
-                          {notice.keepLabel}
-                        </button>
-                      )}{" "}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setChoosingFor(a.id);
-                          setReplacementPick(EMPTY_PICK);
-                        }}
-                      >
-                        {notice.chooseLabel}
-                      </button>
-                    </p>
-                  )}
-                  {reviewError && <p role="alert">{reviewError}</p>}
-                </div>
-              );
-            })()}
-          </li>
+          <AllergenItem
+            key={a.id}
+            allergen={a}
+            canManage={canManage}
+            onUpdate={(input) => handleUpdateAllergen(a.id, input)}
+            onRemove={() => handleRemoveAllergen(a.id)}
+            review={reviewFor(a)}
+          />
         ))}
       </ul>
 

@@ -743,7 +743,8 @@ th {
 }
 
 /* Severity differs by fill as well as word: severe is solid, moderate outlined, mild dashed. */
-.allergen-row__severity {
+.allergen-row__severity,
+.severity-pill {
   padding: 0.0625rem var(--space-2);
   border: 2px solid var(--color-text);
   border-radius: var(--radius-sm);
@@ -753,12 +754,14 @@ th {
   text-transform: uppercase;
 }
 
-.allergen-row__severity[data-severity="severe"] {
+.allergen-row__severity[data-severity="severe"],
+.severity-pill[data-severity="severe"] {
   background: var(--color-text);
   color: var(--color-bg); /* the text/bg pair, inverted */
 }
 
-.allergen-row__severity[data-severity="mild"] {
+.allergen-row__severity[data-severity="mild"],
+.severity-pill[data-severity="mild"] {
   border-style: dashed;
   font-weight: 600;
 }
@@ -1142,6 +1145,45 @@ th {
 /* An allergen from before the list that needs a manager's look (migration 0046). */
 .allergen-review {
   margin-top: var(--space-2);
+}
+
+/* A profile page's allergen as one compact row (2026-11-05, AllergenItem.tsx): name, the verdict
+   card's severity pill (.severity-pill, styled with .allergen-row__severity above) and the traces
+   setting, always visible; the controls are in the row's own <details>, which sits inside the card
+   without a second border. */
+.allergen-item details {
+  margin: 0;
+  border: 0;
+  background: none;
+}
+
+.allergen-item summary {
+  padding: var(--space-1) 0;
+}
+
+.allergen-item details > :not(summary) {
+  margin-inline: 0;
+}
+
+.allergen-item__line {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+}
+
+.allergen-item__traces {
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.allergen-item__body {
+  padding-top: var(--space-2);
+}
+
+.allergen-item__body label {
+  display: block;
+  margin-bottom: var(--space-2);
 }
 
 /* A link that does what a button does — a profile page's "Scan for" (2026-10-25). Looks like the

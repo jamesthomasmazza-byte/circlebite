@@ -29,7 +29,9 @@ test("Profile tab: each managed and followed profile is one card, one link", () 
 test("profile page: allergens and people are cards, and each button has its own line", () => {
   const page = src("./routes/ProfileDetail.tsx");
   assert.match(page, /<ul className="card-list">\s*\{profile\.allergens\.map/);
-  assert.match(page, /<li key=\{a\.id\} className="card">/);
+  // Each allergen's card is its own component since 2026-11-05 (AllergenItem.tsx).
+  assert.match(page, /<AllergenItem\s+key=\{a\.id\}/);
+  assert.match(src("./AllergenItem.tsx"), /<li className="card allergen-item">/);
   assert.match(page, /<li key=\{m\.user_id\} className="card">/);
   assert.match(page, /<li key=\{f\.id\} className="card">/);
   for (const label of ["Remove", "Revoke"]) {

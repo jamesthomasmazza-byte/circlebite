@@ -19,9 +19,11 @@ function insideLabel(source: string, at: number): boolean {
 
 // The add-allergen form moved into its own file (2026-11-05), still on this page.
 const ADD_ALLERGEN_SOURCE = readFileSync(new URL("../AddAllergen.tsx", import.meta.url), "utf8");
+// And each allergen's row, with its controls, since 2026-11-05.
+const ALLERGEN_ITEM_SOURCE = readFileSync(new URL("../AllergenItem.tsx", import.meta.url), "utf8");
 
 test("every select, input and textarea on the profile page has an accessible name", () => {
-  const sources = [SOURCE, ADD_ALLERGEN_SOURCE];
+  const sources = [SOURCE, ADD_ALLERGEN_SOURCE, ALLERGEN_ITEM_SOURCE];
   assert.ok(sources.flatMap(controls).length >= 6, "the page's controls were found");
   for (const source of sources) {
     for (const c of controls(source)) {
@@ -31,7 +33,7 @@ test("every select, input and textarea on the profile page has an accessible nam
 });
 
 test("each allergen's severity dropdown is named after its allergen", () => {
-  assert.match(SOURCE, /aria-label=\{`Severity of \$\{a\.name\}`\}/);
+  assert.match(ALLERGEN_ITEM_SOURCE, /aria-label=\{`Severity of \$\{a\.name\}`\}/);
 });
 
 test("the allergens come before the name and notes form, and the change history after both", () => {
