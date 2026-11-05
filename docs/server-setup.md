@@ -122,7 +122,7 @@ Keys that live there now: `DATABASE_URL` (set when the database was created, §5
 `SESSION_SECRET` (generated on the box with `openssl rand -hex 32`, appended when the app was first
 deployed, §7 below), `NODE_ENV=production` / `PORT=3000`, `OFF_USER_AGENT` (appended when the
 scan feature deployed — Open Food Facts requires a descriptive user agent on every request),
-`UPLOAD_DIR` (§8), `COMMUNITY_CORRECTIONS` (§11), `CIRCLE_ESCALATIONS` (§11a), `SCANNER_REGION` (§11b), `CIRCLE_REQUESTS` (§11c), `GUIDED_SETUP` (§11d), `LABEL_SCAN`, the AI keys listed in
+`UPLOAD_DIR` (§8), `COMMUNITY_CORRECTIONS` (§11), `CIRCLE_ESCALATIONS` (§11a), `SCANNER_REGION` (§11b), `CIRCLE_REQUESTS` (§11c), `GUIDED_SETUP` (§11d), `SCAN_SOUNDS` (§11e), `LABEL_SCAN`, the AI keys listed in
 `.env.example`, and for backups (§17) `BACKUP_S3_BUCKET` — a name, not a secret, kept here so no
 bucket name is ever in the repo — and `RESTORE_TEST_DB_PASSWORD`, generated on the box. `.env.example`
 is the complete list.
@@ -620,6 +620,35 @@ question at a time" (see the note under the `.env` keys above).
 
 The finish screen's "Try a sample scan" needs the judge seed's synthetic products
 (`npm run seed:judge`); without them the sample scan shows "Unable to confirm".
+
+## 11e. Scan sounds — switch
+
+With `SCAN_SOUNDS=on`, Scan plays sounds generated in the browser (Web Audio; no files, no external
+service): a short neutral beep when the camera reads a barcode, an alert for "Contains an allergen",
+a softer one for "May contain", and nothing for "No listed allergens found" or "Unable to confirm".
+The weaker claim is never the louder one (`docs/principles.md`, Decision precedents, Nov 5). Each
+device has its own setting in Profile → Account, on by default while the switch is on; a browser
+that can't store it counts as off. Never the only signal: the card is unchanged. On an iPhone the
+silent switch mutes it. Off by default; off hides the setting and plays nothing. No data involved.
+
+**Before turning it on:** JT's iPhone check, ringer on and off (BACKLOG item 11): the read beep,
+a "Contains" card, a "May contain" card, and silence on a clean card.
+
+**Turn it on:**
+
+```bash
+grep -q '^SCAN_SOUNDS=' ~/circlebite/.env \
+  && sed -i 's/^SCAN_SOUNDS=.*/SCAN_SOUNDS=on/' ~/circlebite/.env \
+  || echo "SCAN_SOUNDS=on" >> ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
+**Turn it off** — silent again on each phone's next page load:
+
+```bash
+sed -i 's/^SCAN_SOUNDS=.*/SCAN_SOUNDS=off/' ~/circlebite/.env
+sudo systemctl restart circlebite
+```
 
 ## 12. Admin access — the AI accuracy page
 

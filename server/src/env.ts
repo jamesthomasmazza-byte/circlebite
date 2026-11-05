@@ -97,4 +97,9 @@ export const env = {
   // by default; off, every "Add a profile" and "Create one" opens the classic form as before. Only
   // the client reads it, via GET /me.
   guidedSetup: parseSwitch("GUIDED_SETUP", process.env.GUIDED_SETUP, false),
+  // Scan sounds (client lib/scanSounds.ts, 2026-11-05): a beep on a camera read, an alert for
+  // "Contains an allergen", a softer one for "May contain", nothing for the other two. Generated in
+  // the browser; nothing on the server depends on it. Off by default, and off hides the setting and
+  // plays nothing. Only the client reads it, via GET /me.
+  scanSounds: parseSwitch("SCAN_SOUNDS", process.env.SCAN_SOUNDS, false),
 };

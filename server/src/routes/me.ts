@@ -26,6 +26,8 @@ meRouter.get("/me", requireAuth, (req, res) => {
     circleRequestsEnabled: env.circleRequests,
     // The guided profile setup's switch, the same free field.
     guidedSetupEnabled: env.guidedSetup,
+    // Scan sounds' switch, the same free field.
+    scanSoundsEnabled: env.scanSounds,
   });
 });
 

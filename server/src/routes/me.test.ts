@@ -60,3 +60,14 @@ test("GET /me exposes guidedSetupEnabled from env.guidedSetup", () => {
 
   assert.equal(body?.guidedSetupEnabled, env.guidedSetup);
 });
+
+test("GET /me exposes scanSoundsEnabled from env.scanSounds", () => {
+  const handler = findMeHandler();
+  const req = { user: { id: "u1", email: "a@example.com", displayName: "A", isAdmin: false }, session: { id: "s1", actingProfileId: null } };
+  let body: { scanSoundsEnabled?: boolean } | undefined;
+  const res = { json: (b: unknown) => { body = b as typeof body; } };
+
+  handler(req, res);
+
+  assert.equal(body?.scanSoundsEnabled, env.scanSounds);
+});
