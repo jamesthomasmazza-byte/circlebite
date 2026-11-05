@@ -176,7 +176,8 @@ export type AllergenInput = {
   key: string;
   name?: string;
   severity: Severity;
-  notes?: string;
+  // null clears it (server routes/profiles.ts PATCH).
+  notes?: string | null;
   treatTracesAsUnsafe?: boolean;
 };
 
