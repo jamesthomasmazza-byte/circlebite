@@ -374,14 +374,17 @@ same email reported the matcher fixes, the R9 purge and the landing page.
 - **"Send me the names of the tests that prove two things: two judges reporting the same allergen
   on 2990000000083 each stay at one family, and a judge's report on a real product never moves a
   real family's count."** The three missing pieces were added November 4 (`1ab3d7c`, `db3ac5d`,
-  `5a3d6dc`). The names are drafted for the email, which waits on the paper test. Not yet sent.
+  `5a3d6dc`). **Sent November 5** (`2026-11-05-jt-judge-tests-and-card.md`): two tests for each
+  claim, by file and name.
 - **"Update JUDGES.md to show the single barcode."** Done October 29 in `f256065`: the reporter row
   gives `2990000000083` for every judge.
 - **"Put 2990000000083 on a one-page judge card as a printed barcode. Print the digits underneath,
   and give judges a way to type them in."** **Built November 4** (`ffa7053`, `3afd9fa`):
   `docs/judges/judge-card.html`, as Code 128, because the shared number's GTIN check digit is
   deliberately invalid (`docs/judge-card-plan.md`). On JT's iPhone, off a laptop screen, it decoded
-  to the seed product (journal, 2026-11-04). Off paper: printing November 5. Not yet sent to him.
+  to the seed product (journal, 2026-11-04). **Sent November 5** as a PDF, in the same email.
+  **Still owed:** the paper scan. The email says it isn't tested yet and promises to confirm it
+  before judging (`BACKLOG.md`, "Week of Nov 16 — judges").
 - **"After the reseed, two lines confirming it held on production."** Owed after a reseed. The
   November 3 plain reseed may already make it checkable; the judging-week reseed is the one he
   names.
