@@ -268,6 +268,17 @@ precedents, Nov 5.
    on; unreadable storage counts as off. Never the only signal.
    **Guard:** a test on JT's iPhone (ringer on and off) passes by Nov 12. Otherwise it deploys
    with `SCAN_SOUNDS` off.
+   *Built Nov 5: `SCAN_SOUNDS` on `GET /me` (`docs/server-setup.md` §11e), `client/src/lib/scanSounds.ts`
+   (the mapping, tones, the louder-only rule and the setting), `client/src/scanAudio.ts` (Web
+   Audio, unlocked by the person's own taps on Scan), `client/src/ScanSoundsSetting.tsx`. Checked
+   locally in headless Chromium, with the switch forced on in that browser only, recording each
+   oscillator the page started: Crunchy Peanut Bar ("Contains") played three square pulses, Oat
+   Biscuits ("May contain") one triangle tone, Plain Rice Crackers ("No listed allergens found")
+   nothing. With the device setting off, nothing; with the switch off, nothing, and no setting
+   shown. Not checked locally: the camera's read beep (no camera in headless Chromium) and "Unable
+   to confirm" (an unknown barcode would call Open Food Facts), so both rest on the tests.
+   **Still owed before switching it on:** JT's iPhone check: ringer on and off, read beep,
+   Contains, May contain, and silence on a clean card. Deploys with `SCAN_SOUNDS` off.*
 
 ### Nov 13 — code freeze
 
