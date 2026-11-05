@@ -40,7 +40,8 @@ test("neither form starts an allergen with a severity", () => {
   // The add-profile form's rows start from lib/allergenDrafts.ts (2026-10-26).
   const profiles = readFileSync(new URL("../routes/Profiles.tsx", import.meta.url), "utf8");
   const drafts = readFileSync(new URL("./allergenDrafts.ts", import.meta.url), "utf8");
-  const detail = readFileSync(new URL("../routes/ProfileDetail.tsx", import.meta.url), "utf8");
+  // The profile page's add form is in AddAllergen.tsx since 2026-11-05.
+  const detail = readFileSync(new URL("../AddAllergen.tsx", import.meta.url), "utf8");
   assert.match(drafts, /return \{ id: nextId\+\+, pick: EMPTY_PICK, severity: null, treatTracesAsUnsafe: true \};/);
   assert.match(profiles, /useState<AllergenDraft\[\]>\(\[emptyDraft\(\)\]\)/);
   assert.match(detail, /useState<Severity \| null>\(null\)/);

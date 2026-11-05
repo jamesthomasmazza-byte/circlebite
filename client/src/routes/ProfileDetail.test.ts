@@ -17,11 +17,16 @@ function insideLabel(source: string, at: number): boolean {
   return (before.match(/<label\b/g)?.length ?? 0) > (before.match(/<\/label>/g)?.length ?? 0);
 }
 
+// The add-allergen form moved into its own file (2026-11-05), still on this page.
+const ADD_ALLERGEN_SOURCE = readFileSync(new URL("../AddAllergen.tsx", import.meta.url), "utf8");
+
 test("every select, input and textarea on the profile page has an accessible name", () => {
-  const found = controls(SOURCE);
-  assert.ok(found.length >= 6, "the page's controls were found");
-  for (const c of found) {
-    assert.ok(/aria-label=/.test(c.text) || insideLabel(SOURCE, c.at), `unnamed <${c.tag}>: ${c.text.slice(0, 80)}`);
+  const sources = [SOURCE, ADD_ALLERGEN_SOURCE];
+  assert.ok(sources.flatMap(controls).length >= 6, "the page's controls were found");
+  for (const source of sources) {
+    for (const c of controls(source)) {
+      assert.ok(/aria-label=/.test(c.text) || insideLabel(source, c.at), `unnamed <${c.tag}>: ${c.text.slice(0, 80)}`);
+    }
   }
 });
 
@@ -41,4 +46,11 @@ test("acknowledging sends exactly the unseen entries on screen, never everything
   // Condition 2 and migration 0040: an entry that arrives after the page loaded must stay unseen.
   assert.match(SOURCE, /\(history \?\? \[\]\)\.filter\(\(e\) => e\.unseen\)\.map\(\(e\) => e\.id\)/);
   assert.match(SOURCE, /acknowledgeProfileChanges\(id!, shown\)/);
+});
+
+test("the allergen list comes before the add button, and an empty profile starts with the form open", () => {
+  const list = SOURCE.indexOf("{profile.allergens.map(");
+  const add = SOURCE.indexOf("<AddAllergen");
+  assert.ok(list > 0 && add > list);
+  assert.match(SOURCE, /startOpen=\{profile\.allergens\.length === 0\}/);
 });

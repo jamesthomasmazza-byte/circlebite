@@ -17,21 +17,21 @@ import {
   revokeFollow,
   updateAllergen,
   updateProfile,
+  type AllergenInput,
   type CircleData,
   type ProfileDetail as ProfileDetailData,
   type ProfileHistoryEntry,
   type Severity,
   type ShareLevel,
 } from "../lib/api";
-import { AllergenPicker, EMPTY_PICK, isPicked, pickInput, useAllergenChoices, type AllergenPick } from "../AllergenPicker";
+import { AllergenPicker, EMPTY_PICK, isPicked, useAllergenChoices, type AllergenPick } from "../AllergenPicker";
+import { AddAllergen } from "../AddAllergen";
 import { ChangeHistory } from "../ChangeHistory";
 import { CopyLink } from "../CopyLink";
 import { useAuth } from "../lib/AuthContext";
-import { listedAllergenMessage, reviewNotice } from "../lib/allergenChoiceCopy";
+import { reviewNotice } from "../lib/allergenChoiceCopy";
 import { NO_PENDING_INVITES, PROFILE_CIRCLE_JUST_YOU } from "../lib/emptyStateCopy";
 import { PendingInvites } from "../PendingInvites";
-import { SEVERITY_REQUIRED } from "../lib/severityCopy";
-import { SeverityChoice } from "../SeverityChoice";
 
 export function ProfileDetail() {
   const { id } = useParams<{ id: string }>();
@@ -46,16 +46,11 @@ export function ProfileDetail() {
   const [notes, setNotes] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const [newPick, setNewPick] = useState<AllergenPick>(EMPTY_PICK);
   const choices = useAllergenChoices();
   // The allergen whose "Choose another" picker is open, and what's picked in it.
   const [choosingFor, setChoosingFor] = useState<string | null>(null);
   const [replacementPick, setReplacementPick] = useState<AllergenPick>(EMPTY_PICK);
   const [reviewError, setReviewError] = useState<string | null>(null);
-  // Unset until a manager chooses (lib/severityCopy.ts), and unset again after each add.
-  const [newSeverity, setNewSeverity] = useState<Severity | null>(null);
-  const [newTraces, setNewTraces] = useState(true);
-  const [addError, setAddError] = useState<string | null>(null);
 
   const [circle, setCircle] = useState<CircleData | null>(null);
   const [followShareLevel, setFollowShareLevel] = useState<ShareLevel>("all");
@@ -154,27 +149,11 @@ export function ProfileDetail() {
     }
   }
 
-  async function handleAddAllergen(event: FormEvent) {
-    event.preventDefault();
-    setAddError(null);
-    if (!isPicked(newPick)) return;
-    if (newSeverity === null) {
-      setAddError(SEVERITY_REQUIRED);
-      return;
-    }
-    try {
-      await addAllergen(id!, { ...pickInput(newPick), severity: newSeverity, treatTracesAsUnsafe: newTraces });
-      setNewPick(EMPTY_PICK);
-      setNewSeverity(null);
-      await refresh();
-      await refreshHistory();
-    } catch (err) {
-      setAddError(
-        err instanceof ApiRequestError && err.message === "listed_allergen"
-          ? listedAllergenMessage(newPick.otherName.trim(), String(err.detail.displayName))
-          : "Couldn't add that allergen — it may already be on this profile.",
-      );
-    }
+  // Errors go back to the form (AddAllergen.tsx), which says what went wrong.
+  async function handleAddAllergen(input: AllergenInput) {
+    await addAllergen(id!, input);
+    await refresh();
+    await refreshHistory();
   }
 
   // Settles an allergen from before the list (migration 0046): keep the match (a rename to the
@@ -367,16 +346,11 @@ export function ProfileDetail() {
       </ul>
 
       {canManage && (
-        <form onSubmit={handleAddAllergen}>
-          {choices && <AllergenPicker choices={choices} value={newPick} onChange={setNewPick} label="Add an allergen" />}
-          <SeverityChoice name="new-allergen-severity" value={newSeverity} onChange={setNewSeverity} required />
-          <label>
-            <input type="checkbox" checked={newTraces} onChange={(e) => setNewTraces(e.target.checked)} />
-            Treat traces as unsafe
-          </label>
-          {addError && <p role="alert">{addError}</p>}
-          <button type="submit">Add allergen</button>
-        </form>
+        <AddAllergen
+          choices={choices}
+          startOpen={profile.allergens.length === 0}
+          onAdd={handleAddAllergen}
+        />
       )}
 
       {canManage ? (
