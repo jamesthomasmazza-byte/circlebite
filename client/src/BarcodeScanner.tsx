@@ -43,8 +43,10 @@ export const BarcodeScanner = forwardRef<
     onOfferLabelPhoto?: () => void;
     region?: boolean;
     onBusyChange?: (busy: boolean) => void;
+    /** The moment of the read, with the vibration, before "Got it" hands over (Scan's beep). */
+    onRead?: () => void;
   }
->(function BarcodeScanner({ onDetected, onOfferLabelPhoto, region = false, onBusyChange }, ref) {
+>(function BarcodeScanner({ onDetected, onOfferLabelPhoto, region = false, onBusyChange, onRead }, ref) {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [read, setRead] = useState(false);
@@ -65,6 +67,8 @@ export const BarcodeScanner = forwardRef<
   // The latest callback, not the one from when the camera started — the profile picked can change.
   const onDetectedRef = useRef(onDetected);
   onDetectedRef.current = onDetected;
+  const onReadRef = useRef(onRead);
+  onReadRef.current = onRead;
 
   // Step 0's timings (lib/scanTiming.ts): from the tap to the camera's first frame — so a first use
   // includes the time on the browser's permission prompt — and from then to the read.
@@ -115,6 +119,7 @@ export const BarcodeScanner = forwardRef<
         const timing = cameraTiming();
         setRead(true);
         navigator.vibrate?.(50);
+        onReadRef.current?.();
         window.setTimeout(() => {
           stopCamera();
           onDetectedRef.current(text, timing);

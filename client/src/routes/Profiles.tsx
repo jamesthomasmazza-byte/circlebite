@@ -10,6 +10,7 @@ import { SeverityChoice } from "../SeverityChoice";
 import { allergenLine } from "../lib/profileLineCopy";
 import { ADD_PROFILE_PATH, addFormRequested, NEW_PROFILE_PATH, profileSection, SECTION_LABEL, sectionHref, visibleSections } from "../lib/profileSections";
 import { useAuth } from "../lib/AuthContext";
+import { ScanSoundsSetting } from "../ScanSoundsSetting";
 import { OVERRIDE_CHOICES, readOverride, regionStatus, saveOverride, type RegionOverride } from "../lib/scannerRegion";
 import {
   ApiRequestError,
@@ -22,7 +23,7 @@ import {
 export function Profiles() {
   const navigate = useNavigate();
   const { hash } = useLocation();
-  const { user, logout, scannerRegionEnabled, guidedSetupEnabled } = useAuth();
+  const { user, logout, scannerRegionEnabled, guidedSetupEnabled, scanSoundsEnabled } = useAuth();
   const isAdmin = user?.isAdmin === true;
   const section = profileSection(hash, isAdmin);
   // This device's scanner-box override (lib/scannerRegion.ts), for testing on a phone before
@@ -297,6 +298,8 @@ export function Profiles() {
           <p>
             Signed in as {user?.displayName} ({user?.email}).
           </p>
+          {/* Behind SCAN_SOUNDS (2026-11-05): with the switch off there's no setting and no sound. */}
+          {scanSoundsEnabled && <ScanSoundsSetting />}
           <p>
             <Link to="/settings">Settings</Link>
           </p>

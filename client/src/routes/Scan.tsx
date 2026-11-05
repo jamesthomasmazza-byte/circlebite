@@ -13,6 +13,8 @@ import { readOverride, scannerRegionOn } from "../lib/scannerRegion";
 import { SCAN_ANOTHER } from "../lib/scannerCopy";
 import { msSince, type ClientTiming } from "../lib/scanTiming";
 import { prefersReducedMotion, revealResult } from "../lib/revealResult";
+import { browserStorage, soundForUpdate, soundsWanted, type VerdictSound } from "../lib/scanSounds";
+import { playScanSound, unlockScanAudio } from "../scanAudio";
 import {
   ApiRequestError,
   CORRECTION_PHOTO_MAX_DIMENSION,
@@ -122,7 +124,7 @@ function disagreementNote(m: ScanResult["matched_allergens"][number]): string | 
 }
 
 export function Scan() {
-  const { labelScanEnabled, scannerRegionEnabled, guidedSetupEnabled, user } = useAuth();
+  const { labelScanEnabled, scannerRegionEnabled, guidedSetupEnabled, scanSoundsEnabled, user } = useAuth();
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
   const [loadingProfiles, setLoadingProfiles] = useState(true);
   // Only a list that actually loaded can say "no profiles": a failed load isn't an empty account.
@@ -597,6 +599,34 @@ export function Scan() {
     revealResult(resultHeadingRef.current, prefersReducedMotion());
   }, [revealRequest, result, awaitingRequiredPhoto, couldntReadLabel, photoCaptureOpen]);
 
+  // Scan sounds (SCAN_SOUNDS, lib/scanSounds.ts). A browser makes sound only after a tap, so the
+  // person's own taps and keys on this page unlock it — the camera button, "Check this product" and
+  // the photo buttons all count (scanAudio.ts).
+  useEffect(() => {
+    if (!scanSoundsEnabled) return;
+    const unlock = () => {
+      if (soundsWanted(true, browserStorage())) unlockScanAudio();
+    };
+    const events = ["click", "touchend", "keydown"] as const;
+    for (const e of events) window.addEventListener(e, unlock, { capture: true });
+    return () => {
+      for (const e of events) window.removeEventListener(e, unlock, { capture: true });
+    };
+  }, [scanSoundsEnabled]);
+
+  // The verdict the card shows, once the card is on screen — never over the required-photo form or
+  // "couldn't read this label". Keyed on the scan: a card that escalates later plays the louder sound
+  // then, and one that drops plays nothing (soundForUpdate).
+  const cardVerdict = result && shown && !awaitingRequiredPhoto && !couldntReadLabel ? shown.result : null;
+  const soundPlayed = useRef<{ scanId: string; sound: VerdictSound | null } | null>(null);
+  useEffect(() => {
+    if (!result || !cardVerdict) return;
+    const before = soundPlayed.current?.scanId === result.id ? soundPlayed.current.sound : null;
+    const sound = soundForUpdate(before, cardVerdict);
+    soundPlayed.current = { scanId: result.id, sound: sound ?? before };
+    if (sound && soundsWanted(scanSoundsEnabled, browserStorage())) playScanSound(sound);
+  }, [result?.id, cardVerdict, scanSoundsEnabled]);
+
   if (loadingProfiles) return <p>Loading…</p>;
 
   return (
@@ -646,6 +676,9 @@ export function Scan() {
               }
               // Decode only inside the box: SCANNER_REGION, or this device's override for an admin.
               region={scannerRegionOn(scannerRegionEnabled, user?.isAdmin === true, readOverride())}
+              onRead={() => {
+                if (soundsWanted(scanSoundsEnabled, browserStorage())) playScanSound("read");
+              }}
             />
           </div>
 
