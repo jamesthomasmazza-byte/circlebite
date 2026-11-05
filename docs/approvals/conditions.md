@@ -395,6 +395,12 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
 JT missed this email until November 4. **Interim reply sent November 4**
 (`2026-11-04-jt-matcher-r9-landing.md`): the ask is in progress and promised before the freeze. The
 same email reported the matcher fixes, the R9 purge and the landing page.
+It also said "Older backups that held those accounts are being removed." **Done November 5**
+(`docs/server-setup.md` §17.14; `docs/journal.md`, 2026-11-05). The box had none left, and in S3
+the 52 pre-purge sets were deleted, leaving the 7 clean ones. Their older versions expire under the
+bucket's 7-day rule, about November 12, which is still to be confirmed. One pre-purge set is kept on
+JT's Mac, encrypted, until judging is over, so the purge can be undone. It isn't on the deployment.
+Not yet reported to Prof. Yoest.
 
 - **"Send me the names of the tests that prove two things: two judges reporting the same allergen
   on 2990000000083 each stay at one family, and a judge's report on a real product never moves a

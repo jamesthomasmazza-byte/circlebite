@@ -2565,3 +2565,30 @@ operator):
   read "No listed allergens found". The judge-world reports on that barcode don't reach an account
   outside every judge's world.
 - **Off paper:** not yet tested; printing November 5.
+
+## 2026-11-05 — R9: the pre-purge backups removed
+
+JT ran `docs/server-setup.md` §17.14, the last open part of the R9 purge of November 3. Every
+backup set older than the first clean one (`circlebite-20261103T185330Z`) still held his test
+accounts.
+
+- **The box:** nothing to delete. Local rotation keeps the 7 newest sets (§17.1), and had already
+  removed every pre-purge one: the oldest on the box is `circlebite-20261103T185330Z`, the first
+  clean set. Step 1's `ssh`/`scp` path assumed the sets were still there, so the runbook now copies
+  from S3 when the box has rotated them out.
+- **The Mac's copy:** `circlebite-20261103T184714Z`, the last set before the purge, downloaded
+  from S3 into an encrypted APFS disk image (`~/circlebite-prepurge.dmg`; passphrase in JT's
+  password manager). `shasum -c` reported OK for all three files. Chrome saved the
+  `.uploads.tar.gz` as `.uploads.tar`, still gzip, the §17.10 quirk; JT renamed it back before
+  checking. Kept until judging is over so the purge can be undone (principle 4), then deleted
+  (§17.14 step 4, a BACKLOG item).
+- **S3:** 52 pre-purge set folders deleted, leaving the 7 clean sets. **Show versions** had to be
+  off: the console won't delete folders with versions shown. With versioning on, the delete leaves
+  the old bytes as noncurrent versions. The §17.2 lifecycle rule permanently deletes those 7 days
+  later, about November 12. Until then they still hold the test accounts, in a private bucket only
+  JT's AWS account can read. Checking that they're gone is a BACKLOG item for about November 12.
+
+The runbook's step 3 now says to delete with **Show versions** off, then check the versions a week
+later. JT's November 4 email to Prof. Yoest said older backups "are being removed"
+(`docs/approvals/2026-11-04-jt-matcher-r9-landing.md`); `conditions.md` now records it as done.
+Not yet told to him.

@@ -175,8 +175,14 @@ Four more (8–11, UI simplification) were added by JT on Nov 5.
   scans, 5 corrections (one a false sesame warning on Smjörvi), their photos, and 5 older orphan
   photos. Kept: 2 synthetic example.com accounts, the operator admin, every seed row. First clean
   backup 18:53:30Z. Journal, 2026-11-03.
-- [ ] **Remove the pre-purge backups** from the box and S3 (all versions), keeping one pre-purge set
+- [x] **Remove the pre-purge backups** from the box and S3 (all versions), keeping one pre-purge set
   on JT's Mac (`docs/server-setup.md` §17.14). Until then they still hold the test accounts.
+  *Done by JT, Nov 5 (journal, 2026-11-05). The box had none left. The Mac holds
+  `circlebite-20261103T184714Z` in an encrypted image, `shasum -c` OK. In S3, 52 pre-purge folders
+  were deleted, leaving the 7 clean sets.*
+- [ ] **About Nov 12: confirm the pre-purge versions are gone from S3.** The S3 delete left them as
+  noncurrent versions, which the lifecycle rule (§17.2) deletes 7 days later. With **Show versions**
+  on, none of the 52 folders should remain; delete any that do (§17.14 step 3).
 - [ ] **After November 20: delete the Mac's pre-purge copy** (§17.14, last step).
 - [ ] **Report correction photos no row refers to.** The Oct 5 item (Week 9, "Orphaned correction
   photos") already found the two closed windows that made them: Sept 10–16, and Sept 10 – Oct 1
