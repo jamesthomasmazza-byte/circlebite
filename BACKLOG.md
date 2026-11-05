@@ -231,6 +231,9 @@ precedents, Nov 5.
    an unseen entry can't sit inside the collapsed list. Screenshots of the owner's view, before and
    after acknowledging, go in `docs/approvals/img/` before the push. `docs/approvals/conditions.md`
    gets a "Collapsed history" note.
+   *Built Nov 5: `4109d94`, `dd12d9b` and the heading fix after them; checked locally at 390×844 on
+   the judge seed, screenshots and note in `docs/approvals/conditions.md`, Condition 2. Not yet
+   deployed.*
 9. [ ] **"Add an allergen" as a button** that opens the existing form. The allergen list stays
    visible, and severity still has no default. A profile with no allergens opens with the form
    already open.

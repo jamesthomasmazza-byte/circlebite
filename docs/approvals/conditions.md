@@ -111,6 +111,31 @@ app's; only those accounts are gone.
   needing a look: both lines, and both links, on the first screen with no scrolling, above Scan's
   form. Tests: `client/src/LandingNotices.test.ts` ("slim: …") and `client/src/TabShell.test.ts`
   ("Scan gets the slim notices and the Profile tab the full ones"). Not yet checked on production.
+- **Collapsed history (since November 5, 2026).** On the profile page, where the notice's "Review
+  changes" link lands (`#changes`), the change history is collapsed by default, except for what the
+  owner hasn't acknowledged. Unseen entries come first, in a block that never collapses: "New, not
+  yet reviewed (k)", with "I've seen these". Entries already seen go in a closed "Earlier changes
+  (N)", or "Change history (N)" when nothing is unseen, where N counts only what that list holds. A
+  failed load or acknowledgement is never collapsed. Acknowledging still sends exactly the unseen
+  ids on screen (migration 0040). The notice on Scan and the Profile tab, the badge, and who can
+  acknowledge are unchanged (`client/src/ChangeHistory.tsx`, `client/src/lib/changeHistory.ts`;
+  `docs/principles.md`, Decision precedents, Nov 5; BACKLOG item 8). Tests:
+  `client/src/ChangeHistory.test.ts`. They check that no unseen entry is ever inside the collapsed
+  list, whatever its date, that an entry moves into it only once acknowledged, and that a failure
+  shows outside it. Made to fail on purpose (every entry in the collapsed list): 5 of them failed.
+  Also `client/src/routes/ProfileDetail.test.ts`, "acknowledging sends exactly the unseen entries on
+  screen". Checked locally at 390×844 on the judge seed, after co-manager Priya Nair added Egg to
+  Maya and lowered Sesame from moderate to mild. Signed in by short-lived local sessions, revoked
+  afterwards. As judge1, the owner:
+  - Scan showed "Priya Nair changed Maya's profile — 2 updates you haven't reviewed" under the
+    header (`img/circlebite-owner-notice-2026-11-05.png`).
+  - The profile page showed both entries open, above a closed "Earlier changes (2)"
+    (`img/circlebite-history-unseen-on-top-2026-11-05.png`; dark theme, on the first screen after
+    the jump: `img/circlebite-history-unseen-on-top-dark-2026-11-05.png`).
+  - After "I've seen these" it showed only a closed "Change history (4)"
+    (`img/circlebite-history-collapsed-after-ack-2026-11-05.png`).
+  Priya's own view was the same closed list, with no unseen block. Not yet deployed, and not yet
+  mentioned to Prof. Yoest.
 - **How it was verified:**
   - *Profile edits, on production, October 8, 2026.* After the co-manager changes in Condition 1,
     the owner's dashboard showed "Changes to review — Timmy changed James Mazza's profile — 2
