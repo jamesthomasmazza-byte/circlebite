@@ -237,6 +237,10 @@ precedents, Nov 5.
 9. [ ] **"Add an allergen" as a button** that opens the existing form. The allergen list stays
    visible, and severity still has no default. A profile with no allergens opens with the form
    already open.
+   *Built Nov 5: `b225a02`, `163c3ec`. Checked locally at 390×844, light and dark, on the judge
+   seed: Maya's list with the button under it, the form opened with no severity chosen, Cancel
+   bringing the button back, and a temporary empty profile (deleted afterwards) opening with the
+   form already open. Not yet deployed.*
 10. [ ] **Invites and invite management move to the Circle tab:** the invite forms, the
    one-time link, and Revoke and Remove go inside each managed circle's card. The profile page
    keeps one link to it. A new link shows only in the card it was made for (a test).
