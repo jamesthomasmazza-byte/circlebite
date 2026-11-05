@@ -241,6 +241,16 @@ precedents, Nov 5.
    seed: Maya's list with the button under it, the form opened with no severity chosen, Cancel
    bringing the button back, and a temporary empty profile (deleted afterwards) opening with the
    form already open. Not yet deployed.*
+9a. [x] **The allergen list as compact rows** (added by JT, Nov 5, after item 9; lettered so items
+   10 and 11 keep their numbers). Each allergen is one row: the name, the verdict card's severity
+   pill, and "traces: unsafe" or "traces: caution". For a manager the row is a `<details>`: opening
+   it shows the severity, the traces setting, notes and Remove. Visible without a tap: the
+   severity, the traces setting, and any "needs a look" notice, which sits on the row outside the
+   details. A follower's row has nothing to open, and no notes, as before. Built before item 10 (JT,
+   Nov 5).
+   *Built Nov 5 (`AllergenItem.tsx`). Checked locally at 390×844, light and dark, on the judge
+   seed: Maya with 4 allergens, one a temporary "treenuts" needing a look (deleted afterwards). Its
+   notice showed on the closed row, and Enter on a row's summary opened it. Not yet deployed.*
 10. [ ] **Invites and invite management move to the Circle tab:** the invite forms, the
    one-time link, and Revoke and Remove go inside each managed circle's card. The profile page
    keeps one link to it. A new link shows only in the card it was made for (a test).
