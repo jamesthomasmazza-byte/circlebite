@@ -5,7 +5,6 @@ import { removeManager, revokeFollow, type ProfileSummary } from "./lib/api";
 import {
   canRemove,
   CONFIRM_REMOVE,
-  initials,
   joinedLine,
   removalLine,
   removeLabel,
@@ -68,7 +67,7 @@ export function MemberSheet({
         <>
           <div className="member-sheet__head">
             <span className={`member-row__badge${member.isYou ? " member-row__badge--you" : ""}`} aria-hidden="true">
-              {member.isYou ? "You" : initials(member.name)}
+              {member.initials}
             </span>
             <span className="member-row__text">
               <h2 id="member-sheet-title">{member.name}</h2>

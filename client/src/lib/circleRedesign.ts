@@ -61,6 +61,8 @@ export type Member = {
   // The id the server's remove routes take: a follow's id, a co-manager's user id; null for the owner.
   removeId: string | null;
   name: string;
+  // From their display name, yours too: the list says "You" once, in the name, not twice.
+  initials: string;
   isYou: boolean;
   role: MemberRole;
   joined: string | null;
@@ -75,14 +77,31 @@ export function members(circle: CircleData, viewerId: string | undefined): Membe
   const out: Member[] = [];
   if (circle.owner) {
     const isYou = circle.owner.user_id === viewerId;
-    out.push({ key: `owner-${circle.owner.user_id}`, removeId: null, name: isYou ? "You" : circle.owner.display_name, isYou, role: "owner", joined: null });
+    const name = circle.owner.display_name;
+    out.push({ key: `owner-${circle.owner.user_id}`, removeId: null, name: isYou ? "You" : name, initials: initials(name), isYou, role: "owner", joined: null });
   }
   for (const m of circle.managers) {
     const isYou = m.user_id === viewerId;
-    out.push({ key: `manager-${m.user_id}`, removeId: m.user_id, name: isYou ? "You" : m.display_name, isYou, role: "co_manager", joined: m.added_at });
+    out.push({
+      key: `manager-${m.user_id}`,
+      removeId: m.user_id,
+      name: isYou ? "You" : m.display_name,
+      initials: initials(m.display_name),
+      isYou,
+      role: "co_manager",
+      joined: m.added_at,
+    });
   }
   for (const f of circle.followers) {
-    out.push({ key: `follow-${f.id}`, removeId: f.id, name: f.display_name, isYou: false, role: followerRole(f.share_level), joined: f.responded_at });
+    out.push({
+      key: `follow-${f.id}`,
+      removeId: f.id,
+      name: f.display_name,
+      initials: initials(f.display_name),
+      isYou: false,
+      role: followerRole(f.share_level),
+      joined: f.responded_at,
+    });
   }
   return out;
 }

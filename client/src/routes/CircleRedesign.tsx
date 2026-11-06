@@ -23,7 +23,6 @@ import {
   addTitle,
   canActOnInvite,
   initialCircle,
-  initials,
   JOIN_SOMEONE_ELSES,
   members,
   NEW_LINK_NOTE,
@@ -233,7 +232,7 @@ function ManagedCircle({ profile, viewerId }: { profile: ProfileSummary; viewerI
           <li key={m.key} className="member-row member-row--person">
             <button type="button" className="member-row__open" onClick={() => setOpened(m)}>
               <span className={`member-row__badge${m.isYou ? " member-row__badge--you" : ""}`} aria-hidden="true">
-                {m.isYou ? "You" : initials(m.name)}
+                {m.initials}
               </span>
               <span className="member-row__text">
                 <span className="member-row__name">{m.name}</span>

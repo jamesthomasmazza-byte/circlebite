@@ -10,9 +10,9 @@ import { MemberSheet } from "./MemberSheet";
 // One person in a circle (JT's mockup, 2026-11-06, behind CIRCLE_REDESIGN).
 
 const MAYA = { id: "p", label: "Maya", is_self: false };
-const LOU: Member = { key: "f", removeId: "f1", name: "Grandma Lou", isYou: false, role: "follower_all", joined: "2026-10-05T12:00:00Z" };
-const ALEX: Member = { key: "m", removeId: "u2", name: "Alex Kim", isYou: false, role: "co_manager", joined: "2026-10-02T12:00:00Z" };
-const SAM: Member = { key: "o", removeId: null, name: "Sam Rivera", isYou: false, role: "owner", joined: null };
+const LOU: Member = { key: "f", removeId: "f1", name: "Grandma Lou", initials: "GL", isYou: false, role: "follower_all", joined: "2026-10-05T12:00:00Z" };
+const ALEX: Member = { key: "m", removeId: "u2", name: "Alex Kim", initials: "AK", isYou: false, role: "co_manager", joined: "2026-10-02T12:00:00Z" };
+const SAM: Member = { key: "o", removeId: null, name: "Sam Rivera", initials: "SR", isYou: false, role: "owner", joined: null };
 
 const render = (member: Member, viewer: Role) =>
   renderToStaticMarkup(createElement(MemberSheet, { member, profile: MAYA, viewer, onClose: () => {}, onRemoved: () => {} }));

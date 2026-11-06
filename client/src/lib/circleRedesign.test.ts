@@ -62,6 +62,7 @@ test("every member has a plain-language role; the owner reads \"Owns the profile
     ["Grandma Lou", "Sees all allergens"],
     ["Coach Pat", "Sees severe allergens only"],
   ]);
+  assert.deepEqual(rows.map((m) => m.initials), ["SR", "AK", "GL", "CP"], "yours too: \"You\" is said once, in the name");
   assert.equal(rows[0]!.joined, null, "the owner made the profile; no join date");
   assert.equal(rows[2]!.joined, "2026-10-05T12:00:00Z", "a follower joined when they accepted");
   assert.equal(followerRole("severe_only"), "follower_severe");
