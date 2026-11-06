@@ -54,10 +54,14 @@ test("nothing in the camera code shows or times the offer: only a tap acts on it
 });
 
 test("tapping the offer stops the camera, then opens the photo flow; it never reports a read", () => {
+  // One handler for both layouts (2026-11-06, the Scan stage): every offer button uses it.
   const i = SCANNER.indexOf("{NO_READ_OFFER}");
   const button = SCANNER.slice(SCANNER.lastIndexOf("<button", i), i);
-  assert.match(button, /stopCamera\(\);\s*onOfferLabelPhoto\?\.\(\);/);
-  assert.doesNotMatch(button, /onDetected/);
+  assert.match(button, /onClick=\{takeOffer\}/);
+  const handler = SCANNER.slice(SCANNER.indexOf("function takeOffer() {"), SCANNER.indexOf("}", SCANNER.indexOf("function takeOffer() {")));
+  assert.match(handler, /stopCamera\(\);\s*onOfferLabelPhoto\?\.\(\);/);
+  assert.doesNotMatch(handler, /onDetected/);
+  assert.equal(SCANNER.match(/\{NO_READ_OFFER\}/g)?.length, 2, "the offer, in today's layout and the stage");
 });
 
 test("Scan offers it only with the label scan on, for the selected profile, and scrolls to the form", () => {
@@ -147,4 +151,25 @@ test("the region reader measures the same box the person sees", () => {
 
 test("Scan decodes inside the box from SCANNER_REGION, or an admin's override on this device", () => {
   assert.match(SCAN, /region=\{scannerRegionOn\(scannerRegionEnabled, user\?\.isAdmin === true, readOverride\(\)\)\}/);
+});
+
+// The redesigned Scan tab's stage (SCAN_REDESIGN, 2026-11-06): a layout of the same scanner.
+test("stage: the camera still waits for a tap, with the first-use sentence first; it never opens by itself", () => {
+  const stage = SCANNER.slice(SCANNER.indexOf("if (stage) {"), SCANNER.indexOf("return (\n    <section ref={containerRef} className=\"scanner-section\">"));
+  assert.match(stage, /<button type="button" className="button-primary" onClick=\{requestCamera\}>\s*Scan with camera/);
+  assert.match(stage, /onClick=\{continuePrimer\}/, "Continue, the same handler as today's layout");
+  assert.doesNotMatch(SCANNER, /useEffect\(\(\) => \{[^}]*startCamera\(\)/, "no effect starts the camera");
+});
+
+test("stage: \"It scans on its own\" only while the camera runs, where zxing decodes every frame unasked", () => {
+  const stage = SCANNER.slice(SCANNER.indexOf("if (stage) {"));
+  assert.match(stage, /\{cameraActive && \(\s*<p className="scanner__hint" role="status">[\s\S]*?\{POINT_AT_BARCODE\}[\s\S]*?\{SCANS_ON_ITS_OWN\}/);
+  assert.match(SCANNER, /reader\.decodeFromVideoDevice\(undefined, videoRef\.current!, \(detected\) => \{/);
+});
+
+test("stage: the region reader still decodes inside the drawn box, and flash shows only with a torch", () => {
+  const stage = SCANNER.slice(SCANNER.indexOf("if (stage) {"));
+  assert.match(stage, /<div ref=\{boxRef\} className="scanner__box scanner__frame" aria-hidden="true">/);
+  assert.match(SCANNER, /setTorchAvailable\(stage && typeof controls\.switchTorch === "function"\);/);
+  assert.match(stage, /\{cameraActive && torchAvailable && \(/);
 });

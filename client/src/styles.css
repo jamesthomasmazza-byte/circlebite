@@ -3005,3 +3005,105 @@ button.member-row__open {
 .tab-shell--camera .tab-shell__notices {
   padding-inline: var(--space-4);
 }
+
+/* The camera as the screen (BarcodeScanner `stage`): the preview fills a dark frame; the box keeps
+   its inset — the region reader decodes inside whatever box is drawn — but draws four white corner
+   brackets instead of a dashed outline, with a bright-teal scan line while it runs. */
+.scanner-section--stage {
+  max-width: var(--measure);
+  margin-inline: auto;
+  padding-inline: var(--space-4);
+}
+
+.scanner.scanner--stage {
+  display: block;
+  max-width: none;
+  height: clamp(15rem, 44dvh, 30rem);
+  margin-top: var(--space-3);
+  border-radius: var(--radius-lg);
+  background: #000;
+}
+
+.scanner--stage .scanner__video {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  max-height: none;
+}
+
+.scanner--stage[data-active="false"] .scanner__video {
+  visibility: hidden;
+}
+
+.scanner__box.scanner__frame {
+  border: 0;
+  outline: 0;
+  box-shadow: none;
+  background:
+    linear-gradient(#fff, #fff) top left / 1.75rem 4px no-repeat,
+    linear-gradient(#fff, #fff) top left / 4px 1.75rem no-repeat,
+    linear-gradient(#fff, #fff) top right / 1.75rem 4px no-repeat,
+    linear-gradient(#fff, #fff) top right / 4px 1.75rem no-repeat,
+    linear-gradient(#fff, #fff) bottom left / 1.75rem 4px no-repeat,
+    linear-gradient(#fff, #fff) bottom left / 4px 1.75rem no-repeat,
+    linear-gradient(#fff, #fff) bottom right / 1.75rem 4px no-repeat,
+    linear-gradient(#fff, #fff) bottom right / 4px 1.75rem no-repeat;
+}
+
+.scanner--stage[data-read="true"] .scanner__frame {
+  border: 0;
+  background-color: rgb(26 122 63 / 0.25);
+}
+
+.scanner__line {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  top: 50%;
+  height: 2px;
+  background: var(--color-circle-center);
+  box-shadow: 0 0 8px var(--color-circle-center);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .scanner__line {
+    animation: scanner-line 1.8s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes scanner-line {
+  from {
+    top: 8%;
+  }
+  to {
+    top: 92%;
+  }
+}
+
+.scanner__start {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+}
+
+button.scanner__torch {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  border-color: var(--color-camera-chrome);
+  border-radius: 999px;
+  background: rgb(21 23 28 / 0.75);
+  color: var(--color-camera-chrome);
+}
+
+.scanner-section--stage .scanner__hint {
+  color: var(--color-viewfinder-text);
+  font-size: var(--text-base);
+  text-align: center;
+}
+
+.scanner-section--stage .scanner__actions {
+  justify-content: center;
+}

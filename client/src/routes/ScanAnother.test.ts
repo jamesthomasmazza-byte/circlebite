@@ -57,7 +57,9 @@ test("start() scrolls the scanner into view, then takes the button's own path to
 test("the camera never opens by itself: only a tap reaches startCamera", () => {
   // requestCamera (the button, and start() from Scan's button) and the sentence's Continue.
   assert.equal(SCANNER.match(/void startCamera\(\)/g)?.length, 2);
-  assert.match(between(SCANNER, "onClick={() => {\n                  markCameraPrimerSeen();", "}}"), /void startCamera\(\)/);
+  // The sentence's Continue, one function for both layouts (2026-11-06, the Scan stage).
+  assert.match(between(SCANNER, "function continuePrimer() {", "}"), /markCameraPrimerSeen\(\);\s*setPrimerOpen\(false\);\s*void startCamera\(\);/);
+  assert.equal(SCANNER.match(/onClick=\{continuePrimer\}/g)?.length, 2, "Continue, in today's layout and the stage");
   for (const effect of SCANNER.split("useEffect(").slice(1)) {
     const body = effect.slice(0, effect.search(/\n {2}\}, \[|\[\]\);/)).replace(/\/\/.*$/gm, "");
     assert.doesNotMatch(body, /startCamera|requestCamera|\.start\(/, "no effect starts the camera");

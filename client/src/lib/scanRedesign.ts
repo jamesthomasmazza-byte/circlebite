@@ -40,7 +40,6 @@ export function allergenChips(p: Pick<ProfileSummary, "allergen_names" | "share_
 /** Under the barcode frame, while the camera is running — never before, when it still needs a tap. */
 export const POINT_AT_BARCODE = "Point at the barcode";
 export const SCANS_ON_ITS_OWN = "It scans on its own. No button needed.";
-export const START_CAMERA = "Start camera";
 export const FLASH_ON = "Turn flash on";
 export const FLASH_OFF = "Turn flash off";
 

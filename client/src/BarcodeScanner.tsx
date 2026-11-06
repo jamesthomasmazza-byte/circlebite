@@ -5,6 +5,7 @@ import { BoxRegionReader } from "./boxRegionReader";
 import { CAMERA_PRIMER_HEADING, CAMERA_PRIMER_LINE, cameraPrimerSeen, markCameraPrimerSeen } from "./lib/cameraPrimer";
 import { prefersReducedMotion, revealBehavior } from "./lib/revealResult";
 import { NO_READ_OFFER, NO_READ_OFFER_MS } from "./lib/scannerCopy";
+import { FLASH_OFF, FLASH_ON, POINT_AT_BARCODE, SCANS_ON_ITS_OWN } from "./lib/scanRedesign";
 import { countDecodes, msSince, type ClientTiming, type DecodeCount } from "./lib/scanTiming";
 
 // How long "Got it" shows on the box before the camera stops and the scan runs.
@@ -32,6 +33,13 @@ const READ_CONFIRM_MS = 250;
  * hasn't seen it, else the camera — synchronously, inside the tap. Nothing calls it but a click:
  * the camera never opens by itself. onBusyChange tells Scan when the camera or the sentence is up,
  * so the pinned button gets out of the way.
+ *
+ * With `stage` (SCAN_REDESIGN, 2026-11-06) the same scanner is laid out as the screen: the preview
+ * fills a dark stage, the box is a frame of four corner brackets with a scan line, and while it runs
+ * the hint says it reads on its own — true, since zxing decodes every frame with no tap. Before that
+ * it still waits for a tap, with the first-use sentence first: the camera never opens by itself. A
+ * flash button shows only when the camera track says it has a torch (zxing's switchTorch). The box
+ * is still the element the region reader decodes inside.
  */
 export type BarcodeScannerHandle = { start: () => void };
 
@@ -45,12 +53,17 @@ export const BarcodeScanner = forwardRef<
     onBusyChange?: (busy: boolean) => void;
     /** The moment of the read, with the vibration, before "Got it" hands over (Scan's beep). */
     onRead?: () => void;
+    /** The redesigned Scan tab's layout (SCAN_REDESIGN). Off, today's markup exactly. */
+    stage?: boolean;
   }
->(function BarcodeScanner({ onDetected, onOfferLabelPhoto, region = false, onBusyChange, onRead }, ref) {
+>(function BarcodeScanner({ onDetected, onOfferLabelPhoto, region = false, onBusyChange, onRead, stage = false }, ref) {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [read, setRead] = useState(false);
   const [offerShown, setOfferShown] = useState(false);
+  // The camera track's torch, where it has one (stage only). Gone with the camera.
+  const [torchAvailable, setTorchAvailable] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
   // The one sentence before this device's first camera use (lib/cameraPrimer.ts), ahead of
   // startCamera and the system prompt — nothing in the camera code changes.
   const [primerOpen, setPrimerOpen] = useState(false);
@@ -97,6 +110,8 @@ export const BarcodeScanner = forwardRef<
     controlsRef.current = null;
     setCameraActive(false);
     setRead(false);
+    setTorchAvailable(false);
+    setTorchOn(false);
   }
 
   async function startCamera() {
@@ -126,6 +141,7 @@ export const BarcodeScanner = forwardRef<
         }, READ_CONFIRM_MS);
       });
       controlsRef.current = controls;
+      setTorchAvailable(stage && typeof controls.switchTorch === "function");
     } catch {
       // No camera device, permission denied, or an insecure context — manual entry stays
       // available either way, so this is a soft failure, not a page-level error.
@@ -140,6 +156,19 @@ export const BarcodeScanner = forwardRef<
   function requestCamera() {
     if (cameraPrimerSeen()) void startCamera();
     else setPrimerOpen(true);
+  }
+
+  /** The first-use sentence's Continue, in either layout: the one tap that reaches the camera from it. */
+  function continuePrimer() {
+    markCameraPrimerSeen();
+    setPrimerOpen(false);
+    void startCamera();
+  }
+
+  /** The label-photo offer's button, in either layout: stop the camera, then open the photo flow. */
+  function takeOffer() {
+    stopCamera();
+    onOfferLabelPhoto?.();
   }
 
   useImperativeHandle(ref, () => ({
@@ -210,6 +239,92 @@ export const BarcodeScanner = forwardRef<
     return () => window.clearTimeout(timer);
   }, [offerEnabled, cameraActive, read]);
 
+  async function toggleTorch() {
+    const next = !torchOn;
+    try {
+      await controlsRef.current?.switchTorch?.(next);
+      setTorchOn(next);
+    } catch {
+      // A torch the track claimed but couldn't switch: drop the button rather than lie about it.
+      setTorchAvailable(false);
+    }
+  }
+
+  if (stage) {
+    return (
+      <section ref={containerRef} className="scanner-section scanner-section--stage">
+        <div className="scanner scanner--stage" data-active={cameraActive} data-read={read}>
+          <video ref={videoRef} className="scanner__video" muted playsInline />
+          <div ref={boxRef} className="scanner__box scanner__frame" aria-hidden="true">
+            {cameraActive && !read && <span className="scanner__line" />}
+            {read && <span className="scanner__got-it">Got it</span>}
+          </div>
+          {cameraActive && torchAvailable && (
+            <button type="button" className="scanner__torch" aria-pressed={torchOn} onClick={() => void toggleTorch()}>
+              {torchOn ? FLASH_OFF : FLASH_ON}
+            </button>
+          )}
+          {!cameraActive && !primerOpen && (
+            <p className="scanner__start">
+              <button type="button" className="button-primary" onClick={requestCamera}>
+                Scan with camera
+              </button>
+            </p>
+          )}
+        </div>
+        {cameraActive && (
+          <p className="scanner__hint" role="status">
+            {read ? (
+              "Got it — checking this product."
+            ) : (
+              <>
+                <strong>{POINT_AT_BARCODE}</strong>
+                <br />
+                {SCANS_ON_ITS_OWN}
+              </>
+            )}
+          </p>
+        )}
+        {cameraActive && (
+          <p className="scanner__actions">
+            {offerShown && !read && (
+              <button
+                type="button"
+                onClick={takeOffer}
+              >
+                {NO_READ_OFFER}
+              </button>
+            )}
+            <button type="button" onClick={stopCamera}>
+              Stop camera
+            </button>
+          </p>
+        )}
+        {!cameraActive && primerOpen && (
+          <div className="camera-primer" role="group" aria-labelledby="camera-primer-heading">
+            <h2 id="camera-primer-heading" ref={primerHeadingRef} tabIndex={-1}>
+              {CAMERA_PRIMER_HEADING}
+            </h2>
+            <p>{CAMERA_PRIMER_LINE}</p>
+            <p className="camera-primer__actions">
+              <button
+                type="button"
+                className="button-primary"
+                onClick={continuePrimer}
+              >
+                Continue
+              </button>
+              <button type="button" className="button-secondary" onClick={() => setPrimerOpen(false)}>
+                Not now
+              </button>
+            </p>
+          </div>
+        )}
+        {cameraError && <p role="alert">{cameraError}</p>}
+      </section>
+    );
+  }
+
   return (
     <section ref={containerRef} className="scanner-section">
       {/* Always mounted, visibility toggled by CSS rather than conditional rendering — a
@@ -236,10 +351,7 @@ export const BarcodeScanner = forwardRef<
           {offerShown && !read && (
             <button
               type="button"
-              onClick={() => {
-                stopCamera();
-                onOfferLabelPhoto?.();
-              }}
+              onClick={takeOffer}
             >
               {NO_READ_OFFER}
             </button>
@@ -259,11 +371,7 @@ export const BarcodeScanner = forwardRef<
               <button
                 type="button"
                 className="button-primary"
-                onClick={() => {
-                  markCameraPrimerSeen();
-                  setPrimerOpen(false);
-                  void startCamera();
-                }}
+                onClick={continuePrimer}
               >
                 Continue
               </button>
