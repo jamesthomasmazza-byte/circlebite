@@ -650,6 +650,36 @@ sed -i 's/^SCAN_SOUNDS=.*/SCAN_SOUNDS=off/' ~/circlebite/.env
 sudo systemctl restart circlebite
 ```
 
+## 11f. Circle tab redesign — switch
+
+With `CIRCLE_REDESIGN=on`, the Circle tab is JT's Nov 6 redesign: one circle at a time, picked by a
+pill per profile you manage or follow; a picture of the circle (initials only); one list of people
+and waiting invites; sheets to add someone and to open a member, with Remove where your role
+allows; and, for a follower, only the profile and "You", what they can see, and **Leave**
+(`POST /profiles/:id/leave`, which 404s while the switch is off). Invites, removals and follow
+requests use the same endpoints as today's tab. Off by default; off is today's Circle tab,
+unchanged. No migration and no data change either way: a follower who left reads exactly like one
+a manager removed, and a new invite brings either back.
+
+**Before turning it on:** JT's review of the four views at 390px (BACKLOG item 12).
+
+**Turn it on:**
+
+```bash
+grep -q '^CIRCLE_REDESIGN=' ~/circlebite/.env \
+  && sed -i 's/^CIRCLE_REDESIGN=.*/CIRCLE_REDESIGN=on/' ~/circlebite/.env \
+  || echo "CIRCLE_REDESIGN=on" >> ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
+**Turn it off** — today's tab again on each browser's next page load. Anyone who already left a
+circle stays out until re-invited, as after a removal:
+
+```bash
+sed -i 's/^CIRCLE_REDESIGN=.*/CIRCLE_REDESIGN=off/' ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
 ## 12. Admin access — the AI accuracy page
 
 `users.is_admin` gates internal aggregate pages (the AI accuracy page today, the review queue

@@ -294,6 +294,22 @@ precedents, Nov 5.
    *Later Nov 6 (JT): Settings became the Account page, at the same `/settings`, and took the
    Profile tab's Account and Admin sections too, so the Profile tab lists people only. Scan sounds
    is unchanged there, still after "Your profiles".*
+12. [ ] **Circle tab redesign, behind `CIRCLE_REDESIGN`** (JT's mockup, Nov 6; off by default).
+   A circle switcher (one pill per profile you manage or follow, opening on Scanning for), a
+   picture of the circle with initials only, one list of people and waiting invites ("Invite link ·
+   waiting for someone to accept", New link and Cancel inline where the role can), an "Add to
+   circle" sheet with three choices and none preselected, a member sheet with what they can do and
+   Remove where the role can, and a follower's view showing only the profile and "You", with
+   Leave. Wording checked against the code first (Nov 6): links work once and never expire, the
+   app sends nothing itself, removal ends access straight away, no pronouns.
+   *Built Nov 6: `client/src/routes/CircleRedesign.tsx`, `CircleDiagram.tsx`, `AddToCircleSheet.tsx`,
+   `MemberSheet.tsx`, `FollowedCircle.tsx`, `lib/circleRedesign.ts`; `POST /profiles/:id/leave`
+   (`server/src/routes/circle.ts`, followers only). Same day, not behind the switch: someone removed
+   from a circle couldn't rejoin by a new invite link (a 500 on accept, `46b6484`). Checked locally
+   at 390px as an owner, a co-manager, a full follower and a severe-only follower, switch on (forced
+   in the browser only) and off. Leave was checked by server tests, not in the browser: the local
+   server's switch was off.*
+   **Still owed:** JT's review of the four views, then switch it on (`docs/server-setup.md` §11f).
 
 ### Nov 13 — code freeze
 
@@ -1365,6 +1381,10 @@ Out of scope per `CONTEST_RULES.md` §7 — do not start these before judging en
   About 3–4 days, and it touches every barcode scan's verdict path, so after judging (JT, Nov 4),
   with no measurement before. **Open decision:** whether USDA data alone may give "No listed
   allergens found" when Open Food Facts has none. JT, Nov 4: no, for now.
+- **Invite links never expire** (found Nov 6, checking the Circle tab redesign). A follow or
+  co-manager link works once, for whoever accepts it first, until a manager cancels it — however
+  old it is. Consider an expiry after Nov 20 (JT, Nov 6); the redesign's footnote ("You can cancel
+  it until then") would need to say it.
 - Decide a retention rule for corrections and their photos — currently unbounded on purpose
   (`docs/coppa.md` §2.7). Needs its own number and rationale, not invented mid-build.
 - Say "the check couldn't finish" outside the live card too (`89b1e39` did the live card only).
