@@ -2649,3 +2649,42 @@ a.card:hover {
   border-color: var(--color-verdict-edge);
   color: var(--color-text-muted);
 }
+
+/* A bottom sheet (BottomSheet.tsx): full width on a phone, a column on a wider screen. */
+dialog.bottom-sheet {
+  width: 100%;
+  max-width: var(--measure);
+  max-height: 90dvh;
+  margin: auto auto 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  box-shadow: var(--shadow);
+}
+
+dialog.bottom-sheet::backdrop {
+  background: rgb(0 0 0 / 0.45);
+}
+
+.bottom-sheet__body {
+  padding: var(--space-3) var(--space-4) max(var(--space-5), env(safe-area-inset-bottom));
+}
+
+.bottom-sheet__close {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0;
+}
+
+/* Remove and Leave: the only red controls on the Circle tab (JT, 2026-11-06). */
+button.button-danger {
+  border-color: var(--color-alert);
+  color: var(--color-alert);
+}
+
+button.button-danger.button-primary {
+  background: var(--color-alert);
+  color: var(--color-bg);
+}
