@@ -2988,6 +2988,11 @@ button.member-row__open {
   font-weight: 400;
 }
 
+/* One profile: not a control, so no tap target to suggest one. */
+.scan-pill--single {
+  margin: 0;
+}
+
 .scan-pill__initial {
   display: grid;
   flex: none;
