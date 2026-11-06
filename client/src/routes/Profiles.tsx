@@ -8,9 +8,8 @@ import { CREATE_ONE, CREATE_ONE_BELOW, NO_FOLLOWED_PROFILES, NO_MANAGED_PROFILES
 import { SEVERITY_REQUIRED } from "../lib/severityCopy";
 import { SeverityChoice } from "../SeverityChoice";
 import { allergenLine } from "../lib/profileLineCopy";
-import { ADD_PROFILE_PATH, addFormRequested, NEW_PROFILE_PATH, profileSection, SECTION_LABEL, sectionHref, visibleSections } from "../lib/profileSections";
+import { ACCOUNT_PATH, ADD_PROFILE_PATH, addFormRequested, NEW_PROFILE_PATH, oldSectionRedirect } from "../lib/profileSections";
 import { useAuth } from "../lib/AuthContext";
-import { OVERRIDE_CHOICES, readOverride, regionStatus, saveOverride, type RegionOverride } from "../lib/scannerRegion";
 import {
   ApiRequestError,
   createProfile,
@@ -22,14 +21,7 @@ import {
 export function Profiles() {
   const navigate = useNavigate();
   const { hash } = useLocation();
-  const { user, logout, scannerRegionEnabled, guidedSetupEnabled } = useAuth();
-  const isAdmin = user?.isAdmin === true;
-  const section = profileSection(hash, isAdmin);
-  // This device's scanner-box override (lib/scannerRegion.ts), for testing on a phone before
-  // SCANNER_REGION goes on. Admins only: the section shows only for them, and the override counts
-  // only for them.
-  const [regionOverride, setRegionOverride] = useState<RegionOverride>(() => readOverride());
-  const [regionSaveFailed, setRegionSaveFailed] = useState(false);
+  const { guidedSetupEnabled } = useAuth();
   const [managed, setManaged] = useState<ProfileSummary[]>([]);
   const [followed, setFollowed] = useState<ProfileSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,6 +51,13 @@ export function Profiles() {
     setCreateError(null);
     if (addFormRequested(hash)) navigate("/profiles", { replace: true });
   }
+
+  // A bookmark to the old Account or Admin section (/profiles#account, #admin) goes on to the Account
+  // page, replacing this entry so Back doesn't bounce (lib/profileSections.ts).
+  useEffect(() => {
+    const to = oldSectionRedirect(hash);
+    if (to) navigate(to, { replace: true });
+  }, [hash, navigate]);
 
   useEffect(() => {
     listProfiles()
@@ -112,199 +111,126 @@ export function Profiles() {
     }
   }
 
-  // Moved from the old dashboard (2026-10-23). Local auth state is cleared either way
-  // (AuthContext.logout); a failed server-side revoke is only logged, never blocks leaving.
-  async function handleLogout() {
-    try {
-      await logout();
-    } catch (err) {
-      console.error("logout request failed", err);
-    } finally {
-      navigate("/login");
-    }
-  }
-
   if (loading) return <p>Loading…</p>;
 
   return (
     <main>
       <h1>Profile</h1>
-      {/* One section at a time (lib/profileSections.ts). Admin isn't rendered for anyone else. */}
-      <nav className="section-switcher" aria-label="Profile tab sections">
-        {visibleSections(isAdmin).map((s) => (
-          <Link key={s} to={sectionHref(s)} aria-current={s === section ? "true" : undefined}>
-            {SECTION_LABEL[s]}
-          </Link>
-        ))}
-      </nav>
+      {/* People only since 2026-11-06: the account and its settings are on the Account page. */}
       {loadError && <p role="alert">{loadError}</p>}
 
-      {section === "profiles" && (
-        <>
-          <section>
-            <h2>Profiles you manage</h2>
-            {managed.length === 0 && (
-              <p>
-                {NO_MANAGED_PROFILES}{" "}
-                {/* With GUIDED_SETUP on, the guided setup; the classic form stays a link away there. */}
-                <Link to={guidedSetupEnabled ? NEW_PROFILE_PATH : ADD_PROFILE_PATH}>
-                  {guidedSetupEnabled ? CREATE_ONE : CREATE_ONE_BELOW}
-                </Link>
-              </p>
-            )}
-            {/* Each card is one link (2026-10-26): easier to hit on a phone than the name alone. */}
-            <ul className="card-list">
-              {managed.map((p) => (
-                <li key={p.id}>
-                  <Link to={`/profiles/${p.id}`} className="card">
-                    <span className="card__title">{p.label}</span>{" "}
-                    <span className="card__meta">({p.relationship === "owner" ? "owner" : "co-manager"})</span>
-                    <span className="profile-line">{allergenLine(p)}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          {/* Directly under the profiles you manage (2026-10-27), so adding one sits with them,
-              above any you follow. The classic form opens here too. */}
-          <section id="add-profile" ref={addSectionRef}>
-            {!addOpen ? (
-              <button type="button" onClick={() => (guidedSetupEnabled ? navigate(NEW_PROFILE_PATH) : setAddOpen(true))}>
-                Add a profile
-              </button>
-            ) : (
-              <>
-                <h2>Add a profile for someone in your care</h2>
-                <form onSubmit={handleCreate}>
-                  <label>
-                    Name
-                    <input value={label} onChange={(e) => setLabel(e.target.value)} required />
-                  </label>
-
-                  <fieldset>
-                    <legend>Allergens</legend>
-                    {allergenDrafts.map((draft) => (
-                      <div key={draft.id} className="allergen-draft">
-                        {choices && (
-                          <AllergenPicker
-                            choices={choices}
-                            value={draft.pick}
-                            onChange={(pick) => updateDraft(draft.id, { pick })}
-                            required={false}
-                          />
-                        )}
-                        <SeverityChoice
-                          name={`severity-${draft.id}`}
-                          value={draft.severity}
-                          onChange={(severity) => updateDraft(draft.id, { severity })}
-                          required={isPicked(draft.pick)}
-                        />
-                        <label>
-                          <input
-                            type="checkbox"
-                            checked={draft.treatTracesAsUnsafe}
-                            onChange={(e) => updateDraft(draft.id, { treatTracesAsUnsafe: e.target.checked })}
-                          />
-                          Treat "may contain traces" as unsafe
-                        </label>
-                        {canRemove(draft, allergenDrafts.length) && (
-                          <button type="button" onClick={() => setAllergenDrafts((d) => removeDraft(d, draft.id))}>
-                            {removeLabel(draft.pick, choices)}
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    <button type="button" onClick={() => setAllergenDrafts((d) => [...d, emptyDraft()])}>
-                      Add another allergen
-                    </button>
-                  </fieldset>
-
-                  {createError && <p role="alert">{createError}</p>}
-                  <button type="submit" disabled={submitting}>
-                    Create profile
-                  </button>
-                  <button type="button" onClick={closeAddForm}>
-                    Cancel
-                  </button>
-                </form>
-              </>
-            )}
-          </section>
-
-          <section>
-            <h2>Profiles you follow</h2>
-            {followed.length === 0 && <p>{NO_FOLLOWED_PROFILES}</p>}
-            <ul className="card-list">
-              {followed.map((p) => (
-                <li key={p.id}>
-                  <Link to={`/profiles/${p.id}`} className="card">
-                    <span className="card__title">{p.label}</span>{" "}
-                    <span className="card__meta">
-                      ({p.share_level === "severe_only" ? "severe allergens only" : "full profile"})
-                    </span>
-                    <span className="profile-line">{allergenLine(p)}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
-        </>
-      )}
-
-      {section === "admin" && (
-        <section aria-labelledby="admin-heading">
-          <h2 id="admin-heading">Admin</h2>
-          <ul>
-            <li>
-              <Link to="/admin/ai-accuracy">AI accuracy</Link>
-            </li>
-            <li>
-              <Link to="/admin/review-queue">Review queue</Link>
-            </li>
-            <li>
-              <Link to="/admin/nps">NPS</Link>
-            </li>
-          </ul>
-          <fieldset>
-            <legend>Decode only inside the box, this device</legend>
-            {OVERRIDE_CHOICES.map((c) => (
-              <label key={c.value}>
-                <input
-                  type="radio"
-                  name="scanner-region"
-                  value={c.value}
-                  checked={regionOverride === c.value}
-                  onChange={() => {
-                    setRegionSaveFailed(!saveOverride(c.value));
-                    setRegionOverride(readOverride());
-                  }}
-                />
-                {c.label}
-              </label>
-            ))}
-          </fieldset>
-          <p role="status">
-            Scanner on this device: {regionStatus(scannerRegionEnabled, isAdmin, regionOverride)}
-          </p>
-          {regionSaveFailed && <p role="alert">This browser can't keep the choice, so the server's setting applies.</p>}
-        </section>
-      )}
-
-      {section === "account" && (
-        <section aria-labelledby="account-heading">
-          <h2 id="account-heading">Account</h2>
+      <section>
+        <h2>Profiles you manage</h2>
+        {managed.length === 0 && (
           <p>
-            Signed in as {user?.displayName} ({user?.email}).
+            {NO_MANAGED_PROFILES}{" "}
+            {/* With GUIDED_SETUP on, the guided setup; the classic form stays a link away there. */}
+            <Link to={guidedSetupEnabled ? NEW_PROFILE_PATH : ADD_PROFILE_PATH}>
+              {guidedSetupEnabled ? CREATE_ONE : CREATE_ONE_BELOW}
+            </Link>
           </p>
-          <p>
-            <Link to="/settings">Settings</Link>
-          </p>
-          <button type="button" onClick={handleLogout}>
-            Log out
+        )}
+        {/* Each card is one link (2026-10-26): easier to hit on a phone than the name alone. */}
+        <ul className="card-list">
+          {managed.map((p) => (
+            <li key={p.id}>
+              <Link to={`/profiles/${p.id}`} className="card">
+                <span className="card__title">{p.label}</span>{" "}
+                <span className="card__meta">({p.relationship === "owner" ? "owner" : "co-manager"})</span>
+                <span className="profile-line">{allergenLine(p)}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* Directly under the profiles you manage (2026-10-27), so adding one sits with them,
+          above any you follow. The classic form opens here too. */}
+      <section id="add-profile" ref={addSectionRef}>
+        {!addOpen ? (
+          <button type="button" onClick={() => (guidedSetupEnabled ? navigate(NEW_PROFILE_PATH) : setAddOpen(true))}>
+            Add a profile
           </button>
-        </section>
-      )}
+        ) : (
+          <>
+            <h2>Add a profile for someone in your care</h2>
+            <form onSubmit={handleCreate}>
+              <label>
+                Name
+                <input value={label} onChange={(e) => setLabel(e.target.value)} required />
+              </label>
+
+              <fieldset>
+                <legend>Allergens</legend>
+                {allergenDrafts.map((draft) => (
+                  <div key={draft.id} className="allergen-draft">
+                    {choices && (
+                      <AllergenPicker
+                        choices={choices}
+                        value={draft.pick}
+                        onChange={(pick) => updateDraft(draft.id, { pick })}
+                        required={false}
+                      />
+                    )}
+                    <SeverityChoice
+                      name={`severity-${draft.id}`}
+                      value={draft.severity}
+                      onChange={(severity) => updateDraft(draft.id, { severity })}
+                      required={isPicked(draft.pick)}
+                    />
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={draft.treatTracesAsUnsafe}
+                        onChange={(e) => updateDraft(draft.id, { treatTracesAsUnsafe: e.target.checked })}
+                      />
+                      Treat "may contain traces" as unsafe
+                    </label>
+                    {canRemove(draft, allergenDrafts.length) && (
+                      <button type="button" onClick={() => setAllergenDrafts((d) => removeDraft(d, draft.id))}>
+                        {removeLabel(draft.pick, choices)}
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button type="button" onClick={() => setAllergenDrafts((d) => [...d, emptyDraft()])}>
+                  Add another allergen
+                </button>
+              </fieldset>
+
+              {createError && <p role="alert">{createError}</p>}
+              <button type="submit" disabled={submitting}>
+                Create profile
+              </button>
+              <button type="button" onClick={closeAddForm}>
+                Cancel
+              </button>
+            </form>
+          </>
+        )}
+      </section>
+
+      <section>
+        <h2>Profiles you follow</h2>
+        {followed.length === 0 && <p>{NO_FOLLOWED_PROFILES}</p>}
+        <ul className="card-list">
+          {followed.map((p) => (
+            <li key={p.id}>
+              <Link to={`/profiles/${p.id}`} className="card">
+                <span className="card__title">{p.label}</span>{" "}
+                <span className="card__meta">
+                  ({p.share_level === "severe_only" ? "severe allergens only" : "full profile"})
+                </span>
+                <span className="profile-line">{allergenLine(p)}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <p>
+        <Link to={ACCOUNT_PATH}>Account &amp; settings</Link>
+      </p>
     </main>
   );
 }

@@ -15,6 +15,7 @@ import {
   type ProfileSummary,
 } from "../lib/api";
 import { useAuth } from "../lib/AuthContext";
+import { OVERRIDE_CHOICES, readOverride, regionStatus, saveOverride, type RegionOverride } from "../lib/scannerRegion";
 import { ProfileRenames } from "../ProfileRenames";
 import { ScanSoundsSetting } from "../ScanSoundsSetting";
 
@@ -24,13 +25,24 @@ const CHANGE_PASSWORD_ERROR_COPY: Record<string, string> = {
   invalid_request: "Check that your new password is at least 8 characters.",
 };
 
+// The Account page (JT, 2026-11-06): everything about the account and its settings, in one place —
+// who's signed in, renaming, scan sounds, password, feedback, Admin for an admin, deleting the
+// account, and Log out. Moved here from the Profile tab's Account and Admin sections; the path
+// stays /settings.
+//
 // docs/coppa.md §2.6: "Confirmed with a typed confirmation, not just a button." Every other
 // irreversible action in this app is a bare window.confirm() (ProfileDetail.tsx) — deleting the
 // whole account, and potentially someone else's access to a profile they didn't choose to give up,
 // needs more than that.
 export function Settings() {
-  const { user, logout, scanSoundsEnabled } = useAuth();
+  const { user, logout, scanSoundsEnabled, scannerRegionEnabled } = useAuth();
   const navigate = useNavigate();
+  const isAdmin = user?.isAdmin === true;
+  // This device's scanner-box override (lib/scannerRegion.ts), for testing on a phone before
+  // SCANNER_REGION goes on (docs/server-setup.md §11b). Admins only: the section shows only for
+  // them, and the override counts only for them.
+  const [regionOverride, setRegionOverride] = useState<RegionOverride>(() => readOverride());
+  const [regionSaveFailed, setRegionSaveFailed] = useState(false);
 
   const [profiles, setProfiles] = useState<DeletionImpactProfile[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -144,6 +156,19 @@ export function Settings() {
     }
   }
 
+  // Moved from the old dashboard (2026-10-23), then the Profile tab (2026-11-06). Local auth state is
+  // cleared either way (AuthContext.logout); a failed server-side revoke is only logged, never blocks
+  // leaving.
+  async function handleLogout() {
+    try {
+      await logout();
+    } catch (err) {
+      console.error("logout request failed", err);
+    } finally {
+      navigate("/login");
+    }
+  }
+
   const canConfirm = confirmText.trim().toLowerCase() === user?.email.toLowerCase();
 
   async function handleDeleteAccount() {
@@ -163,9 +188,12 @@ export function Settings() {
   return (
     <main>
       <p>
-        <Link to="/profiles#account">← Account</Link>
+        <Link to="/profiles">← Profiles</Link>
       </p>
-      <h1>Settings</h1>
+      <h1>Account</h1>
+      <p>
+        Signed in as {user?.displayName} ({user?.email}).
+      </p>
 
       {managedError && <p role="alert">{managedError}</p>}
       {managed && (
@@ -274,6 +302,46 @@ export function Settings() {
         )}
       </section>
 
+      {/* Admins only; the server's /admin routes 404 for anyone else. */}
+      {isAdmin && (
+        <section>
+          <h2>Admin</h2>
+          <ul>
+            <li>
+              <Link to="/admin/ai-accuracy">AI accuracy</Link>
+            </li>
+            <li>
+              <Link to="/admin/review-queue">Review queue</Link>
+            </li>
+            <li>
+              <Link to="/admin/nps">NPS</Link>
+            </li>
+          </ul>
+          <fieldset>
+            <legend>Decode only inside the box, this device</legend>
+            {OVERRIDE_CHOICES.map((c) => (
+              <label key={c.value}>
+                <input
+                  type="radio"
+                  name="scanner-region"
+                  value={c.value}
+                  checked={regionOverride === c.value}
+                  onChange={() => {
+                    setRegionSaveFailed(!saveOverride(c.value));
+                    setRegionOverride(readOverride());
+                  }}
+                />
+                {c.label}
+              </label>
+            ))}
+          </fieldset>
+          <p role="status">
+            Scanner on this device: {regionStatus(scannerRegionEnabled, isAdmin, regionOverride)}
+          </p>
+          {regionSaveFailed && <p role="alert">This browser can't keep the choice, so the server's setting applies.</p>}
+        </section>
+      )}
+
       <section>
         <h2>Delete your account</h2>
         <p>This permanently deletes your account. It cannot be undone.</p>
@@ -328,6 +396,12 @@ export function Settings() {
           {deleting ? "Deleting…" : "Permanently delete my account"}
         </button>
       </section>
+
+      <p>
+        <button type="button" onClick={handleLogout}>
+          Log out
+        </button>
+      </p>
     </main>
   );
 }

@@ -2,40 +2,36 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
-import { ADD_PROFILE_PATH, addFormRequested, addProfileHref, NEW_PROFILE_PATH, profileSection, sectionHref, visibleSections } from "./profileSections";
+import { ACCOUNT_PATH, ADD_PROFILE_PATH, addFormRequested, addProfileHref, NEW_PROFILE_PATH, oldSectionRedirect } from "./profileSections";
 import { noticesShownOn } from "./tabs";
 
-// The Profile tab's sections (2026-10-26): picked by the fragment, so the path never changes.
+// The Profile tab lists people only since 2026-11-06 (JT); its old Account and Admin sections are on
+// the Account page (routes/Settings.tsx, routes/Settings.test.ts).
 
 const src = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 const PROFILES = src("../routes/Profiles.tsx");
 
-test("the fragment picks the section; Admin only for an admin", () => {
-  assert.equal(profileSection("", false), "profiles");
-  assert.equal(profileSection("#account", false), "account");
-  assert.equal(profileSection("#admin", true), "admin");
-  assert.equal(profileSection("#admin", false), "profiles", "a non-admin typing #admin gets Profiles");
-  assert.equal(profileSection("#add-profile", true), "profiles");
-  assert.equal(profileSection("#nonsense", true), "profiles");
-  assert.deepEqual(visibleSections(false), ["profiles", "account"]);
-  assert.deepEqual(visibleSections(true), ["profiles", "account", "admin"]);
+test("the old #account and #admin go on to the Account page; anything else stays", () => {
+  assert.equal(ACCOUNT_PATH, "/settings");
+  assert.equal(oldSectionRedirect("#account"), ACCOUNT_PATH);
+  assert.equal(oldSectionRedirect("#admin"), ACCOUNT_PATH, "a non-admin there sees the page without Admin");
+  for (const hash of ["", "#add-profile", "#nonsense"]) assert.equal(oldSectionRedirect(hash), null, hash);
+  assert.match(PROFILES, /const to = oldSectionRedirect\(hash\);\s*if \(to\) navigate\(to, \{ replace: true \}\);/);
 });
 
-test("every section is /profiles, so Condition 2's notices and badge are on all three", () => {
-  for (const s of visibleSections(true)) {
-    const href = sectionHref(s);
-    assert.ok(noticesShownOn(new URL(href, "https://x").pathname), href);
-  }
+test("the Profile tab lists people only, ending with one link to the Account page", () => {
+  assert.doesNotMatch(PROFILES, /section-switcher|Signed in as|Log out|logout|\/admin\/|saveOverride|ScanSoundsSetting/);
+  const followed = PROFILES.indexOf("<h2>Profiles you follow</h2>");
+  const link = PROFILES.indexOf("<Link to={ACCOUNT_PATH}>Account &amp; settings</Link>");
+  assert.ok(followed > 0 && link > followed, "after the profiles you follow");
+  assert.doesNotMatch(PROFILES.slice(link), /<section|<Link to=\{`/, "and last on the page");
+});
+
+test("/profiles keeps Condition 2's notices and badge", () => {
+  assert.ok(noticesShownOn("/profiles"));
   assert.ok(noticesShownOn(new URL(ADD_PROFILE_PATH, "https://x").pathname));
   // TabShell decides from the path alone, never the fragment.
   assert.match(src("../TabShell.tsx"), /noticesShownOn\(pathname\)/);
-});
-
-test("the Admin section and its link exist only for an admin", () => {
-  assert.match(PROFILES, /visibleSections\(isAdmin\)\.map/);
-  assert.match(PROFILES, /\{section === "admin" && \(/);
-  assert.match(PROFILES, /const isAdmin = user\?\.isAdmin === true;/);
-  assert.doesNotMatch(PROFILES, /AI accuracy[\s\S]*\{section === "admin"/, "no admin link outside the section");
 });
 
 test("'Create one' links land on the classic form, or the guided setup when GUIDED_SETUP is on", () => {

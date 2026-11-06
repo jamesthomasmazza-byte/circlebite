@@ -113,9 +113,5 @@ test("the setting is in Settings, after \"Your profiles\", and only with the swi
   const sounds = settings.search(/\{scanSoundsEnabled && \(\s*<section>\s*<h2>Scan sounds<\/h2>\s*<ScanSoundsSetting \/>/);
   const password = settings.indexOf("<h2>Change your password</h2>");
   assert.ok(renames > 0 && sounds > renames && password > sounds);
-  // The Account section keeps "Signed in as…", the Settings link and Log out, and nothing else.
-  const profiles = src("../routes/Profiles.tsx");
-  const account = profiles.slice(profiles.indexOf('section === "account"'));
-  assert.doesNotMatch(profiles, /ScanSoundsSetting/);
-  assert.match(account, /Signed in as \{user\?\.displayName\}[\s\S]*<Link to="\/settings">Settings<\/Link>[\s\S]*Log out/);
+  assert.doesNotMatch(src("../routes/Profiles.tsx"), /ScanSoundsSetting/);
 });

@@ -81,14 +81,17 @@ test("the Admin section says what's in effect and where it comes from", () => {
   assert.equal(regionStatus(true, true, "off"), "Whole frame (this device)");
 });
 
-test("the device choice is in the Admin section only, which shows only for an admin", async () => {
+test("the device choice is in the Account page's Admin section only, which shows only for an admin", async () => {
+  // On the Profile tab's Admin section until 2026-11-06; the Account page since (JT).
   const { readFileSync } = await import("node:fs");
+  const settings = readFileSync(new URL("../routes/Settings.tsx", import.meta.url), "utf8");
   const profiles = readFileSync(new URL("../routes/Profiles.tsx", import.meta.url), "utf8");
-  const admin = profiles.slice(profiles.indexOf('{section === "admin" && ('), profiles.indexOf('{section === "account" && ('));
+  assert.match(settings, /const isAdmin = user\?\.isAdmin === true;/);
+  const admin = settings.slice(settings.indexOf("{isAdmin && (\n        <section>\n          <h2>Admin</h2>"), settings.indexOf("<h2>Delete your account</h2>"));
   assert.match(admin, /Decode only inside the box, this device/);
-  assert.equal(profiles.match(/saveOverride\(/g)?.length, 1);
-  assert.ok(profiles.indexOf("saveOverride(") > profiles.indexOf('{section === "admin" && ('));
-  assert.ok(profiles.indexOf("saveOverride(") < profiles.indexOf('{section === "account" && ('));
+  assert.equal(settings.match(/saveOverride\(/g)?.length, 1);
+  assert.ok(admin.includes("saveOverride("));
+  assert.doesNotMatch(profiles, /saveOverride\(/);
 });
 
 // The box mapped onto the camera's frame, through object-fit: cover. The box is inset 30% 10% of
