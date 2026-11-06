@@ -65,7 +65,17 @@ import {
 } from "../lib/evidenceCopy";
 import { allergenLine, profileOptionText } from "../lib/profileLineCopy";
 import { couldntReadHeading, DISCLAIMER, DISCLAIMER_SHORT, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
-import { recentCards, recentHeading, scanModes, type RecentCard, type ScanMode } from "../lib/scanRedesign";
+import {
+  circleReportsOffRows,
+  circleReportsOnRow,
+  forLabel,
+  mayContainLine,
+  recentCards,
+  recentHeading,
+  scanModes,
+  type RecentCard,
+  type ScanMode,
+} from "../lib/scanRedesign";
 
 const CORRECTION_TYPE_LABEL: Record<CorrectionType, string> = {
   flag_wrong: "This allergen isn't actually in this product",
@@ -667,7 +677,7 @@ export function Scan() {
   if (loadingProfiles) return <p>Loading…</p>;
 
   return (
-    <main>
+    <main className={redesign && scannerBusy ? "scan-camera-up" : undefined}>
       {/* Kept for screen readers but off screen in a landscape phone, where the header already
           says who you're scanning for and the camera button needs the room (styles.css). */}
       <h1 className="scan-title">Scan a product</h1>
@@ -824,8 +834,9 @@ export function Scan() {
             </section>
           )}
 
-          {/* Redesign: how to scan, just above the tab bar. "Label photo" only with LABEL_SCAN. */}
-          {redesign && (
+          {/* Redesign: how to scan, just above the tab bar. "Label photo" only with LABEL_SCAN. Not over
+              a result, where "Scan another product" takes that place. */}
+          {redesign && !showScanAnother && (
             <div className="scan-modes" role="group" aria-label="How to scan">
               {scanModes(labelScanEnabled).map((m) => (
                 <button key={m.mode} type="button" aria-pressed={mode === m.mode} onClick={() => chooseMode(m.mode)}>
@@ -855,8 +866,24 @@ export function Scan() {
         </section>
       )}
 
+      {/* Redesign: the same card, in a sheet over the camera (styles.css, .tab-shell--camera), which
+          steps aside while the camera or its first-use sentence is up (main's scan-camera-up). */}
       {result && shown && !awaitingRequiredPhoto && !couldntReadLabel && (
         <section data-reveal-target>
+          {redesign && (
+            <div className="scan-sheet__top">
+              {resultProfileLabel && <p className="scan-sheet__for">{forLabel(resultProfileLabel)}</p>}
+              {/* No image is ever stored for a product, so a neutral placeholder, always. */}
+              <div className="scan-product">
+                <span className="scan-product__image" aria-hidden="true" />
+                <p className="scan-product__text">
+                  <strong>{result.product_name ?? "Unknown product"}</strong>
+                  {result.product_brand && <span>{result.product_brand}</span>}
+                  {result.barcode && <span className="scan-product__barcode">{result.barcode}</span>}
+                </p>
+              </div>
+            </div>
+          )}
           {isSampleScan(result.barcode) && (
             <p className="sample-scan" role="note">
               {SAMPLE_LABEL}
@@ -868,10 +895,13 @@ export function Scan() {
             <h2 ref={resultHeadingRef} tabIndex={-1}>
               {VERDICT_LABEL[shown.result]}
             </h2>
-            <p className="verdict-card__product">
-              {result.product_name ?? "Unknown product"}
-              {result.product_brand && ` — ${result.product_brand}`}
-            </p>
+            {/* Redesign: the product has its own row above the card. */}
+            {!redesign && (
+              <p className="verdict-card__product">
+                {result.product_name ?? "Unknown product"}
+                {result.product_brand && ` — ${result.product_brand}`}
+              </p>
+            )}
           </header>
 
           <div className="verdict-card__body">
@@ -905,11 +935,12 @@ export function Scan() {
             <p>{result.explanation}</p>
           )}
 
-          {shown.matched_allergens.filter((m) => m.classification !== "clear" && m.classification !== "unchecked").length >
+          {/* Redesign: a row for each allergen checked, "not found" included. */}
+          {shown.matched_allergens.filter((m) => (redesign || m.classification !== "clear") && m.classification !== "unchecked").length >
             0 && (
             <ul className="allergen-rows">
               {shown.matched_allergens
-                .filter((m) => m.classification !== "clear" && m.classification !== "unchecked")
+                .filter((m) => (redesign || m.classification !== "clear") && m.classification !== "unchecked")
                 .map((m) => (
                   // Four facts per row, each on its own visual line: which allergen, how severe for
                   // this profile, what the package claims, and how we know. The "(" ")" and " — "
@@ -955,6 +986,15 @@ export function Scan() {
                         </span>
                       </>
                     )}
+                    {/* Redesign: a pending report from this profile's circle, on its own row, in the
+                        sentence the card puts under the rows today — the reporter by name or by role,
+                        as the server sent it (Oct 27). */}
+                    {redesign &&
+                      circleReportsOnRow(result.pending_circle_reports, m.allergenName).map((r) => (
+                        <span key={`circle-${r.allergenName}`} className="allergen-row__source circle-report" data-source="circle">
+                          {circleReportLine(r, resultProfileLabel)}
+                        </span>
+                      ))}
                     {disagreementNote(m) && (
                       <p role="note">
                         {disagreementNote(m)}
@@ -1064,7 +1104,13 @@ export function Scan() {
                   </li>
                 ))}
                 {/* Last and lightest: the least-supported claim on the card (JT, 2026-10-16). */}
-                {result.pending_circle_reports.map((r) => (
+                {(redesign
+                  ? circleReportsOffRows(
+                      result.pending_circle_reports,
+                      shown.matched_allergens.filter((m) => m.classification !== "unchecked").map((m) => m.allergenName),
+                    )
+                  : result.pending_circle_reports
+                ).map((r) => (
                   <li key={`circle-${r.allergenName}`} className="circle-report">
                     {circleReportLine(r, resultProfileLabel)}
                   </li>
@@ -1074,6 +1120,12 @@ export function Scan() {
                 <p key={note}>{note}</p>
               ))}
             </div>
+          )}
+
+          {/* Redesign: what the product record itself says may be in it — or that it lists nothing,
+              said as a claim about the record only (lib/scanRedesign.ts mayContainLine). */}
+          {redesign && mayContainLine(result.record_may_contain) && (
+            <p className="scan-may-contain">{mayContainLine(result.record_may_contain)}</p>
           )}
 
           <div role="note" className="verdict-card__disclaimer">

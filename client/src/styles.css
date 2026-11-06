@@ -3213,3 +3213,83 @@ a.scan-recent__card {
 .tab-shell:has(.scan-modes) {
   padding-bottom: calc(var(--tab-bar-reach) + var(--tap-min) + var(--space-6));
 }
+
+/* The result, redesigned: today's card in a sheet over the camera, above the tab bar. The pinned
+   "Scan another product" stays the sheet's main action; the sheet pads itself so it never covers
+   the 911 line or "Report a problem". It steps aside while the camera is up. */
+.tab-shell--camera .scan-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.tab-shell--camera main > section[data-reveal-target] {
+  position: fixed;
+  inset: auto 0 calc(var(--tab-bar-height) - var(--space-2)) 0;
+  z-index: 8;
+  max-width: var(--measure);
+  max-height: calc(100dvh - var(--tab-bar-height) - var(--space-7));
+  margin-inline: auto;
+  padding: var(--space-3) var(--space-4) calc(var(--scan-another-top) - var(--tab-bar-height) + var(--space-5));
+  overflow-y: auto;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  box-shadow: 0 -4px 24px rgb(0 0 0 / 0.35);
+}
+
+.tab-shell--camera main.scan-camera-up > section[data-reveal-target] {
+  display: none;
+}
+
+.scan-sheet__for {
+  display: inline-block;
+  margin: 0 0 var(--space-2);
+  padding: 0.125rem var(--space-3);
+  border-radius: 999px;
+  background: var(--color-surface);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.scan-product {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.scan-product__image {
+  flex: none;
+  width: 3.5rem;
+  height: 3.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.scan-product__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.scan-product__text span {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.scan-may-contain {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.tab-shell--camera .scan-another {
+  z-index: 9;
+}

@@ -40,3 +40,42 @@ test("the segmented control: leaving Barcode stops the camera; Label photo opens
   assert.match(choose, /if \(next === "photo"\) openStandalonePhotoCapture\(\);/);
   assert.match(SCAN, /scanModes\(labelScanEnabled\)\.map/);
 });
+
+// ---- The result sheet: today's card, in a sheet ----
+
+const card = SCAN.slice(SCAN.indexOf('<div className="verdict-card" data-verdict={shown.result}>'), SCAN.indexOf("{/* Directly under the card it disputes"));
+
+test("the banner is today's: the verdict card's own label and colour, from what the card shows", () => {
+  assert.match(card, /<h2 ref=\{resultHeadingRef\} tabIndex=\{-1\}>\s*\{VERDICT_LABEL\[shown\.result\]\}\s*<\/h2>/);
+  assert.match(SCAN, /const shown = result && \(result\.effective \?\? \{ result: result\.result, matched_allergens: result\.matched_allergens \}\);/);
+  // No second verdict anywhere in the redesign's blocks, and never the word.
+  for (const block of [SCAN.slice(SCAN.indexOf('<div className="scan-sheet__top">'), SCAN.indexOf('<div className="verdict-card"'))]) {
+    assert.doesNotMatch(block, /VERDICT_LABEL|data-verdict/);
+    assert.doesNotMatch(block.replace(/\/\/.*$|\{\/\*[\s\S]*?\*\/\}|\/\*[\s\S]*?\*\//gm, ""), /\bsafe\b/i);
+  }
+});
+
+test("the disclaimer and the 911 line are on every result, in both layouts: they sit in the shared card", () => {
+  assert.match(card, /<div role="note" className="verdict-card__disclaimer">\s*<p>\{DISCLAIMER\}<\/p>\s*<p>\s*<strong>\{EMERGENCY\}<\/strong>/);
+  // One disclaimer, in the card both layouts render for every result: not behind either branch.
+  assert.equal(SCAN.match(/className="verdict-card__disclaimer"/g)?.length, 1);
+  assert.match(card, /\)\}\s*<div role="note" className="verdict-card__disclaimer">/, "after the may-contain block closes");
+});
+
+test("a held removal stays a note on its row: the redesign adds no path to the clean banner", () => {
+  // The row keeps disputedNote; the headline is shown.result, which a pending removal never lowers
+  // (server applyCorrections.ts, Oct 23; Prof. Yoest's green card, Oct 24).
+  assert.match(card, /\{disputedNote\(m\) && \(/);
+  // The card names a verdict in two places only, as today: the headline, and the engine's own verdict
+  // in the note that says what changed it.
+  assert.deepEqual(card.match(/VERDICT_LABEL\[[^\]]+\]/g), ["VERDICT_LABEL[shown.result]", "VERDICT_LABEL[result.result]"]);
+});
+
+test("a pending circle report on its row is today's sentence: by name to managers, by role to a follower", () => {
+  assert.match(card, /circleReportsOnRow\(result\.pending_circle_reports, m\.allergenName\)\.map\(\(r\) => \(\s*<span[^>]*>\s*\{circleReportLine\(r, resultProfileLabel\)\}/);
+  assert.match(card, /circleReportsOffRows\(/, "any report no row matches stays in the list");
+});
+
+test("the may-contain line comes from the record, and only in the redesign", () => {
+  assert.match(card, /\{redesign && mayContainLine\(result\.record_may_contain\) && \(/);
+});

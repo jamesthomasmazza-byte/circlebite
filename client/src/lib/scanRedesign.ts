@@ -104,3 +104,22 @@ export const LABEL_CHECKLIST = [
 export const LABEL_PROMISE = "If any part is cut off or hard to read, we'll ask for another photo instead of guessing.";
 export const TAKE_PHOTO = "Take photo";
 export const CHOOSE_PHOTO = "Choose from photos";
+
+// ---- The result sheet ----
+
+type Named = { allergenName: string };
+const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/**
+ * A pending circle report shown on its own allergen's row, in the full sentence today's card puts
+ * under the rows (correctionCopy.ts circleReportLine: the reporter by name to the owner and
+ * co-managers, by role to a follower, as the server sends it).
+ */
+export function circleReportsOnRow<R extends Named>(reports: R[], rowName: string): R[] {
+  return reports.filter((r) => sameName(r.allergenName, rowName));
+}
+
+/** The reports no row matches, which stay in the list under the rows: every report shows once. */
+export function circleReportsOffRows<R extends Named>(reports: R[], rowNames: string[]): R[] {
+  return reports.filter((r) => !rowNames.some((n) => sameName(r.allergenName, n)));
+}

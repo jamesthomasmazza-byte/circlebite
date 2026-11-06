@@ -5,6 +5,8 @@ import type { ScanHistoryEntry } from "./api";
 import { SEVERE_ONLY_SHARED } from "./profileLineCopy";
 import {
   allergenChips,
+  circleReportsOffRows,
+  circleReportsOnRow,
   LABEL_PROMISE,
   mayContainLine,
   profileInitial,
@@ -81,4 +83,14 @@ test("the may-contain line: nothing without a record, \"None on the product reco
 
 test("the label photo's promise, true per extractLabel's legible and complete", () => {
   assert.equal(LABEL_PROMISE, "If any part is cut off or hard to read, we'll ask for another photo instead of guessing.");
+});
+
+test("pending circle reports: on their row when one matches, else in the list; every report shows exactly once", () => {
+  const reports = [{ allergenName: "Sesame" }, { allergenName: "peanut" }, { allergenName: "Peanuts" }];
+  const rows = ["Peanut", "Milk"];
+  const onRows = rows.flatMap((n) => circleReportsOnRow(reports, n));
+  const off = circleReportsOffRows(reports, rows);
+  assert.deepEqual(onRows.map((r) => r.allergenName), ["peanut"]);
+  assert.deepEqual(off.map((r) => r.allergenName), ["Sesame", "Peanuts"], "a spelling no row matches stays in the list");
+  assert.equal(onRows.length + off.length, reports.length);
 });
