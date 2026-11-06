@@ -7,6 +7,7 @@ import { getCircle, listProfiles, type CircleData, type ProfileSummary } from ".
 import { useAuth } from "../lib/AuthContext";
 import { addProfileHref } from "../lib/profileSections";
 import { useScanningFor } from "../TabShell";
+import { CircleRedesign } from "./CircleRedesign";
 
 type ManagedCircle = { profile: ProfileSummary; circle: CircleData | null };
 
@@ -22,6 +23,12 @@ type ManagedCircle = { profile: ProfileSummary; circle: CircleData | null };
  * anyone can ask to follow a parent's profile at the bottom. Invites work exactly as before.
  */
 export function Circle() {
+  // JT's redesign (2026-11-06) behind CIRCLE_REDESIGN; off, today's tab below, unchanged.
+  const { circleRedesignEnabled } = useAuth();
+  return circleRedesignEnabled ? <CircleRedesign /> : <CircleClassic />;
+}
+
+function CircleClassic() {
   const { user, circleRequestsEnabled, guidedSetupEnabled } = useAuth();
   const { requests, refreshRequests } = useScanningFor();
   const [managed, setManaged] = useState<ManagedCircle[] | null>(null);
