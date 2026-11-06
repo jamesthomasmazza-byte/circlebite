@@ -41,8 +41,16 @@ test("New link cancels before it makes, so two links are never live for one invi
   assert.match(act, /setError\(CANCEL_FAILED\);\s*return;/, "a failed cancel makes nothing");
 });
 
-test("follow requests work as on today's tab: the owner's first, the form behind a link", () => {
-  assert.ok(PAGE.indexOf("<FollowRequests") < PAGE.indexOf('className="circle-pills"'));
+test("one heading, the circle showing; pills straight under it only with two or more circles", () => {
+  // JT, 2026-11-06: "Circle", one pill and "<name>'s circle" said it three times.
+  assert.match(PAGE, /<h1 id="circle-heading">\{circleHeading\(managed \?\? followed\)\}<\/h1>\s*\{showCirclePills\(profiles\.managed\.length \+ profiles\.followed\.length\) && \(\s*<div className="circle-pills"/);
+  assert.equal(PAGE.match(/<h1\b/g)?.length, 2, "the page's h1, and the load error's");
+  assert.doesNotMatch(PAGE, /<h2\b/, "no second heading for the circle");
+  assert.doesNotMatch(readFileSync(new URL("../FollowedCircle.tsx", import.meta.url), "utf8"), /<h[12]\b/);
+});
+
+test("follow requests work as on today's tab: under the pills, the form behind a link", () => {
+  assert.ok(PAGE.indexOf('className="circle-pills"') < PAGE.indexOf("<FollowRequests"));
   assert.match(PAGE, /\{circleRequestsEnabled && \(\s*<p className="circle-join">/);
   assert.match(PAGE, /\{circleRequestsEnabled && askOpen && <AskToFollow \/>\}/);
 });

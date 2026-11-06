@@ -22,6 +22,7 @@ import {
   ADD_BUTTON_PREFIX,
   addTitle,
   canActOnInvite,
+  circleHeading,
   initialCircle,
   JOIN_SOMEONE_ELSES,
   members,
@@ -29,6 +30,7 @@ import {
   PENDING_LINE,
   pendingInvites,
   pillLabel,
+  showCirclePills,
   ROLE_LINE,
   type Member,
   type Pending,
@@ -99,23 +101,12 @@ export function CircleRedesign() {
   const managed = profiles.managed.find((p) => p.id === selectedId);
   const followed = profiles.followed.find((p) => p.id === selectedId);
 
+  // One heading, the circle showing, and the pills straight under it only when there's a choice
+  // (JT, 2026-11-06): with one circle, "Circle", a lone pill and "<name>'s circle" said it three times.
   return (
     <main className="circle-redesign">
-      <h1>Circle</h1>
-      <FollowRequests
-        requests={requests}
-        onChanged={() => {
-          refreshRequests();
-          setVersion((v) => v + 1);
-        }}
-      />
-      {profiles.managed.length === 0 && profiles.followed.length === 0 && (
-        <p>
-          You're not in any circle yet. <Link to={addProfileHref(guidedSetupEnabled)}>Add a profile</Link> to invite people to it.
-        </p>
-      )}
-
-      {profiles.managed.length + profiles.followed.length > 0 && (
+      <h1 id="circle-heading">{circleHeading(managed ?? followed)}</h1>
+      {showCirclePills(profiles.managed.length + profiles.followed.length) && (
         <div className="circle-pills" role="group" aria-label="Which circle">
           {profiles.managed.map((p) => (
             <button key={p.id} type="button" className="circle-pill" aria-pressed={p.id === selectedId} onClick={() => setSelectedId(p.id)}>
@@ -128,6 +119,18 @@ export function CircleRedesign() {
             </button>
           ))}
         </div>
+      )}
+      <FollowRequests
+        requests={requests}
+        onChanged={() => {
+          refreshRequests();
+          setVersion((v) => v + 1);
+        }}
+      />
+      {profiles.managed.length === 0 && profiles.followed.length === 0 && (
+        <p>
+          You're not in any circle yet. <Link to={addProfileHref(guidedSetupEnabled)}>Add a profile</Link> to invite people to it.
+        </p>
       )}
 
       {/* Keyed by profile, so nothing one circle holds (a new link, an error) shows under another. */}
@@ -211,10 +214,10 @@ function ManagedCircle({ profile, viewerId }: { profile: ProfileSummary; viewerI
     }
   }
 
-  const heading = profile.is_self ? "Your circle" : `${profile.label}'s circle`;
+  // Named by the page's h1, which names this circle.
   if (failed) {
     return (
-      <section aria-label={heading}>
+      <section aria-labelledby="circle-heading">
         <p role="alert">Couldn't load this circle.</p>
       </section>
     );
@@ -230,7 +233,6 @@ function ManagedCircle({ profile, viewerId }: { profile: ProfileSummary; viewerI
 
   return (
     <section aria-labelledby="circle-heading">
-      <h2 id="circle-heading">{heading}</h2>
       <CircleDiagram centerName={profile.label} bubbles={bubbles} />
       {error && <p role="alert">{error}</p>}
 

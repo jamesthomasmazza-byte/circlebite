@@ -29,8 +29,8 @@ export function FollowedCircle({ profile, onLeft }: { profile: ProfileSummary; o
   }
 
   return (
+    // Named by the page's h1, "<name>'s circle" (routes/CircleRedesign.tsx).
     <section aria-labelledby="circle-heading">
-      <h2 id="circle-heading">{profile.label}'s circle</h2>
       <CircleDiagram centerName={profile.label} bubbles={[{ key: "you", name: "You", kind: "you" }]} />
       <p>{whoCanSee(profile)}</p>
 

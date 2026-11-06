@@ -6,6 +6,7 @@ import {
   ADD_CHOICES,
   canActOnInvite,
   canRemove,
+  circleHeading,
   followerRole,
   initialCircle,
   initials,
@@ -18,6 +19,7 @@ import {
   removalLine,
   ROLE_LINE,
   shareMessage,
+  showCirclePills,
   whatTheyCanDo,
   whatYouCanSee,
   whoCanSee,
@@ -126,6 +128,16 @@ test("a follower's view: who can see the circle, and what they can see", () => {
     level: "Severe allergens only",
     note: "Your scans still check every allergen on Maya's profile.",
   });
+});
+
+test("the page's heading is the circle showing, and pills show only when there's a choice", () => {
+  assert.equal(circleHeading(MAYA), "Maya's circle");
+  assert.equal(circleHeading({ label: "Sam", is_self: false }), "Sam's circle", "a followed circle reads the same");
+  assert.equal(circleHeading(ME), "Your circle");
+  assert.equal(circleHeading(undefined), "Circle", "no circle to show");
+  assert.equal(showCirclePills(0), false);
+  assert.equal(showCirclePills(1), false, "one circle: no lone pill");
+  assert.equal(showCirclePills(2), true);
 });
 
 test("the first circle shown: one named by #circle-<id>, else Scanning for, else the first", () => {

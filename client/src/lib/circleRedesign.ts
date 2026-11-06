@@ -228,6 +228,20 @@ export const CONFIRM_LEAVE = "Yes, leave";
 
 // ---- The switcher ----
 
+/**
+ * The page's one heading (JT, 2026-11-06): the circle showing, "Maya's circle", or "Your circle" for
+ * your own profile; "Circle" only when there's none to show. Followed or managed alike.
+ */
+export function circleHeading(p: Pick<ProfileSummary, "label" | "is_self"> | undefined): string {
+  if (!p) return "Circle";
+  return p.is_self ? "Your circle" : `${p.label}'s circle`;
+}
+
+/** Pills only when there's a choice to make: two or more circles, managed and followed together. */
+export function showCirclePills(count: number): boolean {
+  return count >= 2;
+}
+
 export const JOIN_SOMEONE_ELSES = "Joining someone else's circle?";
 
 /** Which circle shows first: the one in "Scanning for", or one named by /circle#circle-<id>. */
