@@ -355,6 +355,11 @@ export function removeManager(profileId: string, userId: string): Promise<void> 
   return apiFetch(`/profiles/${profileId}/managers/${userId}`, { method: "DELETE" });
 }
 
+/** A follower leaves a circle themselves (CIRCLE_REDESIGN, 2026-11-06); 404 for anyone else. */
+export function leaveCircle(profileId: string): Promise<void> {
+  return apiFetch(`/profiles/${profileId}/leave`, { method: "POST" });
+}
+
 export function getFollowInvite(
   token: string,
 ): Promise<{ profileLabel: string; shareLevel: ShareLevel; status: "pending" | "accepted" | "revoked" }> {
