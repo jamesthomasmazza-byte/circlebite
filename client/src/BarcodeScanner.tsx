@@ -41,7 +41,7 @@ const READ_CONFIRM_MS = 250;
  * flash button shows only when the camera track says it has a torch (zxing's switchTorch). The box
  * is still the element the region reader decodes inside.
  */
-export type BarcodeScannerHandle = { start: () => void };
+export type BarcodeScannerHandle = { start: () => void; stop: () => void };
 
 export const BarcodeScanner = forwardRef<
   BarcodeScannerHandle,
@@ -177,6 +177,12 @@ export const BarcodeScanner = forwardRef<
       containerRef.current?.scrollIntoView({ block: "start", behavior: revealBehavior(prefersReducedMotion()) });
       focusPrimerRef.current = true;
       requestCamera();
+    },
+    // The redesigned Scan tab's segmented control (2026-11-06): leaving Barcode stops the camera and
+    // closes the first-use sentence, so nothing runs out of sight.
+    stop() {
+      stopCamera();
+      setPrimerOpen(false);
     },
   }));
 

@@ -25,6 +25,7 @@ import {
   discardLabelEvidence,
   downscaleLabelPhoto,
   getMyReports,
+  getScanHistory,
   listProfiles,
   type CombineOutcome,
   type CorrectionType,
@@ -63,7 +64,8 @@ import {
   uncheckedNote,
 } from "../lib/evidenceCopy";
 import { allergenLine, profileOptionText } from "../lib/profileLineCopy";
-import { couldntReadHeading, DISCLAIMER, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
+import { couldntReadHeading, DISCLAIMER, DISCLAIMER_SHORT, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
+import { recentCards, recentHeading, scanModes, type RecentCard, type ScanMode } from "../lib/scanRedesign";
 
 const CORRECTION_TYPE_LABEL: Record<CorrectionType, string> = {
   flag_wrong: "This allergen isn't actually in this product",
@@ -124,7 +126,15 @@ function disagreementNote(m: ScanResult["matched_allergens"][number]): string | 
 }
 
 export function Scan() {
-  const { labelScanEnabled, scannerRegionEnabled, guidedSetupEnabled, scanSoundsEnabled, user } = useAuth();
+  const { labelScanEnabled, scannerRegionEnabled, guidedSetupEnabled, scanSoundsEnabled, scanRedesignEnabled, user } = useAuth();
+  // SCAN_REDESIGN (JT's mockup, 2026-11-06): the same Scan, laid out as a camera screen. Every
+  // state, request and rule below is shared; only the markup differs, and with the switch off it's
+  // today's, unchanged (lib/scanRedesign.ts).
+  const redesign = scanRedesignEnabled;
+  // The segmented control: Barcode | Label photo | Type it. Redesign only.
+  const [mode, setMode] = useState<ScanMode>("barcode");
+  // "Recent for <name>": the chosen profile's last three scans, read again after each new result.
+  const [recent, setRecent] = useState<RecentCard[] | null>(null);
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
   const [loadingProfiles, setLoadingProfiles] = useState(true);
   // Only a list that actually loaded can say "no profiles": a failed load isn't an empty account.
@@ -263,6 +273,33 @@ export function Scan() {
     navigate(`/scan?profile=${profileId}`, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, loadingProfiles, profileId]);
+
+  useEffect(() => {
+    if (!redesign || !profileId) {
+      setRecent(null);
+      return;
+    }
+    let live = true;
+    getScanHistory(profileId)
+      .then((history) => live && setRecent(recentCards(profileId, history)))
+      .catch(() => live && setRecent(null));
+    return () => {
+      live = false;
+    };
+  }, [redesign, profileId, result?.id]);
+
+  // Redesign: leaving Barcode stops the camera; Label photo opens the same photo form as "No
+  // barcode? Photograph the label"; leaving it closes that form, as Cancel does.
+  function chooseMode(next: ScanMode) {
+    setMode(next);
+    if (next !== "barcode") scannerRef.current?.stop();
+    if (next === "photo") openStandalonePhotoCapture();
+    else if (photoCaptureOpen && photoCaptureMode === "standalone") {
+      setPhotoCaptureOpen(false);
+      setPhotoFile(null);
+      setPhotoError(null);
+    }
+  }
 
   // Shared between the barcode flow and the photo flow — clears whatever the other one left behind
   // so switching between them never shows stale state.
@@ -643,7 +680,11 @@ export function Scan() {
         <>
           {/* Who for, and the camera: side by side in a landscape phone, so "Scan with camera" is
               above the tab bar on the first screen even under Condition 2's notices (styles.css). */}
-          <div className="scan-target">
+          {/* Redesign: the shell's pill does "Scanning for" and the chips (ScanPill.tsx); this is the
+              camera stage, shown in Barcode mode and kept mounted otherwise, for "Scan another". */}
+          <div className={redesign ? "scan-target scan-target--stage" : "scan-target"} hidden={redesign && mode !== "barcode"}>
+            {!redesign && (
+              <>
             <label>
               Scanning for
               <select value={profileId} onChange={(e) => chooseProfile(e.target.value)}>
@@ -657,10 +698,13 @@ export function Scan() {
             {/* The names only, never "checks for": a severe_only follower sees the severe ones, but the
                 scan checks the full list (server routes/scans.ts). */}
             {selectedProfile && <p className="profile-line">{allergenLine(selectedProfile)}</p>}
+              </>
+            )}
 
             <BarcodeScanner
               ref={scannerRef}
               onBusyChange={setScannerBusy}
+              stage={redesign}
               onDetected={(text, timing) => {
                 setBarcode(text);
                 void runScan(text, profileId, timing);
@@ -671,6 +715,7 @@ export function Scan() {
                   ? () => {
                       openStandalonePhotoCapture();
                       setScrollToPhotoForm(true);
+                      setMode("photo");
                     }
                   : undefined
               }
@@ -682,7 +727,8 @@ export function Scan() {
             />
           </div>
 
-          <form onSubmit={handleSubmit}>
+          {/* Redesign: "Type it" — the same form, the judge card's typed 2990000000083 (Oct 29). */}
+          <form onSubmit={handleSubmit} className={redesign ? "scan-type-form" : undefined} hidden={redesign && mode !== "type"}>
             <label>
               Barcode
               <input
@@ -700,7 +746,7 @@ export function Scan() {
             </button>
           </form>
 
-          {labelScanEnabled && !photoCaptureOpen && (
+          {labelScanEnabled && !photoCaptureOpen && !redesign && (
             <p>
               <button type="button" onClick={openStandalonePhotoCapture}>
                 No barcode? Photograph the label
@@ -757,6 +803,37 @@ export function Scan() {
             </form>
           )}
 
+          {/* Redesign: the chosen profile's last three scans, each its verdict's exact label, and the
+              short disclaimer and 911 line every verdict carries, history included (Oct 1). */}
+          {redesign && selectedProfile && recent && recent.length > 0 && (
+            <section className="scan-recent" aria-labelledby="scan-recent-heading">
+              <h2 id="scan-recent-heading">{recentHeading(selectedProfile.label)}</h2>
+              <ul className="scan-recent__list">
+                {recent.map((r) => (
+                  <li key={r.id}>
+                    <Link to={r.href} className="scan-recent__card">
+                      <span className="scan-recent__label">{r.label}</span>
+                      <span className="scan-recent__name">{r.productName}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              <p className="scan-recent__note">
+                {DISCLAIMER_SHORT} {EMERGENCY}
+              </p>
+            </section>
+          )}
+
+          {/* Redesign: how to scan, just above the tab bar. "Label photo" only with LABEL_SCAN. */}
+          {redesign && (
+            <div className="scan-modes" role="group" aria-label="How to scan">
+              {scanModes(labelScanEnabled).map((m) => (
+                <button key={m.mode} type="button" aria-pressed={mode === m.mode} onClick={() => chooseMode(m.mode)}>
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          )}
         </>
       )}
 

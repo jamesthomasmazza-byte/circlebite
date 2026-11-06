@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 
 import { historyRowLabel, shopperCount } from "../lib/allergenRowCopy";
 import { getProfile, getScanHistory, type ScanHistoryEntry } from "../lib/api";
@@ -34,6 +34,15 @@ export function ScanHistory() {
       .then((p) => setProfileLabel(p.label))
       .catch(() => setProfileLabel(null));
   }, [id]);
+
+  // Arriving from a Recent card on Scan (#scan-<id>): the entry exists only once the list has loaded,
+  // and the router doesn't scroll to a hash. A jump, for the reason in ProfileDetail.tsx's #changes.
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (scans && hash.startsWith("#scan-")) {
+      document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: "instant", block: "start" });
+    }
+  }, [scans, hash]);
 
   return (
     <main>
@@ -89,7 +98,8 @@ export function ScanHistoryEntryCard({ scan, profileLabel }: { scan: ScanHistory
   const hasDetails = unchecked.length > 0 || rejectedOnly || scan.effective !== null;
 
   return (
-    <li className="card history-entry">
+    // Scan's Recent cards link here (/profiles/:id/history#scan-<id>, SCAN_REDESIGN).
+    <li id={`scan-${scan.id}`} className="card history-entry">
       <p className="history-entry__head">
         <strong className="history-entry__verdict" data-verdict={shown.result}>
           {VERDICT_LABEL[shown.result]}

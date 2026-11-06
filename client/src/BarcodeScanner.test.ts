@@ -77,7 +77,8 @@ test("Scan offers it only with the label scan on, for the selected profile, and 
 test("on Scan the camera is the one primary button; the typed-barcode submit is outlined", () => {
   const html = renderToStaticMarkup(createElement(BarcodeScanner, { onDetected: () => {} }));
   assert.match(html, /<button type="button" class="button-primary">Scan with camera<\/button>/);
-  const form = SCAN.slice(SCAN.indexOf("<form onSubmit={handleSubmit}>"), SCAN.indexOf("</form>", SCAN.indexOf("<form onSubmit={handleSubmit}>")));
+  // The form's tag carries the redesign's "Type it" hiding since 2026-11-06 (SCAN_REDESIGN).
+  const form = SCAN.slice(SCAN.indexOf("<form onSubmit={handleSubmit}"), SCAN.indexOf("</form>", SCAN.indexOf("<form onSubmit={handleSubmit}")));
   assert.match(form, /<button type="submit" className="button-secondary"/);
   // The one other primary button on Scan is the pinned "Scan another product" over a result, and
   // it is the same action: it starts the camera through the scanner (2026-10-29).
@@ -114,7 +115,9 @@ test("in a landscape phone Scan's heading gives way and the camera sits beside '
   assert.match(landscape, /\.scan-target > \.scanner-section \{[^}]*grid-column: 2/);
   assert.match(landscape, /\.scan-target:has\(\.scanner\[data-active="true"\]\) > \.scanner-section \{[^}]*grid-column: 1 \/ -1/);
   assert.match(SCAN, /<h1 className="scan-title">Scan a product<\/h1>/);
-  const target = SCAN.slice(SCAN.indexOf('<div className="scan-target">'), SCAN.indexOf("</div>", SCAN.indexOf('<div className="scan-target">')));
+  // "scan-target", or with the redesign's stage class too (SCAN_REDESIGN, 2026-11-06).
+  const open = '<div className={redesign ? "scan-target scan-target--stage" : "scan-target"}';
+  const target = SCAN.slice(SCAN.indexOf(open), SCAN.indexOf("</div>", SCAN.indexOf(open)));
   assert.match(target, /Scanning for[\s\S]*<BarcodeScanner/);
 });
 
