@@ -3229,10 +3229,12 @@ form.scan-type-form input {
 
 /* Barcode | Label photo | Type it, in the page's own flow at the end of the column (JT, 2026-11-06):
    pinned over the page, it covered the label checklist. In the camera mode the column ends just
-   above the tab bar, so it sits there; it never covers anything. Three equal buttons that wrap only
-   between words. */
+   above the tab bar, so it sits there; it never covers anything. Three buttons sharing the width,
+   never narrower than their longest word, wrapping only between words, and onto a second row if the
+   text is that large. */
 .scan-modes {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-1);
   box-sizing: border-box;
   width: 100%;
@@ -3240,13 +3242,12 @@ form.scan-type-form input {
   margin: var(--space-3) auto 0;
   padding: var(--space-1);
   border: 1px solid var(--color-border);
-  border-radius: 999px;
+  border-radius: var(--radius-lg);
   background: var(--color-surface);
 }
 
 .scan-modes button {
-  flex: 1 1 0;
-  min-width: 0;
+  flex: 1 1 auto;
   padding-inline: var(--space-2);
   overflow-wrap: normal;
   word-break: normal;

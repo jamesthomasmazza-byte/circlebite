@@ -141,7 +141,10 @@ test("the mode control is in the page's flow: it never floats over content, in a
   const modes = SCAN.indexOf('<div className="scan-modes"');
   assert.ok(SCAN.indexOf("onSubmit={handleSubmit}") > 0 && SCAN.indexOf("<form ref={photoFormRef}") > 0);
   assert.ok(modes > SCAN.indexOf("<form ref={photoFormRef}") && modes > SCAN.indexOf("onSubmit={handleSubmit}"));
-  assert.match(css, /\.scan-modes button \{\s*flex: 1 1 0;\s*min-width: 0;[^}]*overflow-wrap: normal;\s*word-break: normal;/, "words wrap whole");
+  assert.match(css, /\.scan-modes \{\s*display: flex;\s*flex-wrap: wrap;/);
+  const button = css.slice(css.indexOf(".scan-modes button {"), css.indexOf("}", css.indexOf(".scan-modes button {")));
+  assert.match(button, /flex: 1 1 auto;[^}]*overflow-wrap: normal;\s*word-break: normal;/, "words wrap whole");
+  assert.doesNotMatch(button, /min-width: 0/, "never narrower than its longest word");
 });
 
 test("nothing in the redesigned Scan is wider than the screen", () => {
