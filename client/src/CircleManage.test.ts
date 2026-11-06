@@ -86,12 +86,18 @@ test("the invite link is each card's own state; the tab and the profile page hol
   }
 });
 
-test("the profile page keeps one link to its card on the Circle tab", () => {
+test("the profile page doesn't link to the circle; its old #circle link goes on to the Circle tab", () => {
+  // JT, 2026-11-06: the Circle heading and link left the profile page, as redundant with the tab.
   const page = readFileSync(new URL("./routes/ProfileDetail.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(page, /<h2>Circle<\/h2>|<Link to=\{circleCardHref|manage .* circle/);
+  // /profiles/:id#circle (the Circle tab's link until 2026-11-05) lands on the profile's card.
   assert.equal(circleCardHref("maya"), "/circle#circle-maya");
-  assert.match(page, /<section id="circle">\s*<h2>Circle<\/h2>\s*<p>\s*<Link to=\{circleCardHref\(id\)\}>/);
+  assert.match(
+    page,
+    /if \(id && canManage && location\.hash === "#circle"\) navigate\(circleCardHref\(id\), \{ replace: true \}\);/,
+  );
   assert.doesNotMatch(page, /<form onSubmit=\{handleCreateFollowInvite\}|removeManager|revokeFollow/);
   const tab = readFileSync(new URL("./routes/Circle.tsx", import.meta.url), "utf8");
-  assert.match(tab, /id=\{`circle-\$\{profile\.id\}`\}/, "the card carries the id the link points at");
+  assert.match(tab, /id=\{`circle-\$\{profile\.id\}`\}/, "the card carries the id the redirect points at");
   assert.match(tab, /location\.hash\.startsWith\("#circle-"\)/, "and the tab jumps to it");
 });

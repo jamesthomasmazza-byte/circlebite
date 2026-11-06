@@ -22,7 +22,6 @@ import { AllergenItem } from "../AllergenItem";
 import { ChangeHistory } from "../ChangeHistory";
 import { reviewNotice } from "../lib/allergenChoiceCopy";
 import { circleCardHref } from "../lib/inviteCopy";
-import { profilePossessive } from "../lib/profileChangeCopy";
 import { showScanForButton } from "../lib/tabs";
 import { useScanningFor } from "../TabShell";
 import { accessNotice } from "../lib/profileLineCopy";
@@ -91,6 +90,13 @@ export function ProfileDetail() {
       document.getElementById("changes")?.scrollIntoView({ behavior: "instant", block: "start" });
     }
   }, [history, location.hash]);
+
+  // An old link to this page's Circle section (/profiles/:id#circle — the Circle tab's link until
+  // 2026-11-05, so in bookmarks and history): the section is gone, so go on to the profile's card on
+  // the Circle tab, replacing this entry so Back doesn't bounce. Managers only, as the section was.
+  useEffect(() => {
+    if (id && canManage && location.hash === "#circle") navigate(circleCardHref(id), { replace: true });
+  }, [id, canManage, location.hash, navigate]);
 
   if (loading) return <p>Loading…</p>;
   // Deliberately the same message whether the profile doesn't exist or just isn't visible to
@@ -282,18 +288,8 @@ export function ProfileDetail() {
         />
       )}
 
-      {/* Invites and who's in the circle live on the Circle tab since 2026-11-05 (CircleManage.tsx);
-          id="circle" stays, so an old link still lands here, on the way there. */}
-      {canManage && (
-        <section id="circle">
-          <h2>Circle</h2>
-          <p>
-            <Link to={circleCardHref(id)}>
-              Invite people or manage {profilePossessive({ label: profile.label, isSelf: profile.is_self })} circle
-            </Link>
-          </p>
-        </section>
-      )}
+      {/* Invites and who's in the circle live on the Circle tab since 2026-11-05 (CircleManage.tsx),
+          and the page doesn't link there since 2026-11-06: the tab bar does. */}
 
       {isOwner && (
         <p>
