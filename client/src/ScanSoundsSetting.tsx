@@ -10,8 +10,8 @@ import {
 } from "./lib/scanSounds";
 
 /**
- * Scan sounds, on or off for this device (2026-11-05, Profile → Account, shown only with SCAN_SOUNDS
- * on). On by default; a browser that can't keep the choice counts as off and says so. The line under
+ * Scan sounds, on or off for this device (2026-11-05; in Settings since 2026-11-06, shown only with
+ * SCAN_SOUNDS on). On by default; a browser that can't keep the choice counts as off and says so. The line under
  * it is JT's wording: silence is never a clean bill.
  */
 export function ScanSoundsSetting({ storage = browserStorage() }: { storage?: Storage | null }) {

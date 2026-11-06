@@ -627,7 +627,7 @@ With `SCAN_SOUNDS=on`, Scan plays sounds generated in the browser (Web Audio; no
 service): a short neutral beep when the camera reads a barcode, an alert for "Contains an allergen",
 a softer one for "May contain", and nothing for "No listed allergens found" or "Unable to confirm".
 The weaker claim is never the louder one (`docs/principles.md`, Decision precedents, Nov 5). Each
-device has its own setting in Profile → Account, on by default while the switch is on; a browser
+device has its own setting in Settings, on by default while the switch is on; a browser
 that can't store it counts as off. Never the only signal: the card is unchanged. On an iPhone the
 silent switch mutes it. Off by default; off hides the setting and plays nothing. No data involved.
 

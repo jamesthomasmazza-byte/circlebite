@@ -48,7 +48,7 @@ export function soundForUpdate(alreadyPlayed: VerdictSound | null, next: Verdict
   return alreadyPlayed && RANK[alreadyPlayed] >= RANK[sound] ? null : sound;
 }
 
-// The per-device setting in Profile → Account. On by default while SCAN_SOUNDS is on; a browser that
+// The per-device setting in Settings (Profile → Account until 2026-11-06). On by default while SCAN_SOUNDS is on; a browser that
 // can't read it counts as off (JT, Nov 5).
 export const SOUND_PREF_KEY = "circlebite.scanSounds";
 

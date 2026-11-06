@@ -105,8 +105,17 @@ test("the beep is at the read, beside the vibration, and only when sounds are wa
   assert.match(src("../routes/Scan.tsx"), /onRead=\{\(\) => \{\s*if \(soundsWanted\(scanSoundsEnabled, browserStorage\(\)\)\) playScanSound\("read"\);/);
 });
 
-test("the setting is in Profile → Account, and only with the switch on", () => {
+test("the setting is in Settings, after \"Your profiles\", and only with the switch on", () => {
+  // JT, 2026-11-06: moved from Profile → Account unchanged. Its line stays beside the toggle, in
+  // ScanSoundsSetting.tsx (ScanSoundsSetting.test.ts).
+  const settings = src("../routes/Settings.tsx");
+  const renames = settings.indexOf("<ProfileRenames");
+  const sounds = settings.search(/\{scanSoundsEnabled && \(\s*<section>\s*<h2>Scan sounds<\/h2>\s*<ScanSoundsSetting \/>/);
+  const password = settings.indexOf("<h2>Change your password</h2>");
+  assert.ok(renames > 0 && sounds > renames && password > sounds);
+  // The Account section keeps "Signed in as…", the Settings link and Log out, and nothing else.
   const profiles = src("../routes/Profiles.tsx");
   const account = profiles.slice(profiles.indexOf('section === "account"'));
-  assert.match(account, /\{scanSoundsEnabled && <ScanSoundsSetting \/>\}/);
+  assert.doesNotMatch(profiles, /ScanSoundsSetting/);
+  assert.match(account, /Signed in as \{user\?\.displayName\}[\s\S]*<Link to="\/settings">Settings<\/Link>[\s\S]*Log out/);
 });

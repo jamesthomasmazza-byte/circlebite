@@ -16,6 +16,7 @@ import {
 } from "../lib/api";
 import { useAuth } from "../lib/AuthContext";
 import { ProfileRenames } from "../ProfileRenames";
+import { ScanSoundsSetting } from "../ScanSoundsSetting";
 
 const CHANGE_PASSWORD_ERROR_COPY: Record<string, string> = {
   too_many_attempts: "Too many attempts. Try again in 15 minutes.",
@@ -28,7 +29,7 @@ const CHANGE_PASSWORD_ERROR_COPY: Record<string, string> = {
 // whole account, and potentially someone else's access to a profile they didn't choose to give up,
 // needs more than that.
 export function Settings() {
-  const { user, logout } = useAuth();
+  const { user, logout, scanSoundsEnabled } = useAuth();
   const navigate = useNavigate();
 
   const [profiles, setProfiles] = useState<DeletionImpactProfile[] | null>(null);
@@ -177,6 +178,15 @@ export function Settings() {
             return updated;
           }}
         />
+      )}
+
+      {/* Behind SCAN_SOUNDS (2026-11-05): with the switch off there's no setting and no sound. Here
+          since 2026-11-06, moved from Profile → Account unchanged, its line beside the toggle. */}
+      {scanSoundsEnabled && (
+        <section>
+          <h2>Scan sounds</h2>
+          <ScanSoundsSetting />
+        </section>
       )}
 
       <section>

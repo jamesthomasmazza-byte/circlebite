@@ -270,8 +270,8 @@ precedents, Nov 5.
 11. [ ] **Scan sounds, behind `SCAN_SOUNDS`** (off by default on the server). A neutral beep on a
    camera read. An alert for "Contains an allergen" and a softer one for "May contain". Nothing for
    "No listed allergens found" or "Unable to confirm". Generated with Web Audio, with no files and
-   no external service. A per-device toggle in Profile → Account, on by default when the flag is
-   on; unreadable storage counts as off. Never the only signal.
+   no external service. A per-device toggle in Settings (in Profile → Account until Nov 6), on by
+   default when the flag is on; unreadable storage counts as off. Never the only signal.
    **Guard:** a test on JT's iPhone (ringer on and off) passes by Nov 12. Otherwise it deploys
    with `SCAN_SOUNDS` off.
    *Built Nov 5: `SCAN_SOUNDS` on `GET /me` (`docs/server-setup.md` §11e), `client/src/lib/scanSounds.ts`
@@ -285,6 +285,11 @@ precedents, Nov 5.
    to confirm" (an unknown barcode would call Open Food Facts), so both rest on the tests.
    **Still owed before switching it on:** JT's iPhone check: ringer on and off, read beep,
    Contains, May contain, and silence on a clean card. Deploys with `SCAN_SOUNDS` off.*
+   *Moved Nov 6 (JT): the setting is now its own "Scan sounds" section in Settings, after "Your
+   profiles", unchanged: same control, device-only storage, `SCAN_SOUNDS` switch, and its line
+   beside the toggle. Commit `c420bc7`'s message still says Profile → Account; history isn't
+   rewritten, so this line corrects it. The Account section keeps "Signed in as…", Settings and
+   Log out.*
 
 ### Nov 13 — code freeze
 
