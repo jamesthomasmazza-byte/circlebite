@@ -780,17 +780,10 @@ export function Scan() {
               {photoCaptureMode === "combine" &&
                 result?.evidence_decision?.photo === "prompted" &&
                 !result.ingredient_check_incomplete && <p>{photoOfferCopy(result.evidence_decision, resultProfileLabel)}</p>}
-              {/* Redesign: the label camera, and what a usable photo needs, before "choose a photo". */}
+              {/* Redesign: what a usable photo needs, first, then the label camera, before "choose a
+                  photo" (JT, 2026-11-06: the checklist reads before the camera opens). */}
               {redesign && (
                 <>
-                  <LabelCamera
-                    busy={photoReading}
-                    onCapture={(photo) => {
-                      setPhotoError(null);
-                      setPhotoFile(photo);
-                      setCapturedPending(true);
-                    }}
-                  />
                   <div className="label-checklist">
                     <ul>
                       {LABEL_CHECKLIST.map((item) => (
@@ -799,6 +792,14 @@ export function Scan() {
                     </ul>
                     <p>{LABEL_PROMISE}</p>
                   </div>
+                  <LabelCamera
+                    busy={photoReading}
+                    onCapture={(photo) => {
+                      setPhotoError(null);
+                      setPhotoFile(photo);
+                      setCapturedPending(true);
+                    }}
+                  />
                 </>
               )}
               <label>

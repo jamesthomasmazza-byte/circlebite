@@ -156,3 +156,11 @@ test("the redesign's forms are the column's width, not their heading's", () => {
   const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
   assert.match(css, /\.tab-shell--camera main form \{[^}]*box-sizing: border-box;\s*width: 100%;\s*max-width: min\(100%, var\(--measure\)\);/);
 });
+
+test("label photo: the checklist comes before the camera, which is a short placeholder until it opens", () => {
+  // JT, 2026-11-06: all three items and "Open the camera" on the first screen before it opens.
+  assert.ok(SCAN.indexOf('<div className="label-checklist">') < SCAN.indexOf("<LabelCamera"));
+  const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
+  assert.match(css, /\.label-camera__view\[data-active="false"\] \{\s*height: 7rem;/);
+  assert.match(css, /\.label-camera__view \{[^}]*height: clamp\(/, "open, the frame takes the space");
+});

@@ -3368,6 +3368,17 @@ form.scan-type-form {
   visibility: hidden;
 }
 
+/* Before the camera opens, a short placeholder, so the checklist above and "Open the camera" both
+   show on the first screen; open, the frame takes the space (JT, 2026-11-06). */
+.label-camera__view[data-active="false"] {
+  height: 7rem;
+}
+
+.label-camera__view[data-active="false"] .label-camera__frame {
+  inset: 12% 38%;
+  box-shadow: none;
+}
+
 .label-camera__frame {
   position: absolute;
   inset: 8% 18%;
@@ -3394,7 +3405,7 @@ button.label-camera__shutter {
 }
 
 .label-checklist {
-  margin-block: var(--space-3);
+  margin-block: var(--space-2) var(--space-3);
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-md);
   background: var(--color-accent);
