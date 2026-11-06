@@ -106,7 +106,9 @@ test("the landing fits one screen: the camera gives way, so Recent and the mode 
   // JT, 2026-11-06: at 390x844 with Condition 2's notice, Recent's bottom sat under the control.
   const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
   const stage = css.slice(css.indexOf(".tab-shell--camera:has(.scan-target--stage:not([hidden])) {"));
-  assert.match(stage, /^[^}]*min-height: 0;\s*height: calc\(100dvh - /, "the column is the screen while the camera stage shows");
+  assert.match(stage, /^[^}]*min-height: calc\(100dvh - /, "at least the screen while the camera stage shows");
+  assert.doesNotMatch(stage.slice(0, stage.indexOf("}")), /(^|\s)height:/, "never pinned to exactly one screen: larger text scrolls instead of overlapping");
+  assert.match(css, /\.tab-shell--camera > main \{\s*display: flex;\s*flex: 1 0 auto;/, "main never shrinks below its content");
   assert.match(css, /\.tab-shell--camera > \*,\s*\.tab-shell--camera > main > \* \{\s*flex-shrink: 0;/, "nothing else gives way");
   assert.match(css, /\.scanner\.scanner--stage \{[^}]*flex: 1 1 0;\s*min-height: 10rem;/, "the camera does, down to 10rem");
 });
