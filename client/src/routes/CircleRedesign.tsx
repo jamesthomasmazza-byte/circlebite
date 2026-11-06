@@ -5,6 +5,7 @@ import { AddToCircleSheet } from "../AddToCircleSheet";
 import { CircleDiagram, type Bubble } from "../CircleDiagram";
 import { AskToFollow, FollowRequests } from "../CircleRequests";
 import { CopyLink } from "../CopyLink";
+import { FollowedCircle } from "../FollowedCircle";
 import { MemberSheet } from "../MemberSheet";
 import {
   cancelFollowInvite,
@@ -62,6 +63,8 @@ export function CircleRedesign() {
   // Bumped after a follow request is approved, so the circle shown reads again with its new follower.
   const [version, setVersion] = useState(0);
 
+  // Read again after leaving a circle, which then drops out of the pills.
+  const [profilesRead, setProfilesRead] = useState(0);
   useEffect(() => {
     let live = true;
     listProfiles()
@@ -70,7 +73,7 @@ export function CircleRedesign() {
     return () => {
       live = false;
     };
-  }, []);
+  }, [profilesRead]);
 
   // The first circle shown, and any later /circle#circle-<id> (an old profile-page link).
   useEffect(() => {
@@ -95,6 +98,7 @@ export function CircleRedesign() {
   if (!profiles) return <p>Loading…</p>;
 
   const managed = profiles.managed.find((p) => p.id === selectedId);
+  const followed = profiles.followed.find((p) => p.id === selectedId);
 
   return (
     <main className="circle-redesign">
@@ -129,6 +133,8 @@ export function CircleRedesign() {
 
       {/* Keyed by profile, so nothing one circle holds (a new link, an error) shows under another. */}
       {managed && <ManagedCircle key={`${managed.id}-${version}`} profile={managed} viewerId={user?.id} />}
+      {/* A circle you follow: you and the profile only. Never fetches the circle (FollowedCircle.tsx). */}
+      {followed && <FollowedCircle key={followed.id} profile={followed} onLeft={() => setProfilesRead((n) => n + 1)} />}
 
       {circleRequestsEnabled && (
         <p className="circle-join">
