@@ -139,7 +139,8 @@ test("the mode control is in the page's flow: it never floats over content, in a
   assert.doesNotMatch(css, /\.tab-shell:has\(\.scan-modes\)/, "no padding reserved for a floating control");
   // Last in the page's main column, after whatever the mode shows.
   const modes = SCAN.indexOf('<div className="scan-modes"');
-  assert.ok(modes > SCAN.indexOf("<form ref={photoFormRef}") && modes > SCAN.indexOf('<form onSubmit={handleSubmit}'));
+  assert.ok(SCAN.indexOf("onSubmit={handleSubmit}") > 0 && SCAN.indexOf("<form ref={photoFormRef}") > 0);
+  assert.ok(modes > SCAN.indexOf("<form ref={photoFormRef}") && modes > SCAN.indexOf("onSubmit={handleSubmit}"));
   assert.match(css, /\.scan-modes button \{\s*flex: 1 1 0;\s*min-width: 0;[^}]*overflow-wrap: normal;\s*word-break: normal;/, "words wrap whole");
 });
 
@@ -163,4 +164,14 @@ test("label photo: the checklist comes before the camera, which is a short place
   const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
   assert.match(css, /\.label-camera__view\[data-active="false"\] \{\s*height: 7rem;/);
   assert.match(css, /\.label-camera__view \{[^}]*height: clamp\(/, "open, the frame takes the space");
+});
+
+test("Type it: a filled Check this product, the number pad, and the app's own validation", () => {
+  // JT, 2026-11-06.
+  const form = SCAN.slice(SCAN.indexOf("<form\n            onSubmit={handleSubmit}"), SCAN.indexOf("</form>", SCAN.indexOf("<form\n            onSubmit={handleSubmit}")));
+  assert.match(form, /noValidate=\{redesign\}/, "runScan's message, not the browser's");
+  assert.match(form, /inputMode="numeric"\s+pattern=\{redesign \? "\[0-9\]\*" : undefined\}\s+autoComplete=\{redesign \? "off" : undefined\}/);
+  assert.match(form, /<button type="submit" className=\{redesign \? undefined : "button-secondary"\}/);
+  // The existing check is untouched.
+  assert.match(SCAN, /if \(!\/\^\\d\{6,14\}\$\/\.test\(rawBarcode\.trim\(\)\)\) \{\s*setError\("That doesn't look like a barcode — digits only, 6 to 14 of them\."\);/);
 });

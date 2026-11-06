@@ -733,11 +733,20 @@ export function Scan() {
           </div>
 
           {/* Redesign: "Type it" — the same form, the judge card's typed 2990000000083 (Oct 29). */}
-          <form onSubmit={handleSubmit} className={redesign ? "scan-type-form" : undefined} hidden={redesign && mode !== "type"}>
+          {/* Redesign (JT, 2026-11-06): the number pad on a phone (pattern), no suggestions, and the
+              app's own check, not the browser's (noValidate): runScan says what's wrong, as today. */}
+          <form
+            onSubmit={handleSubmit}
+            className={redesign ? "scan-type-form" : undefined}
+            hidden={redesign && mode !== "type"}
+            noValidate={redesign}
+          >
             <label>
               Barcode
               <input
                 inputMode="numeric"
+                pattern={redesign ? "[0-9]*" : undefined}
+                autoComplete={redesign ? "off" : undefined}
                 placeholder="e.g. 3017620422003"
                 value={barcode}
                 onChange={(e) => setBarcode(e.target.value)}
@@ -745,8 +754,9 @@ export function Scan() {
               />
             </label>
             {error && <p role="alert">{error}</p>}
-            {/* Outlined: the camera above is Scan's one primary action (styles.css). */}
-            <button type="submit" className="button-secondary" disabled={submitting}>
+            {/* Outlined: the camera above is Scan's one primary action (styles.css). In the redesign's
+                Type it it's the only action, so filled, as any submit is by default. */}
+            <button type="submit" className={redesign ? undefined : "button-secondary"} disabled={submitting}>
               {submitting ? "Checking…" : "Check this product"}
             </button>
           </form>

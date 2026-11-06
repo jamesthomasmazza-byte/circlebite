@@ -3200,9 +3200,9 @@ button.scanner__torch {
   margin: 0;
 }
 
-form.scan-type-form {
-  max-width: var(--measure);
-  margin: var(--space-4) auto 0;
+form.scan-type-form input {
+  box-sizing: border-box;
+  width: 100%;
 }
 
 /* "Recent scans ›": one link row to the chosen profile's history, in place of the Recent strip. */
@@ -3341,11 +3341,13 @@ form.scan-type-form {
    the ingredients panel, a shutter, and a dark-teal checklist. */
 .tab-shell--camera main form {
   /* A full-width column, centred: auto margins alone, in a flex column, shrink a form to its content's
-     widest line — the heading on one line, 534px at 150% text. */
+     widest line — the heading on one line, 534px at 150% text. Inset like the camera and the
+     notices, so the input is the column's width (JT, 2026-11-06). */
   box-sizing: border-box;
   width: 100%;
   max-width: min(100%, var(--measure));
   margin: var(--space-4) auto 0;
+  padding-inline: var(--space-4);
 }
 
 .label-camera__view {

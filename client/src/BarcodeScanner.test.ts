@@ -78,8 +78,10 @@ test("on Scan the camera is the one primary button; the typed-barcode submit is 
   const html = renderToStaticMarkup(createElement(BarcodeScanner, { onDetected: () => {} }));
   assert.match(html, /<button type="button" class="button-primary">Scan with camera<\/button>/);
   // The form's tag carries the redesign's "Type it" hiding since 2026-11-06 (SCAN_REDESIGN).
-  const form = SCAN.slice(SCAN.indexOf("<form onSubmit={handleSubmit}"), SCAN.indexOf("</form>", SCAN.indexOf("<form onSubmit={handleSubmit}")));
-  assert.match(form, /<button type="submit" className="button-secondary"/);
+  const at = SCAN.lastIndexOf("<form", SCAN.indexOf("onSubmit={handleSubmit}"));
+  const form = SCAN.slice(at, SCAN.indexOf("</form>", at));
+  // Outlined on today's Scan; filled in the redesign's Type it, where it's the only action (2026-11-06).
+  assert.match(form, /<button type="submit" className=\{redesign \? undefined : "button-secondary"\}/);
   // The one other primary button on Scan is the pinned "Scan another product" over a result, and
   // it is the same action: it starts the camera through the scanner (2026-10-29).
   assert.equal(SCAN.match(/button-primary/g)?.length, 1, "Scan.tsx adds one primary button");
