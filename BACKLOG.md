@@ -328,6 +328,14 @@ precedents, Nov 5.
    freeze, or leave it off for judging. The judge card's typed step reads right either way since
    Nov 6 ("Tap **Type it** if you see it, then type 2990000000083 in **Barcode** and tap **Check
    this product**", `docs/judges/judge-card.html`); a copy printed before then lacks "Type it".
+   *Nov 6: switched on in production at JT's request on release `2c6503f`, then off again by JT the
+   same day after his iPhone showed layout problems that a desktop browser hadn't: the page dark in
+   light mode, Recent's cards overlapping, the mode control covering the label checklist, a sideways
+   scroll, the flash pill over the frame. Fixed the same day (the theme; one commit per bug; Recent
+   as one "Recent scans ›" link; a barcode-shaped frame with a larger decode box; the label
+   checklist first; Type it's number pad; names only in the "Scanning for" picker), checked at 390px
+   at 100, 125 and 150% text in light and dark. **Still owed before it goes on again:** JT's iPhone
+   check of the same screens, and the cameras themselves.*
 
 ### Nov 13 — code freeze
 
