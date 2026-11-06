@@ -23,6 +23,8 @@ import { ChangeHistory } from "../ChangeHistory";
 import { reviewNotice } from "../lib/allergenChoiceCopy";
 import { circleCardHref } from "../lib/inviteCopy";
 import { profilePossessive } from "../lib/profileChangeCopy";
+import { showScanForButton } from "../lib/tabs";
+import { useScanningFor } from "../TabShell";
 import { accessNotice } from "../lib/profileLineCopy";
 import { RENAME_HINT } from "../lib/profileRenameCopy";
 
@@ -30,6 +32,7 @@ export function ProfileDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const { scannableCount } = useScanningFor();
   const [profile, setProfile] = useState<ProfileDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -229,12 +232,15 @@ export function ProfileDetail() {
           <Link to="/settings">{RENAME_HINT}</Link>
         </p>
       )}
-      {/* Chooses this profile for Scan and the header on every screen (TabShell.tsx, lib/tabs.ts). */}
-      <p>
-        <Link to={`/scan?profile=${id}`} className="button-link">
-          Scan for {profile.label}
-        </Link>
-      </p>
+      {/* Chooses this profile for Scan and the header on every screen (TabShell.tsx, lib/tabs.ts).
+          Only with more than one profile to scan for; with one, the Scan tab already does this. */}
+      {showScanForButton(scannableCount) && (
+        <p>
+          <Link to={`/scan?profile=${id}`} className="button-link">
+            Scan for {profile.label}
+          </Link>
+        </p>
+      )}
       <p>
         <Link to={`/profiles/${id}/history`}>Recent scans</Link>
       </p>

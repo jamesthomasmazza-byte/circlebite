@@ -57,6 +57,15 @@ export function scanningForId(chosen: string | null, profiles: Pick<ProfileSumma
   return profiles[0]?.id ?? "";
 }
 
+/**
+ * Whether a profile page shows "Scan for <name>" (JT, 2026-11-05): only when Scan has more than one
+ * profile to choose from (managed + followed). With one, the Scan tab already scans for it; with two
+ * or more, the tab scans for the one last chosen, not the page you're on.
+ */
+export function showScanForButton(scannableCount: number): boolean {
+  return scannableCount > 1;
+}
+
 /** A profile page's "Scan for" button: `/scan?profile=<id>`. What the shell takes as the choice. */
 export function requestedProfile(search: string): string | null {
   return new URLSearchParams(search).get("profile");

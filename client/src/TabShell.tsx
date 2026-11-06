@@ -20,11 +20,13 @@ import {
   type Tab,
 } from "./lib/tabs";
 
-/** What the shell hands the page: the profile chosen for scanning (lib/tabs.ts scanningForId), and
- *  the owner's follow requests with a way to re-read them after one is decided (the Circle tab). */
+/** What the shell hands the page: the profile chosen for scanning (lib/tabs.ts scanningForId), how
+ *  many profiles Scan's "Scanning for" offers, and the owner's follow requests with a way to re-read
+ *  them after one is decided (the Circle tab). */
 export type ScanningFor = {
   chosenProfileId: string | null;
   chooseProfile: (id: string) => void;
+  scannableCount: number;
   requests: CircleRequest[];
   refreshRequests: () => void;
 };
@@ -104,6 +106,7 @@ export function TabShell() {
   const context: ScanningFor = {
     chosenProfileId,
     chooseProfile: setChosenProfileId,
+    scannableCount: profiles.length,
     requests,
     refreshRequests: () => setRequestsRead((n) => n + 1),
   };

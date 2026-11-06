@@ -3,9 +3,10 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import { safeReturnTo } from "./returnTo";
-import { activeTab, badgeLabel, LANDING_PATH, noticesShownOn, profileBadgeCount, requestedProfile, scanningForId } from "./tabs";
+import { activeTab, badgeLabel, LANDING_PATH, noticesShownOn, profileBadgeCount, requestedProfile, scanningForId, showScanForButton } from "./tabs";
 
 const MAIN = readFileSync(new URL("../main.tsx", import.meta.url), "utf8");
+const SHELL = readFileSync(new URL("../TabShell.tsx", import.meta.url), "utf8");
 
 test("sign-in lands on Scan: the default return path, and where /dashboard redirects", () => {
   assert.equal(LANDING_PATH, "/scan");
@@ -86,4 +87,15 @@ test("Scan takes the profile from the shell, not a choice of its own the header 
   assert.match(SCAN, /useScanningFor\(\)/);
   assert.match(SCAN, /const profileId = scanningForId\(chosenProfileId, profiles\)/);
   assert.doesNotMatch(SCAN, /useState\(searchParams\.get\("profile"\)/);
+});
+
+// JT, 2026-11-05: the button shows only when Scan's "Scanning for" offers more than one profile —
+// the shell's own managed + followed list, the one the dropdown uses.
+test("'Scan for' shows only with two or more profiles to scan for", () => {
+  assert.equal(showScanForButton(0), false);
+  assert.equal(showScanForButton(1), false);
+  assert.equal(showScanForButton(2), true);
+  assert.match(PROFILE_DETAIL, /\{showScanForButton\(scannableCount\) && \(\s*<p>\s*<Link to=\{`\/scan\?profile=/);
+  assert.match(SHELL, /scannableCount: profiles\.length,/);
+  assert.match(SHELL, /setProfiles\(profiles\.status === "fulfilled" \? \[\.\.\.managed, \.\.\.profiles\.value\.followed\] : \[\]\)/);
 });
