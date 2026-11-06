@@ -103,7 +103,8 @@ Four more (8–11, UI simplification) were added by JT on Nov 5.
    switching it on.
    *Built 2026-10-27 (`5c99f50`, `43d0724`), deployed off that day in `74ea011`. Decodes inside the
    box plus 5% (`REGION_ALLOWANCE`, to tune after the phone tests). An admin can turn it on for one
-   phone from Profile → Admin before the switch goes on; rollback is `SCANNER_REGION=off` and a
+   phone from the Account page's Admin section (Profile tab → Account & settings; Profile → Admin
+   until Nov 6) before the switch goes on; rollback is `SCANNER_REGION=off` and a
    restart (`docs/server-setup.md` §11b).*
    *Phone 1 passed, 2026-10-27 about 12:00 ET: JT's iPhone, on production, with "Decode only inside
    the box, this device" On. Portrait and landscape alike: a barcode inside the box gave "Got it",
@@ -270,7 +271,7 @@ precedents, Nov 5.
 11. [ ] **Scan sounds, behind `SCAN_SOUNDS`** (off by default on the server). A neutral beep on a
    camera read. An alert for "Contains an allergen" and a softer one for "May contain". Nothing for
    "No listed allergens found" or "Unable to confirm". Generated with Web Audio, with no files and
-   no external service. A per-device toggle in Settings (in Profile → Account until Nov 6), on by
+   no external service. A per-device toggle on the Account page (`/settings`; in Profile → Account until Nov 6), on by
    default when the flag is on; unreadable storage counts as off. Never the only signal.
    **Guard:** a test on JT's iPhone (ringer on and off) passes by Nov 12. Otherwise it deploys
    with `SCAN_SOUNDS` off.
@@ -290,6 +291,9 @@ precedents, Nov 5.
    beside the toggle. Commit `c420bc7`'s message still says Profile → Account; history isn't
    rewritten, so this line corrects it. The Account section keeps "Signed in as…", Settings and
    Log out.*
+   *Later Nov 6 (JT): Settings became the Account page, at the same `/settings`, and took the
+   Profile tab's Account and Admin sections too, so the Profile tab lists people only. Scan sounds
+   is unchanged there, still after "Your profiles".*
 
 ### Nov 13 — code freeze
 

@@ -118,7 +118,7 @@ Rationale: if the dataset is ever breached, subpoenaed, or used in a B2B pitch, 
 
 Two reasons to do this now: Apple requires in-app account deletion (App Review Guideline 5.1.1(v)) and you will need a deletion mechanism for MHMD anyway.
 
-- Settings → "Delete my account" — deletes the account, all profiles it manages, scan history, and follow relationships. Confirmed with a typed confirmation, not just a button.
+- The Account page (`/settings`) → "Delete your account" — deletes the account, all profiles it manages, scan history, and follow relationships. Confirmed with a typed confirmation, not just a button.
 - **Exception, decided during implementation:** a profile with a co-manager transfers to the longest-standing one instead of being destroyed — a second adult's ongoing access to a profile they help manage was never actually acceptable collateral damage from someone else deleting their own account. Only a solo-owned profile (no co-manager) is destroyed as described above.
 - **Exception, decided Oct 6, 2026 (JT): a deleted user's display name survives in the change
   history of profiles they changed.** `profile_changes.actor_name` (migration 0036) is the owner's

@@ -525,8 +525,8 @@ every side (`REGION_ALLOWANCE`, `client/src/lib/scannerRegion.ts`); a barcode ou
 longer reads. Off or unset is the whole-frame decoding that ran before it. Only the client reads it,
 from `GET /me`, so the server's own behaviour doesn't change either way.
 
-**Test on one phone first.** Signed in as an admin, Profile → Admin → "Decode only inside the box,
-this device": *On* applies to that phone's browser only, whatever the server says; *Off* forces the
+**Test on one phone first.** Signed in as an admin, Profile tab → Account & settings → Admin →
+"Decode only inside the box, this device" (Profile → Admin until Nov 6, 2026): *On* applies to that phone's browser only, whatever the server says; *Off* forces the
 whole frame; *Server default* clears the choice. The line under it says what's in effect. The choice
 counts only for an admin account. Set each test phone back to *Server default* afterwards — the
 choice outlives a change to the server's setting.
@@ -627,7 +627,7 @@ With `SCAN_SOUNDS=on`, Scan plays sounds generated in the browser (Web Audio; no
 service): a short neutral beep when the camera reads a barcode, an alert for "Contains an allergen",
 a softer one for "May contain", and nothing for "No listed allergens found" or "Unable to confirm".
 The weaker claim is never the louder one (`docs/principles.md`, Decision precedents, Nov 5). Each
-device has its own setting in Settings, on by default while the switch is on; a browser
+device has its own setting on the Account page (Profile tab → Account & settings), on by default while the switch is on; a browser
 that can't store it counts as off. Never the only signal: the card is unchanged. On an iPhone the
 silent switch mutes it. Off by default; off hides the setting and plays nothing. No data involved.
 
@@ -666,6 +666,11 @@ breakdown on the accuracy page can effectively identify a specific person's alle
 `docs/principles.md`'s precedent table. The judge account stays a normal account.
 
 To revoke: `UPDATE users SET is_admin = false WHERE email = '<email>';`
+
+An admin reaches these pages from the Account page's Admin section: Profile tab → Account &
+settings (`/settings`) → Admin, with AI accuracy, Review queue and NPS, and the scanner-box device
+choice (§11b). Until Nov 6, 2026 it was the Profile tab's own Admin section. Anyone else never sees
+the section, and the server's `/admin` routes 404 for them.
 
 ## 13. Login/register rate limiting
 
