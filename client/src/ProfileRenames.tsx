@@ -53,7 +53,8 @@ function RenameRow({ profile: p, onRename }: { profile: ProfileSummary; onRename
 
   return (
     <li className="card">
-      <span className="card__title">{saved}</span>{" "}
+      {/* Not card__title: that's styled as a link, and this row isn't one (as CircleRequests.tsx). */}
+      <strong>{saved}</strong>{" "}
       <span className="card__meta">({p.relationship === "owner" ? "owner" : "co-manager"})</span>
       <span className="profile-line">{allergenLine(p)}</span>
       <form onSubmit={handleSave} aria-label={`Rename ${saved}`}>

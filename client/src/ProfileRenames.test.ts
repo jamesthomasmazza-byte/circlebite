@@ -63,3 +63,10 @@ test("a failed save comes back as that row's error, never a throw", async () => 
   );
   assert.equal((await saveRename("p1", "Maya", fail(new TypeError("offline")))).error, "Couldn't save. Try again.");
 });
+
+test("a row's name isn't styled as a link: the row isn't one", () => {
+  // card__title is the link-card title (teal, underlined); found in a browser check, 2026-11-05.
+  const html = render([MAYA]);
+  assert.doesNotMatch(html, /card__title/);
+  assert.match(html, /<strong>Maya<\/strong>/);
+});
