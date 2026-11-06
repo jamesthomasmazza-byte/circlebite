@@ -5,6 +5,7 @@ import { AddToCircleSheet } from "../AddToCircleSheet";
 import { CircleDiagram, type Bubble } from "../CircleDiagram";
 import { AskToFollow, FollowRequests } from "../CircleRequests";
 import { CopyLink } from "../CopyLink";
+import { MemberSheet } from "../MemberSheet";
 import {
   cancelFollowInvite,
   cancelManagerInvite,
@@ -29,6 +30,7 @@ import {
   pendingInvites,
   pillLabel,
   ROLE_LINE,
+  type Member,
   type Pending,
   type Role,
 } from "../lib/circleRedesign";
@@ -149,6 +151,7 @@ function ManagedCircle({ profile, viewerId }: { profile: ProfileSummary; viewerI
   const [error, setError] = useState<string | null>(null);
   const [newLink, setNewLink] = useState<{ id: string; url: string } | null>(null);
   const [adding, setAdding] = useState(false);
+  const [opened, setOpened] = useState<Member | null>(null);
 
   async function reload() {
     try {
@@ -219,15 +222,18 @@ function ManagedCircle({ profile, viewerId }: { profile: ProfileSummary; viewerI
       {/* People, then invites waiting, in one list (JT, 2026-11-06). The diagram is aria-hidden;
           this list is what a screen reader hears. */}
       <ul className="member-list">
+        {/* Each person's row opens their sheet (MemberSheet.tsx). */}
         {people.map((m) => (
-          <li key={m.key} className="member-row">
-            <span className={`member-row__badge${m.isYou ? " member-row__badge--you" : ""}`} aria-hidden="true">
-              {m.isYou ? "You" : initials(m.name)}
-            </span>
-            <span className="member-row__text">
-              <span className="member-row__name">{m.name}</span>
-              <span className="member-row__role">{ROLE_LINE[m.role]}</span>
-            </span>
+          <li key={m.key} className="member-row member-row--person">
+            <button type="button" className="member-row__open" onClick={() => setOpened(m)}>
+              <span className={`member-row__badge${m.isYou ? " member-row__badge--you" : ""}`} aria-hidden="true">
+                {m.isYou ? "You" : initials(m.name)}
+              </span>
+              <span className="member-row__text">
+                <span className="member-row__name">{m.name}</span>
+                <span className="member-row__role">{ROLE_LINE[m.role]}</span>
+              </span>
+            </button>
           </li>
         ))}
         {waiting.map((p) => (
@@ -266,6 +272,16 @@ function ManagedCircle({ profile, viewerId }: { profile: ProfileSummary; viewerI
         </button>
       </p>
       <AddToCircleSheet profile={profile} open={adding} onClose={() => setAdding(false)} onMade={() => void reload()} />
+      <MemberSheet
+        member={opened}
+        profile={profile}
+        viewer={viewer}
+        onClose={() => setOpened(null)}
+        onRemoved={() => {
+          setOpened(null);
+          void reload();
+        }}
+      />
     </section>
   );
 }

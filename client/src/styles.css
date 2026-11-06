@@ -2860,3 +2860,36 @@ button.link-button {
   flex-wrap: wrap;
   gap: var(--space-2);
 }
+
+/* A person's row is one button that opens their sheet: the whole row is the tap target. */
+.member-row--person {
+  padding: 0;
+}
+
+button.member-row__open {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  font-weight: 400;
+  text-align: left;
+}
+
+.member-sheet__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.member-sheet__head h2 {
+  margin: 0;
+}
+
+.member-sheet__can h3 {
+  margin-top: 0;
+}
