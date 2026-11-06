@@ -42,6 +42,17 @@ test("the header renders first, then Condition 2's notices, then the page", () =
   assert.ok(header > 0 && header < notices && notices < page);
 });
 
+test("with SCAN_REDESIGN, Scan's pill takes the header's place on Scan only, still before the notices", () => {
+  // Condition 2 (2026-11-06, adapted): the pill, then the notices, then the page.
+  const pill = SHELL.indexOf("<ScanPill");
+  const notices = SHELL.indexOf("<LandingNotices");
+  const page = SHELL.indexOf("<Outlet");
+  assert.ok(pill > 0 && pill < notices && notices < page);
+  assert.match(SHELL, /const stage = scanStageOn\(scanRedesignEnabled, current === "scan"\);/);
+  assert.match(SHELL, /\{stage \? \(\s*chosen && <ScanPill /);
+  assert.match(SHELL, /\) : \(\s*<ShellHeader scanningFor=\{scanningFor\} \/>\s*\)\}/, "the header everywhere else");
+});
+
 test("Scan gets the slim notices and the Profile tab the full ones (Condition 2, 2026-10-26)", () => {
   assert.match(SHELL, /<LandingNotices \{\.\.\.notices\} slim=\{current === "scan"\} \/>/);
 });

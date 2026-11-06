@@ -3,10 +3,12 @@ import { Link, Outlet, useLocation, useOutletContext } from "react-router-dom";
 
 import { BrandLogo } from "./BrandLogo";
 import { LandingNotices, type NoticeData } from "./LandingNotices";
+import { ScanPill } from "./ScanPill";
 import { getUnseenChanges, listCircleRequests, listProfiles, type CircleRequest, type ProfileSummary } from "./lib/api";
 import { useAuth } from "./lib/AuthContext";
 import { REQUESTS_HEADING, requestBadgeLabel, requestNoticeLine } from "./lib/circleRequestCopy";
 import { headerProfileName } from "./lib/profileLineCopy";
+import { scanStageOn } from "./lib/scanRedesign";
 import {
   activeTab,
   badgeLabel,
@@ -60,7 +62,7 @@ export function TabShell() {
   // Follow requests waiting on this owner (CIRCLE_REQUESTS): a line on Scan after Condition 2's
   // notices, never before them, and a badge on the Circle tab. Gone only when each is approved or
   // declined. Empty for anyone who owns nothing, and while the switch is off.
-  const { circleRequestsEnabled } = useAuth();
+  const { circleRequestsEnabled, scanRedesignEnabled } = useAuth();
   const [requests, setRequests] = useState<CircleRequest[]>([]);
   const [requestsRead, setRequestsRead] = useState(0);
   const [profilesRead, setProfilesRead] = useState(0);
@@ -110,6 +112,10 @@ export function TabShell() {
   const current = activeTab(pathname);
   const chosen = profiles.find((p) => p.id === scanningForId(chosenProfileId, profiles));
   const scanningFor = chosen ? headerProfileName(chosen, profiles) : null;
+  // SCAN_REDESIGN (2026-11-06): on Scan only, Scan's own pill takes the header's place, and
+  // Condition 2's notices still come straight after it, before the page. Every other screen keeps
+  // the header. With no profile there's no pill; Scan says how to add one.
+  const stage = scanStageOn(scanRedesignEnabled, current === "scan");
   const context: ScanningFor = {
     chosenProfileId,
     chooseProfile: setChosenProfileId,
@@ -120,8 +126,12 @@ export function TabShell() {
   };
 
   return (
-    <div className="tab-shell">
-      <ShellHeader scanningFor={scanningFor} />
+    <div className={stage ? "tab-shell tab-shell--camera" : "tab-shell"}>
+      {stage ? (
+        chosen && <ScanPill profiles={profiles} chosen={chosen} onChoose={setChosenProfileId} />
+      ) : (
+        <ShellHeader scanningFor={scanningFor} />
+      )}
       {noticesShownOn(pathname) && (
         <div className="tab-shell__notices">
           {/* One line each on Scan, so the page starts sooner; the full notices on Profile. */}

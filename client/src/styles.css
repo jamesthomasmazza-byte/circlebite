@@ -112,6 +112,10 @@
      bright teal in both schemes, with dark text on it. */
   --color-circle-center: #6fcfc8;
   --color-on-circle-center: #15171c; /* 9.76:1 on circle-center */
+  /* The redesigned Scan tab's camera chrome (ScanPill.tsx, 2026-11-06): white over the dark camera
+     stage in both schemes, as a camera app's controls are. */
+  --color-camera-chrome: #ffffff;
+  --color-on-camera-chrome: #15171c; /* 17.93:1 on camera-chrome */
 
   --shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 2px 8px rgb(0 0 0 / 0.06);
 
@@ -134,6 +138,8 @@
     --color-alert: #ffaaa3; /* 10.29:1 on bg */
     --color-circle-center: #6fcfc8;
     --color-on-circle-center: #0c1a33; /* 9.44:1 on circle-center */
+    --color-camera-chrome: #ffffff;
+    --color-on-camera-chrome: #15171c; /* 17.93:1 on camera-chrome */
 
     --color-safe-text: #86e0a6; /* 9.80:1 on safe-bg */
     --color-safe-bg: #0e2918; /* body text on it: 13.64:1 */
@@ -2892,4 +2898,110 @@ button.member-row__open {
 
 .member-sheet__can h3 {
   margin-top: 0;
+}
+
+/* ---------- The redesigned Scan tab (Scan.tsx, ScanPill.tsx, 2026-11-06, behind SCAN_REDESIGN) -- */
+/* A dark camera stage, dark in both schemes as a camera view is. White chrome over it; the slim
+   Condition 2 notices keep their own tint, so they read the same as anywhere else. */
+
+.tab-shell--camera {
+  min-height: 100dvh;
+  background: var(--color-viewfinder-bg);
+  color: var(--color-viewfinder-text);
+}
+
+.scan-pill-bar {
+  max-width: var(--measure);
+  margin-inline: auto;
+  padding: var(--space-3) var(--space-4) 0;
+}
+
+.scan-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 100%;
+  min-height: var(--tap-min);
+  margin: 0;
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
+  border-radius: 999px;
+  background: var(--color-camera-chrome);
+  color: var(--color-on-camera-chrome);
+  font-weight: 400;
+}
+
+.scan-pill__initial {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background: var(--color-circle-center);
+  color: var(--color-on-circle-center);
+  font-weight: 700;
+}
+
+.scan-pill__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.scan-pill__for {
+  font-size: var(--text-sm);
+}
+
+.scan-pill__name {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scan-pill__chevron {
+  flex: none;
+}
+
+/* The existing profile <select>, laid over the whole pill: a tap anywhere on it opens the switcher. */
+.scan-pill__select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.scan-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.scan-chips > li + li {
+  margin-top: 0;
+}
+
+.scan-chip {
+  padding: 0.125rem var(--space-3);
+  border: 1px solid rgb(255 255 255 / 0.5);
+  border-radius: 999px;
+  color: var(--color-viewfinder-text);
+  font-size: var(--text-sm);
+}
+
+.scan-chips__empty {
+  margin: var(--space-2) 0 0;
+  color: var(--color-viewfinder-text);
+  font-size: var(--text-sm);
+}
+
+.tab-shell--camera .tab-shell__notices {
+  padding-inline: var(--space-4);
 }
