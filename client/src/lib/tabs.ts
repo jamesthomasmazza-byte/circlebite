@@ -66,6 +66,15 @@ export function showScanForButton(scannableCount: number): boolean {
   return scannableCount > 1;
 }
 
+/**
+ * The choice kept after the profile list is read again (2026-11-06): dropped once it's no longer
+ * yours to read — say, after leaving that circle — so Scan and the header fall back to another
+ * profile (scanningForId), or to none, and rejoining later doesn't quietly pick it again.
+ */
+export function keptChoice(chosen: string | null, profiles: Pick<ProfileSummary, "id">[]): string | null {
+  return chosen && profiles.some((p) => p.id === chosen) ? chosen : null;
+}
+
 /** A profile page's "Scan for" button: `/scan?profile=<id>`. What the shell takes as the choice. */
 export function requestedProfile(search: string): string | null {
   return new URLSearchParams(search).get("profile");

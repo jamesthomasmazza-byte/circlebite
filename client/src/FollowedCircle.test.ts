@@ -22,8 +22,8 @@ test("a follower never sees other members: only the profile and \"You\", no name
   // Nothing on this view, or the page's path to it, reads the circle: the server's 404 for a
   // follower stays the only answer, and no member's name reaches this browser.
   assert.doesNotMatch(SRC, /getCircle|CircleData/);
-  const followedBranch = PAGE.slice(PAGE.indexOf("{followed && <FollowedCircle"));
-  assert.match(followedBranch, /^\{followed && <FollowedCircle key=\{followed\.id\} profile=\{followed\} onLeft=/);
+  const followedBranch = PAGE.slice(PAGE.indexOf("{followed && ("));
+  assert.match(followedBranch, /^\{followed && \(\s*<FollowedCircle\s+key=\{followed\.id\}\s+profile=\{followed\}\s+onLeft=/);
 });
 
 test("who can see the circle, said truly", () => {

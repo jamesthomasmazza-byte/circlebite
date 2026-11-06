@@ -53,7 +53,7 @@ type Profiles = { managed: ProfileSummary[]; followed: ProfileSummary[] };
  */
 export function CircleRedesign() {
   const { user, circleRequestsEnabled, guidedSetupEnabled } = useAuth();
-  const { chosenProfileId, requests, refreshRequests } = useScanningFor();
+  const { chosenProfileId, requests, refreshRequests, refreshProfiles } = useScanningFor();
   const location = useLocation();
   const [profiles, setProfiles] = useState<Profiles | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -133,7 +133,17 @@ export function CircleRedesign() {
       {/* Keyed by profile, so nothing one circle holds (a new link, an error) shows under another. */}
       {managed && <ManagedCircle key={`${managed.id}-${version}`} profile={managed} viewerId={user?.id} />}
       {/* A circle you follow: you and the profile only. Never fetches the circle (FollowedCircle.tsx). */}
-      {followed && <FollowedCircle key={followed.id} profile={followed} onLeft={() => setProfilesRead((n) => n + 1)} />}
+      {/* After Leave: this tab's pills, and the shell's list and "Scanning for", right away. */}
+      {followed && (
+        <FollowedCircle
+          key={followed.id}
+          profile={followed}
+          onLeft={() => {
+            setProfilesRead((n) => n + 1);
+            refreshProfiles();
+          }}
+        />
+      )}
 
       {circleRequestsEnabled && (
         <p className="circle-join">

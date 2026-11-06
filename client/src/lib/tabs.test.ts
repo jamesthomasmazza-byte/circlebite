@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import { safeReturnTo } from "./returnTo";
-import { activeTab, badgeLabel, LANDING_PATH, noticesShownOn, profileBadgeCount, requestedProfile, scanningForId, showScanForButton } from "./tabs";
+import { activeTab, badgeLabel, keptChoice, LANDING_PATH, noticesShownOn, profileBadgeCount, requestedProfile, scanningForId, showScanForButton } from "./tabs";
 
 const MAIN = readFileSync(new URL("../main.tsx", import.meta.url), "utf8");
 const SHELL = readFileSync(new URL("../TabShell.tsx", import.meta.url), "utf8");
@@ -97,5 +97,27 @@ test("'Scan for' shows only with two or more profiles to scan for", () => {
   assert.equal(showScanForButton(2), true);
   assert.match(PROFILE_DETAIL, /\{showScanForButton\(scannableCount\) && \(\s*<p>\s*<Link to=\{`\/scan\?profile=/);
   assert.match(SHELL, /scannableCount: profiles\.length,/);
-  assert.match(SHELL, /setProfiles\(profiles\.status === "fulfilled" \? \[\.\.\.managed, \.\.\.profiles\.value\.followed\] : \[\]\)/);
+  assert.match(SHELL, /const all = profiles\.status === "fulfilled" \? \[\.\.\.managed, \.\.\.profiles\.value\.followed\] : \[\];\s*setProfiles\(all\);/);
+});
+
+// After leaving a circle (2026-11-06): the shell reads the list again at once, and drops a choice
+// that's no longer yours, so Scan and the header move to another profile, or to none.
+test("a choice no longer in the list is dropped; one still there is kept", () => {
+  const list = [{ id: "leo" }, { id: "noor" }];
+  assert.equal(keptChoice("maya", list), null, "left Maya's circle");
+  assert.equal(keptChoice("noor", list), "noor");
+  assert.equal(keptChoice(null, list), null);
+  assert.equal(keptChoice("maya", []), null, "no profiles left");
+  // Then Scan and the header fall back: another profile, or none at all.
+  assert.equal(scanningForId(keptChoice("maya", list), list), "leo");
+  assert.equal(scanningForId(keptChoice("maya", []), []), "");
+});
+
+test("leaving a circle re-reads the shell's profiles right away, not on the next navigation", () => {
+  const shell = readFileSync(new URL("../TabShell.tsx", import.meta.url), "utf8");
+  assert.match(shell, /\}, \[pathname, profilesRead\]\);/);
+  assert.match(shell, /refreshProfiles: \(\) => setProfilesRead\(\(n\) => n \+ 1\),/);
+  assert.match(shell, /if \(profiles\.status === "fulfilled"\) setChosenProfileId\(\(chosen\) => keptChoice\(chosen, all\)\);/);
+  const circle = readFileSync(new URL("../routes/CircleRedesign.tsx", import.meta.url), "utf8");
+  assert.match(circle, /onLeft=\{\(\) => \{\s*setProfilesRead\(\(n\) => n \+ 1\);\s*refreshProfiles\(\);\s*\}\}/);
 });

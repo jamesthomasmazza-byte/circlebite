@@ -10,6 +10,7 @@ import { headerProfileName } from "./lib/profileLineCopy";
 import {
   activeTab,
   badgeLabel,
+  keptChoice,
   LANDING_PATH,
   noticesShownOn,
   profileBadgeCount,
@@ -29,6 +30,8 @@ export type ScanningFor = {
   scannableCount: number;
   requests: CircleRequest[];
   refreshRequests: () => void;
+  // Read the profile list again without a navigation: after leaving a circle on the Circle tab.
+  refreshProfiles: () => void;
 };
 
 export function useScanningFor(): ScanningFor {
@@ -60,6 +63,7 @@ export function TabShell() {
   const { circleRequestsEnabled } = useAuth();
   const [requests, setRequests] = useState<CircleRequest[]>([]);
   const [requestsRead, setRequestsRead] = useState(0);
+  const [profilesRead, setProfilesRead] = useState(0);
 
   // A "Scan for" button arriving with ?profile=<id> is a choice, even while the shell is mounted.
   useEffect(() => {
@@ -73,7 +77,10 @@ export function TabShell() {
       if (!live) return;
       const unseenRows = unseen.status === "fulfilled" ? unseen.value : [];
       const managed = profiles.status === "fulfilled" ? profiles.value.managed : [];
-      setProfiles(profiles.status === "fulfilled" ? [...managed, ...profiles.value.followed] : []);
+      const all = profiles.status === "fulfilled" ? [...managed, ...profiles.value.followed] : [];
+      setProfiles(all);
+      // Only once the list was read: a failed read says nothing about which profiles are still yours.
+      if (profiles.status === "fulfilled") setChosenProfileId((chosen) => keptChoice(chosen, all));
       setNotices({
         unseen: unseenRows,
         unseenFailed: unseen.status === "rejected",
@@ -84,7 +91,7 @@ export function TabShell() {
     return () => {
       live = false;
     };
-  }, [pathname]);
+  }, [pathname, profilesRead]);
 
   useEffect(() => {
     let live = true;
@@ -109,6 +116,7 @@ export function TabShell() {
     scannableCount: profiles.length,
     requests,
     refreshRequests: () => setRequestsRead((n) => n + 1),
+    refreshProfiles: () => setProfilesRead((n) => n + 1),
   };
 
   return (
