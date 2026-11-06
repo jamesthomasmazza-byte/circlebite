@@ -14,7 +14,7 @@ test("switch off is today's Scan: its own select and line, the photo button, not
   assert.match(SCAN, /hidden=\{redesign && mode !== "type"\}/);
   assert.match(SCAN, /\{labelScanEnabled && !photoCaptureOpen && !redesign && \(/);
   // Every redesign-only block is behind the switch.
-  for (const block of ["<section className=\"scan-recent\"", "<div className=\"scan-modes\""]) {
+  for (const block of ["<p className=\"scan-recent-link\"", "<div className=\"scan-modes\""]) {
     const at = SCAN.indexOf(block);
     assert.ok(at > 0, block);
     assert.match(SCAN.slice(SCAN.lastIndexOf("{redesign &&", at), at), /^\{redesign &&/, block);
@@ -26,12 +26,16 @@ test("one scanner either way: the stage is the same BarcodeScanner, kept mounted
   assert.match(SCAN, /<BarcodeScanner\s+ref=\{scannerRef\}\s+onBusyChange=\{setScannerBusy\}\s+stage=\{redesign\}/);
 });
 
-test("Recent: the chosen profile's last three, read again after each result, with the short disclaimer and 911", () => {
-  assert.match(SCAN, /getScanHistory\(profileId\)\s*\.then\(\(history\) => live && setRecent\(recentCards\(profileId, history\)\)\)/);
-  assert.match(SCAN, /\}, \[redesign, profileId, result\?\.id\]\);/);
-  const recent = SCAN.slice(SCAN.indexOf('<section className="scan-recent"'), SCAN.indexOf("</section>", SCAN.indexOf('<section className="scan-recent"')));
-  assert.match(recent, /\{DISCLAIMER_SHORT\} \{EMERGENCY\}/);
-  assert.match(recent, /<span className="scan-recent__label">\{r\.label\}<\/span>/);
+test("Recent is one link to the chosen profile's scan history, in every mode, with no verdict of its own", () => {
+  // JT, 2026-11-06: the strip's cards overlapped on an iPhone; one link row replaces them.
+  const link = SCAN.slice(SCAN.indexOf('<p className="scan-recent-link">'), SCAN.indexOf("</p>", SCAN.indexOf('<p className="scan-recent-link">')));
+  assert.match(SCAN, /\{redesign && selectedProfile && \(\s*<p className="scan-recent-link">/, "not behind any mode");
+  assert.match(link, /<Link to=\{`\/profiles\/\$\{selectedProfile\.id\}\/history`\}>\s*\{RECENT_SCANS\}/);
+  assert.match(link, /<span aria-hidden="true">›<\/span>/);
+  assert.doesNotMatch(SCAN, /VERDICT_LABEL\[r\.|DISCLAIMER_SHORT|getScanHistory|scan-recent__/, "no verdicts, so no disclaimer, on the camera screen");
+  // History keeps its own disclaimer and 911 line.
+  const history = readFileSync(new URL("./ScanHistory.tsx", import.meta.url), "utf8");
+  assert.match(history, /<p>\{DISCLAIMER\}<\/p>\s*<p>\s*<strong>\{EMERGENCY\}<\/strong>/);
 });
 
 test("the segmented control: leaving Barcode stops the camera; Label photo opens today's photo form", () => {

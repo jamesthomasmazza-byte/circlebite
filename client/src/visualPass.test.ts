@@ -48,8 +48,7 @@ test("scan history: one card per scan, the date on its own line, the verdict lab
   // Since 2026-10-28 each card is a summary, its reasoning in a disclosure (routes/ScanHistory.test.ts).
   const page = src("./routes/ScanHistory.tsx");
   assert.match(page, /<ul className="card-list">\s*\{scans\.map/);
-  // With an id since 2026-11-06, for Scan's Recent cards (SCAN_REDESIGN).
-  assert.match(page, /<li id=\{`scan-\$\{scan\.id\}`\} className="card history-entry">/);
+  assert.match(page, /<li className="card history-entry">/);
   assert.match(page, /data-verdict=\{shown\.result\}>\s*\{VERDICT_LABEL\[shown\.result\]\}\s*<\/strong>/);
   assert.match(page, /<time className="card__meta card__line" dateTime=\{scan\.created_at\}>\s*\{shortDateTime\(scan\.created_at\)\}\s*<\/time>/);
 });

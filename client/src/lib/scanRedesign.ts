@@ -1,6 +1,5 @@
-import type { ProfileSummary, ScanHistoryEntry } from "./api";
+import type { ProfileSummary } from "./api";
 import { allergenLine } from "./profileLineCopy";
-import { VERDICT_LABEL } from "./verdictCopy";
 
 // The redesigned Scan tab (JT's mockup, 2026-11-06, behind SCAN_REDESIGN). A layout only: the
 // verdict, its labels and its wording all come from the copy Scan already uses (verdictCopy.ts,
@@ -54,25 +53,8 @@ export function scanModes(labelScanEnabled: boolean): { mode: ScanMode; label: s
   ];
 }
 
-export type RecentCard = { id: string; label: string; productName: string; href: string };
-
-/**
- * "Recent for <name>": the profile's last three scans, newest first, as its history has them. The
- * label is the verdict the history card headlines — the corrected view when a report changed it —
- * in the app's exact words. Each links to that scan on the profile's history page.
- */
-export function recentCards(profileId: string, history: ScanHistoryEntry[]): RecentCard[] {
-  return history.slice(0, 3).map((s) => ({
-    id: s.id,
-    label: VERDICT_LABEL[(s.effective ?? s.original).result],
-    productName: s.product_name ?? "Unknown product",
-    href: `/profiles/${profileId}/history#scan-${s.id}`,
-  }));
-}
-
-export function recentHeading(label: string): string {
-  return `Recent for ${label}`;
-}
+/** One link to the chosen profile's scan history, in place of the Recent strip (JT, 2026-11-06). */
+export const RECENT_SCANS = "Recent scans";
 
 /** "en:sesame-seeds" → "sesame seeds": Open Food Facts' tag, as words. */
 export function traceName(tag: string): string {

@@ -3179,7 +3179,7 @@ button.scanner__torch {
   justify-content: center;
 }
 
-/* Scan's landing, redesigned: the form for "Type it", Recent, and the segmented control. */
+/* Scan's landing, redesigned: the form for "Type it", the Recent scans link, and the mode control. */
 .scan-target--stage {
   margin: 0;
 }
@@ -3189,62 +3189,21 @@ form.scan-type-form {
   margin: var(--space-4) auto 0;
 }
 
-.scan-recent {
+/* "Recent scans ›": one link row to the chosen profile's history, in place of the Recent strip. */
+.scan-recent-link {
   box-sizing: border-box;
   width: 100%;
   max-width: var(--measure);
-  margin: var(--space-2) auto 0;
-  padding-inline: var(--space-4);
+  margin: var(--space-3) auto 0;
 }
 
-.scan-recent h2 {
-  margin: 0 0 var(--space-2);
-  color: var(--color-text);
-  font-size: var(--text-base);
-}
-
-.scan-recent__list {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.scan-recent__list > li + li {
-  margin-top: 0;
-}
-
-a.scan-recent__card {
+.scan-recent-link a {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  height: 100%;
+  align-items: center;
+  justify-content: space-between;
   min-height: var(--tap-min);
-  padding: var(--space-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-size: var(--text-sm);
-  text-decoration: none;
-}
-
-.scan-recent__label {
-  font-weight: 700;
-}
-
-.scan-recent__name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.scan-recent__note {
-  margin: var(--space-2) 0 0;
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
+  padding-inline: var(--space-1);
+  font-weight: 600;
 }
 
 /* Barcode | Label photo | Type it, in the page's own flow at the end of the column (JT, 2026-11-06):
