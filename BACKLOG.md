@@ -311,6 +311,23 @@ precedents, Nov 5.
    server's switch was off.*
    *Switched on in production by JT, Nov 6, about 3:34 PM ET, on release `f56fc74` (deployed the
    same day; `docs/journal.md`, Nov 6). To switch it off: `docs/server-setup.md` §11f.*
+13. [ ] **Scan tab redesign, behind `SCAN_REDESIGN`** (JT's mockup, Nov 6; off by default). A layout
+   only: the camera as the screen, Scan's own "Scanning for" pill in place of the header there,
+   allergen chips (names only), Recent for the chosen profile, Barcode | Label photo | Type it, the
+   result in a sheet over the camera, and a label camera with a tall frame, a shutter and a
+   checklist. Every verdict word is the existing copy's.
+   *Built Nov 6: `client/src/routes/Scan.tsx` (one component, markup branched),
+   `client/src/ScanPill.tsx`, `client/src/LabelCamera.tsx`, `client/src/BarcodeScanner.tsx`
+   (`stage`), `client/src/lib/scanRedesign.ts`; the record's may-contain tags on a barcode scan
+   (`server/src/lib/recordMayContain.ts`). Checked locally at 390×844 with the switch on in the
+   local `.env` (and `CIRCLE_ESCALATIONS`, for the reporter row), restored after: Condition 2's
+   notice first; JUDGES.md's barcodes; the deploy check; the green-card case; the reporter row as
+   owner and as follower; a typed barcode; a label photo, which failed closed for want of an AI key
+   locally. Not checked: the cameras themselves (no phone), the flash, and a real label read.*
+   **Decision owed, before Nov 13:** switch it on only after JT's review **and** before the code
+   freeze, or leave it off for judging. If it goes on, the printed judge card's fallback step
+   ("Type 2990000000083 in **Barcode** and tap **Check this product**") needs "tap **Type it**"
+   first (`docs/judges/judge-card.html`); its camera step still matches.
 
 ### Nov 13 — code freeze
 

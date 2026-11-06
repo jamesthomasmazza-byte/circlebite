@@ -680,6 +680,36 @@ sed -i 's/^CIRCLE_REDESIGN=.*/CIRCLE_REDESIGN=off/' ~/circlebite/.env
 sudo systemctl restart circlebite
 ```
 
+## 11g. Scan tab redesign — switch
+
+With `SCAN_REDESIGN=on`, the Scan tab is laid out as a camera screen (JT's Nov 6 mockup): Scan's
+own "Scanning for" pill in place of the header (on Scan only), the camera as the screen, Recent for
+the chosen profile, Barcode | Label photo | Type it, results in a sheet over the camera, and a label
+camera with a tall frame. A layout only: the same requests, verdicts and wording either way. The one
+server change is not behind it and is harmless off: a barcode scan's response carries the record's
+may-contain tags (`record_may_contain`). Off by default; off is today's Scan, unchanged. No data
+involved.
+
+**Before turning it on:** JT's review, before the November 13 code freeze, or it stays off for
+judging (BACKLOG item 13). Update the judge card's typed-barcode step first: in the redesign the
+**Barcode** field is behind **Type it**.
+
+**Turn it on:**
+
+```bash
+grep -q '^SCAN_REDESIGN=' ~/circlebite/.env \
+  && sed -i 's/^SCAN_REDESIGN=.*/SCAN_REDESIGN=on/' ~/circlebite/.env \
+  || echo "SCAN_REDESIGN=on" >> ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
+**Turn it off** — today's Scan again on each browser's next page load:
+
+```bash
+sed -i 's/^SCAN_REDESIGN=.*/SCAN_REDESIGN=off/' ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
 ## 12. Admin access — the AI accuracy page
 
 `users.is_admin` gates internal aggregate pages (the AI accuracy page today, the review queue
