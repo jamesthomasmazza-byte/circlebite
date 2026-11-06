@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
 import {
@@ -11,7 +11,6 @@ import {
   getProfile,
   getProfileChanges,
   updateAllergen,
-  updateProfile,
   type AllergenInput,
   type Allergen,
   type ProfileDetail as ProfileDetailData,
@@ -34,9 +33,6 @@ export function ProfileDetail() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
-  const [notes, setNotes] = useState("");
-  const [saveError, setSaveError] = useState<string | null>(null);
-
   const choices = useAllergenChoices();
   // The allergen whose "Choose another" picker is open, and what's picked in it.
   const [choosingFor, setChoosingFor] = useState<string | null>(null);
@@ -49,7 +45,6 @@ export function ProfileDetail() {
     try {
       const data = await getProfile(id);
       setProfile(data);
-      setNotes(data.notes ?? "");
     } catch {
       setNotFound(true);
     } finally {
@@ -107,18 +102,6 @@ export function ProfileDetail() {
   }
 
   const isOwner = profile.access.level === "owner";
-
-  async function handleSaveDetails(event: FormEvent) {
-    event.preventDefault();
-    setSaveError(null);
-    try {
-      const updated = await updateProfile(id!, { notes: notes.trim() });
-      setProfile((p) => (p ? { ...p, notes: updated.notes } : p));
-      await refreshHistory();
-    } catch {
-      setSaveError("Couldn't save. Try again.");
-    }
-  }
 
   // Errors go back to the form (AddAllergen.tsx), which says what went wrong.
   async function handleAddAllergen(input: AllergenInput) {
@@ -256,7 +239,7 @@ export function ProfileDetail() {
         <Link to={`/profiles/${id}/history`}>Recent scans</Link>
       </p>
 
-      {/* First, above the name and notes: what the page is for (2026-10-28 audit — at 390px it
+      {/* First: what the page is for (2026-10-28 audit — at 390px it
           started about 650px down). Order only. */}
       <h2>Allergens</h2>
       {/* Compact rows (2026-11-05, AllergenItem.tsx); the "needs a look" notice stays on the row, outside its details. */}
@@ -281,18 +264,8 @@ export function ProfileDetail() {
         />
       )}
 
-      {canManage ? (
-        <form onSubmit={handleSaveDetails}>
-          <label>
-            Notes
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
-          </label>
-          {saveError && <p role="alert">{saveError}</p>}
-          <button type="submit">Save</button>
-        </form>
-      ) : (
-        profile.notes && <p>{profile.notes}</p>
-      )}
+      {/* No profile-level notes since 2026-11-05 (docs/principles.md): the column and past note
+          edits in the change history stay; nothing here reads or writes them. */}
 
       {canManage && (
         <ChangeHistory

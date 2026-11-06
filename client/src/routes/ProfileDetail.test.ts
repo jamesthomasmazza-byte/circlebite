@@ -38,12 +38,18 @@ test("each allergen's severity dropdown is named after its allergen", () => {
   assert.match(ALLERGEN_ITEM_SOURCE, /aria-label=\{`Severity of \$\{a\.name\}`\}/);
 });
 
-test("the allergens come before the notes form, and the change history after both", () => {
+test("the allergens come before the change history", () => {
   // 2026-10-28 audit: at 390px the Allergens section started about 650px down. Order only.
   const allergens = SOURCE.indexOf("<h2>Allergens</h2>");
-  const details = SOURCE.indexOf("<form onSubmit={handleSaveDetails}>");
   const history = SOURCE.indexOf("<ChangeHistory");
-  assert.ok(allergens > 0 && details > allergens && history > details);
+  assert.ok(allergens > 0 && history > allergens);
+});
+
+test("no profile-level notes: no editor for a manager, nothing shown to a follower", () => {
+  // JT, 2026-11-05 (docs/principles.md). A note could name a milder allergen to a severe-only
+  // follower. The column and the history's past note edits stay (profileChangeCopy.ts).
+  assert.doesNotMatch(SOURCE, /profile\.notes|setNotes|<textarea\b/);
+  assert.doesNotMatch(SOURCE, /updateProfile/);
 });
 
 test("acknowledging sends exactly the unseen entries on screen, never everything up to now", () => {

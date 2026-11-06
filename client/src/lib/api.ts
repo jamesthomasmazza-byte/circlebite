@@ -189,7 +189,6 @@ export function listProfiles(): Promise<{ managed: ProfileSummary[]; followed: P
 export function createProfile(input: {
   label: string;
   isSelf?: boolean;
-  notes?: string;
   allergens?: AllergenInput[];
 }): Promise<ProfileDetail> {
   return apiFetch("/profiles", { method: "POST", body: JSON.stringify(input) });
@@ -201,7 +200,7 @@ export function getProfile(id: string): Promise<ProfileDetail> {
 
 export function updateProfile(
   id: string,
-  input: { label?: string; notes?: string; defaultTreatTracesAsUnsafe?: boolean },
+  input: { label?: string; defaultTreatTracesAsUnsafe?: boolean },
 ): Promise<ProfileDetail> {
   return apiFetch(`/profiles/${id}`, { method: "PATCH", body: JSON.stringify(input) });
 }
