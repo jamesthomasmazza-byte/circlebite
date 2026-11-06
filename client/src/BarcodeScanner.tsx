@@ -5,7 +5,7 @@ import { BoxRegionReader } from "./boxRegionReader";
 import { CAMERA_PRIMER_HEADING, CAMERA_PRIMER_LINE, cameraPrimerSeen, markCameraPrimerSeen } from "./lib/cameraPrimer";
 import { prefersReducedMotion, revealBehavior } from "./lib/revealResult";
 import { NO_READ_OFFER, NO_READ_OFFER_MS } from "./lib/scannerCopy";
-import { FLASH_OFF, FLASH_ON, POINT_AT_BARCODE, SCANS_ON_ITS_OWN } from "./lib/scanRedesign";
+import { FLASH_OFF, FLASH_ON, POINT_AT_BARCODE } from "./lib/scanRedesign";
 import { countDecodes, msSince, type ClientTiming, type DecodeCount } from "./lib/scanTiming";
 
 // How long "Got it" shows on the box before the camera stops and the scan runs.
@@ -36,7 +36,7 @@ const READ_CONFIRM_MS = 250;
  *
  * With `stage` (SCAN_REDESIGN, 2026-11-06) the same scanner is laid out as the screen: the preview
  * fills a dark stage, the box is a frame of four corner brackets with a scan line, and while it runs
- * the hint says it reads on its own — true, since zxing decodes every frame with no tap. Before that
+ * the hint says "Point at the barcode" — zxing decodes every frame with no tap. Before that
  * it still waits for a tap, with the first-use sentence first: the camera never opens by itself. A
  * flash button shows only when the camera track says it has a torch (zxing's switchTorch). The box
  * is still the element the region reader decodes inside.
@@ -283,11 +283,7 @@ export const BarcodeScanner = forwardRef<
             {read ? (
               "Got it — checking this product."
             ) : (
-              <>
-                <strong>{POINT_AT_BARCODE}</strong>
-                <br />
-                {SCANS_ON_ITS_OWN}
-              </>
+              <strong>{POINT_AT_BARCODE}</strong>
             )}
           </p>
         )}

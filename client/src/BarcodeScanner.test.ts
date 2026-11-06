@@ -164,10 +164,11 @@ test("stage: the camera still waits for a tap, with the first-use sentence first
   assert.doesNotMatch(SCANNER, /useEffect\(\(\) => \{[^}]*startCamera\(\)/, "no effect starts the camera");
 });
 
-test("stage: \"It scans on its own\" only while the camera runs, where zxing decodes every frame unasked", () => {
+test("stage: \"Point at the barcode\" only while the camera runs, and no second line under it", () => {
+  // JT, 2026-11-06: "It scans on its own. No button needed." overlapped Recent on an iPhone.
   const stage = SCANNER.slice(SCANNER.indexOf("if (stage) {"));
-  assert.match(stage, /\{cameraActive && \(\s*<p className="scanner__hint" role="status">[\s\S]*?\{POINT_AT_BARCODE\}[\s\S]*?\{SCANS_ON_ITS_OWN\}/);
-  assert.match(SCANNER, /reader\.decodeFromVideoDevice\(undefined, videoRef\.current!, \(detected\) => \{/);
+  assert.match(stage, /\{cameraActive && \(\s*<p className="scanner__hint" role="status">\s*\{read \? \(\s*"Got it — checking this product\."\s*\) : \(\s*<strong>\{POINT_AT_BARCODE\}<\/strong>\s*\)\}/);
+  assert.doesNotMatch(SCANNER, /scans on its own|No button needed/i);
 });
 
 test("stage: the region reader still decodes inside the drawn box, and flash shows only with a torch", () => {

@@ -12,7 +12,6 @@ import {
   recentCards,
   scanModes,
   scanStageOn,
-  SCANS_ON_ITS_OWN,
   traceName,
 } from "./scanRedesign";
 
@@ -42,7 +41,6 @@ test("chips follow the profile line exactly: names only, three then more, never 
 test("the segmented control: Label photo only with LABEL_SCAN; Type it always (the judge card's typed barcode)", () => {
   assert.deepEqual(scanModes(true).map((m) => m.label), ["Barcode", "Label photo", "Type it"]);
   assert.deepEqual(scanModes(false).map((m) => m.label), ["Barcode", "Type it"]);
-  assert.equal(SCANS_ON_ITS_OWN, "It scans on its own. No button needed.");
 });
 
 const entry = (id: string, result: ScanHistoryEntry["original"]["result"], effective: ScanHistoryEntry["original"]["result"] | null, name: string | null): ScanHistoryEntry => ({
