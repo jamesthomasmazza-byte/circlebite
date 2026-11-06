@@ -5,6 +5,7 @@ import { BoxRegionReader } from "./boxRegionReader";
 import { CAMERA_PRIMER_HEADING, CAMERA_PRIMER_LINE, cameraPrimerSeen, markCameraPrimerSeen } from "./lib/cameraPrimer";
 import { prefersReducedMotion, revealBehavior } from "./lib/revealResult";
 import { NO_READ_OFFER, NO_READ_OFFER_MS } from "./lib/scannerCopy";
+import { FlashIcon } from "./FlashIcon";
 import { FLASH_OFF, FLASH_ON, POINT_AT_BARCODE } from "./lib/scanRedesign";
 import { countDecodes, msSince, type ClientTiming, type DecodeCount } from "./lib/scanTiming";
 
@@ -266,8 +267,13 @@ export const BarcodeScanner = forwardRef<
             {read && <span className="scanner__got-it">Got it</span>}
           </div>
           {cameraActive && torchAvailable && (
-            <button type="button" className="scanner__torch" aria-pressed={torchOn} onClick={() => void toggleTorch()}>
-              {torchOn ? FLASH_OFF : FLASH_ON}
+            <button
+              type="button"
+              className="scanner__torch"
+              aria-label={torchOn ? FLASH_OFF : FLASH_ON}
+              onClick={() => void toggleTorch()}
+            >
+              <FlashIcon on={torchOn} />
             </button>
           )}
           {!cameraActive && !primerOpen && (

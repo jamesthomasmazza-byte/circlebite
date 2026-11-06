@@ -177,3 +177,17 @@ test("stage: the region reader still decodes inside the drawn box, and flash sho
   assert.match(SCANNER, /setTorchAvailable\(stage && typeof controls\.switchTorch === "function"\);/);
   assert.match(stage, /\{cameraActive && torchAvailable && \(/);
 });
+
+test("flash is a 44px icon in the camera's corner, named by aria-label, only with a torch", () => {
+  // JT, 2026-11-06: a "Turn flash on" pill covered the frame and the barcode.
+  const label = readFileSync(new URL("./LabelCamera.tsx", import.meta.url), "utf8");
+  for (const src of [SCANNER, label]) {
+    assert.match(src, /className="scanner__torch"\s+aria-label=\{torchOn \? FLASH_OFF : FLASH_ON\}/);
+    assert.match(src, /<FlashIcon on=\{torchOn\} \/>/);
+    assert.match(src, /&& torchAvailable && \(/);
+  }
+  const css = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
+  const rule = css.slice(css.indexOf("button.scanner__torch {"), css.indexOf("}", css.indexOf("button.scanner__torch {")));
+  assert.match(rule, /width: var\(--tap-min\);\s*height: var\(--tap-min\);/);
+  assert.match(rule, /top: var\(--space-2\);\s*right: var\(--space-2\);/);
+});

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { CAMERA_PRIMER_HEADING, CAMERA_PRIMER_LINE, cameraPrimerSeen, markCameraPrimerSeen } from "./lib/cameraPrimer";
+import { FlashIcon } from "./FlashIcon";
 import { FLASH_OFF, FLASH_ON, TAKE_PHOTO } from "./lib/scanRedesign";
 
 type TorchCapabilities = MediaTrackCapabilities & { torch?: boolean };
@@ -104,8 +105,13 @@ export function LabelCamera({ onCapture, busy }: { onCapture: (photo: File) => v
         <video ref={videoRef} className="label-camera__video" muted playsInline />
         <div className="label-camera__frame" aria-hidden="true" />
         {active && torchAvailable && (
-          <button type="button" className="scanner__torch" aria-pressed={torchOn} onClick={() => void toggleTorch()}>
-            {torchOn ? FLASH_OFF : FLASH_ON}
+          <button
+            type="button"
+            className="scanner__torch"
+            aria-label={torchOn ? FLASH_OFF : FLASH_ON}
+            onClick={() => void toggleTorch()}
+          >
+            <FlashIcon on={torchOn} />
           </button>
         )}
         {!active && !primerOpen && (

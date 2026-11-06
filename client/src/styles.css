@@ -3139,12 +3139,20 @@ button.member-row__open {
   margin: 0;
 }
 
+/* Flash: a 44px icon in the camera's top-right corner, clear of the frame and the barcode (JT,
+   2026-11-06; a text pill covered the frame). Its name is its aria-label. */
 button.scanner__torch {
   position: absolute;
-  top: var(--space-3);
-  right: var(--space-3);
+  top: var(--space-2);
+  right: var(--space-2);
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  padding: 0;
   border-color: var(--color-camera-chrome);
-  border-radius: 999px;
+  border-radius: 50%;
   background: rgb(21 23 28 / 0.75);
   color: var(--color-camera-chrome);
 }
