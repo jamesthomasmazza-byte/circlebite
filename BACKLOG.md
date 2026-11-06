@@ -1376,3 +1376,8 @@ Out of scope per `CONTEST_RULES.md` §7 — do not start these before judging en
   testing `2b51898`). It passed alone three times out of three, and the next two full runs were
   clean. Likely a clash with another test file sharing the database or the upload folder; the
   failing assertion wasn't captured. Investigate after judging.
+- Known flaky test: `server/src/routes/corrections.test.ts`, "a duplicate report is a 409
+  already_reported, and its photo doesn't stay on disk", failed once in a full server run on
+  2026-11-05 (while testing `f5ab9bd`). It passed on four reruns: three of the file alone and the
+  next full run. Same file as the flaky follower-removal test above; cause not investigated, and
+  the failing assertion wasn't captured. Investigate after judging.
