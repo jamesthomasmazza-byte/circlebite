@@ -325,9 +325,9 @@ precedents, Nov 5.
    owner and as follower; a typed barcode; a label photo, which failed closed for want of an AI key
    locally. Not checked: the cameras themselves (no phone), the flash, and a real label read.*
    **Decision owed, before Nov 13:** switch it on only after JT's review **and** before the code
-   freeze, or leave it off for judging. If it goes on, the printed judge card's fallback step
-   ("Type 2990000000083 in **Barcode** and tap **Check this product**") needs "tap **Type it**"
-   first (`docs/judges/judge-card.html`); its camera step still matches.
+   freeze, or leave it off for judging. The judge card's typed step reads right either way since
+   Nov 6 ("Tap **Type it** if you see it, then type 2990000000083 in **Barcode** and tap **Check
+   this product**", `docs/judges/judge-card.html`); a copy printed before then lacks "Type it".
 
 ### Nov 13 — code freeze
 

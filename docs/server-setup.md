@@ -691,8 +691,8 @@ may-contain tags (`record_may_contain`). Off by default; off is today's Scan, un
 involved.
 
 **Before turning it on:** JT's review, before the November 13 code freeze, or it stays off for
-judging (BACKLOG item 13). Update the judge card's typed-barcode step first: in the redesign the
-**Barcode** field is behind **Type it**.
+judging (BACKLOG item 13). In the redesign the **Barcode** field is behind **Type it**; the judge
+card says so since November 6, so reprint any copy printed before then.
 
 **Turn it on:**
 

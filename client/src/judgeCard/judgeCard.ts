@@ -55,7 +55,7 @@ export function renderJudgeCard(): string {
   <ol>
     <li>Sign in at <strong>circlebite.app</strong> with the login from your one-time link.</li>
     <li>On <strong>Scan</strong>, choose <strong>Maya</strong> first, then tap <strong>Scan with camera</strong> and hold this barcode inside the box.</li>
-    <li>Camera won't read it? Type <strong>${JUDGE_BARCODE}</strong> in <strong>Barcode</strong> and tap <strong>Check this product</strong>.</li>
+    <li>Camera won't read it? Tap <strong>Type it</strong> if you see it, then type <strong>${JUDGE_BARCODE}</strong> in <strong>Barcode</strong> and tap <strong>Check this product</strong>.</li>
     <li>Then choose <strong>Noor</strong> and scan it again.</li>
   </ol>
 
