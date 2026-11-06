@@ -521,6 +521,9 @@ export type ScanResult = {
   // identity — an inline note on the verdict card, not a block (docs/verdict-engine.md Path D).
   // null/absent otherwise, and cleared entirely if the family discards that photo.
   identity_mismatch?: IdentityMismatch | null;
+  // The product record's own "may contain" tags, e.g. "en:nuts" (server lib/recordMayContain.ts),
+  // on a barcode scan's response. null with no record; absent on photo results.
+  record_may_contain?: string[] | null;
 };
 
 export type CorrectionType = "flag_wrong" | "flag_missing" | "wrong_product";

@@ -26,6 +26,7 @@ import {
 } from "../lib/scanTiming.js";
 import { computeVerdict, hasUsableData, type Verdict } from "../matcher/match.js";
 import { loadProfileAllergens } from "../matcher/profileAllergens.js";
+import { recordMayContain } from "../lib/recordMayContain.js";
 import { combineLabelScan, discardLabelEvidence } from "../verdict/combineScan.js";
 import { logAiFailure } from "../verdict/aiFailureLog.js";
 import { explainMissingProductData, explainVerdict } from "../verdict/explainVerdict.js";
@@ -205,6 +206,8 @@ scansRouter.post(
       // True only when the AI step ran and failed. No reason code: that stays in verdict_explanations.
       ingredient_check_incomplete: aiResult?.failed ?? false,
       evidence_decision: evidenceDecision,
+      // What the product record says may be in it, for the redesigned Scan tab (lib/recordMayContain.ts).
+      record_may_contain: recordMayContain(product),
       effective: effective && { result: effective.result, matched_allergens: effective.matchedAllergens },
       community_reports: publicCommunityReports(community?.applied ?? []),
       pending_circle_reports: publicCircleReports(circle?.applied ?? []),
