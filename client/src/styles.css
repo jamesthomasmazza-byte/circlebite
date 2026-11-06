@@ -112,8 +112,8 @@
      bright teal in both schemes, with dark text on it. */
   --color-circle-center: #6fcfc8;
   --color-on-circle-center: #15171c; /* 9.76:1 on circle-center */
-  /* The redesigned Scan tab's camera chrome (ScanPill.tsx, 2026-11-06): white over the dark camera
-     stage in both schemes, as a camera app's controls are. */
+  /* The redesigned Scan tab's camera chrome (2026-11-06): white over the live camera viewport in both
+     schemes, as a camera app's controls are — the flash button. The page itself follows the theme. */
   --color-camera-chrome: #ffffff;
   --color-on-camera-chrome: #15171c; /* 17.93:1 on camera-chrome */
 
@@ -2901,26 +2901,20 @@ button.member-row__open {
 }
 
 /* ---------- The redesigned Scan tab (Scan.tsx, ScanPill.tsx, 2026-11-06, behind SCAN_REDESIGN) -- */
-/* A dark camera stage, dark in both schemes as a camera view is. White chrome over it; the slim
-   Condition 2 notices keep their own tint, so they read the same as anywhere else. */
+/* The page follows the app's theme, light or dark, like every other screen (JT, 2026-11-06, after
+   an iPhone check): only the live camera viewport is dark. */
 
 .tab-shell--camera {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
   min-height: 100dvh;
-  background: var(--color-viewfinder-bg);
-  color: var(--color-viewfinder-text);
 }
 
 /* One column down to the tab bar: the stage takes the height nothing else needs (.scanner--stage).
    While the camera stage shows, the column is exactly the screen's height, so the camera is what
    gives way — down to its 10rem — and the pill, Condition 2's notices, Recent and the mode control
-   keep their size, all on the first screen. Anything still taller scrolls, over the same dark. */
-html:has(.tab-shell--camera) {
-  background: var(--color-viewfinder-bg);
-}
-
+   keep their size, all on the first screen. Anything still taller scrolls. */
 /* The screen less the body's own top and bottom padding (above). That bottom padding already sits
    under the tab bar, so the column's bottom padding — room for the mode control and the bar — takes
    it back out, and the content still ends just above the control. */
@@ -2976,9 +2970,10 @@ html:has(.tab-shell--camera) {
   min-height: var(--tap-min);
   margin: 0;
   padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
+  border: 1px solid var(--color-border);
   border-radius: 999px;
-  background: var(--color-camera-chrome);
-  color: var(--color-on-camera-chrome);
+  background: var(--color-surface);
+  color: var(--color-text);
   font-weight: 400;
 }
 
@@ -3041,15 +3036,15 @@ html:has(.tab-shell--camera) {
 
 .scan-chip {
   padding: 0.125rem var(--space-3);
-  border: 1px solid rgb(255 255 255 / 0.5);
+  border: 1px solid var(--color-border);
   border-radius: 999px;
-  color: var(--color-viewfinder-text);
+  color: var(--color-text);
   font-size: var(--text-sm);
 }
 
 .scan-chips__empty {
   margin: var(--space-2) 0 0;
-  color: var(--color-viewfinder-text);
+  color: var(--color-text-muted);
   font-size: var(--text-sm);
 }
 
@@ -3156,7 +3151,7 @@ button.scanner__torch {
 }
 
 .scanner-section--stage .scanner__hint {
-  color: var(--color-viewfinder-text);
+  color: var(--color-text);
   font-size: var(--text-base);
   text-align: center;
 }
@@ -3170,17 +3165,9 @@ button.scanner__torch {
   margin: 0;
 }
 
-.tab-shell--camera main {
-  color: var(--color-viewfinder-text);
-}
-
 form.scan-type-form {
   max-width: var(--measure);
   margin: var(--space-4) auto 0;
-  padding: var(--space-4);
-  border-radius: var(--radius-lg);
-  background: var(--color-bg);
-  color: var(--color-text);
 }
 
 .scan-recent {
@@ -3193,7 +3180,7 @@ form.scan-type-form {
 
 .scan-recent h2 {
   margin: 0 0 var(--space-2);
-  color: var(--color-viewfinder-text);
+  color: var(--color-text);
   font-size: var(--text-base);
 }
 
@@ -3217,9 +3204,10 @@ a.scan-recent__card {
   height: 100%;
   min-height: var(--tap-min);
   padding: var(--space-2);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  background: var(--color-camera-chrome);
-  color: var(--color-on-camera-chrome);
+  background: var(--color-surface);
+  color: var(--color-text);
   font-size: var(--text-sm);
   text-decoration: none;
 }
@@ -3236,7 +3224,7 @@ a.scan-recent__card {
 
 .scan-recent__note {
   margin: var(--space-2) 0 0;
-  color: var(--color-viewfinder-text);
+  color: var(--color-text-muted);
   font-size: var(--text-sm);
 }
 
@@ -3252,21 +3240,22 @@ a.scan-recent__card {
   max-width: calc(100% - 2 * var(--space-4));
   margin-inline: auto;
   padding: var(--space-1);
+  border: 1px solid var(--color-border);
   border-radius: 999px;
-  background: rgb(21 23 28 / 0.85);
+  background: var(--color-surface);
 }
 
 .scan-modes button {
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: var(--color-viewfinder-text);
+  color: var(--color-text);
   font-weight: 600;
 }
 
 .scan-modes button[aria-pressed="true"] {
-  background: var(--color-camera-chrome);
-  color: var(--color-on-camera-chrome);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
 }
 
 .tab-shell:has(.scan-modes) {
@@ -3354,15 +3343,11 @@ a.scan-recent__card {
   z-index: 9;
 }
 
-/* The label photo screen, redesigned (LabelCamera.tsx): the photo form as a panel on the stage, a
-   tall frame for the ingredients panel, a shutter, and a dark-teal checklist. */
+/* The label photo screen, redesigned (LabelCamera.tsx): the photo form as the page, a tall frame for
+   the ingredients panel, a shutter, and a dark-teal checklist. */
 .tab-shell--camera main form {
   max-width: var(--measure);
   margin: var(--space-4) auto 0;
-  padding: var(--space-4);
-  border-radius: var(--radius-lg);
-  background: var(--color-bg);
-  color: var(--color-text);
 }
 
 .label-camera__view {

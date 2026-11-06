@@ -110,3 +110,17 @@ test("the landing fits one screen: the camera gives way, so Recent and the mode 
   assert.match(css, /\.tab-shell--camera > \*,\s*\.tab-shell--camera > main > \* \{\s*flex-shrink: 0;/, "nothing else gives way");
   assert.match(css, /\.scanner\.scanner--stage \{[^}]*flex: 1 1 0;\s*min-height: 10rem;/, "the camera does, down to 10rem");
 });
+
+test("the page follows the app's theme; only the live camera viewport is dark", () => {
+  // JT, 2026-11-06, from an iPhone: the whole page was dark in light mode.
+  const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
+  const redesign = css.slice(css.indexOf("/* ---------- The redesigned Scan tab (Scan.tsx, ScanPill.tsx"));
+  assert.doesNotMatch(redesign, /viewfinder/, "no camera-stage colours on the page");
+  const rule = (sel: string) => redesign.slice(redesign.indexOf(`${sel} {`), redesign.indexOf("}", redesign.indexOf(`${sel} {`)));
+  assert.match(rule(".tab-shell--camera"), /^[^}]*$/);
+  assert.doesNotMatch(rule(".tab-shell--camera"), /background|color:/);
+  assert.match(rule(".scan-pill"), /background: var\(--color-surface\);\s*color: var\(--color-text\);/);
+  assert.match(rule(".scan-chip"), /color: var\(--color-text\);/);
+  assert.match(rule(".scan-modes button[aria-pressed=\"true\"]"), /background: var\(--color-accent\);\s*color: var\(--color-on-accent\);/);
+  assert.match(rule(".scanner.scanner--stage"), /background: #000;/, "the camera viewport stays dark");
+});
