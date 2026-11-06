@@ -2592,3 +2592,31 @@ The runbook's step 3 now says to delete with **Show versions** off, then check t
 later. JT's November 4 email to Prof. Yoest said older backups "are being removed"
 (`docs/approvals/2026-11-04-jt-matcher-r9-landing.md`); `conditions.md` now records it as done.
 Not yet told to him.
+
+## 2026-11-06 — `CIRCLE_REDESIGN` switched on in production
+
+JT switched `CIRCLE_REDESIGN` on in production at about 3:34 PM ET (BACKLOG item 12). The release
+running is `f56fc74`, deployed earlier the same day; until the switch went on, it served today's
+Circle tab.
+
+With the switch on, the Circle tab is the redesign:
+- **Owners and co-managers:** one circle at a time, picked by a pill, with a picture of the circle
+  (initials only) and one list of people and waiting invites.
+- **Sheets:** one to add someone (three choices, none preselected), and one to open a member, with
+  Remove where the viewer's role allows.
+- **Followers:** only the profile and "You", what they can see, and **Leave**
+  (`POST /profiles/:id/leave`, live only while the switch is on).
+
+Already live before the switch, and not behind it: someone removed from a circle can rejoin by a
+new invite link (`46b6484`; it was a 500 on accept).
+
+**To switch it off** (`docs/server-setup.md` §11f), on the box:
+
+```bash
+sed -i 's/^CIRCLE_REDESIGN=.*/CIRCLE_REDESIGN=off/' ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
+Today's Circle tab is back on each browser's next page load. No migration or data change either
+way. Anyone who left a circle while it was on stays out until re-invited, exactly as after a
+removal, because leaving and removal leave the same revoked follow.

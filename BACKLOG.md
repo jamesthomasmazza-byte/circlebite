@@ -294,7 +294,7 @@ precedents, Nov 5.
    *Later Nov 6 (JT): Settings became the Account page, at the same `/settings`, and took the
    Profile tab's Account and Admin sections too, so the Profile tab lists people only. Scan sounds
    is unchanged there, still after "Your profiles".*
-12. [ ] **Circle tab redesign, behind `CIRCLE_REDESIGN`** (JT's mockup, Nov 6; off by default).
+12. [x] **Circle tab redesign, behind `CIRCLE_REDESIGN`** (JT's mockup, Nov 6; off by default).
    A circle switcher (one pill per profile you manage or follow, opening on Scanning for), a
    picture of the circle with initials only, one list of people and waiting invites ("Invite link ·
    waiting for someone to accept", New link and Cancel inline where the role can), an "Add to
@@ -309,7 +309,8 @@ precedents, Nov 5.
    at 390px as an owner, a co-manager, a full follower and a severe-only follower, switch on (forced
    in the browser only) and off. Leave was checked by server tests, not in the browser: the local
    server's switch was off.*
-   **Still owed:** JT's review of the four views, then switch it on (`docs/server-setup.md` §11f).
+   *Switched on in production by JT, Nov 6, about 3:34 PM ET, on release `f56fc74` (deployed the
+   same day; `docs/journal.md`, Nov 6). To switch it off: `docs/server-setup.md` §11f.*
 
 ### Nov 13 — code freeze
 
