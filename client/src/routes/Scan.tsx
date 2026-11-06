@@ -67,7 +67,6 @@ import {
 import { allergenLine, profileOptionText } from "../lib/profileLineCopy";
 import { couldntReadHeading, DISCLAIMER, DISCLAIMER_SHORT, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
 import {
-  circleReportsOffRows,
   circleReportsOnRow,
   CHOOSE_PHOTO,
   forLabel,
@@ -1144,13 +1143,7 @@ export function Scan() {
                   </li>
                 ))}
                 {/* Last and lightest: the least-supported claim on the card (JT, 2026-10-16). */}
-                {(redesign
-                  ? circleReportsOffRows(
-                      result.pending_circle_reports,
-                      shown.matched_allergens.filter((m) => m.classification !== "unchecked").map((m) => m.allergenName),
-                    )
-                  : result.pending_circle_reports
-                ).map((r) => (
+                {result.pending_circle_reports.map((r) => (
                   <li key={`circle-${r.allergenName}`} className="circle-report">
                     {circleReportLine(r, resultProfileLabel)}
                   </li>

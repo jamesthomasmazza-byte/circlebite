@@ -113,13 +113,10 @@ const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().t
 /**
  * A pending circle report shown on its own allergen's row, in the full sentence today's card puts
  * under the rows (correctionCopy.ts circleReportLine: the reporter by name to the owner and
- * co-managers, by role to a follower, as the server sends it).
+ * co-managers, by role to a follower, as the server sends it). The list under the rows keeps every
+ * report as today: "Changed because of:" needs its items, and an empty list there read as missing.
  */
 export function circleReportsOnRow<R extends Named>(reports: R[], rowName: string): R[] {
   return reports.filter((r) => sameName(r.allergenName, rowName));
 }
 
-/** The reports no row matches, which stay in the list under the rows: every report shows once. */
-export function circleReportsOffRows<R extends Named>(reports: R[], rowNames: string[]): R[] {
-  return reports.filter((r) => !rowNames.some((n) => sameName(r.allergenName, n)));
-}

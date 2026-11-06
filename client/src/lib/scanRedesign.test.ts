@@ -5,7 +5,6 @@ import type { ScanHistoryEntry } from "./api";
 import { SEVERE_ONLY_SHARED } from "./profileLineCopy";
 import {
   allergenChips,
-  circleReportsOffRows,
   circleReportsOnRow,
   LABEL_PROMISE,
   mayContainLine,
@@ -85,12 +84,8 @@ test("the label photo's promise, true per extractLabel's legible and complete", 
   assert.equal(LABEL_PROMISE, "If any part is cut off or hard to read, we'll ask for another photo instead of guessing.");
 });
 
-test("pending circle reports: on their row when one matches, else in the list; every report shows exactly once", () => {
+test("pending circle reports: each on the row its allergen names, by spelling as the card does", () => {
   const reports = [{ allergenName: "Sesame" }, { allergenName: "peanut" }, { allergenName: "Peanuts" }];
-  const rows = ["Peanut", "Milk"];
-  const onRows = rows.flatMap((n) => circleReportsOnRow(reports, n));
-  const off = circleReportsOffRows(reports, rows);
-  assert.deepEqual(onRows.map((r) => r.allergenName), ["peanut"]);
-  assert.deepEqual(off.map((r) => r.allergenName), ["Sesame", "Peanuts"], "a spelling no row matches stays in the list");
-  assert.equal(onRows.length + off.length, reports.length);
+  assert.deepEqual(circleReportsOnRow(reports, "Peanut").map((r) => r.allergenName), ["peanut"]);
+  assert.deepEqual(circleReportsOnRow(reports, "Milk"), []);
 });

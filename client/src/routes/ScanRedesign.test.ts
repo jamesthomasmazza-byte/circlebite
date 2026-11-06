@@ -74,7 +74,8 @@ test("a held removal stays a note on its row: the redesign adds no path to the c
 
 test("a pending circle report on its row is today's sentence: by name to managers, by role to a follower", () => {
   assert.match(card, /circleReportsOnRow\(result\.pending_circle_reports, m\.allergenName\)\.map\(\(r\) => \(\s*<span[^>]*>\s*\{circleReportLine\(r, resultProfileLabel\)\}/);
-  assert.match(card, /circleReportsOffRows\(/, "any report no row matches stays in the list");
+  // And the list under the rows keeps every report, as today: "Changed because of:" keeps its items.
+  assert.match(card, /\{result\.pending_circle_reports\.map\(\(r\) => \(\s*<li key=\{`circle-\$\{r\.allergenName\}`\} className="circle-report">/);
 });
 
 test("the may-contain line comes from the record, and only in the redesign", () => {
