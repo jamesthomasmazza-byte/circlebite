@@ -2929,6 +2929,21 @@ button.member-row__open {
   flex-shrink: 0;
 }
 
+/* Nothing in the column is ever wider than the screen (JT, 2026-11-06: the page scrolled sideways
+   in label photo mode). A flex item won't shrink below its widest child unless told; the photo form
+   ran 7px past a 390px screen at normal text, its padding outside its width, and at larger text its
+   auto margins sized it to its heading on one line (form rule below). */
+.tab-shell--camera > *,
+.tab-shell--camera > main > * {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.tab-shell--camera main input[type="file"] {
+  max-width: 100%;
+}
+
 .tab-shell--camera > main {
   display: flex;
   flex: 1 0 auto;
@@ -3350,7 +3365,11 @@ a.scan-recent__card {
 /* The label photo screen, redesigned (LabelCamera.tsx): the photo form as the page, a tall frame for
    the ingredients panel, a shutter, and a dark-teal checklist. */
 .tab-shell--camera main form {
-  max-width: var(--measure);
+  /* A full-width column, centred: auto margins alone, in a flex column, shrink a form to its content's
+     widest line — the heading on one line, 534px at 150% text. */
+  box-sizing: border-box;
+  width: 100%;
+  max-width: min(100%, var(--measure));
   margin: var(--space-4) auto 0;
 }
 

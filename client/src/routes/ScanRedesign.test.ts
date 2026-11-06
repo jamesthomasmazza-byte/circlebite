@@ -138,3 +138,17 @@ test("the mode control is in the page's flow: it never floats over content, in a
   assert.ok(modes > SCAN.indexOf("<form ref={photoFormRef}") && modes > SCAN.indexOf('<form onSubmit={handleSubmit}'));
   assert.match(css, /\.scan-modes button \{\s*flex: 1 1 0;\s*min-width: 0;[^}]*overflow-wrap: normal;\s*word-break: normal;/, "words wrap whole");
 });
+
+test("nothing in the redesigned Scan is wider than the screen", () => {
+  // JT, 2026-11-06: the page scrolled sideways in label photo mode, a white strip on the right. The
+  // browser check at 390px (every mode, 100/125/150% text, both themes) finds no element past the
+  // right edge; these are the rules that hold it.
+  const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
+  assert.match(css, /\.tab-shell--camera > \*,\s*\.tab-shell--camera > main > \* \{\s*box-sizing: border-box;\s*min-width: 0;\s*max-width: 100%;/);
+  assert.match(css, /\.tab-shell--camera main input\[type="file"\] \{\s*max-width: 100%;/);
+});
+
+test("the redesign's forms are the column's width, not their heading's", () => {
+  const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
+  assert.match(css, /\.tab-shell--camera main form \{[^}]*box-sizing: border-box;\s*width: 100%;\s*max-width: min\(100%, var\(--measure\)\);/);
+});
