@@ -101,3 +101,12 @@ test("a captured photo goes the same way as a chosen one: handlePhotoSubmit, so 
 test("a \"not found\" row, shown only in the redesign, says it once", () => {
   assert.match(card, /\{!\(redesign && m\.classification === "clear"\) && \(\s*<>\s*<span className="visually-hidden"> — <\/span>\s*<span className="allergen-row__source" data-source=\{rowSource\(m\)\}>/);
 });
+
+test("the landing fits one screen: the camera gives way, so Recent and the mode control show under a notice", () => {
+  // JT, 2026-11-06: at 390x844 with Condition 2's notice, Recent's bottom sat under the control.
+  const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
+  const stage = css.slice(css.indexOf(".tab-shell--camera:has(.scan-target--stage:not([hidden])) {"));
+  assert.match(stage, /^[^}]*min-height: 0;\s*height: calc\(100dvh - /, "the column is the screen while the camera stage shows");
+  assert.match(css, /\.tab-shell--camera > \*,\s*\.tab-shell--camera > main > \* \{\s*flex-shrink: 0;/, "nothing else gives way");
+  assert.match(css, /\.scanner\.scanner--stage \{[^}]*flex: 1 1 0;\s*min-height: 10rem;/, "the camera does, down to 10rem");
+});

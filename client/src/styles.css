@@ -2905,9 +2905,60 @@ button.member-row__open {
    Condition 2 notices keep their own tint, so they read the same as anywhere else. */
 
 .tab-shell--camera {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
   min-height: 100dvh;
   background: var(--color-viewfinder-bg);
   color: var(--color-viewfinder-text);
+}
+
+/* One column down to the tab bar: the stage takes the height nothing else needs (.scanner--stage).
+   While the camera stage shows, the column is exactly the screen's height, so the camera is what
+   gives way — down to its 10rem — and the pill, Condition 2's notices, Recent and the mode control
+   keep their size, all on the first screen. Anything still taller scrolls, over the same dark. */
+html:has(.tab-shell--camera) {
+  background: var(--color-viewfinder-bg);
+}
+
+/* The screen less the body's own top and bottom padding (above). That bottom padding already sits
+   under the tab bar, so the column's bottom padding — room for the mode control and the bar — takes
+   it back out, and the content still ends just above the control. */
+.tab-shell--camera:has(.scan-target--stage:not([hidden])) {
+  min-height: 0;
+  height: calc(100dvh - max(var(--space-4), env(safe-area-inset-top)) - max(var(--space-7), env(safe-area-inset-bottom)));
+  padding-bottom: calc(
+    var(--tab-bar-height) + var(--space-2) + var(--tap-min) + 2 * var(--space-1) + var(--space-3) -
+      max(var(--space-7), env(safe-area-inset-bottom))
+  );
+}
+
+.tab-shell--camera > *,
+.tab-shell--camera > main > * {
+  flex-shrink: 0;
+}
+
+.tab-shell--camera > main {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+}
+
+.tab-shell--camera > main > .scan-target--stage:not([hidden]),
+.tab-shell--camera .scan-target--stage > .scanner-section--stage {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 10rem;
+}
+
+.tab-shell--camera .scan-target--stage > .scanner-section--stage,
+.tab-shell--camera > .scan-pill-bar,
+.tab-shell--camera > .tab-shell__notices {
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .scan-pill-bar {
@@ -3017,9 +3068,15 @@ button.member-row__open {
 
 .scanner.scanner--stage {
   display: block;
+  /* The height left on the first screen once the pill, Condition 2's notices and Recent are placed
+     (the flex column below), from 10rem up to 30rem: so Recent and the mode control both show above
+     the tab bar at 390x844 even with a notice, and the camera fills what's left without one. */
+  flex: 1 1 0;
+  min-height: 10rem;
   max-width: none;
-  height: clamp(15rem, 44dvh, 30rem);
-  margin-top: var(--space-3);
+  height: auto;
+  max-height: 30rem;
+  margin-top: var(--space-2);
   border-radius: var(--radius-lg);
   background: #000;
 }
@@ -3127,8 +3184,10 @@ form.scan-type-form {
 }
 
 .scan-recent {
+  box-sizing: border-box;
+  width: 100%;
   max-width: var(--measure);
-  margin: var(--space-4) auto 0;
+  margin: var(--space-2) auto 0;
   padding-inline: var(--space-4);
 }
 
@@ -3211,7 +3270,8 @@ a.scan-recent__card {
 }
 
 .tab-shell:has(.scan-modes) {
-  padding-bottom: calc(var(--tab-bar-reach) + var(--tap-min) + var(--space-6));
+  /* The control's own height and its gap over the tab bar, then a small gap above it. */
+  padding-bottom: calc(var(--tab-bar-height) + var(--space-2) + var(--tap-min) + 2 * var(--space-1) + var(--space-3));
 }
 
 /* The result, redesigned: today's card in a sheet over the camera, above the tab bar. The pinned
