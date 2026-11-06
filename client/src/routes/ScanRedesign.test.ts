@@ -43,13 +43,14 @@ test("the segmented control: leaving Barcode stops the camera; Label photo opens
 
 // ---- The result sheet: today's card, in a sheet ----
 
+const LABEL_CAMERA = readFileSync(new URL("../LabelCamera.tsx", import.meta.url), "utf8");
 const card = SCAN.slice(SCAN.indexOf('<div className="verdict-card" data-verdict={shown.result}>'), SCAN.indexOf("{/* Directly under the card it disputes"));
 
 test("the banner is today's: the verdict card's own label and colour, from what the card shows", () => {
   assert.match(card, /<h2 ref=\{resultHeadingRef\} tabIndex=\{-1\}>\s*\{VERDICT_LABEL\[shown\.result\]\}\s*<\/h2>/);
   assert.match(SCAN, /const shown = result && \(result\.effective \?\? \{ result: result\.result, matched_allergens: result\.matched_allergens \}\);/);
   // No second verdict anywhere in the redesign's blocks, and never the word.
-  for (const block of [SCAN.slice(SCAN.indexOf('<div className="scan-sheet__top">'), SCAN.indexOf('<div className="verdict-card"'))]) {
+  for (const block of [SCAN.slice(SCAN.indexOf('<div className="scan-sheet__top">'), SCAN.indexOf('<div className="verdict-card"')), LABEL_CAMERA]) {
     assert.doesNotMatch(block, /VERDICT_LABEL|data-verdict/);
     assert.doesNotMatch(block.replace(/\/\/.*$|\{\/\*[\s\S]*?\*\/\}|\/\*[\s\S]*?\*\//gm, ""), /\bsafe\b/i);
   }
@@ -78,4 +79,20 @@ test("a pending circle report on its row is today's sentence: by name to manager
 
 test("the may-contain line comes from the record, and only in the redesign", () => {
   assert.match(card, /\{redesign && mayContainLine\(result\.record_may_contain\) && \(/);
+});
+
+// ---- The label photo screen ----
+
+test("the label camera never opens by itself: a tap, with the first-use sentence first", () => {
+  assert.match(LABEL_CAMERA, /function request\(\) \{\s*if \(cameraPrimerSeen\(\)\) void start\(\);\s*else setPrimerOpen\(true\);\s*\}/);
+  for (const effect of LABEL_CAMERA.split("useEffect(").slice(1)) {
+    assert.doesNotMatch(effect.slice(0, effect.indexOf(");")), /start\(|request\(/);
+  }
+});
+
+test("a captured photo goes the same way as a chosen one: handlePhotoSubmit, so the same downscale and upload", () => {
+  assert.match(SCAN, /if \(!capturedPending \|\| !photoFile\) return;\s*setCapturedPending\(false\);\s*void handlePhotoSubmit\(/);
+  assert.match(SCAN, /const downscaled = await downscaleLabelPhoto\(photoFile\);/);
+  assert.match(SCAN, /<LabelCamera\s+busy=\{photoReading\}/);
+  assert.match(LABEL_CAMERA, /\{active && torchAvailable && \(/, "flash only with a torch");
 });

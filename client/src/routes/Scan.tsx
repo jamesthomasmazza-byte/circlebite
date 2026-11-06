@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "r
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { BarcodeScanner, type BarcodeScannerHandle } from "../BarcodeScanner";
+import { LabelCamera } from "../LabelCamera";
 import { useScanningFor } from "../TabShell";
 import { guidedSetupSkipped, sendToGuidedSetup } from "../lib/guidedSetupEntry";
 import { addProfileHref, NEW_PROFILE_PATH } from "../lib/profileSections";
@@ -68,7 +69,10 @@ import { couldntReadHeading, DISCLAIMER, DISCLAIMER_SHORT, EMERGENCY, VERDICT_LA
 import {
   circleReportsOffRows,
   circleReportsOnRow,
+  CHOOSE_PHOTO,
   forLabel,
+  LABEL_CHECKLIST,
+  LABEL_PROMISE,
   mayContainLine,
   recentCards,
   recentHeading,
@@ -391,6 +395,16 @@ export function Scan() {
     setPhotoError(null);
     setPhotoCaptureOpen(true);
   }
+
+  // Redesign: a photo from the label camera (LabelCamera.tsx) is read at once, the same way as a
+  // chosen one — handlePhotoSubmit, once the photo is in state.
+  const [capturedPending, setCapturedPending] = useState(false);
+  useEffect(() => {
+    if (!capturedPending || !photoFile) return;
+    setCapturedPending(false);
+    void handlePhotoSubmit({ preventDefault() {} } as FormEvent);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [capturedPending, photoFile]);
 
   function handlePhotoFileChange(event: ChangeEvent<HTMLInputElement>) {
     setPhotoError(null);
@@ -785,9 +799,30 @@ export function Scan() {
               {photoCaptureMode === "combine" &&
                 result?.evidence_decision?.photo === "prompted" &&
                 !result.ingredient_check_incomplete && <p>{photoOfferCopy(result.evidence_decision, resultProfileLabel)}</p>}
+              {/* Redesign: the label camera, and what a usable photo needs, before "choose a photo". */}
+              {redesign && (
+                <>
+                  <LabelCamera
+                    busy={photoReading}
+                    onCapture={(photo) => {
+                      setPhotoError(null);
+                      setPhotoFile(photo);
+                      setCapturedPending(true);
+                    }}
+                  />
+                  <div className="label-checklist">
+                    <ul>
+                      {LABEL_CHECKLIST.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                    <p>{LABEL_PROMISE}</p>
+                  </div>
+                </>
+              )}
               <label>
-                Photo of the ingredients panel
-                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handlePhotoFileChange} required />
+                {redesign ? CHOOSE_PHOTO : "Photo of the ingredients panel"}
+                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handlePhotoFileChange} required={!redesign} />
               </label>
               {photoError && <p role="alert">{photoError}</p>}
               <button type="submit" disabled={photoReading}>
