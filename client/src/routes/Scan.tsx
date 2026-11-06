@@ -1005,10 +1005,15 @@ export function Scan() {
                     ) : (
                       <>
                         <span className="allergen-row__claim">{classificationLabel(m)}</span>
-                        <span className="visually-hidden"> — </span>
-                        <span className="allergen-row__source" data-source={rowSource(m)}>
-                          {sourceLabel(m, result)}
-                        </span>
+                        {/* Redesign: a "not found" row says it once; its source line would repeat it. */}
+                        {!(redesign && m.classification === "clear") && (
+                          <>
+                            <span className="visually-hidden"> — </span>
+                            <span className="allergen-row__source" data-source={rowSource(m)}>
+                              {sourceLabel(m, result)}
+                            </span>
+                          </>
+                        )}
                       </>
                     )}
                     {/* The viewer's own removal: noted under the row's evidence, never applied to it

@@ -96,3 +96,7 @@ test("a captured photo goes the same way as a chosen one: handlePhotoSubmit, so 
   assert.match(SCAN, /<LabelCamera\s+busy=\{photoReading\}/);
   assert.match(LABEL_CAMERA, /\{active && torchAvailable && \(/, "flash only with a torch");
 });
+
+test("a \"not found\" row, shown only in the redesign, says it once", () => {
+  assert.match(card, /\{!\(redesign && m\.classification === "clear"\) && \(\s*<>\s*<span className="visually-hidden"> — <\/span>\s*<span className="allergen-row__source" data-source=\{rowSource\(m\)\}>/);
+});
