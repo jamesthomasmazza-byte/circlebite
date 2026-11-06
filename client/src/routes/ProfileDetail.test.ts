@@ -73,3 +73,12 @@ test("the profile is renamed in Settings, not here; managers get one line linkin
   const hint = SOURCE.indexOf("{canManage && (\n        <p>\n          <Link to=\"/settings\">{RENAME_HINT}</Link>");
   assert.ok(heading > 0 && hint > heading, "the Settings link sits under the heading, for managers only");
 });
+
+test("no 'Your access' line; the severe-only notice sits with the allergen list", () => {
+  // JT, 2026-11-05: owners and co-managers aren't told their role; full followers see nothing.
+  assert.doesNotMatch(SOURCE, /Your access/);
+  const allergens = SOURCE.indexOf("<h2>Allergens</h2>");
+  const notice = SOURCE.indexOf("{accessNotice(profile.access) && <p role=\"note\">");
+  const list = SOURCE.indexOf("{profile.allergens.map(");
+  assert.ok(allergens > 0 && notice > allergens && list > notice);
+});

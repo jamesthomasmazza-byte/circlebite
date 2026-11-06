@@ -1,4 +1,4 @@
-import type { ProfileSummary } from "./api";
+import type { ProfileAccess, ProfileSummary } from "./api";
 
 // The line under a profile's name that tells two profiles apart when they look alike — in Scan's
 // "Scanning for" and on the Profile tab (2026-10-25). Its allergens, short. Plain values, under test.
@@ -7,13 +7,16 @@ type LineProfile = Pick<ProfileSummary, "allergen_names" | "share_level">;
 
 const SHOWN = 3;
 
+/** What a severe_only follower is told wherever their filtered list shows. */
+export const SEVERE_ONLY_SHARED = "Only severe allergens are shared with you";
+
 /**
  * Up to three names, then how many more. An empty list never reads as "no allergens" to a
  * severe_only follower: the server sent only the severe ones, so the rest may exist (principle 2).
  */
 export function allergenLine({ allergen_names, share_level }: LineProfile): string {
   if (allergen_names.length === 0) {
-    return share_level === "severe_only" ? "Only severe allergens are shared with you" : "No allergens on this profile yet";
+    return share_level === "severe_only" ? SEVERE_ONLY_SHARED : "No allergens on this profile yet";
   }
   const shown = allergen_names.slice(0, SHOWN).join(", ");
   const more = allergen_names.length - SHOWN;
@@ -49,4 +52,13 @@ export function headerProfileName(
 ): string {
   const twin = all.some((o) => o.id !== p.id && o.label === p.label);
   return twin ? `${p.label} (${relationshipWord(p)})` : p.label;
+}
+
+/**
+ * The profile page's line about your access (JT, 2026-11-05): only a severe_only follower gets one,
+ * so the list they see never reads as the whole list (principle 2). Owners, co-managers and full
+ * followers get none — their list is complete.
+ */
+export function accessNotice(access: ProfileAccess): string | null {
+  return access.level === "follower" && access.shareLevel === "severe_only" ? `${SEVERE_ONLY_SHARED}.` : null;
 }

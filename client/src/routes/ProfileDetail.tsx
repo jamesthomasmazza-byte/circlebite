@@ -23,6 +23,7 @@ import { ChangeHistory } from "../ChangeHistory";
 import { reviewNotice } from "../lib/allergenChoiceCopy";
 import { circleCardHref } from "../lib/inviteCopy";
 import { profilePossessive } from "../lib/profileChangeCopy";
+import { accessNotice } from "../lib/profileLineCopy";
 import { RENAME_HINT } from "../lib/profileRenameCopy";
 
 export function ProfileDetail() {
@@ -228,7 +229,6 @@ export function ProfileDetail() {
           <Link to="/settings">{RENAME_HINT}</Link>
         </p>
       )}
-      <p>Your access: {profile.access.level === "follower" ? `following (${profile.access.shareLevel})` : profile.access.level}</p>
       {/* Chooses this profile for Scan and the header on every screen (TabShell.tsx, lib/tabs.ts). */}
       <p>
         <Link to={`/scan?profile=${id}`} className="button-link">
@@ -242,6 +242,9 @@ export function ProfileDetail() {
       {/* First: what the page is for (2026-10-28 audit — at 390px it
           started about 650px down). Order only. */}
       <h2>Allergens</h2>
+      {/* No line naming your role since 2026-11-05: only a severe-only follower is told anything,
+          beside the list it qualifies. */}
+      {accessNotice(profile.access) && <p role="note">{accessNotice(profile.access)}</p>}
       {/* Compact rows (2026-11-05, AllergenItem.tsx); the "needs a look" notice stays on the row, outside its details. */}
       <ul className="card-list">
         {profile.allergens.map((a) => (

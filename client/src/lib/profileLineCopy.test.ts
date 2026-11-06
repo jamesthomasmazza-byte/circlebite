@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { allergenLine, headerProfileName, profileOptionText } from "./profileLineCopy";
+import { accessNotice, allergenLine, headerProfileName, profileOptionText, SEVERE_ONLY_SHARED } from "./profileLineCopy";
 
 test("the line names up to three allergens, then how many more", () => {
   assert.equal(allergenLine({ allergen_names: ["Peanut"] }), "Peanut");
@@ -40,4 +40,14 @@ test("the header adds how you hold a profile only when another one has the same 
   assert.equal(headerProfileName(followed, [coManaged, followed, noor]), "Maya (you follow)");
   assert.equal(headerProfileName(noor, [coManaged, followed, noor]), "Noor");
   assert.equal(headerProfileName(coManaged, [coManaged, noor]), "Maya");
+});
+
+// The profile page's access line (JT, 2026-11-05): gone, except for a severe_only follower, whose
+// list is filtered and must never read as the whole list.
+test("accessNotice: only a severe-only follower is told anything, in the Profile tab's words", () => {
+  assert.equal(accessNotice({ level: "follower", shareLevel: "severe_only" }), "Only severe allergens are shared with you.");
+  assert.equal(accessNotice({ level: "follower", shareLevel: "all" }), null);
+  assert.equal(accessNotice({ level: "owner" }), null);
+  assert.equal(accessNotice({ level: "co_manager" }), null);
+  assert.equal(allergenLine({ allergen_names: [], share_level: "severe_only" }), SEVERE_ONLY_SHARED);
 });
