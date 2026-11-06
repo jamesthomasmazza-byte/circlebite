@@ -173,7 +173,10 @@ test("stage: \"Point at the barcode\" only while the camera runs, and no second 
 
 test("stage: the region reader still decodes inside the drawn box, and flash shows only with a torch", () => {
   const stage = SCANNER.slice(SCANNER.indexOf("if (stage) {"));
-  assert.match(stage, /<div ref=\{boxRef\} className="scanner__box scanner__frame" aria-hidden="true">/);
+  // The reader measures the decode box, which is larger than the frame drawn inside it (2026-11-06).
+  assert.match(stage, /<div ref=\{boxRef\} className="scanner__decode" aria-hidden="true" \/>/);
+  assert.match(stage, /<div className="scanner__frame" aria-hidden="true">/);
+  assert.equal(SCANNER.match(/ref=\{boxRef\}/g)?.length, 2, "today's box, and the stage's decode box");
   assert.match(SCANNER, /setTorchAvailable\(stage && typeof controls\.switchTorch === "function"\);/);
   assert.match(stage, /\{cameraActive && torchAvailable && \(/);
 });
@@ -190,4 +193,17 @@ test("flash is a 44px icon in the camera's corner, named by aria-label, only wit
   const rule = css.slice(css.indexOf("button.scanner__torch {"), css.indexOf("}", css.indexOf("button.scanner__torch {")));
   assert.match(rule, /width: var\(--tap-min\);\s*height: var\(--tap-min\);/);
   assert.match(rule, /top: var\(--space-2\);\s*right: var\(--space-2\);/);
+});
+
+test("stage: a barcode-shaped frame, and a decode box larger than it on every side", () => {
+  const css = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
+  const rule = (sel: string) => css.slice(css.indexOf(`${sel} {`), css.indexOf("}", css.indexOf(`${sel} {`)));
+  assert.match(rule(".scanner__frame"), /width: min\(86%, 17\.5rem\);\s*aspect-ratio: 5 \/ 2;/, "about 280×112 at 390px");
+  assert.match(rule(".scanner__decode"), /width: calc\(100% - var\(--space-4\)\);\s*max-height: calc\(100% - var\(--space-4\)\);\s*aspect-ratio: 5 \/ 3;/);
+  // At 390px the camera is 326px wide: frame 280×112, decode box 310×186 (or the camera's height
+  // less 16px, which the camera's 10rem minimum keeps at 144px or more): wider and taller.
+  const camera = 326;
+  const frame = { w: Math.min(0.86 * camera, 280), h: Math.min(0.86 * camera, 280) / 2.5 };
+  const decode = { w: camera - 16, h: Math.min((camera - 16) * 0.6, 160 - 16) };
+  assert.ok(decode.w > frame.w + 20 && decode.h > frame.h + 20, JSON.stringify({ frame, decode }));
 });

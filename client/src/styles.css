@@ -3063,9 +3063,8 @@ button.member-row__open {
   padding-inline: var(--space-4);
 }
 
-/* The camera as the screen (BarcodeScanner `stage`): the preview fills a dark frame; the box keeps
-   its inset — the region reader decodes inside whatever box is drawn — but draws four white corner
-   brackets instead of a dashed outline, with a bright-teal scan line while it runs. */
+/* The camera as the screen (BarcodeScanner `stage`): the preview fills a dark frame, with a
+   barcode-shaped frame of four white corner brackets and a bright-teal scan line while it runs. */
 .scanner-section--stage {
   max-width: var(--measure);
   margin-inline: auto;
@@ -3098,10 +3097,14 @@ button.member-row__open {
   visibility: hidden;
 }
 
-.scanner__box.scanner__frame {
-  border: 0;
-  outline: 0;
-  box-shadow: none;
+/* Barcode-shaped (JT, 2026-11-06): 5:2, 280×112 at 390px, centred in the camera. */
+.scanner__frame {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(86%, 17.5rem);
+  aspect-ratio: 5 / 2;
+  transform: translate(-50%, -50%);
   background:
     linear-gradient(#fff, #fff) top left / 1.75rem 4px no-repeat,
     linear-gradient(#fff, #fff) top left / 4px 1.75rem no-repeat,
@@ -3113,8 +3116,21 @@ button.member-row__open {
     linear-gradient(#fff, #fff) bottom right / 4px 1.75rem no-repeat;
 }
 
+/* What SCANNER_REGION decodes: the camera's width less a margin, 5:3 — 310×186 at 390px — capped at
+   the camera's height less the same margin, centred on the frame. Always larger than the frame, and
+   the region reader adds REGION_ALLOWANCE (5%) on every side. Invisible. */
+.scanner__decode {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: calc(100% - var(--space-4));
+  max-height: calc(100% - var(--space-4));
+  aspect-ratio: 5 / 3;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
 .scanner--stage[data-read="true"] .scanner__frame {
-  border: 0;
   background-color: rgb(26 122 63 / 0.25);
 }
 

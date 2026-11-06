@@ -39,8 +39,9 @@ const READ_CONFIRM_MS = 250;
  * fills a dark stage, the box is a frame of four corner brackets with a scan line, and while it runs
  * the hint says "Point at the barcode" — zxing decodes every frame with no tap. Before that
  * it still waits for a tap, with the first-use sentence first: the camera never opens by itself. A
- * flash button shows only when the camera track says it has a torch (zxing's switchTorch). The box
- * is still the element the region reader decodes inside.
+ * flash button shows only when the camera track says it has a torch (zxing's switchTorch). The frame
+ * is barcode-shaped, about 280×112 at 390px (2026-11-06), and the region reader decodes a larger,
+ * invisible box around it, so a barcode a little off-centre still reads.
  */
 export type BarcodeScannerHandle = { start: () => void; stop: () => void };
 
@@ -262,7 +263,10 @@ export const BarcodeScanner = forwardRef<
       <section ref={containerRef} className="scanner-section scanner-section--stage">
         <div className="scanner scanner--stage" data-active={cameraActive} data-read={read}>
           <video ref={videoRef} className="scanner__video" muted playsInline />
-          <div ref={boxRef} className="scanner__box scanner__frame" aria-hidden="true">
+          {/* The decode box, larger than the frame drawn inside it, so a barcode a little off-centre
+              still reads with SCANNER_REGION on: the region reader decodes this box plus its 5%. */}
+          <div ref={boxRef} className="scanner__decode" aria-hidden="true" />
+          <div className="scanner__frame" aria-hidden="true">
             {cameraActive && !read && <span className="scanner__line" />}
             {read && <span className="scanner__got-it">Got it</span>}
           </div>
