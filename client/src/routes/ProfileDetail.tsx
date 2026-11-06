@@ -24,6 +24,7 @@ import { ChangeHistory } from "../ChangeHistory";
 import { reviewNotice } from "../lib/allergenChoiceCopy";
 import { circleCardHref } from "../lib/inviteCopy";
 import { profilePossessive } from "../lib/profileChangeCopy";
+import { RENAME_HINT } from "../lib/profileRenameCopy";
 
 export function ProfileDetail() {
   const { id } = useParams<{ id: string }>();
@@ -33,7 +34,6 @@ export function ProfileDetail() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
-  const [label, setLabel] = useState("");
   const [notes, setNotes] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -49,7 +49,6 @@ export function ProfileDetail() {
     try {
       const data = await getProfile(id);
       setProfile(data);
-      setLabel(data.label);
       setNotes(data.notes ?? "");
     } catch {
       setNotFound(true);
@@ -113,8 +112,8 @@ export function ProfileDetail() {
     event.preventDefault();
     setSaveError(null);
     try {
-      const updated = await updateProfile(id!, { label: label.trim(), notes: notes.trim() });
-      setProfile((p) => (p ? { ...p, label: updated.label, notes: updated.notes } : p));
+      const updated = await updateProfile(id!, { notes: notes.trim() });
+      setProfile((p) => (p ? { ...p, notes: updated.notes } : p));
       await refreshHistory();
     } catch {
       setSaveError("Couldn't save. Try again.");
@@ -240,6 +239,12 @@ export function ProfileDetail() {
         <Link to="/profiles">← Your profiles</Link>
       </p>
       <h1>{profile.label}</h1>
+      {/* Renaming moved to Settings → "Your profiles" (JT, 2026-11-05). */}
+      {canManage && (
+        <p>
+          <Link to="/settings">{RENAME_HINT}</Link>
+        </p>
+      )}
       <p>Your access: {profile.access.level === "follower" ? `following (${profile.access.shareLevel})` : profile.access.level}</p>
       {/* Chooses this profile for Scan and the header on every screen (TabShell.tsx, lib/tabs.ts). */}
       <p>
@@ -278,10 +283,6 @@ export function ProfileDetail() {
 
       {canManage ? (
         <form onSubmit={handleSaveDetails}>
-          <label>
-            Name
-            <input value={label} onChange={(e) => setLabel(e.target.value)} required />
-          </label>
           <label>
             Notes
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} />

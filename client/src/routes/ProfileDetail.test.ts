@@ -21,10 +21,12 @@ function insideLabel(source: string, at: number): boolean {
 const ADD_ALLERGEN_SOURCE = readFileSync(new URL("../AddAllergen.tsx", import.meta.url), "utf8");
 // And each allergen's row, with its controls, since 2026-11-05.
 const ALLERGEN_ITEM_SOURCE = readFileSync(new URL("../AllergenItem.tsx", import.meta.url), "utf8");
+// The profile's name field, moved to Settings → "Your profiles" (2026-11-05), held to the same rule.
+const PROFILE_RENAMES_SOURCE = readFileSync(new URL("../ProfileRenames.tsx", import.meta.url), "utf8");
 
 test("every select, input and textarea on the profile page has an accessible name", () => {
-  const sources = [SOURCE, ADD_ALLERGEN_SOURCE, ALLERGEN_ITEM_SOURCE];
-  assert.ok(sources.flatMap(controls).length >= 6, "the page's controls were found");
+  const sources = [SOURCE, ADD_ALLERGEN_SOURCE, ALLERGEN_ITEM_SOURCE, PROFILE_RENAMES_SOURCE];
+  assert.ok(sources.flatMap(controls).length >= 5, "the page's controls were found");
   for (const source of sources) {
     for (const c of controls(source)) {
       assert.ok(/aria-label=/.test(c.text) || insideLabel(source, c.at), `unnamed <${c.tag}>: ${c.text.slice(0, 80)}`);
@@ -36,7 +38,7 @@ test("each allergen's severity dropdown is named after its allergen", () => {
   assert.match(ALLERGEN_ITEM_SOURCE, /aria-label=\{`Severity of \$\{a\.name\}`\}/);
 });
 
-test("the allergens come before the name and notes form, and the change history after both", () => {
+test("the allergens come before the notes form, and the change history after both", () => {
   // 2026-10-28 audit: at 390px the Allergens section started about 650px down. Order only.
   const allergens = SOURCE.indexOf("<h2>Allergens</h2>");
   const details = SOURCE.indexOf("<form onSubmit={handleSaveDetails}>");
@@ -55,4 +57,13 @@ test("the allergen list comes before the add button, and an empty profile starts
   const add = SOURCE.indexOf("<AddAllergen");
   assert.ok(list > 0 && add > list);
   assert.match(SOURCE, /startOpen=\{profile\.allergens\.length === 0\}/);
+});
+
+test("the profile is renamed in Settings, not here; managers get one line linking there", () => {
+  // JT, 2026-11-05: the Name field moved to Settings → "Your profiles" (ProfileRenames.tsx).
+  assert.doesNotMatch(SOURCE, /setLabel|label: label/);
+  assert.doesNotMatch(SOURCE, /<label>\s*Name\b/);
+  const heading = SOURCE.indexOf("<h1>{profile.label}</h1>");
+  const hint = SOURCE.indexOf("{canManage && (\n        <p>\n          <Link to=\"/settings\">{RENAME_HINT}</Link>");
+  assert.ok(heading > 0 && hint > heading, "the Settings link sits under the heading, for managers only");
 });

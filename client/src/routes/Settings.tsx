@@ -7,11 +7,15 @@ import {
   deleteAccount,
   getCurrentNpsResponse,
   getDeletionImpact,
+  listProfiles,
   submitNpsResponse,
+  updateProfile,
   type DeletionImpactProfile,
   type NpsResponse,
+  type ProfileSummary,
 } from "../lib/api";
 import { useAuth } from "../lib/AuthContext";
+import { ProfileRenames } from "../ProfileRenames";
 
 const CHANGE_PASSWORD_ERROR_COPY: Record<string, string> = {
   too_many_attempts: "Too many attempts. Try again in 15 minutes.",
@@ -45,6 +49,17 @@ export function Settings() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  // "Your profiles": renaming moved here from the profile page (JT, 2026-11-05). Only the managed
+  // list is used — a follower's profiles aren't renamed here.
+  const [managed, setManaged] = useState<ProfileSummary[] | null>(null);
+  const [managedError, setManagedError] = useState<string | null>(null);
+
+  useEffect(() => {
+    listProfiles()
+      .then((list) => setManaged(list.managed))
+      .catch(() => setManagedError("Couldn't load your profiles. Try reloading this page."));
+  }, []);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -150,6 +165,19 @@ export function Settings() {
         <Link to="/profiles#account">← Account</Link>
       </p>
       <h1>Settings</h1>
+
+      {managedError && <p role="alert">{managedError}</p>}
+      {managed && (
+        <ProfileRenames
+          list={{ managed }}
+          onRename={async (profileId, input) => {
+            const updated = await updateProfile(profileId, input);
+            // The delete section below names each profile too.
+            void refresh();
+            return updated;
+          }}
+        />
+      )}
 
       <section>
         <h2>Change your password</h2>

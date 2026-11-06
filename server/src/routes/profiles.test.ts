@@ -97,6 +97,60 @@ test("a co-manager's profile note edit through the route is attributed to them",
   assert.deepEqual(await latestChange(), { kind: "profile_edited", actor_id: CO_MANAGER, actor_role: "co_manager" });
 });
 
+// Renaming moved to Settings → "Your profiles" (JT, 2026-11-05); it's the same PATCH, label only.
+test("a manager's rename is trimmed and shows in the change history with the old and new name", async () => {
+  const renamed = await call("patch", "/:id", { id: profileId }, { label: "  Renamed Child  " }, CO_MANAGER);
+  assert.equal(renamed.status, 200);
+  assert.equal((renamed.body as { label: string }).label, "Renamed Child");
+
+  const { rows } = await pool.query(
+    `SELECT kind, actor_id, actor_role, before->>'label' AS before_label, after->>'label' AS after_label
+     FROM profile_changes WHERE allergen_profile_id = $1 ORDER BY created_at DESC, seq DESC LIMIT 1`,
+    [profileId],
+  );
+  assert.deepEqual(rows[0], {
+    kind: "profile_edited",
+    actor_id: CO_MANAGER,
+    actor_role: "co_manager",
+    before_label: "Test Child",
+    after_label: "Renamed Child",
+  });
+
+  await call("patch", "/:id", { id: profileId }, { label: "Test Child" }, OWNER);
+});
+
+test("a blank name is refused and leaves no entry; a follower can't rename at all", async () => {
+  const before = await latestChange();
+  await assert.rejects(
+    call("patch", "/:id", { id: profileId }, { label: "   " }, OWNER),
+    (err: { status?: number; code?: string }) => err.status === 400 && err.code === "invalid_request",
+  );
+
+  const follower = randomUUID();
+  await pool.query(
+    `INSERT INTO users (id, email, password_hash, display_name, age_attested_adult, age_attested_at)
+     VALUES ($1, $2, 'x', 'Follower', true, now())`,
+    [follower, `${follower}@example.test`],
+  );
+  await pool.query(
+    `INSERT INTO follow_relationships (allergen_profile_id, follower_id, token_hash, status, share_level)
+     VALUES ($1, $2, $3, 'accepted', 'all')`,
+    [profileId, follower, `rename-test-${follower}`],
+  );
+  try {
+    await assert.rejects(
+      call("patch", "/:id", { id: profileId }, { label: "Follower's Name" }, follower),
+      (err: { status?: number }) => err.status === 404,
+    );
+  } finally {
+    await pool.query("DELETE FROM users WHERE id = $1", [follower]);
+  }
+
+  assert.deepEqual(await latestChange(), before);
+  const { rows } = await pool.query("SELECT label FROM allergen_profiles WHERE id = $1", [profileId]);
+  assert.equal(rows[0].label, "Test Child");
+});
+
 test("a duplicate allergen is still a 409 and leaves no entry", async () => {
   const before = await latestChange();
   await assert.rejects(
