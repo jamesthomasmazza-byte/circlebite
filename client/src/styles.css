@@ -1208,6 +1208,13 @@ th {
   text-decoration: none;
 }
 
+/* A profile page's "Rename this profile in Settings" line (2026-11-05). With one profile, "Recent
+   scans" comes straight after it, and each link's tap area reaches 0.8rem past its line: 32px apart,
+   not 16, so the two tap areas don't overlap (found in a 390px browser check). */
+.profile-rename-hint {
+  margin-bottom: var(--space-6);
+}
+
 /* ---------- Header — the wordmark and who you're scanning for (TabShell.tsx, 2026-10-25) ------- */
 /* One line, not sticky: it scrolls away with the page. Kept short so Condition 2's notice, right
    under it, stays on the landing screen. Existing tokens only — styles.contrast.test.ts covers them. */

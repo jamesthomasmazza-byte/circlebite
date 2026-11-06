@@ -228,7 +228,7 @@ export function ProfileDetail() {
       <h1>{profile.label}</h1>
       {/* Renaming moved to Settings → "Your profiles" (JT, 2026-11-05). */}
       {canManage && (
-        <p>
+        <p className="profile-rename-hint">
           <Link to="/settings">{RENAME_HINT}</Link>
         </p>
       )}

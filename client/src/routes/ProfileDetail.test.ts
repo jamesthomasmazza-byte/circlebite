@@ -70,8 +70,11 @@ test("the profile is renamed in Settings, not here; managers get one line linkin
   assert.doesNotMatch(SOURCE, /setLabel|label: label/);
   assert.doesNotMatch(SOURCE, /<label>\s*Name\b/);
   const heading = SOURCE.indexOf("<h1>{profile.label}</h1>");
-  const hint = SOURCE.indexOf("{canManage && (\n        <p>\n          <Link to=\"/settings\">{RENAME_HINT}</Link>");
+  const hint = SOURCE.indexOf("{canManage && (\n        <p className=\"profile-rename-hint\">\n          <Link to=\"/settings\">{RENAME_HINT}</Link>");
   assert.ok(heading > 0 && hint > heading, "the Settings link sits under the heading, for managers only");
+  // Its tap area and "Recent scans"' don't overlap: each link reaches 0.8rem past its line.
+  const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
+  assert.match(css, /\.profile-rename-hint \{\s*margin-bottom: var\(--space-6\);/);
 });
 
 test("no 'Your access' line; the severe-only notice sits with the allergen list", () => {
