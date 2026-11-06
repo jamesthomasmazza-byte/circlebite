@@ -2796,3 +2796,67 @@ button.link-button {
   font-weight: 400;
   text-decoration: underline;
 }
+
+/* "Add to circle": three radio cards, none chosen; the chosen one is outlined in teal and tinted. */
+.choice-cards {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  border: 0;
+}
+
+.choice-cards legend {
+  margin-bottom: var(--space-2);
+  color: var(--color-text-muted);
+}
+
+.choice-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-height: var(--tap-min);
+  padding: var(--space-3) var(--space-4);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.choice-card:has(input:checked) {
+  border-color: var(--color-accent);
+  background: var(--color-surface);
+}
+
+.choice-card input {
+  margin-top: 0.2rem;
+}
+
+.choice-card__title {
+  display: block;
+  font-weight: 600;
+}
+
+.choice-card__hint {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.share-preview__label {
+  margin-bottom: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.share-preview {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  overflow-wrap: anywhere;
+}
+
+.share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

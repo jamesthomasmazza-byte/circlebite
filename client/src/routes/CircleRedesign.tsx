@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
+import { AddToCircleSheet } from "../AddToCircleSheet";
 import { CircleDiagram, type Bubble } from "../CircleDiagram";
 import { AskToFollow, FollowRequests } from "../CircleRequests";
 import { CopyLink } from "../CopyLink";
@@ -16,6 +17,8 @@ import {
 } from "../lib/api";
 import { useAuth } from "../lib/AuthContext";
 import {
+  ADD_BUTTON_PREFIX,
+  addTitle,
   canActOnInvite,
   initialCircle,
   initials,
@@ -145,6 +148,7 @@ function ManagedCircle({ profile, viewerId }: { profile: ProfileSummary; viewerI
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [newLink, setNewLink] = useState<{ id: string; url: string } | null>(null);
+  const [adding, setAdding] = useState(false);
 
   async function reload() {
     try {
@@ -254,6 +258,14 @@ function ManagedCircle({ profile, viewerId }: { profile: ProfileSummary; viewerI
           </li>
         )}
       </ul>
+
+      <p>
+        <button type="button" className="button-primary circle-add" onClick={() => setAdding(true)}>
+          {ADD_BUTTON_PREFIX}
+          {addTitle(profile)}
+        </button>
+      </p>
+      <AddToCircleSheet profile={profile} open={adding} onClose={() => setAdding(false)} onMade={() => void reload()} />
     </section>
   );
 }
