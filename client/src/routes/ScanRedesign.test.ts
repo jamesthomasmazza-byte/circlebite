@@ -126,3 +126,15 @@ test("the page follows the app's theme; only the live camera viewport is dark", 
   assert.match(rule(".scan-modes button[aria-pressed=\"true\"]"), /background: var\(--color-accent\);\s*color: var\(--color-on-accent\);/);
   assert.match(rule(".scanner.scanner--stage"), /background: #000;/, "the camera viewport stays dark");
 });
+
+test("the mode control is in the page's flow: it never floats over content, in any mode", () => {
+  // JT, 2026-11-06: pinned over the page, it hid the label checklist's second and third items.
+  const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
+  const rule = css.slice(css.indexOf(".scan-modes {"), css.indexOf("}", css.indexOf(".scan-modes {")));
+  assert.doesNotMatch(rule, /position: (fixed|absolute|sticky)/);
+  assert.doesNotMatch(css, /\.tab-shell:has\(\.scan-modes\)/, "no padding reserved for a floating control");
+  // Last in the page's main column, after whatever the mode shows.
+  const modes = SCAN.indexOf('<div className="scan-modes"');
+  assert.ok(modes > SCAN.indexOf("<form ref={photoFormRef}") && modes > SCAN.indexOf('<form onSubmit={handleSubmit}'));
+  assert.match(css, /\.scan-modes button \{\s*flex: 1 1 0;\s*min-width: 0;[^}]*overflow-wrap: normal;\s*word-break: normal;/, "words wrap whole");
+});
