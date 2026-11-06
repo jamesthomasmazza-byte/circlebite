@@ -108,6 +108,10 @@
   --color-viewfinder-bg: #15171c;
   --color-viewfinder-text: #eef0f4; /* 15.72:1 on viewfinder-bg */
   --color-viewfinder-mark: #6fcfc8; /* 9.76:1 on viewfinder-bg */
+  /* The redesigned Circle tab's picture (CircleDiagram.tsx, 2026-11-06): the profile in the middle,
+     bright teal in both schemes, with dark text on it. */
+  --color-circle-center: #6fcfc8;
+  --color-on-circle-center: #15171c; /* 9.76:1 on circle-center */
 
   --shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 2px 8px rgb(0 0 0 / 0.06);
 
@@ -128,6 +132,8 @@
     --color-focus: #6fcfc8; /* 10.21:1 on bg · 9.09:1 on surface */
     --color-verdict-edge: #7c8596; /* 5.05:1 on bg · 4.49:1 on surface */
     --color-alert: #ffaaa3; /* 10.29:1 on bg */
+    --color-circle-center: #6fcfc8;
+    --color-on-circle-center: #0c1a33; /* 9.44:1 on circle-center */
 
     --color-safe-text: #86e0a6; /* 9.80:1 on safe-bg */
     --color-safe-bg: #0e2918; /* body text on it: 13.64:1 */
@@ -2554,4 +2560,92 @@ a.card:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 3rem 4rem;
   }
+}
+
+/* ---------- The redesigned Circle tab (CircleRedesign.tsx, 2026-11-06, behind CIRCLE_REDESIGN) -- */
+/* The picture: decoration only (aria-hidden); the list below it carries the facts. A fixed 16rem
+   square fits a 390px phone with the gutter and the panel's padding to spare. */
+
+.circle-panel {
+  margin-block: var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.circle-diagram {
+  --bubble: 3rem; /* 48px */
+  --ring-radius: calc(8rem - var(--bubble) / 2);
+  position: relative;
+  width: 16rem;
+  height: 16rem;
+  margin-inline: auto;
+}
+
+.circle-diagram__ring {
+  position: absolute;
+  inset: calc(var(--bubble) / 2);
+  border: 2px dashed var(--color-accent);
+  border-radius: 50%;
+}
+
+.circle-diagram__center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 6rem;
+  height: 6rem;
+  padding: var(--space-2);
+  border-radius: 50%;
+  background: var(--color-circle-center);
+  color: var(--color-on-circle-center);
+  text-align: center;
+  transform: translate(-50%, -50%);
+}
+
+.circle-diagram__initial {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.circle-diagram__name {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.circle-diagram__bubble {
+  position: absolute;
+  top: calc(50% - var(--bubble) / 2);
+  left: calc(50% - var(--bubble) / 2);
+  display: grid;
+  place-items: center;
+  width: var(--bubble);
+  height: var(--bubble);
+  border: 2px solid var(--color-accent);
+  border-radius: 50%;
+  background: var(--color-bg);
+  color: var(--color-link);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  transform: rotate(var(--angle)) translateX(var(--ring-radius)) rotate(calc(-1 * var(--angle)));
+}
+
+.circle-diagram__bubble--you {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.circle-diagram__bubble--pending {
+  border-style: dashed;
+  border-color: var(--color-verdict-edge);
+  color: var(--color-text-muted);
 }

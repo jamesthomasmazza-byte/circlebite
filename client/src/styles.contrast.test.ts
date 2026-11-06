@@ -75,6 +75,8 @@ const PAIRS: [fg: string, bg: string, min: number][] = [
   ["color-caution-line", "color-caution-bg", NON_TEXT],
   ["color-contains-line", "color-contains-bg", NON_TEXT],
   ["color-unknown-line", "color-unknown-bg", NON_TEXT],
+  // The redesigned Circle tab's picture (CircleDiagram.tsx): the profile's initial and name.
+  ["color-on-circle-center", "color-circle-center", TEXT],
   // The landing page (routes/Landing.tsx): its band, and its picture of a camera view.
   ["color-band-text", "color-band-bg", TEXT],
   ["color-viewfinder-text", "color-viewfinder-bg", TEXT],
