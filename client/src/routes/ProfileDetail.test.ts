@@ -65,16 +65,12 @@ test("the allergen list comes before the add button, and an empty profile starts
   assert.match(SOURCE, /startOpen=\{profile\.allergens\.length === 0\}/);
 });
 
-test("the profile is renamed in Settings, not here; managers get one line linking there", () => {
-  // JT, 2026-11-05: the Name field moved to Settings → "Your profiles" (ProfileRenames.tsx).
+test("the profile is renamed in Settings, and the page doesn't link there", () => {
+  // JT, 2026-11-05: the Name field moved to Settings → "Your profiles" (ProfileRenames.tsx). JT,
+  // 2026-11-06: the "Rename this profile in Settings" line went too, as redundant with Settings.
   assert.doesNotMatch(SOURCE, /setLabel|label: label/);
   assert.doesNotMatch(SOURCE, /<label>\s*Name\b/);
-  const heading = SOURCE.indexOf("<h1>{profile.label}</h1>");
-  const hint = SOURCE.indexOf("{canManage && (\n        <p className=\"profile-rename-hint\">\n          <Link to=\"/settings\">{RENAME_HINT}</Link>");
-  assert.ok(heading > 0 && hint > heading, "the Settings link sits under the heading, for managers only");
-  // Its tap area and "Recent scans"' don't overlap: each link reaches 0.8rem past its line.
-  const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
-  assert.match(css, /\.profile-rename-hint \{\s*margin-bottom: var\(--space-6\);/);
+  assert.doesNotMatch(SOURCE, /RENAME_HINT|profile-rename-hint|to="\/settings"/);
 });
 
 test("no 'Your access' line; the severe-only notice sits with the allergen list", () => {

@@ -4,7 +4,6 @@ import { ApiRequestError, type ProfileSummary } from "./api";
 // Plain values, under test.
 
 export const PROFILE_NAME_LABEL = "Profile name";
-export const RENAME_HINT = "Rename this profile in Settings";
 export const RENAME_SAVED = "Saved.";
 
 /**

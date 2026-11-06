@@ -26,7 +26,6 @@ import { profilePossessive } from "../lib/profileChangeCopy";
 import { showScanForButton } from "../lib/tabs";
 import { useScanningFor } from "../TabShell";
 import { accessNotice } from "../lib/profileLineCopy";
-import { RENAME_HINT } from "../lib/profileRenameCopy";
 
 export function ProfileDetail() {
   const { id } = useParams<{ id: string }>();
@@ -226,12 +225,7 @@ export function ProfileDetail() {
         <Link to="/profiles">← Your profiles</Link>
       </p>
       <h1>{profile.label}</h1>
-      {/* Renaming moved to Settings → "Your profiles" (JT, 2026-11-05). */}
-      {canManage && (
-        <p className="profile-rename-hint">
-          <Link to="/settings">{RENAME_HINT}</Link>
-        </p>
-      )}
+      {/* No rename line since 2026-11-06: renaming is in Settings → "Your profiles" (JT, 2026-11-05). */}
       {/* Chooses this profile for Scan and the header on every screen (TabShell.tsx, lib/tabs.ts).
           Only with more than one profile to scan for; with one, the Scan tab already does this. */}
       {showScanForButton(scannableCount) && (
