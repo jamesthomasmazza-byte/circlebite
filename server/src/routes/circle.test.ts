@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { after, before, test } from "node:test";
 
 import { pool } from "../db/pool.js";
+import { env } from "../env.js";
 import { circleRouter } from "./circle.js";
 
 // GET /profiles/:id/circle — the Circle tab's data. Called through the router's own handler, as
@@ -225,4 +226,70 @@ test("a follower who wasn't removed still can't accept a second link: already in
   const { rows } = await pool.query("SELECT status FROM follow_relationships WHERE id = $1", [second.id]);
   assert.equal(rows[0].status, "pending", "the second link is untouched");
   await pool.query("DELETE FROM users WHERE id = $1", [INVITEE]);
+});
+
+// ---- A follower leaves (2026-11-06, behind CIRCLE_REDESIGN) ----
+
+async function following(shareLevel: "all" | "severe_only" = "all"): Promise<{ person: string; followId: string }> {
+  const person = await newPerson();
+  const invite = (await post("/profiles/:id/follow-invites", { id: profileId }, OWNER, { shareLevel })).body as { id: string; token: string };
+  assert.equal((await post("/follow/:token/accept", { token: invite.token }, person)).status, 200);
+  return { person, followId: invite.id };
+}
+
+async function withRedesign<T>(on: boolean, run: () => Promise<T>): Promise<T> {
+  const previous = env.circleRedesign;
+  env.circleRedesign = on;
+  try {
+    return await run();
+  } finally {
+    env.circleRedesign = previous;
+  }
+}
+
+test("a follower leaves: their follow is revoked, exactly as a removal leaves it, and access ends", async () => {
+  const { person, followId } = await following("severe_only");
+  const left = await withRedesign(true, () => post("/profiles/:id/leave", { id: profileId }, person));
+  assert.equal(left.status, 204);
+  const { rows } = await pool.query("SELECT status FROM follow_relationships WHERE id = $1", [followId]);
+  assert.equal(rows[0].status, "revoked", "the same state a manager's revoke leaves");
+  const { body } = await get("/profiles/:id/circle", { id: profileId }, OWNER);
+  assert.ok(!(body as { followers: { id: string }[] }).followers.some((f) => f.id === followId), "gone from the circle");
+  assert.equal((await withRedesign(true, () => post("/profiles/:id/leave", { id: profileId }, person))).status, 404, "twice is not found");
+  await pool.query("DELETE FROM users WHERE id = $1", [person]);
+});
+
+test("someone who left can rejoin by a new invite link", async () => {
+  const { person } = await following();
+  assert.equal((await withRedesign(true, () => post("/profiles/:id/leave", { id: profileId }, person))).status, 204);
+  const again = (await post("/profiles/:id/follow-invites", { id: profileId }, OWNER, { shareLevel: "all" })).body as { token: string };
+  assert.equal((await post("/follow/:token/accept", { token: again.token }, person)).status, 200);
+  await pool.query("DELETE FROM users WHERE id = $1", [person]);
+});
+
+test("only a follower can leave: the owner, a co-manager and a stranger get 404, and nothing changes", async () => {
+  await withRedesign(true, async () => {
+    assert.equal((await post("/profiles/:id/leave", { id: profileId }, OWNER)).status, 404);
+    assert.equal((await post("/profiles/:id/leave", { id: profileId }, CO_MANAGER)).status, 404);
+    assert.equal((await post("/profiles/:id/leave", { id: profileId }, randomUUID())).status, 404);
+  });
+  const { rowCount } = await pool.query("SELECT 1 FROM profile_managers WHERE allergen_profile_id = $1 AND user_id = $2", [profileId, CO_MANAGER]);
+  assert.equal(rowCount, 1, "the co-manager is still a co-manager");
+});
+
+test("a follower leaves only their own follow, never someone else's", async () => {
+  const a = await following();
+  const b = await following();
+  assert.equal((await withRedesign(true, () => post("/profiles/:id/leave", { id: profileId }, a.person))).status, 204);
+  const { rows } = await pool.query("SELECT status FROM follow_relationships WHERE id = $1", [b.followId]);
+  assert.equal(rows[0].status, "accepted");
+  await pool.query("DELETE FROM users WHERE id = ANY($1)", [[a.person, b.person]]);
+});
+
+test("with CIRCLE_REDESIGN off, leave is a 404 and the follow stays", async () => {
+  const { person, followId } = await following();
+  assert.equal((await withRedesign(false, () => post("/profiles/:id/leave", { id: profileId }, person))).status, 404);
+  const { rows } = await pool.query("SELECT status FROM follow_relationships WHERE id = $1", [followId]);
+  assert.equal(rows[0].status, "accepted");
+  await pool.query("DELETE FROM users WHERE id = $1", [person]);
 });

@@ -7,6 +7,7 @@ import {
 } from "../authorization/profiles.js";
 import { requireAuth } from "../auth/requireAuth.js";
 import { pool } from "../db/pool.js";
+import { env } from "../env.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { HttpError } from "../lib/httpError.js";
 import { generateInviteToken, hashInviteToken } from "../lib/inviteToken.js";
@@ -130,6 +131,26 @@ circleRouter.post(
       `UPDATE follow_relationships SET status = 'revoked'
        WHERE id = $1 AND allergen_profile_id = $2 AND status = 'accepted'`,
       [req.params.followId, profileId],
+    );
+    if (rowCount === 0) throw new HttpError(404, "not_found");
+    res.status(204).end();
+  }),
+);
+
+// A follower leaves a circle themselves (JT, 2026-11-06, behind CIRCLE_REDESIGN). Their follow goes
+// to 'revoked', exactly as a manager's removal leaves it, so to the managers they're simply gone and
+// a new invite can bring them back. Followers only: an owner or co-manager gets 404, as does anyone
+// outside the circle — co-managers can't leave for now. Checked here rather than as middleware, so
+// the switch is tested on the handler itself.
+circleRouter.post(
+  "/profiles/:id/leave",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    if (!env.circleRedesign) throw new HttpError(404, "not_found");
+    const { rowCount } = await pool.query(
+      `UPDATE follow_relationships SET status = 'revoked'
+       WHERE allergen_profile_id = $1 AND follower_id = $2 AND status = 'accepted'`,
+      [req.params.id, req.user!.id],
     );
     if (rowCount === 0) throw new HttpError(404, "not_found");
     res.status(204).end();
