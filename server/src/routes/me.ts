@@ -28,6 +28,9 @@ meRouter.get("/me", requireAuth, (req, res) => {
     guidedSetupEnabled: env.guidedSetup,
     // Scan sounds' switch, the same free field.
     scanSoundsEnabled: env.scanSounds,
+    // The redesigned Circle tab's switch, the same free field. POST /profiles/:id/leave checks
+    // env.circleRedesign itself.
+    circleRedesignEnabled: env.circleRedesign,
   });
 });
 

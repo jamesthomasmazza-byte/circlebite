@@ -102,4 +102,9 @@ export const env = {
   // the browser; nothing on the server depends on it. Off by default, and off hides the setting and
   // plays nothing. Only the client reads it, via GET /me.
   scanSounds: parseSwitch("SCAN_SOUNDS", process.env.SCAN_SOUNDS, false),
+  // The redesigned Circle tab (client routes/CircleRedesign.tsx, 2026-11-06): a circle switcher, a
+  // diagram, one list of members and pending invites, and sheets to add or open a member; plus a
+  // follower's own "Leave" (POST /profiles/:id/leave, which 404s while this is off). Off by default,
+  // and off is today's Circle tab, unchanged. The client reads it via GET /me.
+  circleRedesign: parseSwitch("CIRCLE_REDESIGN", process.env.CIRCLE_REDESIGN, false),
 };

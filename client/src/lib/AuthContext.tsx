@@ -37,6 +37,9 @@ type AuthState = {
   // Scan sounds (SCAN_SOUNDS, lib/scanSounds.ts), same default: until it's confirmed on, no setting
   // and no sound.
   scanSoundsEnabled: boolean;
+  // The redesigned Circle tab (CIRCLE_REDESIGN, routes/CircleRedesign.tsx), same default: until
+  // it's confirmed on, today's Circle tab.
+  circleRedesignEnabled: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (input: { email: string; password: string; displayName: string; dob: string }) => Promise<void>;
@@ -53,6 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [circleRequestsEnabled, setCircleRequestsEnabled] = useState(false);
   const [guidedSetupEnabled, setGuidedSetupEnabled] = useState(false);
   const [scanSoundsEnabled, setScanSoundsEnabled] = useState(false);
+  const [circleRedesignEnabled, setCircleRedesignEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // refresh() runs both at mount (before any session cookie exists) and after login/register
@@ -74,6 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setCircleRequestsEnabled(me.circleRequestsEnabled);
       setGuidedSetupEnabled(me.guidedSetupEnabled);
       setScanSoundsEnabled(me.scanSoundsEnabled);
+      setCircleRedesignEnabled(me.circleRedesignEnabled);
     } catch {
       // Any failure to confirm identity — 401 or a transient network/server error — just means
       // we don't currently know who's logged in. Never rethrow: login()/register() call this
@@ -87,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setCircleRequestsEnabled(false);
       setGuidedSetupEnabled(false);
       setScanSoundsEnabled(false);
+      setCircleRedesignEnabled(false);
     } finally {
       if (requestIdRef.current === requestId) setLoading(false);
     }
@@ -137,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setCircleRequestsEnabled(false);
       setGuidedSetupEnabled(false);
       setScanSoundsEnabled(false);
+      setCircleRedesignEnabled(false);
     }
   }, []);
 
@@ -149,6 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         circleRequestsEnabled,
         guidedSetupEnabled,
         scanSoundsEnabled,
+        circleRedesignEnabled,
         loading,
         login,
         register,
