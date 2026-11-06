@@ -176,3 +176,53 @@ test("the circle says who sent each pending invite, by display name only", async
   assert.equal(m.sent_by_name, "Sam Owner");
   for (const row of [f, m]) assert.ok(!Object.values(row).some((v) => String(v).includes("@")), "no email");
 });
+
+// ---- Rejoining after removal (2026-11-06) ----
+
+// Each test its own person: INVITEE already follows from the tests above.
+async function newPerson(): Promise<string> {
+  const id = randomUUID();
+  await pool.query(
+    `INSERT INTO users (id, email, password_hash, display_name, age_attested_adult, age_attested_at)
+     VALUES ($1, $2, 'x', 'Rejoiner', true, now())`,
+    [id, `${id}@example.test`],
+  );
+  return id;
+}
+
+test("someone removed from a circle can rejoin by a new invite link", async () => {
+  const INVITEE = await newPerson();
+  // Was a 500: their old, revoked row held the (follower, profile) pair the new one needed.
+  const first = (await post("/profiles/:id/follow-invites", { id: profileId }, OWNER, { shareLevel: "all" })).body as { id: string; token: string };
+  assert.equal((await post("/follow/:token/accept", { token: first.token }, INVITEE)).status, 200);
+  assert.equal((await post("/profiles/:id/follows/:followId/revoke", { id: profileId, followId: first.id }, OWNER)).status, 204);
+
+  const second = (await post("/profiles/:id/follow-invites", { id: profileId }, OWNER, { shareLevel: "severe_only" })).body as { id: string; token: string };
+  assert.equal((await post("/follow/:token/accept", { token: second.token }, INVITEE)).status, 200);
+
+  const { rows } = await pool.query<{ id: string; status: string; share_level: string; responded_at: Date | null }>(
+    "SELECT id, status, share_level, responded_at FROM follow_relationships WHERE allergen_profile_id = $1 AND follower_id = $2",
+    [profileId, INVITEE],
+  );
+  assert.equal(rows.length, 1, "one row for the pair");
+  assert.equal(rows[0]!.id, second.id, "the new invite is the follow");
+  assert.equal(rows[0]!.status, "accepted");
+  assert.equal(rows[0]!.share_level, "severe_only", "on the new invite's terms");
+  assert.ok(rows[0]!.responded_at);
+
+  // Both links stay used: neither can be accepted again.
+  assert.equal((await post("/follow/:token/accept", { token: first.token }, INVITEE)).status, 404);
+  assert.equal((await post("/follow/:token/accept", { token: second.token }, INVITEE)).status, 404);
+  await pool.query("DELETE FROM users WHERE id = $1", [INVITEE]);
+});
+
+test("a follower who wasn't removed still can't accept a second link: already in the circle", async () => {
+  const INVITEE = await newPerson();
+  const first = (await post("/profiles/:id/follow-invites", { id: profileId }, OWNER, { shareLevel: "all" })).body as { token: string };
+  const second = (await post("/profiles/:id/follow-invites", { id: profileId }, OWNER, { shareLevel: "all" })).body as { id: string; token: string };
+  assert.equal((await post("/follow/:token/accept", { token: first.token }, INVITEE)).status, 200);
+  assert.equal((await post("/follow/:token/accept", { token: second.token }, INVITEE)).status, 409);
+  const { rows } = await pool.query("SELECT status FROM follow_relationships WHERE id = $1", [second.id]);
+  assert.equal(rows[0].status, "pending", "the second link is untouched");
+  await pool.query("DELETE FROM users WHERE id = $1", [INVITEE]);
+});

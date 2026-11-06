@@ -84,15 +84,36 @@ circleRouter.post(
     const existingAccess = await getProfileAccess(userId, invite.allergen_profile_id);
     if (existingAccess) throw new HttpError(409, "already_have_access");
 
-    const { rowCount } = await pool.query(
-      `UPDATE follow_relationships
-       SET follower_id = $2, status = 'accepted', responded_at = now()
-       WHERE id = $1 AND status = 'pending'`,
-      [invite.id, userId],
-    );
-    // status = 'pending' guard above makes this atomic against a concurrent double-accept; if
-    // another request won the race between the SELECT and here, this UPDATE matches zero rows.
-    if (rowCount === 0) throw new HttpError(404, "invalid_or_used_invite");
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      // Someone removed from this circle before still has their old row, revoked, and a person
+      // follows a profile at most once (the table's unique pair), so accepting a new link failed
+      // with a 500 (found 2026-11-06). That row grants nothing and nothing reads it, so it goes, and
+      // this invite becomes the follow, on its own terms. Only when this invite is still pending.
+      await client.query(
+        `DELETE FROM follow_relationships old
+         USING follow_relationships f
+         WHERE f.id = $1 AND f.status = 'pending'
+           AND old.allergen_profile_id = f.allergen_profile_id AND old.follower_id = $2 AND old.status = 'revoked'`,
+        [invite.id, userId],
+      );
+      const { rowCount } = await client.query(
+        `UPDATE follow_relationships
+         SET follower_id = $2, status = 'accepted', responded_at = now()
+         WHERE id = $1 AND status = 'pending'`,
+        [invite.id, userId],
+      );
+      // status = 'pending' guard above makes this atomic against a concurrent double-accept; if
+      // another request won the race between the SELECT and here, this UPDATE matches zero rows.
+      if (rowCount === 0) throw new HttpError(404, "invalid_or_used_invite");
+      await client.query("COMMIT");
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
 
     res.status(200).json({ allergenProfileId: invite.allergen_profile_id });
   }),
