@@ -88,6 +88,12 @@ test("CIRCLE_REDESIGN goes through parseSwitch and defaults to off", () => {
   assert.match(source, /circleRedesign: parseSwitch\("CIRCLE_REDESIGN", process\.env\.CIRCLE_REDESIGN, false\)/);
 });
 
+// SCAN_REDESIGN (2026-11-06): off unless switched on; off is today's Scan.
+test("SCAN_REDESIGN goes through parseSwitch and defaults to off", () => {
+  const source = readFileSync(new URL("./env.ts", import.meta.url), "utf8");
+  assert.match(source, /scanRedesign: parseSwitch\("SCAN_REDESIGN", process\.env\.SCAN_REDESIGN, false\)/);
+});
+
 // GUIDED_SETUP (2026-10-27): off unless switched on.
 test("GUIDED_SETUP goes through parseSwitch and defaults to off", () => {
   const source = readFileSync(new URL("./env.ts", import.meta.url), "utf8");

@@ -82,3 +82,14 @@ test("GET /me exposes circleRedesignEnabled from env.circleRedesign", () => {
 
   assert.equal(body?.circleRedesignEnabled, env.circleRedesign);
 });
+
+test("GET /me exposes scanRedesignEnabled from env.scanRedesign", () => {
+  const handler = findMeHandler();
+  const req = { user: { id: "u1", email: "a@example.com", displayName: "A", isAdmin: false }, session: { id: "s1", actingProfileId: null } };
+  let body: { scanRedesignEnabled?: boolean } | undefined;
+  const res = { json: (b: unknown) => { body = b as typeof body; } };
+
+  handler(req, res);
+
+  assert.equal(body?.scanRedesignEnabled, env.scanRedesign);
+});

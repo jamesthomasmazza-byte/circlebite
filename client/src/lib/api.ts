@@ -48,6 +48,7 @@ export function fetchMe(): Promise<{
   guidedSetupEnabled: boolean;
   scanSoundsEnabled: boolean;
   circleRedesignEnabled: boolean;
+  scanRedesignEnabled: boolean;
 }> {
   return apiFetch("/me");
 }

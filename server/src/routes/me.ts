@@ -31,6 +31,8 @@ meRouter.get("/me", requireAuth, (req, res) => {
     // The redesigned Circle tab's switch, the same free field. POST /profiles/:id/leave checks
     // env.circleRedesign itself.
     circleRedesignEnabled: env.circleRedesign,
+    // The redesigned Scan tab's switch, the same free field. Nothing on the server depends on it.
+    scanRedesignEnabled: env.scanRedesign,
   });
 });
 

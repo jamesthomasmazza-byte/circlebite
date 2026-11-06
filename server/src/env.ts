@@ -107,4 +107,9 @@ export const env = {
   // follower's own "Leave" (POST /profiles/:id/leave, which 404s while this is off). Off by default,
   // and off is today's Circle tab, unchanged. The client reads it via GET /me.
   circleRedesign: parseSwitch("CIRCLE_REDESIGN", process.env.CIRCLE_REDESIGN, false),
+  // The redesigned Scan tab (client routes/Scan.tsx, 2026-11-06): the camera as the screen, Scan's
+  // own "Scanning for" pill in place of the header there, and results in a sheet over the camera.
+  // A layout only: the verdict, its wording and every flow are the same either way. Off by default,
+  // and off is today's Scan, unchanged. The client reads it via GET /me.
+  scanRedesign: parseSwitch("SCAN_REDESIGN", process.env.SCAN_REDESIGN, false),
 };
