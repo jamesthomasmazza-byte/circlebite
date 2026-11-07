@@ -735,6 +735,11 @@ export function getScanHistory(profileId: string): Promise<ScanHistoryEntry[]> {
   return apiFetch(`/profiles/${profileId}/scans`);
 }
 
+/** How many scans the history covers, uncapped (PROFILE_REDESIGN's "<n> scans"). */
+export function getScanCount(profileId: string): Promise<{ count: number }> {
+  return apiFetch(`/profiles/${profileId}/scan-count`);
+}
+
 // `effective`/`corrections`/`community_reports`: the reporter's own view of the scan once this
 // report is applied — the same shape and meaning as a ScanHistoryEntry's, from the same server
 // function, so the live card can show what history will.

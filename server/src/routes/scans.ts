@@ -345,6 +345,23 @@ scansRouter.post(
   }),
 );
 
+// The redesigned profile page's "<n> scans" (PROFILE_REDESIGN, 2026-11-06): how many scans the
+// history below covers — the same rows, under the same check, uncapped. History shows the newest
+// HISTORY_LIMIT, so its length would read "20 scans" for a profile with forty. A count only: nothing
+// about any scan, so a severe-only follower's filter has nothing to withhold.
+scansRouter.get(
+  "/profiles/:id/scan-count",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const profileId = req.params.id;
+    await assertCanReadProfile(req.user!.id, profileId);
+    const { rows } = await pool.query<{ n: number }>("SELECT count(*)::int AS n FROM scans WHERE allergen_profile_id = $1", [
+      profileId,
+    ]);
+    res.json({ count: rows[0]!.n });
+  }),
+);
+
 scansRouter.get(
   "/profiles/:id/scans",
   requireAuth,
