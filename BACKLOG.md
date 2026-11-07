@@ -406,7 +406,16 @@ Fixes only from here.
   confirmed it. Then the false-safety check (`docs/server-setup.md` §8) once more.
 - [ ] judge1 shows no banner.
 - [ ] Tick the judge item and fix the `JUDGE_PASSWORD` line.
-- [ ] Four one-time links.
+- [ ] ~~Four one-time links.~~ Replaced by the judge link (Prof. Yoest, Nov 5, 4:38 PM): judges get
+  no logins. The steps below come after the reseed above.
+- [ ] **Judge link** (`docs/server-setup.md` §16a), only after the reseed above, which makes its 40
+  worlds: make the token on the box, set `JUDGE_LINK=on`, restart. Then JT opens the link once in a
+  private window (uses one world): Maya's card for `2990000000083`, Priya named, no token left in
+  the address bar, no admin data. Then the three `curl` checks.
+- [ ] Send the link to Prof. Yoest by Password Pusher, with the test name "a judge-link session gets
+  404 from every admin page and admin API" (`server/src/auth/judgeLink.test.ts`).
+- [ ] No reseed after the link goes out, until judging is over.
+- [ ] After judging: `JUDGE_LINK=off`, remove `JUDGE_LINK_TOKEN_HASH`, reseed (§16a, "After judging").
 - [ ] Confirm the AI key works: Console "Last used", plus a label photo.
 - [ ] **Two lines to Prof. Yoest that the judge worlds held on production** (his Oct 29 ask), after
   the reseed: the checks are in `docs/judge-card-plan.md` §4.
