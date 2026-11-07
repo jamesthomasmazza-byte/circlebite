@@ -2620,3 +2620,29 @@ sudo systemctl restart circlebite
 Today's Circle tab is back on each browser's next page load. No migration or data change either
 way. Anyone who left a circle while it was on stays out until re-invited, exactly as after a
 removal, because leaving and removal leave the same revoked follow.
+
+## 2026-11-06 — `PROFILE_REDESIGN` switched on in production
+
+At JT's request, release `8192b96` was deployed (`releases/20261107013116`, about 8:31 PM ET; the
+folder's name is UTC) and `PROFILE_REDESIGN` switched on straight after, per
+`docs/server-setup.md` §11h (BACKLOG item 14). The service came back active and `/health` answered
+200. `SCAN_REDESIGN` and `CIRCLE_REDESIGN` were already on and weren't touched.
+
+With it on, the Profile tab lists profiles as rows with initials avatars (a red count on one with
+unacknowledged changes) and a menu icon to the Account page; a profile page has a top bar, an
+avatar header with stats, and Allergens | Scans | Changes tabs. A layout only: each role reads what
+it did before. The release also adds `GET /profiles/:id/scan-count`, live either way, and a test
+pinning that a follower's scan history never says who scanned.
+
+Not done here, and not recorded as done: JT's iPhone check of the new pages, and the post-deploy
+false-safety check (`docs/server-setup.md` §8).
+
+**To switch it off** (§11h), on the box:
+
+```bash
+sed -i 's/^PROFILE_REDESIGN=.*/PROFILE_REDESIGN=off/' ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
+Today's Profile tab and profile page are back on each browser's next page load. No data changes
+either way.
