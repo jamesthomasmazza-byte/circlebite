@@ -339,6 +339,17 @@ precedents, Nov 5.
    *Switched on again in production at JT's request, Nov 6, on release `a490f1f`, deployed first so
    the fixed layout was live before the switch. JT's iPhone check and the cameras are still owed; to
    switch it off: `docs/server-setup.md` §11g.*
+14. [ ] **Profile tab and profile page redesign, behind `PROFILE_REDESIGN`** (JT's mockup, Nov 6; off
+   by default). Profile rows with initials avatars and an unseen-changes count; a profile page with a
+   top bar and "⋯" (the owner's Delete), an avatar header with stats, and Allergens | Scans | Changes
+   tabs. A layout only; the one server addition is `GET /profiles/:id/scan-count`, for "<n> scans",
+   from the same rows and check as the history.
+   *Built Nov 6: `client/src/routes/Profiles.tsx` and `ProfileDetail.tsx` (markup branched),
+   `client/src/ProfileRow.tsx`, `client/src/ProfileDetailRedesign.tsx`,
+   `client/src/lib/profileRedesign.ts`. Checked locally at 390×844, normal and 150% text, light and
+   dark, with the switch on in the local `.env` only, restored after: as owner (with a co-manager's
+   unseen change), co-manager, full follower and severe-only follower.*
+   **Still owed:** JT's review, on the iPhone, then switch it on (`docs/server-setup.md` §11h).
 
 ### Nov 13 — code freeze
 

@@ -710,6 +710,33 @@ sed -i 's/^SCAN_REDESIGN=.*/SCAN_REDESIGN=off/' ~/circlebite/.env
 sudo systemctl restart circlebite
 ```
 
+## 11h. Profile tab and profile page redesign — switch
+
+With `PROFILE_REDESIGN=on`, the Profile tab lists profiles as rows with initials avatars (a red
+count on one with unacknowledged changes) and a menu icon to the Account page in the header, and a
+profile page has a top bar, an avatar header with stats, and Allergens | Scans | Changes tabs. A
+layout only: each role reads exactly what it did. The one server route it uses,
+`GET /profiles/:id/scan-count`, is live either way and gives only a count to anyone who can read the
+profile. Off by default; off is today's pages, unchanged. No data involved.
+
+**Before turning it on:** JT's review on the iPhone (BACKLOG item 14).
+
+**Turn it on:**
+
+```bash
+grep -q '^PROFILE_REDESIGN=' ~/circlebite/.env \
+  && sed -i 's/^PROFILE_REDESIGN=.*/PROFILE_REDESIGN=on/' ~/circlebite/.env \
+  || echo "PROFILE_REDESIGN=on" >> ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
+**Turn it off** — today's pages again on each browser's next page load:
+
+```bash
+sed -i 's/^PROFILE_REDESIGN=.*/PROFILE_REDESIGN=off/' ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
 ## 12. Admin access — the AI accuracy page
 
 `users.is_admin` gates internal aggregate pages (the AI accuracy page today, the review queue
