@@ -136,3 +136,37 @@ test("a severe_only follower's history never names a mild allergen from a circle
     env.circleEscalations = previous;
   }
 });
+
+// Followers see every scan of a profile they follow, but never who made it: the history names no
+// scanner (no id, name, email or role), so a follower can't learn who else is in the circle from
+// it (docs/principles.md, Oct 27). Checked Nov 6 for the redesigned profile page's Scans tab.
+test("a follower's history never says who scanned: no scanner id, name, email or field", async () => {
+  const { rows } = await pool.query<{ id: string }>(
+    `INSERT INTO scans (scanner_id, allergen_profile_id, barcode, product_name, result, matched_allergens)
+     VALUES ($1, $2, '2990000099991', 'Scanned by the co-manager', 'safe', '[]') RETURNING id`,
+    [CO_MANAGER, PROFILE_ID],
+  );
+  const scanId = rows[0]!.id;
+  const { rows: who } = await pool.query<{ display_name: string; email: string }>(
+    "SELECT display_name, email FROM users WHERE id = ANY($1)",
+    [[OWNER, CO_MANAGER]],
+  );
+  for (const follower of [FULL_FOLLOWER, SEVERE_ONLY_FOLLOWER]) {
+    const history = await getHistory(follower);
+    const entry = history.find((s) => s.id === scanId) as unknown as Record<string, unknown>;
+    assert.ok(entry, "the follower sees the scan");
+    assert.deepEqual(
+      Object.keys(entry).sort(),
+      ["barcode", "community_reports", "corrections", "created_at", "effective", "id", "original", "pending_circle_reports", "product_brand", "product_name"],
+      "exactly these fields: none of them is the scanner",
+    );
+    const sent = JSON.stringify(history);
+    assert.doesNotMatch(sent, /scanner/i);
+    for (const id of [OWNER, CO_MANAGER]) assert.ok(!sent.includes(id), "no member's id");
+    for (const u of who) {
+      assert.ok(!sent.includes(u.email), "no member's email");
+      assert.ok(!sent.includes(`"${u.display_name}"`), "no member's name");
+    }
+  }
+  await pool.query("DELETE FROM scans WHERE id = $1", [scanId]);
+});
