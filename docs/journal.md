@@ -2646,3 +2646,32 @@ sudo systemctl restart circlebite
 
 Today's Profile tab and profile page are back on each browser's next page load. No data changes
 either way.
+
+## 2026-11-07 — Deployed: sign-up closed, the judge link (off), the new judge card
+
+Two deploys, both at JT's request, both through `deploy.sh` with no migration:
+- **`31afd14`**, `releases/20261107015518`, about 8:55 PM ET on November 6 (the folder's name is
+  UTC). It closed sign-up: `REGISTRATION` is unset on the box, which is off (`docs/server-setup.md`
+  §11i, Prof. Yoest's November 5 ask).
+- **`7f6bf9e`**, `releases/20261107134112`, about 8:41 AM ET on November 7. It added the landing
+  page without its demo notices or closing sign-up line while sign-up is closed, and the judge card
+  and `JUDGES.md` with the link first and the butter spread case. It also added the judge link
+  (§16a), shipped off: `JUDGE_LINK` is unset, and its 40 pool worlds exist only after the next
+  reseed.
+
+Both deploys reported healthy. Checked from the Mac after the second, with public requests only:
+- `GET /api/features` returns `"registrationOpen":false`.
+- `POST /api/auth/register` returns `registration_closed`.
+- A judge-link POST with a wrong token returns the plain 404.
+- `/judge` is served with `X-Robots-Tag: noindex, nofollow` and `Referrer-Policy: no-referrer`.
+
+**Checked by JT on November 7, from his phone:**
+- Signed out, the landing page and `/register` show "New accounts are closed until after
+  judging."
+- The post-deploy false-safety check (§8): `deploy.check` scanning `2990000000076` for Rowan read
+  "Contains an allergen".
+
+No screenshot of either is in the repo.
+
+Still owed: the judging-week reseed, then the judge link turned on and checked once by JT (§16a)
+before it goes to Prof. Yoest by Password Pusher.

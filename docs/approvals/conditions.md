@@ -434,9 +434,14 @@ Not yet reported to Prof. Yoest.
   account, as before"), `client/src/routes/RegisterEntry.test.ts`, and
   `client/src/routes/Landing.test.ts` ("with REGISTRATION off, the page has no sign-up link…").
   **Deployed November 6, about 9 PM ET** (release `20261107015518`, `31afd14`; the deploy script
-  reported healthy). The §11i production check is still owed. The follow-up that also hides the
-  landing page's demo notices and closing sign-up line (`0737376`) is not yet deployed. Not yet
-  reported to him.
+  reported healthy). The follow-up that also hides the landing page's demo notices and closing
+  sign-up line (`0737376`) was deployed November 7, about 8:41 AM ET (release `20261107134112`,
+  `7f6bf9e`). **Checked on production November 7** (`docs/journal.md`, 2026-11-07):
+  - from the Mac: `registrationOpen:false`, and `POST /auth/register` refused with
+    `registration_closed`;
+  - by JT from his phone: the landing page and `/register` show the closed line.
+
+  Not yet reported to him.
 - **"Put that example on the judge card."** The butter spread case: "two accounts from one person
   could only add a warning, never clear one" (Smjörvi, November 3, under the Due Sunday, October 25
   fake-family item above). **Done November 7** (`43b40f1`, `7e0be8b`): "Why one person can't clear a
