@@ -50,7 +50,7 @@ test("with SCAN_REDESIGN, Scan's pill takes the header's place on Scan only, sti
   assert.ok(pill > 0 && pill < notices && notices < page);
   assert.match(SHELL, /const stage = scanStageOn\(scanRedesignEnabled, current === "scan"\);/);
   assert.match(SHELL, /\{stage \? \(\s*chosen && <ScanPill /);
-  assert.match(SHELL, /\) : \(\s*<ShellHeader scanningFor=\{scanningFor\} \/>\s*\)\}/, "the header everywhere else");
+  assert.match(SHELL, /\) : \([^<]*<ShellHeader scanningFor=\{scanningFor\} accountMenu=\{[^}]*\} \/>\s*\)\}/, "the header everywhere else");
 });
 
 test("Scan gets the slim notices and the Profile tab the full ones (Condition 2, 2026-10-26)", () => {

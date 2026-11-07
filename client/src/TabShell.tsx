@@ -8,6 +8,7 @@ import { getUnseenChanges, listCircleRequests, listProfiles, type CircleRequest,
 import { useAuth } from "./lib/AuthContext";
 import { REQUESTS_HEADING, requestBadgeLabel, requestNoticeLine } from "./lib/circleRequestCopy";
 import { headerProfileName } from "./lib/profileLineCopy";
+import { ACCOUNT_AND_SETTINGS } from "./lib/profileRedesign";
 import { scanStageOn } from "./lib/scanRedesign";
 import {
   activeTab,
@@ -62,7 +63,7 @@ export function TabShell() {
   // Follow requests waiting on this owner (CIRCLE_REQUESTS): a line on Scan after Condition 2's
   // notices, never before them, and a badge on the Circle tab. Gone only when each is approved or
   // declined. Empty for anyone who owns nothing, and while the switch is off.
-  const { circleRequestsEnabled, scanRedesignEnabled } = useAuth();
+  const { circleRequestsEnabled, scanRedesignEnabled, profileRedesignEnabled } = useAuth();
   const [requests, setRequests] = useState<CircleRequest[]>([]);
   const [requestsRead, setRequestsRead] = useState(0);
   const [profilesRead, setProfilesRead] = useState(0);
@@ -130,7 +131,8 @@ export function TabShell() {
       {stage ? (
         chosen && <ScanPill profiles={profiles} chosen={chosen} onChoose={setChosenProfileId} />
       ) : (
-        <ShellHeader scanningFor={scanningFor} />
+        // PROFILE_REDESIGN (2026-11-06): on the Profile tab's own page, a menu icon to /settings.
+        <ShellHeader scanningFor={scanningFor} accountMenu={profileRedesignEnabled && pathname === TAB_PATH.profile} />
       )}
       {noticesShownOn(pathname) && (
         <div className="tab-shell__notices">
@@ -185,13 +187,20 @@ export function RequestNotice({ requests }: { requests: Pick<CircleRequest, "req
 /** The wordmark, and the profile Scan checks for — a link to Scan. Nothing more: no allergens here,
  *  and no profile at all until there is one. `scanningFor` is its name, with how you hold it when
  *  another profile shares the name (lib/profileLineCopy.ts headerProfileName). */
-export function ShellHeader({ scanningFor }: { scanningFor: string | null }) {
+export function ShellHeader({ scanningFor, accountMenu = false }: { scanningFor: string | null; accountMenu?: boolean }) {
   return (
     <header className="shell-header">
       <BrandLogo className="shell-header__wordmark" />
       {scanningFor && (
         <Link to={LANDING_PATH} className="shell-header__profile">
           Scanning for: <strong>{scanningFor}</strong>
+        </Link>
+      )}
+      {accountMenu && (
+        <Link to="/settings" className="shell-header__menu" aria-label={ACCOUNT_AND_SETTINGS}>
+          <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
         </Link>
       )}
     </header>

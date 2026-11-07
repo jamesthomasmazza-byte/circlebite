@@ -3428,3 +3428,103 @@ button.label-camera__shutter {
 .label-checklist p {
   margin: 0;
 }
+
+/* ---------- The redesigned Profile tab and page (Profiles.tsx, ProfileDetail.tsx, 2026-11-06,
+   behind PROFILE_REDESIGN) ---------------------------------------------------------------------- */
+
+/* The shell header's menu icon on the Profile tab: 44px, to /settings. */
+a.shell-header__menu {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  margin-left: var(--space-2);
+  color: var(--color-text);
+}
+
+.profile-list-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.profile-list-head h2 {
+  margin: 0;
+}
+
+/* "+ Add a profile" sits beside the heading; today's button under the list would repeat it. The
+   classic form still opens in the same place. */
+.profile-redesign #add-profile > button {
+  display: none;
+}
+
+.profile-row {
+  list-style: none;
+}
+
+a.profile-row__link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--tap-min);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.profile-row__avatar {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: var(--color-circle-center);
+  color: var(--color-on-circle-center);
+  font-weight: 700;
+}
+
+/* The unacknowledged-changes count: the tab badge's red, on the avatar. */
+.profile-row__badge {
+  position: absolute;
+  top: -0.25rem;
+  right: -0.375rem;
+  min-width: 1.25rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--color-alert);
+  color: var(--color-bg);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.25rem;
+  text-align: center;
+}
+
+.profile-row__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.profile-row__name {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.profile-row__tag {
+  flex: none;
+  max-width: 40%;
+  padding: 0.125rem var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-align: center;
+}

@@ -10,18 +10,38 @@ import { SeverityChoice } from "../SeverityChoice";
 import { allergenLine } from "../lib/profileLineCopy";
 import { ACCOUNT_PATH, ADD_PROFILE_PATH, addFormRequested, NEW_PROFILE_PATH, oldSectionRedirect } from "../lib/profileSections";
 import { useAuth } from "../lib/AuthContext";
+import { unseenCountFor } from "../lib/profileRedesign";
+import { ProfileRow } from "../ProfileRow";
 import {
   ApiRequestError,
   createProfile,
+  getUnseenChanges,
   listProfiles,
   type AllergenInput,
   type ProfileSummary,
+  type UnseenProfileChanges,
 } from "../lib/api";
 
 export function Profiles() {
   const navigate = useNavigate();
   const { hash } = useLocation();
-  const { guidedSetupEnabled } = useAuth();
+  const { guidedSetupEnabled, profileRedesignEnabled } = useAuth();
+  // PROFILE_REDESIGN (JT's mockup, 2026-11-06): the same page as rows with avatars. Every state and
+  // rule here is shared; only the markup differs, and with the switch off it's today's.
+  const redesign = profileRedesignEnabled;
+  // Each owned profile's unacknowledged changes, for its avatar's red count (redesign only): the
+  // same list the shell counts for the Profile tab's badge.
+  const [unseen, setUnseen] = useState<UnseenProfileChanges[]>([]);
+  useEffect(() => {
+    if (!redesign) return;
+    let live = true;
+    getUnseenChanges()
+      .then((u) => live && setUnseen(u))
+      .catch(() => live && setUnseen([]));
+    return () => {
+      live = false;
+    };
+  }, [redesign]);
   const [managed, setManaged] = useState<ProfileSummary[]>([]);
   const [followed, setFollowed] = useState<ProfileSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,13 +134,23 @@ export function Profiles() {
   if (loading) return <p>Loading…</p>;
 
   return (
-    <main>
+    <main className={redesign ? "profile-redesign" : undefined}>
       <h1>Profile</h1>
       {/* People only since 2026-11-06: the account and its settings are on the Account page. */}
       {loadError && <p role="alert">{loadError}</p>}
 
       <section>
-        <h2>Profiles you manage</h2>
+        {redesign ? (
+          <div className="profile-list-head">
+            <h2>Your profiles</h2>
+            {/* Where today's "Add a profile" goes: the guided setup, or the classic form below. */}
+            <button type="button" onClick={() => (guidedSetupEnabled ? navigate(NEW_PROFILE_PATH) : setAddOpen(true))}>
+              + Add a profile
+            </button>
+          </div>
+        ) : (
+          <h2>Profiles you manage</h2>
+        )}
         {managed.length === 0 && (
           <p>
             {NO_MANAGED_PROFILES}{" "}
@@ -132,7 +162,10 @@ export function Profiles() {
         )}
         {/* Each card is one link (2026-10-26): easier to hit on a phone than the name alone. */}
         <ul className="card-list">
-          {managed.map((p) => (
+          {managed.map((p) =>
+            redesign ? (
+              <ProfileRow key={p.id} profile={p} followed={false} unseen={unseenCountFor(p.id, unseen)} />
+            ) : (
             <li key={p.id}>
               <Link to={`/profiles/${p.id}`} className="card">
                 <span className="card__title">{p.label}</span>{" "}
@@ -140,7 +173,8 @@ export function Profiles() {
                 <span className="profile-line">{allergenLine(p)}</span>
               </Link>
             </li>
-          ))}
+            ),
+          )}
         </ul>
       </section>
 
@@ -214,7 +248,10 @@ export function Profiles() {
         <h2>Profiles you follow</h2>
         {followed.length === 0 && <p>{NO_FOLLOWED_PROFILES}</p>}
         <ul className="card-list">
-          {followed.map((p) => (
+          {followed.map((p) =>
+            redesign ? (
+              <ProfileRow key={p.id} profile={p} followed unseen={0} />
+            ) : (
             <li key={p.id}>
               <Link to={`/profiles/${p.id}`} className="card">
                 <span className="card__title">{p.label}</span>{" "}
@@ -224,13 +261,17 @@ export function Profiles() {
                 <span className="profile-line">{allergenLine(p)}</span>
               </Link>
             </li>
-          ))}
+            ),
+          )}
         </ul>
       </section>
 
+      {/* Redesign: the header's menu icon goes to /settings instead (TabShell.tsx). */}
+      {!redesign && (
       <p>
         <Link to={ACCOUNT_PATH}>Account &amp; settings</Link>
       </p>
+      )}
     </main>
   );
 }
