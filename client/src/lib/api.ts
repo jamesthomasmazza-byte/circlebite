@@ -114,6 +114,11 @@ export function register(input: {
   return apiFetch("/auth/register", { method: "POST", body: JSON.stringify(input) });
 }
 
+/** The judge link (server auth/judgeLink.ts): the token from /judge's fragment, in the body only. */
+export function judgeLinkSignIn(token: string): Promise<CurrentUser & { profileId: string }> {
+  return apiFetch("/auth/judge-link", { method: "POST", body: JSON.stringify({ token }) });
+}
+
 export type Severity = "mild" | "moderate" | "severe";
 
 export type Allergen = {

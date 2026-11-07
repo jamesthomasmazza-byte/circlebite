@@ -6,6 +6,7 @@ import { LabelCamera } from "../LabelCamera";
 import { useScanningFor } from "../TabShell";
 import { guidedSetupSkipped, sendToGuidedSetup } from "../lib/guidedSetupEntry";
 import { addProfileHref, NEW_PROFILE_PATH } from "../lib/profileSections";
+import { JUDGE_LINK_BARCODE, wantsJudgeCard } from "../lib/judgeLink";
 import { isSampleScan, SAMPLE_BARCODE, SAMPLE_LABEL, wantsSample } from "../lib/sampleScan";
 import { requestedProfile } from "../lib/tabs";
 import { scanningForId } from "../lib/tabs";
@@ -155,6 +156,7 @@ export function Scan() {
   const { search } = useLocation();
   const navigate = useNavigate();
   const sampleStarted = useRef(false);
+  const judgeCardStarted = useRef(false);
   const [barcode, setBarcode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -279,6 +281,18 @@ export function Scan() {
     sampleStarted.current = true;
     setBarcode(SAMPLE_BARCODE);
     void runScan(SAMPLE_BARCODE, profileId);
+    navigate(`/scan?profile=${profileId}`, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, loadingProfiles, profileId]);
+
+  // The judge link (lib/judgeLink.ts): once Maya is the profile chosen, scan the judge barcode for her
+  // once, the same way as the sample, then drop the flag so a reload doesn't scan again.
+  useEffect(() => {
+    if (judgeCardStarted.current || loadingProfiles || !wantsJudgeCard(search)) return;
+    if (!profileId || profileId !== requestedProfile(search)) return;
+    judgeCardStarted.current = true;
+    setBarcode(JUDGE_LINK_BARCODE);
+    void runScan(JUDGE_LINK_BARCODE, profileId);
     navigate(`/scan?profile=${profileId}`, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, loadingProfiles, profileId]);

@@ -10,6 +10,7 @@ import {
 
 import {
   fetchMe,
+  judgeLinkSignIn as apiJudgeLinkSignIn,
   login as apiLogin,
   logout as apiLogout,
   register as apiRegister,
@@ -48,6 +49,8 @@ type AuthState = {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (input: { email: string; password: string; displayName: string; dob: string }) => Promise<void>;
+  /** The judge link (routes/JudgeLink.tsx): signs in with its token; resolves to Maya's profile id. */
+  signInWithJudgeLink: (token: string) => Promise<string>;
   logout: () => Promise<void>;
 };
 
@@ -141,6 +144,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [refresh],
   );
 
+  const signInWithJudgeLink = useCallback(
+    async (token: string) => {
+      const { profileId, ...authUser } = await apiJudgeLinkSignIn(token);
+      requestIdRef.current += 1;
+      setUser(authUser);
+      setActingProfileId(null);
+      await refresh();
+      return profileId;
+    },
+    [refresh],
+  );
+
   const logout = useCallback(async () => {
     try {
       await apiLogout();
@@ -175,6 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loading,
         login,
         register,
+        signInWithJudgeLink,
         logout,
       }}>
       {children}
