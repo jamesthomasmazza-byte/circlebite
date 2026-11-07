@@ -86,3 +86,13 @@ test("production serves the client through these rules", async () => {
   assert.match(app, /if \(env\.isProduction\) \{[\s\S]*serveClient\(app, clientDist\);[\s\S]*\n {2}\}/);
   assert.doesNotMatch(app, /express\.static\(/, "no other static serving with default cache headers");
 });
+
+// The judge link's page (2026-11-07): never indexed, and never named in a Referer.
+test("/judge is served noindex and no-referrer; other pages aren't", async () => {
+  const judge = await fetch(`${baseUrl}/judge`);
+  assert.equal(judge.status, 200);
+  assert.equal(judge.headers.get("x-robots-tag"), "noindex, nofollow");
+  assert.equal(judge.headers.get("referrer-policy"), "no-referrer");
+  const scan = await fetch(`${baseUrl}/scan`);
+  assert.equal(scan.headers.get("x-robots-tag"), null);
+});
