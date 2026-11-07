@@ -749,7 +749,8 @@ account" buttons show "New accounts are closed until after judging." instead, re
 
 Still working with it off: signing in, password resets (§15), invites and follow requests to
 existing accounts (an invite page's "create an account" link lands on the closed line, and its Log
-in keeps the invite), and the judge seed (§16), which writes its accounts directly.
+in keeps the invite), the judge seed (§16), which writes its accounts directly, and the judge link
+(§16a), which creates no account: it signs in to one the seed already made.
 
 **Off is the standard state until judging ends, and the default** (Prof. Yoest, November 5, 2026,
 `docs/approvals/2026-11-05-yoest-registration-and-judge-card.md`): a friendly landing page would
@@ -932,7 +933,9 @@ across all four verdicts, so four judges testing at once never see each other's 
 acknowledgements or downgrades. Shared by all four: a community warning reported by two families
 outside every judge's circle, and the NPS rows. It also creates the account §8's false-safety check
 signs in as, `deploy.check@demo.circlebite.test`, in no judge's world, with one profile (Rowan,
-Peanut) and nothing else. It is also the **recovery path** — if a judge deletes
+Peanut) and nothing else. Since November 7 it also makes the judge link's pool: 40 more worlds
+(5–44), each the same cast, whose judges (`pool.judge5@` to `pool.judge44@`) have no password and
+are reached only by the link (§16a). It is also the **recovery path** — if a judge deletes
 their account mid-week, run it again and everything is back. A reseed resets all four judges' worlds,
 not just one, so warn the others first. Rerunnable: a second run over a seeded database ends in
 exactly the same state.
@@ -1021,6 +1024,127 @@ them. Check the review queue (`/admin/review-queue`) daily during judging week f
 products that don't look like real families'. Since migration 0049 this matters less: a report keeps
 its judge world after the account is gone, so it still counts only in that world and never reaches a
 real family. A report filed before 0049 has no world, and the limit applies to it in full.
+
+## 16a. The judge link — one URL for every judge
+
+Prof. Yoest's November 5, 4:38 PM ask (`docs/approvals/2026-11-05-yoest-one-click-judge-link.md`):
+"I want judges to do nothing more than click a link." `https://circlebite.app/judge#<token>` opens
+CircleBite signed in to a demo judge account, on Maya's card for `2990000000083`, with no other step.
+
+**How it works** (`server/src/auth/judgeLink.ts`, `client/src/routes/JudgeLink.tsx`):
+- **Pool.** Each click signs in to the lowest pool world (§16: worlds 5–44, `pool.judgeN@`) whose
+  judge has never had a session. So two clicks are two worlds, and no report in one counts toward
+  another judge's or a real family's (the judge worlds, migration 0049). The link creates no account
+  and can't reach any account outside the pool: not the operator, no admin, no real user, not
+  judges 1–4 or the check account. A world stays used after logout, since sessions are never
+  deleted. 40 worlds in all, until the next reseed.
+- **Token.** It's in the URL fragment, which browsers never send, so it never reaches nginx or app
+  logs. The page reads it, removes it from the address bar, and POSTs it. The server compares its
+  SHA-256 to `JUDGE_LINK_TOKEN_HASH` in constant time. Only the hash is stored; the token is in no
+  file, commit or log.
+- **Refusals.** Any refusal is the same plain 404 (`{"error":"not_found"}`), and the page says only
+  "Page not found". That covers: `JUDGE_LINK` off, past `JUDGE_LINK_EXPIRES`, no hash set, a wrong or
+  malformed token, more than 10 worlds handed out in 10 minutes (global, whoever clicks), and an
+  empty pool.
+- **Sessions.** They end at `JUDGE_LINK_EXPIRES` at the latest, and stop at once while `JUDGE_LINK` is
+  off. Turning it back on revives them until the expiry.
+- **Admin.** None of these accounts is an admin, and `assertIsAdmin` refuses the whole reserved
+  domain anyway. Test: `server/src/auth/judgeLink.test.ts`, "a judge-link session gets 404 from every
+  admin page and admin API".
+- **Indexing.** `/judge` is served with `X-Robots-Tag: noindex, nofollow` and `Referrer-Policy:
+  no-referrer`, and the page adds a robots meta tag.
+
+Settings in `~/circlebite/.env`, all optional:
+- `JUDGE_LINK`: `on` or `off`. Unset is off.
+- `JUDGE_LINK_EXPIRES`: an ISO date-time with offset. Unset is `2026-11-21T00:00:00-05:00`.
+- `JUDGE_LINK_TOKEN_HASH`: 64 hex characters. Unset matches no token.
+
+A malformed value refuses to boot, like a switch.
+
+### Judging week, in this order
+
+**1. Reseed first.** The judging-week reseed (§16, `--rotate-passwords`) must run **before** the link
+is sent. It is what makes the 40 pool worlds, and every reseed after the link goes out deletes each
+used world's judge, signing that judge out. They can click again for a fresh world, but whatever
+they did is gone. So no reseed between sending the link and the end of judging, unless something is
+broken.
+
+**2. Make the token, on the box, in JT's own terminal over SSH.** Never through Claude Code or any
+tool that records output: the link it prints is the credential. Nothing is written but the hash:
+
+```bash
+TOKEN=$(openssl rand -base64 32 | tr '+/' '-_' | tr -d '=\n')
+HASH=$(printf %s "$TOKEN" | sha256sum | cut -d' ' -f1)
+grep -q '^JUDGE_LINK_TOKEN_HASH=' ~/circlebite/.env \
+  && sed -i "s/^JUDGE_LINK_TOKEN_HASH=.*/JUDGE_LINK_TOKEN_HASH=$HASH/" ~/circlebite/.env \
+  || echo "JUDGE_LINK_TOKEN_HASH=$HASH" >> ~/circlebite/.env
+echo "https://circlebite.app/judge#$TOKEN"
+unset TOKEN HASH
+```
+
+Copy the printed link straight into Password Pusher (step 5) and nowhere else. A new token replaces
+the old one: run the block again, restart, and the old link is a 404. Sessions it already made keep
+working.
+
+**3. Turn it on:**
+
+```bash
+grep -q '^JUDGE_LINK=' ~/circlebite/.env \
+  && sed -i 's/^JUDGE_LINK=.*/JUDGE_LINK=on/' ~/circlebite/.env \
+  || echo "JUDGE_LINK=on" >> ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
+**4. JT checks it once, after the reseed. This uses up one world, leaving 39.** In a private window,
+open the link:
+- It lands on Scan, scanning for Maya, with **Contains an allergen** on Corn Tortilla Chips
+  (`2990000000083`): "Priya Nair (co-manager) reported Sesame present and photographed the label. No
+  other family has confirmed it yet."
+- The address bar shows `/scan?profile=…`, with no token.
+- `/admin/ai-accuracy` in the same window shows no admin data.
+- Log out, and close the window.
+
+Then from the Mac, both should answer `{"error":"not_found"}` and change nothing:
+
+```bash
+curl -s -X POST https://circlebite.app/api/auth/judge-link -H 'content-type: application/json' -d '{"token":"wrong"}'
+curl -s -X POST https://circlebite.app/api/auth/judge-link -H 'content-type: application/json' -d '{}'
+curl -sI https://circlebite.app/judge | grep -i -E 'x-robots-tag|referrer-policy'
+```
+
+**5. Send it** to Prof. Yoest by one-time secret link (Password Pusher), per `CONTEST_RULES.md` §4,
+with the test name above. Never by plain email, chat or document, and never in the repo. Set the
+push to expire after one view and a few days, so the link sits in nobody's inbox. He forwards it to
+the judges as he chooses; one link works for all of them.
+
+**How many worlds are left.** JT runs this himself, read-only:
+
+```bash
+( set -a; source ~/circlebite/.env; set +a
+  PGOPTIONS="-c default_transaction_read_only=on" psql "$DATABASE_URL" -c \
+  "SELECT count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM sessions s WHERE s.user_id = u.id)) AS unused,
+          count(*) AS pool
+   FROM users u WHERE u.email LIKE 'pool.judge%@demo.circlebite.test'" )
+```
+
+**Turn it off.** This is immediate: the link is a 404 again, and every judge it signed in is signed
+out on their next request.
+
+```bash
+sed -i 's/^JUDGE_LINK=.*/JUDGE_LINK=off/' ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
+### After judging — turn it off and purge
+
+The link stops by itself at `JUDGE_LINK_EXPIRES` (midnight Eastern starting November 21) even if
+nothing is done. Then, once judging is over:
+1. Turn it off (above), and delete the `JUDGE_LINK_TOKEN_HASH` line from `.env`. Restart.
+2. Reseed (§16). This deletes every pool judge and their invented circle, and recreates them unused.
+   Reports the link judges filed are **rejected**, not deleted, so any warning they started stops at
+   once and the overrule log keeps them, as for any judge. Nothing else on the box holds them.
+3. Check the review queue for anything a judge filed on a real product that the reseed couldn't
+   find (§16, "Known limit").
 
 ## 17. Backups
 
