@@ -433,11 +433,14 @@ Not yet reported to Prof. Yoest.
   is created"; "…the refusal comes first…"; "with REGISTRATION on, a valid adult sign-up creates the
   account, as before"), `client/src/routes/RegisterEntry.test.ts`, and
   `client/src/routes/Landing.test.ts` ("with REGISTRATION off, the page has no sign-up link…").
-  **Not yet deployed.** Production keeps open sign-up until the deploy, and the §11i check after it.
-  Not yet reported to him.
+  **Deployed November 6, about 9 PM ET** (release `20261107015518`, `31afd14`; the deploy script
+  reported healthy). The §11i production check is still owed. The follow-up that also hides the
+  landing page's demo notices and closing sign-up line (`0737376`) is not yet deployed. Not yet
+  reported to him.
 - **"Put that example on the judge card."** The butter spread case: "two accounts from one person
   could only add a warning, never clear one" (Smjörvi, November 3, under the Due Sunday, October 25
-  fake-family item above). **Not done.** `docs/judges/judge-card.html` doesn't carry it yet.
+  fake-family item above). **Done November 7** (`43b40f1`, `7e0be8b`): "Why one person can't clear a
+  warning" on the judge card and in `JUDGES.md`, from `docs/journal.md`, 2026-11-03. Not yet sent.
 - **"By Monday, November 9, send me the test names and a draft of the judge card …"** JT's November 5
   email (`2026-11-05-jt-judge-tests-and-card.md`) sent both: two tests per claim, by file and name,
   and the card as a PDF. Its send time isn't recorded, so whether it crossed with this 11:23 AM email
@@ -466,8 +469,27 @@ No date of its own; the code freeze is November 13 and judging November 20.
   account or the admin pages, and it should stop working after judging."**
 - **"Add a test that proves the link can't open an admin page, and send me its name with the link."**
 - **"Keep the printed card as an optional extra … The link comes first."**
-- **Status: not started** (November 6). Bears on `CONTEST_RULES.md` §4's one-time-secret-link line:
-  the link itself is the credential, so how it reaches him is still to be decided.
+- **Built November 7, not deployed or switched on.** JT chose a pool of 40 worlds the judge seed
+  makes ahead of time over a world made per click, which would have had a web request writing
+  `judge_world` and creating accounts while sign-up is closed (`docs/principles.md`, Decision
+  precedents, Nov 7). Commits: `c097759` (the pool), `e14ac43` (`JUDGE_LINK`, `JUDGE_LINK_EXPIRES`,
+  `JUDGE_LINK_TOKEN_HASH`), `6bbd6b0` (`assertIsAdmin` refuses the seed domain), `41926f1` (the
+  link), `1b9e9f8` (`/judge` and Maya's card), `d501946` (noindex). Runbook:
+  `docs/server-setup.md` §16a.
+- **The test he asked for:** `server/src/auth/judgeLink.test.ts`, "a judge-link session gets 404 from
+  every admin page and admin API". It runs over real HTTP against every route the admin router has.
+  The same file also has:
+  - "the judge link signs in only to an unused pool judge: never the operator, an admin, a real
+    account or a used world"
+  - "an expired judge link is a plain 404, and the sessions it made stop working"
+  - "with JUDGE_LINK off the judge link is a plain 404, and the sessions it made stop working"
+  - "a wrong, missing or malformed token is the same plain 404 as a missing page, and signs nobody
+    in"
+  - "two judge-link clicks get two separate worlds, and one world's report never counts toward
+    another's or a real family's"
+  - "the judge link lands on Maya's card for 2990000000083"
+- **Delivery:** by Password Pusher, per `CONTEST_RULES.md` §4, after the judging-week reseed and
+  JT's one check (§16a). The token is in no file or commit.
 
 ## Corrections owed to Prof. Yoest
 
