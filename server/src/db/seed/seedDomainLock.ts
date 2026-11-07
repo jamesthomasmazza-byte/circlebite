@@ -2,8 +2,9 @@ import { pool } from "../pool.js";
 
 // Test-only (2026-11-07). judgeSeed.test.ts and auth/judgeLink.test.ts both run the judge seed, which
 // deletes and recreates every account on the seed domain, and node runs test files in parallel. Each
-// holds this session-level advisory lock for its whole run, so the two take turns instead of
-// deleting each other's rows mid-test. Nothing in the app takes it.
+// holds this session-level advisory lock for its whole run, and any other test that writes a
+// seed-domain account holds it while it does, so they take turns instead of deleting each other's
+// rows mid-test. Nothing in the app takes it.
 
 const SEED_DOMAIN_LOCK = 0x5eed;
 
