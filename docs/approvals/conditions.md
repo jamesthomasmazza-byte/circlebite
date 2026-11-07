@@ -490,6 +490,15 @@ No date of its own; the code freeze is November 13 and judging November 20.
   - "the judge link lands on Maya's card for 2990000000083"
 - **Delivery:** by Password Pusher, per `CONTEST_RULES.md` §4, after the judging-week reseed and
   JT's one check (§16a). The token is in no file or commit.
+- **Clicked through locally on November 7**, in Chrome, against a production-mode server:
+  - The link landed on Maya's card for `2990000000083` with Priya named, and no token was left in
+    the address bar or the tab's back history.
+  - The admin APIs answered 404, so the admin page showed only "Couldn't load this page."
+  - A second click got the next world.
+  - Found and fixed: opening the link again in a tab already on `/judge` did nothing (`e12478b`).
+  - **Found, and not fixable in code:** Chrome's own history keeps the full link, token included.
+    Worth telling him, since it is his "password sitting in a URL" caution: a judge's browser
+    history holds the link until `JUDGE_LINK_EXPIRES`.
 
 ## Corrections owed to Prof. Yoest
 

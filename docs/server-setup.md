@@ -1042,6 +1042,13 @@ CircleBite signed in to a demo judge account, on Maya's card for `2990000000083`
   logs. The page reads it, removes it from the address bar, and POSTs it. The server compares its
   SHA-256 to `JUDGE_LINK_TOKEN_HASH` in constant time. Only the hash is stored; the token is in no
   file, commit or log.
+- **Browser history still keeps it.** Checked on November 7 by clicking through locally in Chrome.
+  The page clears the token from the address bar and the tab's back history, but the browser's own
+  history (`chrome://history`) records the full `/judge#<token>` URL it opened, and no page can remove
+  that. A private window saves none. So anyone with a judge's browser can open the link until it
+  expires or is switched off. What they get is bounded: an unused demo world, never an admin or
+  anyone's real account, at most 10 worlds in 10 minutes, and nothing after `JUDGE_LINK_EXPIRES`.
+  To shut it early, make a new token (step 2) or turn the switch off.
 - **Refusals.** Any refusal is the same plain 404 (`{"error":"not_found"}`), and the page says only
   "Page not found". That covers: `JUDGE_LINK` off, past `JUDGE_LINK_EXPIRES`, no hash set, a wrong or
   malformed token, more than 10 worlds handed out in 10 minutes (global, whoever clicks), and an

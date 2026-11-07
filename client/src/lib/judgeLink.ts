@@ -2,7 +2,9 @@
 // demo world (server auth/judgeLink.ts) and lands on Maya's card for the shared judge barcode.
 //
 // The token rides in the fragment, which a browser never sends in a request, so it reaches no server
-// or nginx log; the page POSTs it and drops it from the address bar first. Scan runs the card on the
+// or nginx log; the page POSTs it and drops it from the address bar and the tab's back history first.
+// The browser's own history still records the URL it opened, token included; no page can remove that
+// (docs/server-setup.md §16a). Scan runs the card on the
 // judge=1 flag alone, as it does the sample: a barcode is never read from the URL.
 
 /** The seed's shared judge barcode (server db/seed/seedData.ts, PRODUCTS.circleReported). */
