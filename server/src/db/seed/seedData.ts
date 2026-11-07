@@ -39,13 +39,39 @@ type CoManager = { id: string; profile: string; person: string; addedBy: string 
 type Follower = { id: string; profile: string; person: string; invitedBy: string; shareLevel: "all" | "severe_only" };
 type SeedScan = { id: string; profile: string; scanner: string; product: ProductKey; daysAgo: number };
 
-/** One judge's cast, as keys into PEOPLE and PROFILES — e.g. { judge: "judge2", maya: "maya2", ... }. */
-export type JudgeCast = { n: number; judge: string; priya: string; sam: string; elena: string; maya: string; leo: string; noor: string };
+/** One judge's cast, as keys into PEOPLE and PROFILES — e.g. { judge: "judge2", maya: "maya2", ... }.
+ *  linkPool: one of the judge link's worlds (below), whose judge has no password. */
+export type JudgeCast = {
+  n: number;
+  judge: string;
+  priya: string;
+  sam: string;
+  elena: string;
+  maya: string;
+  leo: string;
+  noor: string;
+  linkPool: boolean;
+};
 
-export const JUDGE_CASTS: JudgeCast[] = Array.from({ length: JUDGE_COUNT }, (_, i) => {
-  const n = i + 1;
-  return { n, judge: `judge${n}`, priya: `priya${n}`, sam: `sam${n}`, elena: `elena${n}`, maya: `maya${n}`, leo: `leo${n}`, noor: `noor${n}` };
-});
+function judgeCast(n: number, linkPool: boolean): JudgeCast {
+  return { n, judge: `judge${n}`, priya: `priya${n}`, sam: `sam${n}`, elena: `elena${n}`, maya: `maya${n}`, leo: `leo${n}`, noor: `noor${n}`, linkPool };
+}
+
+export const JUDGE_CASTS: JudgeCast[] = Array.from({ length: JUDGE_COUNT }, (_, i) => judgeCast(i + 1, false));
+
+// ---- The judge link's pool (Prof. Yoest, 2026-11-05, 4:38 PM; JT, 2026-11-07) -------------------------
+// One link for every judge signs each click in to a world nobody has used yet (auth/judgeLink.ts).
+// The worlds are made here, by the seed the operator runs, never by the link: the link only signs in.
+// Each is a whole cast from the same template as judges 1–4, worlds 5 to 44, so two clicks are two
+// worlds and no report in one counts toward another's or a real family's. Their judges have no
+// password (the unusable hash every non-login account gets), so the link is the only way in, and a
+// world is used for good once its judge has had any session. A reseed recreates all 40 unused.
+
+export const JUDGE_LINK_POOL_SIZE = 40;
+
+export const JUDGE_LINK_POOL: JudgeCast[] = Array.from({ length: JUDGE_LINK_POOL_SIZE }, (_, i) =>
+  judgeCast(JUDGE_COUNT + 1 + i, true),
+);
 
 export const PEOPLE: Record<string, Person> = {};
 export const PROFILES: Record<string, SeedProfile> = {};
@@ -54,13 +80,14 @@ export const FOLLOWERS: Follower[] = [];
 export const SCANS: SeedScan[] = [];
 export const CIRCLE_REPORTS: SeedCommunityReport[] = [];
 
-for (const cast of JUDGE_CASTS) {
+function addCast(cast: JudgeCast): void {
   const { n } = cast;
   const id = (namespace: number, k: number) => seedId(namespace, (n - 1) * CAST_ID_STRIDE + k);
 
   // ---- People. Only the judge can sign in (judgeSeed.ts). ----
   // Everyone in the cast is in judge n's world.
-  PEOPLE[cast.judge] = { id: id(1, 1), email: `judge${n}@${SEED_EMAIL_DOMAIN}`, displayName: `Judge ${n}`, isJudge: true, judgeWorld: n };
+  const judgeEmail = cast.linkPool ? `pool.judge${n}@${SEED_EMAIL_DOMAIN}` : `judge${n}@${SEED_EMAIL_DOMAIN}`;
+  PEOPLE[cast.judge] = { id: id(1, 1), email: judgeEmail, displayName: `Judge ${n}`, isJudge: true, judgeWorld: n };
   PEOPLE[cast.priya] = { id: id(1, 2), email: `priya.nair.${n}@${SEED_EMAIL_DOMAIN}`, displayName: "Priya Nair", isJudge: false, judgeWorld: n };
   PEOPLE[cast.sam] = { id: id(1, 3), email: `sam.okafor.${n}@${SEED_EMAIL_DOMAIN}`, displayName: "Sam Okafor", isJudge: false, judgeWorld: n };
   PEOPLE[cast.elena] = { id: id(1, 4), email: `elena.varga.${n}@${SEED_EMAIL_DOMAIN}`, displayName: "Elena Varga", isJudge: false, judgeWorld: n };
@@ -163,6 +190,11 @@ for (const cast of JUDGE_CASTS) {
     },
   );
 }
+
+for (const cast of [...JUDGE_CASTS, ...JUDGE_LINK_POOL]) addCast(cast);
+
+/** The only accounts the judge link can ever sign in to (auth/judgeLink.ts), found by exact address. */
+export const JUDGE_LINK_POOL_EMAILS = JUDGE_LINK_POOL.map((cast) => PEOPLE[cast.judge].email);
 
 // ---- The reporting families, shared by every judge ------------------------------------------------
 // The two families behind COMMUNITY_REPORTS — outside every judge's circle, so the escalation a judge

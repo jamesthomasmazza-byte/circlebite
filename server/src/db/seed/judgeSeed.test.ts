@@ -24,12 +24,16 @@ import {
   SeedNotCorroboratedError,
 } from "./judgeSeed.js";
 import { generateJudgePasswords } from "./judgePasswords.js";
+import { holdSeedDomain } from "./seedDomainLock.js";
 import {
   CHECK_ACCOUNT_KEY,
   CIRCLE_REPORTS,
   COMMUNITY_REPORTS,
   JUDGE_CASTS,
   JUDGE_COUNT,
+  JUDGE_LINK_POOL,
+  JUDGE_LINK_POOL_EMAILS,
+  JUDGE_LINK_POOL_SIZE,
   LOGIN_KEYS,
   NPS_ROWS,
   PEOPLE,
@@ -137,7 +141,11 @@ async function snapshot() {
   };
 }
 
+// auth/judgeLink.test.ts runs the seed too: the two take turns (seedDomainLock.ts).
+let releaseSeedDomain: () => Promise<void>;
+
 before(async () => {
+  releaseSeedDomain = await holdSeedDomain();
   judgePasswordHashes = await hashAll(judgePasswords);
   otherPasswordHash = await hashPassword(randomBytes(32).toString("base64url"));
   await clearSeed();
@@ -149,6 +157,7 @@ after(async () => {
   await pool.query("DELETE FROM users WHERE id = $1", [OUTSIDER]);
   await clearSeed();
   await Promise.all(SEEDED_REPORTS.map((r) => rm(path.join(env.uploadDir, r.photoPath), { force: true })));
+  await releaseSeedDomain();
   await pool.end();
 });
 
@@ -353,7 +362,9 @@ test("a seed whose reports fall short of the threshold fails loudly, and changes
 test("the circle's pending reports stay pending: one family each, every judge on the same barcode", async () => {
   const circleIds = new Set(CIRCLE_REPORTS.map((r) => r.id));
   const circleRows = baseline.reports.filter((r) => circleIds.has(r.id));
-  assert.equal(circleRows.length, 2 * JUDGE_COUNT);
+  // Judges 1–4 and the judge link's 40 pool worlds (seedData.ts), each its own world.
+  const worlds = JUDGE_COUNT + JUDGE_LINK_POOL_SIZE;
+  assert.equal(circleRows.length, 2 * worlds);
   assert.ok(circleRows.every((r) => r.status === "pending" && r.direction === "add_caution"));
 
   const client = await pool.connect();
@@ -369,7 +380,7 @@ test("the circle's pending reports stay pending: one family each, every judge on
   assert.deepEqual([...new Set(CIRCLE_REPORTS.map((r) => PRODUCTS[r.product].barcode))], ["2990000000083"], "one barcode for every judge");
 
   // Each report is in its reporter's judge world, and that is all that holds them apart: counted
-  // without the worlds, the four casts' Sesame reports are four families, past the threshold.
+  // without the worlds, the casts' Sesame reports are one family per cast, past the threshold.
   for (const report of CIRCLE_REPORTS) {
     const row = (await pool.query("SELECT judge_world_at_report AS world FROM product_corrections WHERE id = $1", [report.id])).rows[0];
     assert.equal(row.world, PEOPLE[report.reporter].judgeWorld, report.id);
@@ -378,7 +389,7 @@ test("the circle's pending reports stay pending: one family each, every judge on
     `SELECT count(DISTINCT profile_owner_at_report)::int AS n FROM product_corrections WHERE id = ANY($1) AND allergen = 'Sesame'`,
     [CIRCLE_REPORTS.map((r) => r.id)],
   );
-  assert.equal(rows[0].n, JUDGE_COUNT);
+  assert.equal(rows[0].n, worlds);
   assert.ok(rows[0].n >= CORROBORATION_THRESHOLD.add_caution);
 });
 
@@ -911,4 +922,34 @@ test("the post-deploy check account: its own login, kept apart from the judges',
   // The check's own scan is cleared by the next reseed, like any seeded account's.
   await seed();
   assert.deepEqual(await snapshot(), baseline);
+});
+
+// The judge link's pool (2026-11-07): 40 worlds made by the seed, never by the link.
+
+test("the seed makes the judge link's 40 pool worlds: worlds 5–44, no password, never admin, on the reserved domain", async () => {
+  await seed();
+  assert.equal(JUDGE_LINK_POOL.length, 40);
+  assert.deepEqual(JUDGE_LINK_POOL.map((c) => c.n), Array.from({ length: 40 }, (_, i) => i + 5));
+  const { rows } = await pool.query<{ email: string; judge_world: number; is_admin: boolean; password_hash: string }>(
+    "SELECT email, judge_world, is_admin, password_hash FROM users WHERE email = ANY($1) ORDER BY judge_world",
+    [JUDGE_LINK_POOL_EMAILS],
+  );
+  assert.equal(rows.length, 40);
+  for (const [i, row] of rows.entries()) {
+    assert.equal(row.judge_world, i + 5, row.email);
+    assert.equal(row.is_admin, false, row.email);
+    assert.match(row.email, new RegExp(`^pool\\.judge${i + 5}@${SEED_EMAIL_DOMAIN.replaceAll(".", "\\.")}$`));
+    // The unusable hash every non-login account gets: no judge password signs in to a pool account.
+    for (const password of Object.values(judgePasswords)) assert.equal(await verifyPassword(password, row.password_hash), false);
+  }
+  // None is in LOGIN_KEYS, so none is ever printed as a login.
+  for (const cast of JUDGE_LINK_POOL) assert.ok(!LOGIN_KEYS.includes(cast.judge), cast.judge);
+  // Each pool world has the whole cast: Maya, owned by its judge, with the shared barcode's pending report.
+  const cast = JUDGE_LINK_POOL[0];
+  assert.equal(PROFILES[cast.maya].owner, cast.judge);
+  const { rows: reports } = await pool.query(
+    "SELECT judge_world_at_report AS world, status FROM product_corrections WHERE barcode = '2990000000083' AND profile_owner_at_report = $1",
+    [PEOPLE[cast.judge].id],
+  );
+  assert.deepEqual(reports, [{ world: cast.n, status: "pending" }]);
 });
