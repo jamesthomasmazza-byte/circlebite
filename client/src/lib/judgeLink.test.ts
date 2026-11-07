@@ -47,5 +47,15 @@ test("every failure reads the same: Page not found, and the page is marked noind
   assert.match(repo("client/src/main.tsx"), /<Route path="\/judge" element=\{<JudgeLink \/>\} \/>/);
   // One failure branch, one heading, nothing that says why.
   assert.equal(PAGE.split("setFailed(true)").length - 1, 2, "no token, and any refused request");
+
   assert.match(PAGE, /<main>\s*<h1>\{JUDGE_LINK_NOT_FOUND\}<\/h1>\s*<\/main>/);
+});
+
+test("opening the link in a tab already on /judge tries again: a hash change, not a page load", () => {
+  // Found clicking through it on Nov 7: after a failed first try, the same link did nothing.
+  assert.match(PAGE, /window\.addEventListener\("hashchange", attempt\);/);
+  assert.match(PAGE, /return \(\) => window\.removeEventListener\("hashchange", attempt\);/);
+  // One request at a time, and the token still leaves the address bar before it's sent.
+  assert.match(PAGE, /if \(sending\) return;/);
+  assert.ok(PAGE.indexOf("replaceState(null, \"\", JUDGE_LINK_PATH)") < PAGE.indexOf("signInWithJudgeLink(token)"));
 });
