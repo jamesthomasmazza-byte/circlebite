@@ -11,12 +11,22 @@ often isn't the person whose allergies are at stake.
 
 ---
 
-## Plan to judging (set Oct 26) — code freeze Nov 13
+## Plan to judging (set Oct 26) — code freeze Nov 16, 11:59 PM ET (was Nov 13)
 
 Set by JT on 2026-10-26. Five items move into it: three that were in "Deferred until after
 judging" (1, 5, 6) and two new ones (3, 7). None is a `CONTEST_RULES.md` §7 item. Each week's
 guard is written under it; an item that can't meet its guard by the freeze doesn't ship.
 Four more (8–11, UI simplification) were added by JT on Nov 5.
+
+**The freeze moved on Nov 7** (Prof. Yoest's group email, 9:36 AM ET,
+`docs/approvals/2026-11-07-yoest-contest-reminders.md`): **Monday Nov 16, 11:59 PM ET**, was Nov 13.
+Judges grade the last commit on `main` before then, and **nothing is redeployed to AWS after it**.
+Judging stays Friday Nov 20 over Zoom, but only tentatively. So what this file called "judging week"
+for production is now **before the freeze**: the §16a sequence (reseed, token, `JUDGE_LINK=on`, JT's
+click-through, the `curl` checks) and the final submission email, which carries the judge link as its
+one-click demo login, by one-time secret link. They sit in "Before the Nov 16 freeze" below. New
+before the freeze: the video under 5 minutes and the two-sentence summary. After the freeze, only
+things that don't touch production remain.
 
 **JT, anytime (no code):**
 - [x] Rename the duplicate "James Mazza" profile. *Moot: the profile went with JT's James account in the R9 purge (journal, 2026-11-03).*
@@ -25,6 +35,8 @@ Four more (8–11, UI simplification) were added by JT on Nov 5.
   on 2026-10-26 (`076eefb`); portrait with Stop camera above the tab bar, and "Got it" then the
   result in portrait, on 2026-10-27 (`docs/journal.md`).*
 - [ ] Owner-only acknowledgement check on production.
+- [ ] **RSVP by Nov 9** (Prof. Yoest's Nov 7 email). JT's questions on the RSVP and the video went to
+  him Nov 7; RSVP once he answers (`docs/approvals/conditions.md`, "Contest reminders").
 
 ### Week of Oct 26 — low risk
 
@@ -115,7 +127,7 @@ Four more (8–11, UI simplification) were added by JT on Nov 5.
    shows `SCANNER_REGION=on` (and `CIRCLE_ESCALATIONS=on`), health ok; with his phone set back to
    Server default, inside the box reads and beside it doesn't. Rollback: `SCANNER_REGION=off` and a
    restart (`docs/server-setup.md` §11b).*
-   *Still owed before Nov 20: one Android phone, and a curved or small package. Not yet tried
+   *Still owed before the Nov 16 freeze (not Nov 20: a fix after the freeze can't be deployed): one Android phone, and a curved or small package. Not yet tried
    either: the same packages with the device choice Off.*
 6. [x] **Approve/decline circle requests.** Moved from "Deferred". Today an invite is a link the
    invitee accepts, so the Circle tab lists only invites waiting to be accepted (JT, 2026-10-23); a
@@ -324,7 +336,7 @@ precedents, Nov 5.
    notice first; JUDGES.md's barcodes; the deploy check; the green-card case; the reporter row as
    owner and as follower; a typed barcode; a label photo, which failed closed for want of an AI key
    locally. Not checked: the cameras themselves (no phone), the flash, and a real label read.*
-   **Decision owed, before Nov 13:** switch it on only after JT's review **and** before the code
+   **Decision owed, before Nov 16 (was Nov 13):** switch it on only after JT's review **and** before the code
    freeze, or leave it off for judging. The judge card's typed step reads right either way since
    Nov 6 ("Tap **Type it** if you see it, then type 2990000000083 in **Barcode** and tap **Check
    this product**", `docs/judges/judge-card.html`); a copy printed before then lacks "Type it".
@@ -353,12 +365,12 @@ precedents, Nov 5.
    (`docs/journal.md`, Nov 6). To switch it off: `docs/server-setup.md` §11h. JT's iPhone check is
    his to do and isn't recorded here as done.*
 
-### Nov 13 — code freeze
+### Nov 16, 11:59 PM ET — code freeze (was Nov 13; moved Nov 7)
 
 - [x] **Deploy the reporter row before the freeze** (Prof. Yoest's Oct 27 ask,
   `docs/approvals/2026-10-27-yoest-judges-reporter-row.md`): `255f867` (the seed) and `f91691a`
   (the `JUDGES.md` row), pushed Oct 27 in `cd97de2`. A deploy alone doesn't make the row true on
-  production; the judging-week reseed below does.
+  production; the reseed before the freeze (below) does.
   *Deployed Oct 29 in `154a6ba`, in its shared-barcode form (next item).*
 - [x] **Deploy one shared barcode with judge worlds before the freeze** (Prof. Yoest's Oct 27,
   7:55 PM ask, `docs/approvals/2026-10-27-yoest-one-shared-barcode.md`): migration 0049 and the
@@ -368,7 +380,7 @@ precedents, Nov 5.
   *Deployed Oct 29, about 12:10 PM ET: `154a6ba`, release `20261029160944`, migration 0049
   applied, backup taken first. The false-safety check passed: James's peanut profile on `…076`
   still "Contains an allergen", reported by 2 shoppers. Takes effect on production at the
-  judging-week reseed.*
+  reseed before the freeze.*
 - [ ] **His October 29 ask, by the freeze** (`docs/approvals/2026-10-29-yoest-judge-tests-and-card.md`;
   plan: `docs/judge-card-plan.md`). Missed until Nov 4; interim reply sent Nov 4.
   - [x] **The tests, named.** *The three below are done (`1ab3d7c`, `db3ac5d`, `5a3d6dc`); the
@@ -395,7 +407,14 @@ precedents, Nov 5.
 
 Fixes only from here.
 
-### Week of Nov 16 — judges
+### Before the Nov 16 freeze — judges (was "Week of Nov 16")
+
+Everything here touches production, so all of it happens **before Monday Nov 16, 11:59 PM ET**
+(Prof. Yoest, Nov 7). In this order, and the order matters: reseed, token, `JUDGE_LINK=on`, JT's
+click-through, the `curl` checks, and only then the final submission email. No reseed after the link
+goes out. JT picks the days; the freeze is the deadline, not the plan, and an early finish leaves
+room to fix what the click-through finds.
+
 
 - [ ] `--rotate-passwords` reseed, in JT's own terminal. This is also the reseed that makes the
   reporter row true on production, and that puts every seeded account in its judge world. It also
@@ -412,11 +431,27 @@ Fixes only from here.
   worlds: make the token on the box, set `JUDGE_LINK=on`, restart. Then JT opens the link once in a
   private window (uses one world): Maya's card for `2990000000083`, Priya named, no token left in
   the address bar, no admin data. Then the three `curl` checks.
-- [ ] Send the link to Prof. Yoest by Password Pusher, with the test name "a judge-link session gets
-  404 from every admin page and admin API" (`server/src/auth/judgeLink.test.ts`).
-- [ ] No reseed after the link goes out, until judging is over.
+- [ ] **Final submission email to Prof. Yoest** (his Nov 7 reminder,
+  `docs/approvals/2026-11-07-yoest-contest-reminders.md`), sent after the steps above and the video and
+  summary below, **by Nov 16, 11:59 PM ET**. Subject: "Final Submission: James Mazza, CircleBite" (his
+  template is "Final Submission: Your Name, App Name"). It carries: the repo
+  (`https://github.com/jamesthomasmazza-byte/circlebite`), the live link (`https://circlebite.app`),
+  the **one-click demo login, which is the judge link**, the video, and the two-sentence summary. The
+  judge link is a credential, so it goes by **one-time secret link (Password Pusher), never pasted into
+  the email** (`CONTEST_RULES.md` §4; settings in `docs/server-setup.md` §16a step 5), with the test
+  name "a judge-link session gets 404 from every admin page and admin API"
+  (`server/src/auth/judgeLink.test.ts`). This one email replaces the separate "send the link to Prof.
+  Yoest" step and the Oct 5 promise of a fresh credentials email on the Monday of judging week.
+- [ ] No reseed after the link goes out, until judging is over (Nov 20, tentatively).
+- [ ] **The video, under 5 minutes** (his Nov 7 email; new). Content pending Prof. Yoest's answer to
+  JT's Nov 7 questions. Record it against production as it will be frozen, and don't script around
+  anything that needs a redeploy.
+- [ ] **The two-sentence summary** (his Nov 7 email; new). Two sentences: the problem and what
+  CircleBite does. Separate from the one-page summary in Week 10.
 - [ ] After judging: `JUDGE_LINK=off`, remove `JUDGE_LINK_TOKEN_HASH`, reseed (§16a, "After judging").
-- [ ] Confirm the AI key works: Console "Last used", plus a label photo.
+  *After the freeze, and not a redeploy: it changes the box's settings and data, not the code. The
+  link also stops by itself at `JUDGE_LINK_EXPIRES`.*
+- [ ] Confirm the AI key works, **before the freeze**: Console "Last used", plus a label photo.
 - [ ] **Two lines to Prof. Yoest that the judge worlds held on production** (his Oct 29 ask), after
   the reseed: the checks are in `docs/judge-card-plan.md` §4.
 - [ ] **Paper scan of the judge card**, promised to Prof. Yoest on Nov 5
@@ -1066,6 +1101,10 @@ it is the least-worked area. Treat this whole section as the priority block it i
         two families) and never by email. Not in the Oct 19 email as drafted (JT, 2026-10-17). Open
         in `docs/approvals/conditions.md` too, which already says "Never answered to him by email".
       - [ ] **Send a fresh judge-credentials link on Monday of judging week (Nov 16).**
+        *Superseded Nov 7: Prof. Yoest's freeze email makes Nov 16 the code freeze, and the judges get
+        the judge link, not logins. The link goes in the final submission email before the freeze (see
+        "Before the Nov 16 freeze" under the Nov 16 freeze heading above). What follows is the Oct 5
+        record.*
         Judging moved to Friday Nov 20 (Oct 14 email), so that Monday is now Nov 16, not Nov 23.
         Promised in
         the Oct 5 credentials email — this line is the only record of it outside that sent email.
@@ -1344,7 +1383,13 @@ it is the least-worked area. Treat this whole section as the priority block it i
       hasn't been rejected can lower the headline or any row, in any starting state"
       (`applyCorrections.test.ts`).
 
-## Week 10 — Nov 17–19 · Submission prep *[10% presentation]*
+## Week 10 — Submission prep *[10% presentation]*
+
+*Nov 7: the code freeze is now Mon Nov 16, 11:59 PM ET (was Nov 13) and judging Nov 20 is
+tentative, so "Nov 17–19" no longer exists for production work. Items below that touch production
+(the judge credentials, the spend cap, the AI key check) move before the freeze; the rest is
+preparation that needs no deploy.*
+
 
 - [ ] One-page summary: problem, solution, how AI does the work, what was learned
 - [ ] Demo script following the five-beat sequence in `docs/verdict-engine.md`. Keep account
@@ -1365,6 +1410,9 @@ it is the least-worked area. Treat this whole section as the priority block it i
       *Status 2026-10-05:* the link went out (two months / four views), but that email carried
       neither ask above. Both go in the fresh-link email on Monday Nov 16 — see "Send a fresh
       judge-credentials link on Monday of judging week" under Prof. Yoest's Oct 1-2 conditions.
+      *Nov 7: the judges now get the judge link, not logins, in the final submission email sent
+      before the Nov 16 freeze (see "Before the Nov 16 freeze"). Registration is closed, so the
+      invitation to register is moot unless `REGISTRATION` is switched on.*
 - [ ] `AI_DAILY_SPEND_CAP_CENTS` defaults to 200 ($2.00/day) — sized when a scan meant exactly one
       Anthropic call (Path B's `reasonVerdict`). Path C makes it two (extraction, then reasoning),
       and a failed extraction still spends one call before it can even fail. The adaptive flow
@@ -1374,19 +1422,26 @@ it is the least-worked area. Treat this whole section as the priority block it i
       note above), not just occasionally. Tripping the cap fails closed to `unable_to_confirm`
       (correct behavior, but it reads as a broken app if it happens mid-demo). Decide the
       judging-week value deliberately, not by leaving the default in place and hoping — before
-      `LABEL_SCAN` gets flipped on for judging, not after
+      `LABEL_SCAN` gets flipped on for judging, not after. It is a production setting, so decide and set
+      it before the Nov 16 freeze.
 - [ ] Confirm to Prof. Yoest that the instance stays running through judging *(R10)*
 - [ ] **Check the production AI key hasn't expired before judging.** "circlebite prod" expired
       Oct 10 without anything saying so (`docs/journal.md`, 2026-10-16/17). The current key,
-      "circlebite prod 2026-10", expires Dec 31, 2026. Before judging: the Console shows it active
+      "circlebite prod 2026-10", expires Dec 31, 2026. Before the Nov 16 freeze: the Console shows it active
       with a recent "Last used", a label photo on production gets a real result, and
       `journalctl -u circlebite | grep 'AI step failed'` is quiet. Rotate before Dec 31 per
       `docs/server-setup.md` §6a, whatever happens with judging.
-- [ ] Freeze the code
+- [ ] Freeze the code: **Mon Nov 16, 11:59 PM ET** (was Nov 13). Judges grade the last commit on `main`
+      before then, and nothing is redeployed to AWS after it
+      (`docs/approvals/2026-11-07-yoest-contest-reminders.md`).
 
-## Nov 20 — Judging, over Zoom
+## Nov 20 — Judging, over Zoom (tentative, per his Nov 7 email)
 
-- [ ] Shortly before judging opens, rerun the judge seed on production (`docs/server-setup.md` §16)
+- [ ] ~~Shortly before judging opens, rerun the judge seed on production~~ **Superseded Nov 7.** The
+      freeze is Nov 16, and a reseed after the judge link is out signs its judges out
+      (`docs/server-setup.md` §16a), so the one reseed is the one before the freeze, and the seeded
+      scan dates will read up to a week old on Nov 20. The original item: rerun the judge seed on
+      production (`docs/server-setup.md` §16)
       as a **plain run, without `--rotate-passwords`**, so each judge keeps the password already
       sent (since `c4c1041`, a reseed keeps every surviving judge's password). This
       refreshes the scan dates (seeded history is dated relative to the run, and would otherwise

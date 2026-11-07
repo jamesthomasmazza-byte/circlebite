@@ -87,7 +87,10 @@ Requirements, same standing as §3:
 | Sept 14, 2026 | Idea submission due |
 | Oct 14, 2026, 2:10 PM | Sponsor lecture — David and Courtney Eisen, Maloney 207 |
 | TBA | Two group Zoom sessions during the build window |
-| Nov 20, 2026 | Judging, over Zoom — moved from the week of Nov 26 (`docs/approvals/2026-10-14-yoest-shared-escalations-ask.md`) |
+| Nov 9, 2026 | RSVP to Prof. Yoest's Nov 7 reminders email. JT's questions on the RSVP and the video went to him Nov 7 |
+| **Nov 16, 2026, 11:59 PM ET** | **Code freeze**, moved from Nov 13 (`docs/approvals/2026-11-07-yoest-contest-reminders.md`). Judges grade the last commit on `main` before then, and nothing is redeployed to AWS after it. Everything that touches production happens first: the judge reseed, the judge link switched on and checked, the final submission email sent |
+| By the freeze | **Final submission email**, subject "Final Submission: Your Name, App Name", with the repo, the live link, a one-click demo login (the judge link, sent by one-time secret link per §4), a video under 5 minutes, and a two-sentence summary |
+| Nov 20, 2026 | Judging, over Zoom, **tentatively** (his Nov 7 email) — moved from the week of Nov 26 (`docs/approvals/2026-10-14-yoest-shared-escalations-ask.md`). `JUDGE_LINK_EXPIRES` (Nov 21) assumes this date |
 
 ## 6. Scoring — where effort pays
 

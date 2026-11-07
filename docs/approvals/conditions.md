@@ -339,6 +339,8 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
 
 ### Due Thursday, November 13 — the code freeze (his October 27, 2:51 PM email, `2026-10-27-yoest-judges-reporter-row.md`)
 
+*The freeze moved to Monday, November 16, 11:59 PM ET on November 7 ("Contest reminders" below). The headings and quotes in the three "code freeze" sections keep his original wording.*
+
 - **"By your November 13 code freeze, add one row: a barcode where a co-manager has a pending
   escalation, and what the owner sees next to what the follower sees."** Planned October 27: one
   barcode per judge, a pending Sesame report by Priya (co-manager) on Maya, where the judge is the
@@ -354,7 +356,7 @@ Extended on October 6, 9:32 PM (`2026-10-06-yoest-corroboration-challenge.md`):
 - **Still owed:** the reseed that makes it true on production. Deploying doesn't, because the seed
   only writes these rows when it runs. The production reseed that does is the judging-week
   `--rotate-passwords` reseed (week of November 16), run by JT in his own terminal (`BACKLOG.md`,
-  "Week of Nov 16 — judges"). Until then, production has no such barcode.
+  "Before the Nov 16 freeze"). Until then, production has no such barcode.
   *Update, November 3:* JT ran a plain reseed on production after deploying `553832e`, which runs
   the same seed, so the reporter row is written there now. It has not yet been checked on
   production as judge1 and judge2.
@@ -415,7 +417,7 @@ Not yet reported to Prof. Yoest.
   deliberately invalid (`docs/judge-card-plan.md`). On JT's iPhone, off a laptop screen, it decoded
   to the seed product (journal, 2026-11-04). **Sent November 5** as a PDF, in the same email.
   **Still owed:** the paper scan. The email says it isn't tested yet and promises to confirm it
-  before judging (`BACKLOG.md`, "Week of Nov 16 — judges").
+  before judging (`BACKLOG.md`, "Before the Nov 16 freeze").
 - **"After the reseed, two lines confirming it held on production."** Owed after a reseed. The
   November 3 plain reseed may already make it checkable; the judging-week reseed is the one he
   names.
@@ -458,12 +460,17 @@ Not yet reported to Prof. Yoest.
   under the bucket's 7-day rule about November 12, after his November 9 date, still to be confirmed;
   and one pre-purge set is kept on JT's Mac, encrypted, until judging is over. The confirmation he
   gets must say both.
+- **Answered November 7, 9:16 AM ET:** JT's reply to the asks above (the date he gave was Monday,
+  November 9). **It told him the judge link would come in judging week. Superseded** 20 minutes later
+  by his 9:36 AM group email: with the code freeze on November 16, the link now goes to him in the
+  final submission email, before the freeze ("Contest reminders" below). No copy of the reply is in
+  `docs/approvals/` yet.
 - **Withdrawn:** "two or three demo family accounts" with logins on the card. Replaced by the judge
   link in his 4:38 PM email (below): "drop them."
 
 ### Judge link (his November 5, 4:38 PM email, `2026-11-05-yoest-one-click-judge-link.md`)
 
-No date of its own; the code freeze is November 13 and judging November 20.
+No date of its own; the code freeze is November 16, moved from November 13 by his November 7 email, and judging is November 20, tentatively.
 
 - **"Please build one link that works for every judge. A click should open CircleBite already signed
   in to a demo account and showing the card for 2990000000083."** No printing, scanning or logins.
@@ -493,7 +500,7 @@ No date of its own; the code freeze is November 13 and judging November 20.
   - "two judge-link clicks get two separate worlds, and one world's report never counts toward
     another's or a real family's"
   - "the judge link lands on Maya's card for 2990000000083"
-- **Delivery:** by Password Pusher, per `CONTEST_RULES.md` §4, after the judging-week reseed and
+- **Delivery:** by Password Pusher, per `CONTEST_RULES.md` §4, in the final submission email before the November 16 freeze ("Contest reminders" below), after the reseed and
   JT's one check (§16a). The token is in no file or commit.
 - **Clicked through locally on November 7**, in Chrome, against a production-mode server:
   - The link landed on Maya's card for `2990000000083` with Priya named, and no token was left in
@@ -504,6 +511,26 @@ No date of its own; the code freeze is November 13 and judging November 20.
   - **Found, and not fixable in code:** Chrome's own history keeps the full link, token included.
     Worth telling him, since it is his "password sitting in a URL" caution: a judge's browser
     history holds the link until `JUDGE_LINK_EXPIRES`.
+
+### Contest reminders (his November 7, 9:36 AM group email, `2026-11-07-yoest-contest-reminders.md`)
+
+Sent to every contestant, not to JT alone. Three items, and an RSVP:
+
+- **"code freeze Monday Nov 16, 11:59 PM ET: judges grade the last commit on main before then, and no
+  redeploy to AWS after it."** Moves the freeze from November 13. Everything planned for judging
+  week that touches production moves before it: the judge-link sequence (`docs/server-setup.md`
+  §16a: reseed, token, `JUDGE_LINK=on`, JT's click-through, the `curl` checks) and the final
+  submission email. `CONTEST_RULES.md` §5 and `BACKLOG.md` updated November 7. **Open:** all of it.
+- **"a final submission email, subject \"Final Submission: Your Name, App Name\", with the repo, the
+  live link, a one-click demo login, a video under 5 minutes, and a two-sentence summary."** The
+  one-click demo login is the judge link, sent by one-time secret link per `CONTEST_RULES.md` §4. The
+  video and the two-sentence summary are new `BACKLOG.md` items before the freeze. The video's
+  content waits on his answer to JT's November 7 questions. **Open.**
+- **"Zoom presentations Friday Nov 20, tentatively."** Judging stays November 20, but not firmly.
+  `JUDGE_LINK_EXPIRES` (November 21, midnight Eastern) assumes it; `docs/server-setup.md` §16a says
+  what to do if the date moves.
+- **"RSVP by Nov 9."** JT's questions about the RSVP and the video were sent November 7. **Open until
+  he answers and JT RSVPs.**
 
 ## Corrections owed to Prof. Yoest
 

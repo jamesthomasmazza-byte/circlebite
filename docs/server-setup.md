@@ -1064,13 +1064,23 @@ CircleBite signed in to a demo judge account, on Maya's card for `2990000000083`
 Settings in `~/circlebite/.env`, all optional:
 - `JUDGE_LINK`: `on` or `off`. Unset is off.
 - `JUDGE_LINK_EXPIRES`: an ISO date-time with offset. Unset is `2026-11-21T00:00:00-05:00`.
+  **That default assumes judging on November 20, which Prof. Yoest's November 7 email calls
+  tentative.** If the date moves, set this to the end of the new judging day. The link is also on
+  from the moment of step 3, days before judging, so it is reachable by anyone it was sent to for that
+  whole stretch; the expiry is what ends it.
 - `JUDGE_LINK_TOKEN_HASH`: 64 hex characters. Unset matches no token.
 
 A malformed value refuses to boot, like a switch.
 
-### Judging week, in this order
+### Before the freeze, in this order
 
-**1. Reseed first.** The judging-week reseed (§16, `--rotate-passwords`) must run **before** the link
+Prof. Yoest's November 7 email moved the code freeze to **Monday November 16, 11:59 PM ET**: nothing
+is redeployed to AWS after it (`docs/approvals/2026-11-07-yoest-contest-reminders.md`). What this
+section called judging week is therefore **before the freeze**: steps 1–5 all happen first, and the
+link goes to him in the **final submission email** (`BACKLOG.md`, "Before the Nov 16 freeze"), as its
+one-click demo login, by the deadline. Judging itself is Friday November 20, tentatively.
+
+**1. Reseed first.** The reseed before the freeze (§16, `--rotate-passwords`) must run **before** the link
 is sent. It is what makes the 40 pool worlds, and every reseed after the link goes out deletes each
 used world's judge, signing that judge out. They can click again for a fresh world, but whatever
 they did is gone. So no reseed between sending the link and the end of judging, unless something is
@@ -1120,9 +1130,11 @@ curl -sI https://circlebite.app/judge | grep -i -E 'x-robots-tag|referrer-policy
 ```
 
 **5. Send it** to Prof. Yoest by one-time secret link (Password Pusher), per `CONTEST_RULES.md` §4,
-with the test name above. Never by plain email, chat or document, and never in the repo. Set the
-push to expire after one view and a few days, so the link sits in nobody's inbox. He forwards it to
-the judges as he chooses; one link works for all of them.
+with the test name above, as part of the final submission email: the secret link is the email's
+one-click demo login. Never paste the link itself into the email, chat or a document, and never into
+the repo. Set the push to one view, and an expiry that outlasts the judging date (Nov 20), since he
+may not open it before then. He forwards it to the judges as he chooses; one link works for all of
+them.
 
 **How many worlds are left.** JT runs this himself, read-only:
 
@@ -1144,8 +1156,8 @@ sudo systemctl restart circlebite
 
 ### After judging — turn it off and purge
 
-The link stops by itself at `JUDGE_LINK_EXPIRES` (midnight Eastern starting November 21) even if
-nothing is done. Then, once judging is over:
+The link stops by itself at `JUDGE_LINK_EXPIRES` (midnight Eastern starting November 21, assuming
+judging stays on November 20) even if nothing is done. Then, once judging is over:
 1. Turn it off (above), and delete the `JUDGE_LINK_TOKEN_HASH` line from `.env`. Restart.
 2. Reseed (§16). This deletes every pool judge and their invented circle, and recreates them unused.
    Reports the link judges filed are **rejected**, not deleted, so any warning they started stops at
