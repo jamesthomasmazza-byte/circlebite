@@ -3658,6 +3658,7 @@ button.profile-menu__button {
   flex: 1 1 auto;
   flex-wrap: wrap;
   min-width: min-content;
+  padding-inline: var(--space-2);
   align-items: center;
   justify-content: center;
   gap: var(--space-1);
