@@ -420,6 +420,55 @@ Not yet reported to Prof. Yoest.
   November 3 plain reseed may already make it checkable; the judging-week reseed is the one he
   names.
 
+### Due Monday, November 9 (his November 5, 11:23 AM email, `2026-11-05-yoest-registration-and-judge-card.md`)
+
+- **"On registration, please close it until after judging."** His reason: "A friendly landing page
+  will eventually draw a real parent entering a real child's allergy, and our build rests on using
+  no real human data." No date on this one; treated as live risk and done first. **Built November
+  6** behind `REGISTRATION`, off by default (`8c6f234`, `614c80e`, `e083414`, `f8c321c`, `627f3d7`):
+  the server refuses `POST /auth/register`, the only route that creates an account, and `/register`
+  and the landing page show "New accounts are closed until after judging." Runbook:
+  `docs/server-setup.md` §11i; decision: `docs/principles.md`, Decision precedents, Nov 6. Tests:
+  `server/src/auth/register.test.ts` ("with REGISTRATION off, a valid sign-up is refused and nothing
+  is created"; "…the refusal comes first…"; "with REGISTRATION on, a valid adult sign-up creates the
+  account, as before"), `client/src/routes/RegisterEntry.test.ts`, and
+  `client/src/routes/Landing.test.ts` ("with REGISTRATION off, the page has no sign-up link…").
+  **Not yet deployed.** Production keeps open sign-up until the deploy, and the §11i check after it.
+  Not yet reported to him.
+- **"Put that example on the judge card."** The butter spread case: "two accounts from one person
+  could only add a warning, never clear one" (Smjörvi, November 3, under the Due Sunday, October 25
+  fake-family item above). **Not done.** `docs/judges/judge-card.html` doesn't carry it yet.
+- **"By Monday, November 9, send me the test names and a draft of the judge card …"** JT's November 5
+  email (`2026-11-05-jt-judge-tests-and-card.md`) sent both: two tests per claim, by file and name,
+  and the card as a PDF. Its send time isn't recorded, so whether it crossed with this 11:23 AM email
+  is unknown. The card draft he gets next should carry the butter spread case, and the judge link
+  once there is one (below).
+- **"… and confirm that the older backups holding your test accounts are deleted."** Done November 5
+  as far as can be confirmed today (§ "Due Thursday, November 13 — the code freeze (his October 29,
+  7:23 PM email)" above; `docs/server-setup.md` §17.14): none on the box, and the 52 pre-purge sets
+  deleted from S3. **Two things a plain "deleted" would overstate:** their older S3 versions expire
+  under the bucket's 7-day rule about November 12, after his November 9 date, still to be confirmed;
+  and one pre-purge set is kept on JT's Mac, encrypted, until judging is over. The confirmation he
+  gets must say both.
+- **Withdrawn:** "two or three demo family accounts" with logins on the card. Replaced by the judge
+  link in his 4:38 PM email (below): "drop them."
+
+### Judge link (his November 5, 4:38 PM email, `2026-11-05-yoest-one-click-judge-link.md`)
+
+No date of its own; the code freeze is November 13 and judging November 20.
+
+- **"Please build one link that works for every judge. A click should open CircleBite already signed
+  in to a demo account and showing the card for 2990000000083."** No printing, scanning or logins.
+- **"Keep the separation in the data, the way you do now, so judges sharing one link never count
+  toward each other or toward a real family."** Today's separation is the judge worlds (migration
+  0049, "Due Thursday, November 13" above), one world per judge account.
+- **"Make sure the link can only sign into the demo judge accounts. It must never reach the operator
+  account or the admin pages, and it should stop working after judging."**
+- **"Add a test that proves the link can't open an admin page, and send me its name with the link."**
+- **"Keep the printed card as an optional extra … The link comes first."**
+- **Status: not started** (November 6). Bears on `CONTEST_RULES.md` §4's one-time-secret-link line:
+  the link itself is the credential, so how it reaches him is still to be decided.
+
 ## Corrections owed to Prof. Yoest
 
 The October 8 email, which his October 9 acceptance rests on, claimed more than was checked.
