@@ -25,12 +25,17 @@ import { circleCardHref } from "../lib/inviteCopy";
 import { showScanForButton } from "../lib/tabs";
 import { useScanningFor } from "../TabShell";
 import { accessNotice } from "../lib/profileLineCopy";
+import { useAuth } from "../lib/AuthContext";
+import { ProfileDetailRedesign } from "../ProfileDetailRedesign";
 
 export function ProfileDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const { scannableCount } = useScanningFor();
+  // PROFILE_REDESIGN (JT's mockup, 2026-11-06): the same page, laid out with a header and tabs
+  // (ProfileDetailRedesign.tsx). Every request and rule below is shared; off, today's markup.
+  const { profileRedesignEnabled: redesign, user } = useAuth();
   const [profile, setProfile] = useState<ProfileDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -222,6 +227,29 @@ export function ProfileDetail() {
         )}
         {reviewError && <p role="alert">{reviewError}</p>}
       </div>
+    );
+  }
+
+  if (redesign) {
+    return (
+      <ProfileDetailRedesign
+        id={id}
+        profile={profile}
+        viewerId={user?.id}
+        canManage={canManage}
+        isOwner={isOwner}
+        showScanFor={showScanForButton(scannableCount)}
+        choices={choices}
+        history={history}
+        historyFailed={historyFailed}
+        ackFailed={ackFailed}
+        reviewFor={reviewFor}
+        onAddAllergen={handleAddAllergen}
+        onUpdateAllergen={handleUpdateAllergen}
+        onRemoveAllergen={handleRemoveAllergen}
+        onAcknowledge={() => void handleAcknowledge()}
+        onDelete={() => void handleDeleteProfile()}
+      />
     );
   }
 
