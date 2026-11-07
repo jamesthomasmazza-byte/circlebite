@@ -19,10 +19,16 @@ export function AddAllergen({
   choices,
   startOpen,
   onAdd,
+  openRequest = 0,
+  showOpenButton = true,
 }: {
   choices: AllergenChoice[] | null;
   startOpen: boolean;
   onAdd: (input: AllergenInput) => Promise<void>;
+  /** PROFILE_REDESIGN: each new value opens the form — the profile header's "Add an allergen". */
+  openRequest?: number;
+  /** PROFILE_REDESIGN: false when the header's button is the way in, so it isn't shown twice. */
+  showOpenButton?: boolean;
 }) {
   const [open, setOpen] = useState(startOpen);
   const [pick, setPick] = useState<AllergenPick>(EMPTY_PICK);
@@ -35,6 +41,10 @@ export function AddAllergen({
   useEffect(() => {
     if (startOpen) setOpen(true);
   }, [startOpen]);
+
+  useEffect(() => {
+    if (openRequest > 0) setOpen(true);
+  }, [openRequest]);
 
   function reset() {
     setPick(EMPTY_PICK);
@@ -65,6 +75,7 @@ export function AddAllergen({
   }
 
   if (!open) {
+    if (!showOpenButton) return null;
     return (
       <p>
         <button type="button" onClick={() => setOpen(true)}>

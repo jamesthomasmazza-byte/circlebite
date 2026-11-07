@@ -110,11 +110,17 @@ test("the unseen block is never collapsed, and the Changes tab says how many are
   assert.match(html, /Changes<span class="profile-tabs__badge">1 new<\/span>/);
 });
 
-test("Scan for only with two or more profiles to scan for; Add an allergen only for managers", () => {
+test("Scan for only with two or more profiles to scan for; Add an allergen once, in the header, for managers", () => {
   assert.doesNotMatch(render(OWNER), /Scan for Maya/);
   assert.match(render(OWNER, { showScanFor: true }), /href="\/scan\?profile=p1"[^>]*>Scan for Maya<\/a>/);
-  assert.match(render(CO), /Add an allergen/);
-  assert.doesNotMatch(render(FULL), /<button[^>]*>Add an allergen/);
+  // JT, 2026-11-06: the button under the list repeated the header's.
+  for (const access of [OWNER, CO]) {
+    const html = render(access);
+    assert.equal(html.match(/>Add an allergen</g)?.length, 1, "once");
+    assert.ok(html.indexOf(">Add an allergen<") < html.indexOf('role="tablist"'), "in the header");
+  }
+  assert.doesNotMatch(render(FULL), /Add an allergen/);
+  assert.match(SRC, /openRequest=\{addRequest\}\s+showOpenButton=\{false\}/);
 });
 
 test("Delete lives in the owner's ⋯ menu only, and goes through today's confirm step", () => {

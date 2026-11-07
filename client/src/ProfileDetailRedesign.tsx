@@ -76,7 +76,8 @@ export function ProfileDetailRedesign(p: Props) {
   const [scansFailed, setScansFailed] = useState(false);
   const [openScan, setOpenScan] = useState<ScanHistoryEntry | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [addRequested, setAddRequested] = useState(false);
+  // Each tap of the header's "Add an allergen" opens today's add form, the one way in (JT, 2026-11-06).
+  const [addRequest, setAddRequest] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -180,7 +181,7 @@ export function ProfileDetailRedesign(p: Props) {
             <button
               type="button"
               onClick={() => {
-                setAddRequested(true);
+                setAddRequest((n) => n + 1);
                 choose("allergens");
               }}
             >
@@ -226,7 +227,9 @@ export function ProfileDetailRedesign(p: Props) {
           {p.canManage && (
             <AddAllergen
               choices={p.choices}
-              startOpen={addRequested || profile.allergens.length === 0}
+              startOpen={profile.allergens.length === 0}
+              openRequest={addRequest}
+              showOpenButton={false}
               onAdd={p.onAddAllergen}
             />
           )}

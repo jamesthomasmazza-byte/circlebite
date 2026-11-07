@@ -51,3 +51,12 @@ test("before the choices load, the open form still asks for a severity and shows
   assert.doesNotMatch(html, /<select/);
   assert.match(html, /How severe is it\?/);
 });
+
+test("PROFILE_REDESIGN: with the header's button the way in, a closed form shows no second button", () => {
+  // JT, 2026-11-06: managers saw "Add an allergen" twice. Today's page keeps its button (the default).
+  assert.match(render(false), /<button type="button">Add an allergen<\/button>/);
+  const closedHidden = renderToStaticMarkup(createElement(AddAllergen, { choices: CHOICES, startOpen: false, onAdd: async () => {}, showOpenButton: false }));
+  assert.equal(closedHidden, "");
+  const opened = renderToStaticMarkup(createElement(AddAllergen, { choices: CHOICES, startOpen: true, onAdd: async () => {}, showOpenButton: false }));
+  assert.match(opened, /<form/, "an empty profile still opens with the form, as today");
+});
