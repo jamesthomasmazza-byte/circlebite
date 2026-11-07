@@ -34,8 +34,8 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 
 export type CurrentUser = { id: string; email: string; displayName: string; isAdmin: boolean };
 
-/** A signed-out page's switches (server routes/features.ts): only GUIDED_SETUP today. */
-export function fetchFeatures(): Promise<{ guidedSetupEnabled: boolean }> {
+/** A signed-out page's switches (server routes/features.ts): GUIDED_SETUP and REGISTRATION. */
+export function fetchFeatures(): Promise<{ guidedSetupEnabled: boolean; registrationOpen: boolean }> {
   return apiFetch("/features");
 }
 
