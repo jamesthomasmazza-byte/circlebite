@@ -20,8 +20,10 @@ test("switch off is today's page exactly: Register.tsx untouched, and chosen unl
   // (lib/demoNoticeCopy.ts, JT's approval). Any other edit to the classic page still fails here.
   assert.equal(createHash("sha256").update(CLASSIC).digest("hex"), "15e11e14998f7480afa18ef441a8ef2d667eae90a0d535421b9a094be5df36e3");
   assert.match(MAIN, /<Route path="\/register" element=\{<RegisterEntry \/>\} \/>/);
-  assert.match(ENTRY, /\.then\(\(f\) => live && setGuided\(f\.guidedSetupEnabled === true\)\)\s*\.catch\(\(\) => live && setGuided\(false\)\)/);
-  assert.match(ENTRY, /if \(guided === null\) return null;\s*return guided \? <GuidedRegister \/> : <Register \/>;/);
+  // Since 2026-11-06 REGISTRATION comes first (RegisterEntry.test.ts); with sign-up open, the
+  // classic form unless the guided flag says on.
+  assert.match(ENTRY, /f\.registrationOpen !== true \? "closed" : f\.guidedSetupEnabled === true \? "guided" : "classic"/);
+  assert.match(ENTRY, /return choice === "guided" \? <GuidedRegister \/> : <Register \/>;/);
 });
 
 test("the same request: register() once, with the same four fields", () => {
