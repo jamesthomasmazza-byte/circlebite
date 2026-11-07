@@ -1,8 +1,12 @@
 # CircleBite — a guide for judges
 
-Your login arrived by one-time link. Each judge has their own account (`judge1` to
-`judge4@demo.circlebite.test`) and their own invented family, so nothing you do shows up for
-another judge. Everyone, products and report in this demo is invented.
+## Start here: click your judge link
+
+Prof. Yoest sends one link for every judge. Click it: CircleBite opens already signed in to a demo
+judge account, on Maya's result for `2990000000083`. There is nothing to type and no password.
+
+Each judge's demo family is kept apart in the data, so a report you file never counts toward
+another judge's, or toward a real family's. Everyone, products and report in the demo is invented.
 
 ## Your circle
 
@@ -14,10 +18,10 @@ You hold one role on each of three children's profiles:
 | **Leo** | co-manager | Milk (severe), Egg (mild) |
 | **Noor** | follower | Tree nut (severe), Wheat (moderate) |
 
-## Barcodes to try
+## Optional: see the scan yourself
 
-A printed card with the shared barcode, to scan off paper or a laptop screen, is
-`docs/judges/judge-card.html`.
+Scanning is the heart of the app. A printed card with the shared barcode, to scan off paper or a
+laptop screen, is `docs/judges/judge-card.html`.
 
 Choose the profile on the scan page **before** you enter a barcode. Don't rely on the one already
 selected: it can differ between accounts and after a reset. The same barcode gives a
@@ -37,3 +41,14 @@ is allergic to it.
 
 Please file reports only against the demo barcodes above (every one starts `2990000000`). A report
 on a real product becomes a live warning for real families until it is cleared.
+
+## Why one person can't clear a warning
+
+One real case from testing, not part of the demo. Two test accounts, both belonging to the
+developer, reported sesame in a real Icelandic butter spread. Its ingredients have no sesame. The
+app counted the two accounts as two families, so the warning was confirmed for everyone. It was
+removed by hand on November 3 (`docs/journal.md`, 2026-11-03).
+
+It also shows the safeguard working as designed: two accounts from one person could only add a
+warning, never clear one. A report that an allergen isn't there is noted on the reporter's own card
+and never applied, so the same trick can't remove a real warning (`docs/fake-family-risk.md`).
