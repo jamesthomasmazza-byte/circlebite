@@ -122,7 +122,7 @@ Keys that live there now: `DATABASE_URL` (set when the database was created, §5
 `SESSION_SECRET` (generated on the box with `openssl rand -hex 32`, appended when the app was first
 deployed, §7 below), `NODE_ENV=production` / `PORT=3000`, `OFF_USER_AGENT` (appended when the
 scan feature deployed — Open Food Facts requires a descriptive user agent on every request),
-`UPLOAD_DIR` (§8), `COMMUNITY_CORRECTIONS` (§11), `CIRCLE_ESCALATIONS` (§11a), `SCANNER_REGION` (§11b), `CIRCLE_REQUESTS` (§11c), `GUIDED_SETUP` (§11d), `SCAN_SOUNDS` (§11e), `LABEL_SCAN`, the AI keys listed in
+`UPLOAD_DIR` (§8), `COMMUNITY_CORRECTIONS` (§11), `CIRCLE_ESCALATIONS` (§11a), `SCANNER_REGION` (§11b), `CIRCLE_REQUESTS` (§11c), `GUIDED_SETUP` (§11d), `SCAN_SOUNDS` (§11e), `REGISTRATION` (§11i), `LABEL_SCAN`, the AI keys listed in
 `.env.example`, and for backups (§17) `BACKUP_S3_BUCKET` — a name, not a secret, kept here so no
 bucket name is ever in the repo — and `RESTORE_TEST_DB_PASSWORD`, generated on the box. `.env.example`
 is the complete list.
@@ -736,6 +736,58 @@ sudo systemctl restart circlebite
 sed -i 's/^PROFILE_REDESIGN=.*/PROFILE_REDESIGN=off/' ~/circlebite/.env
 sudo systemctl restart circlebite
 ```
+
+## 11i. Registration — switch (closed until after judging)
+
+With `REGISTRATION=off`, nobody can create an account. `POST /auth/register` answers 403
+`registration_closed` before it reads the request, so the classic form, the guided sign-up, an old
+tab and a hand-made request are all refused (`server/src/auth/routes.ts`). It is the only route that
+creates an account: invite links, co-manager links and follow requests all need someone already
+signed in, and only link existing accounts. `/register` and the landing page's three "Create an
+account" buttons show "New accounts are closed until after judging." instead, read from the public
+`GET /api/features` (`registrationOpen`); if that can't be read, they show the closed line too.
+
+Still working with it off: signing in, password resets (§15), invites and follow requests to
+existing accounts (an invite page's "create an account" link lands on the closed line, and its Log
+in keeps the invite), and the judge seed (§16), which writes its accounts directly.
+
+**Off is the standard state until judging ends, and the default** (Prof. Yoest, November 5, 2026,
+`docs/approvals/2026-11-05-yoest-registration-and-judge-card.md`): a friendly landing page would
+eventually draw a real parent entering a real child's allergy (R9). Unlike the other switches,
+leaving the variable unset keeps sign-up closed, so the first deploy carrying it closes sign-up with
+no `.env` change. Set it explicitly anyway, so `.env` says what production does:
+
+```bash
+grep -q '^REGISTRATION=' ~/circlebite/.env \
+  && sed -i 's/^REGISTRATION=.*/REGISTRATION=off/' ~/circlebite/.env \
+  || echo "REGISTRATION=off" >> ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
+**Check it on production after the deploy** — from the Mac, not the box. Neither request creates
+anything while it's closed:
+
+```bash
+curl -s https://<domain>/api/features
+#   {"guidedSetupEnabled":true,"registrationOpen":false}
+curl -s -X POST https://<domain>/api/auth/register -H 'content-type: application/json' -d '{}'
+#   {"error":"registration_closed"}
+```
+
+Then, signed out, `/` should show the closed line in the header, the hero and the closing section,
+with no "Create an account" anywhere, and `/register` should show the line and "Log in".
+
+**Reopen after judging** — only after November 20, and only with Prof. Yoest's written word in
+`docs/approvals/`:
+
+```bash
+sed -i 's/^REGISTRATION=.*/REGISTRATION=on/' ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
+Accounts created before it closed are untouched either way. The landing page's closing line,
+"Create your account, add your child's allergens one question at a time…", is its approved copy and
+stays while sign-up is closed; the button under it is what changes.
 
 ## 12. Admin access — the AI accuracy page
 
