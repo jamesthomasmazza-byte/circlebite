@@ -97,10 +97,13 @@ function CreateAccount({ open, className }: { open: boolean; className: string }
 export function LandingPage({ registrationOpen }: { registrationOpen: boolean }) {
   return (
     <div className="landing">
-      {/* Above the header, so it sits with the header's "Create an account" (R9, lib/demoNoticeCopy.ts). */}
-      <p role="note" className="demo-notice demo-notice--strip">
-        {DEMO_NOTICE}
-      </p>
+      {/* Above the header, so it sits with the header's "Create an account" (R9, lib/demoNoticeCopy.ts).
+          Each notice goes with its button: with REGISTRATION off there's no account to start. */}
+      {registrationOpen && (
+        <p role="note" className="demo-notice demo-notice--strip">
+          {DEMO_NOTICE}
+        </p>
+      )}
       <header className="landing__bar">
         <div className="landing__wrap">
           <a href="#top" className="landing__name">
@@ -130,9 +133,11 @@ export function LandingPage({ registrationOpen }: { registrationOpen: boolean })
                   See how it works
                 </a>
               </div>
-              <p role="note" className="demo-notice">
-                {DEMO_NOTICE}
-              </p>
+              {registrationOpen && (
+                <p role="note" className="demo-notice">
+                  {DEMO_NOTICE}
+                </p>
+              )}
               <p className="landing__fine">A screening aid, not a guarantee. Always check the physical label.</p>
             </div>
 
@@ -366,19 +371,24 @@ export function LandingPage({ registrationOpen }: { registrationOpen: boolean })
         <section className="landing__closing">
           <div className="landing__wrap landing__stack">
             <h2>Set up your child's profile before your next grocery run.</h2>
-            <p className="landing__lead">
-              Create your account, add your child's allergens one question at a time, then invite the people who feed
-              them.
-            </p>
+            {/* An invitation to sign up, so it goes while REGISTRATION is off. */}
+            {registrationOpen && (
+              <p className="landing__lead">
+                Create your account, add your child's allergens one question at a time, then invite the people who
+                feed them.
+              </p>
+            )}
             <div className="landing__actions">
               <CreateAccount open={registrationOpen} className="landing__button" />
               <Link to="/login" className="landing__text-link">
                 Already have an account? Log in
               </Link>
             </div>
-            <p role="note" className="demo-notice">
-              {DEMO_NOTICE}
-            </p>
+            {registrationOpen && (
+              <p role="note" className="demo-notice">
+                {DEMO_NOTICE}
+              </p>
+            )}
           </div>
         </section>
       </main>

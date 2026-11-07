@@ -785,9 +785,10 @@ sed -i 's/^REGISTRATION=.*/REGISTRATION=on/' ~/circlebite/.env
 sudo systemctl restart circlebite
 ```
 
-Accounts created before it closed are untouched either way. The landing page's closing line,
-"Create your account, add your child's allergens one question at a time…", is its approved copy and
-stays while sign-up is closed; the button under it is what changes.
+Accounts created before it closed are untouched either way. While it's off, the landing page also
+drops its three "use a made-up name" notices and the closing section's "Create your account, add
+your child's allergens one question at a time…" line; both come back with the buttons when it
+reopens.
 
 ## 12. Admin access — the AI accuracy page
 

@@ -137,6 +137,14 @@ test("the contest-demo notice sits with every 'Create an account': above the hea
 
 test("with REGISTRATION off, the page has no sign-up link, and says sign-up is closed in each place", () => {
   const closed = render(false);
+  const closedText = closed.replace(/<[^>]+>/g, " ").replace(/&#x27;/g, "'").replace(/\s+/g, " ");
+  // Nothing that invites a sign-up: no demo notice, and no closing "Create your account…" line.
+  assert.doesNotMatch(closed, new RegExp(DEMO_NOTICE.replace(/[.]/g, "\\.")));
+  assert.doesNotMatch(closed, /demo-notice/);
+  assert.doesNotMatch(closedText, /Create your account/);
+  // Both come back with the buttons: the open page is the approved copy above, notices included.
+  assert.equal(html.split(DEMO_NOTICE).length - 1, 3);
+  assert.match(text, /Create your account, add your child's allergens one question at a time/);
   assert.doesNotMatch(closed, /href="\/register/);
   assert.doesNotMatch(closed, />Create an account</);
   assert.equal(closed.split(`<p class="landing__closed">${REGISTRATION_CLOSED}</p>`).length - 1, 3);
