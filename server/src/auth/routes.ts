@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { pool } from "../db/pool.js";
+import { env } from "../env.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 import { isSeedEmail } from "../lib/seedMarker.js";
 import { blockSignup, evaluateAgeGate, isSignupBlocked } from "./ageGate.js";
@@ -26,6 +27,15 @@ export const authRouter = Router();
 authRouter.post(
   "/register",
   asyncHandler(async (req, res) => {
+    // REGISTRATION (env.ts): closed until after judging. Refused before the body is read or anything
+    // is looked up, so a closed sign-up says nothing about an address, records no attempt and runs
+    // no age gate. This is the only route that creates an account; the guided sign-up posts here
+    // too, and invites and follow requests only link accounts that already exist.
+    if (!env.registration) {
+      res.status(403).json({ error: "registration_closed" });
+      return;
+    }
+
     const { email, password, displayName, dob } = req.body ?? {};
 
     if (
