@@ -42,6 +42,9 @@ type AuthState = {
   circleRedesignEnabled: boolean;
   // The redesigned Scan tab (SCAN_REDESIGN), same default: until it's confirmed on, today's Scan.
   scanRedesignEnabled: boolean;
+  // The redesigned Profile tab and page (PROFILE_REDESIGN), same default: until it's confirmed on,
+  // today's pages.
+  profileRedesignEnabled: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (input: { email: string; password: string; displayName: string; dob: string }) => Promise<void>;
@@ -60,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [scanSoundsEnabled, setScanSoundsEnabled] = useState(false);
   const [circleRedesignEnabled, setCircleRedesignEnabled] = useState(false);
   const [scanRedesignEnabled, setScanRedesignEnabled] = useState(false);
+  const [profileRedesignEnabled, setProfileRedesignEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // refresh() runs both at mount (before any session cookie exists) and after login/register
@@ -83,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setScanSoundsEnabled(me.scanSoundsEnabled);
       setCircleRedesignEnabled(me.circleRedesignEnabled);
       setScanRedesignEnabled(me.scanRedesignEnabled);
+      setProfileRedesignEnabled(me.profileRedesignEnabled);
     } catch {
       // Any failure to confirm identity — 401 or a transient network/server error — just means
       // we don't currently know who's logged in. Never rethrow: login()/register() call this
@@ -98,6 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setScanSoundsEnabled(false);
       setCircleRedesignEnabled(false);
       setScanRedesignEnabled(false);
+      setProfileRedesignEnabled(false);
     } finally {
       if (requestIdRef.current === requestId) setLoading(false);
     }
@@ -150,6 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setScanSoundsEnabled(false);
       setCircleRedesignEnabled(false);
       setScanRedesignEnabled(false);
+      setProfileRedesignEnabled(false);
     }
   }, []);
 
@@ -164,6 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         scanSoundsEnabled,
         circleRedesignEnabled,
         scanRedesignEnabled,
+        profileRedesignEnabled,
         loading,
         login,
         register,

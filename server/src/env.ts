@@ -112,4 +112,10 @@ export const env = {
   // A layout only: the verdict, its wording and every flow are the same either way. Off by default,
   // and off is today's Scan, unchanged. The client reads it via GET /me.
   scanRedesign: parseSwitch("SCAN_REDESIGN", process.env.SCAN_REDESIGN, false),
+  // The redesigned Profile tab and profile page (client routes/Profiles.tsx and ProfileDetail.tsx,
+  // 2026-11-06): profile rows with avatars, and a profile page with a header, stats and Allergens |
+  // Scans | Changes tabs. A layout only; GET /profiles/:id/scan-count is the one route it adds, open
+  // to anyone who can read the profile either way. Off by default, and off is today's pages. The
+  // client reads it via GET /me.
+  profileRedesign: parseSwitch("PROFILE_REDESIGN", process.env.PROFILE_REDESIGN, false),
 };

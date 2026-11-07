@@ -93,3 +93,14 @@ test("GET /me exposes scanRedesignEnabled from env.scanRedesign", () => {
 
   assert.equal(body?.scanRedesignEnabled, env.scanRedesign);
 });
+
+test("GET /me exposes profileRedesignEnabled from env.profileRedesign", () => {
+  const handler = findMeHandler();
+  const req = { user: { id: "u1", email: "a@example.com", displayName: "A", isAdmin: false }, session: { id: "s1", actingProfileId: null } };
+  let body: { profileRedesignEnabled?: boolean } | undefined;
+  const res = { json: (b: unknown) => { body = b as typeof body; } };
+
+  handler(req, res);
+
+  assert.equal(body?.profileRedesignEnabled, env.profileRedesign);
+});

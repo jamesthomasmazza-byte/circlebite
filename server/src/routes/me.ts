@@ -33,6 +33,8 @@ meRouter.get("/me", requireAuth, (req, res) => {
     circleRedesignEnabled: env.circleRedesign,
     // The redesigned Scan tab's switch, the same free field. Nothing on the server depends on it.
     scanRedesignEnabled: env.scanRedesign,
+    // The redesigned Profile tab and page's switch, the same free field.
+    profileRedesignEnabled: env.profileRedesign,
   });
 });
 
