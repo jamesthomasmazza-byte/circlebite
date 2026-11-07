@@ -1,46 +1,64 @@
 # Vibe Contest Reminders: code freeze Nov 16, final submission email, Zoom Nov 20 (tentative)
 
-**From:** Prof. Jack Yoest
-**To:** the contest group (a group email, not addressed to JT alone)
-**Date:** November 7, 2026, 9:36 AM ET
-**Subject:** "Vibe Contest Reminders"
-**Answers:** nothing. It is a reminder to every contestant.
+**From:** Prof. Jack Yoest (yoest@cua.edu)
+**To:** the finalists and the judges ("Dear Judges and #AlertAIStudents"), a group email, not addressed
+to JT alone
+**Date:** November 7, 2026, 14:36 UTC (9:36 AM ET)
+**Subject:** Vibe Contest Reminders
+**Answers:** nothing. It is a reminder to everyone in the contest.
 **Arrived 20 minutes after** JT's reply to the asks due November 9 (sent November 7, 9:16 AM ET). That
-reply told him the judge link would come in judging week; this email supersedes it (below).
+reply said the judge link would come in judging week; JT's RSVP, sent later the same day, corrected it
+(`docs/approvals/conditions.md`, "Contest reminders").
 
-**Asks (items 1–3, quoted exactly; the RSVP line is separate):**
+**Asks, under his item 1, "Final Submission and Code Freeze":**
+- the **code freeze**, Monday, November 16, 11:59 p.m. ET (it was November 13): judges evaluate the last
+  commit on `main` before then, and students don't redeploy to AWS after it;
+- the **final submission**, by email, subject line "Final Submission: Your Name, App Name", with the
+  repo, the live link, a one-click demo login, a video under 5 minutes, and a two-sentence summary;
+- **Zoom presentations** Friday, November 20, "tentatively";
+- **RSVP:** students confirm by Monday, November 9.
 
-> 1. code freeze Monday Nov 16, 11:59 PM ET: judges grade the last commit on main before then,
->    and no redeploy to AWS after it;
-> 2. a final submission email, subject "Final Submission: Your Name, App Name", with the repo, the
->    live link, a one-click demo login, a video under 5 minutes, and a two-sentence summary;
-> 3. Zoom presentations Friday Nov 20, tentatively;
+His items 2 and 3 are not contest requirements: he asks finalists for the email addresses of their
+hometown newspaper and high school alumni relations, and invites them to RSVP for the Eisen Lecture on
+Friday, November 13, 1:30 PM, Maloney Hall 207.
 
-> RSVP by Nov 9
-
-**Moves:**
-- The **code freeze**, from Thursday November 13 (the date in his October 27 and 29 emails and in
-  `BACKLOG.md` since October 26) to **Monday November 16, 11:59 PM ET**. After it, nothing is
-  redeployed to AWS, so every production change planned for judging week moves before it.
-- **Judging** stays Friday November 20 over Zoom, but **tentatively**. `JUDGE_LINK_EXPIRES`
-  (`2026-11-21T00:00:00-05:00` by default) assumes that date.
-
-**Adds:**
-- A **final submission email** with five parts. The "one-click demo login" is the judge link
-  (`docs/approvals/2026-11-05-yoest-one-click-judge-link.md`), which goes by one-time secret link, per
-  `CONTEST_RULES.md` §4.
-- A **video under 5 minutes** and a **two-sentence summary**. Neither existed as a deliverable before.
-  `CONTEST_RULES.md` §4 still lists a one-page summary and a 5–10 minute live demo; this does not
-  remove them.
-
-**Bears on:** `CONTEST_RULES.md` §5 (key dates), `BACKLOG.md` ("Before the Nov 16 freeze",
-"Week 10", "Nov 20"), `docs/server-setup.md` §16a (timing and expiry). Indexed in
+**Bears on:** `CONTEST_RULES.md` §4 (deliverables) and §5 (key dates), `BACKLOG.md` ("Before the Nov 16
+freeze", "Week 10", "Nov 20"), `docs/server-setup.md` §16a (timing and expiry). Indexed in
 `docs/approvals/conditions.md`.
 
-Reproduced from the text JT supplied in his November 7 instruction, which asked for items 1–3 quoted
-exactly. That text was relayed to Claude Code, not copied from the email itself, so check it against
-the message in his inbox. It shows no salutation, sign-off or sender address, and nothing from the
-email outside these lines: what the RSVP is for, and who receives the final submission email, are not
-in it. Line breaks inside the quoted items are not kept.
+Reproduced from the Gmail copy, sent November 7, 2026, 14:36 UTC, as JT supplied it. His exact words.
+The asterisks around "Code freeze:", "Final submission," and "Zoom presentations:" are in the message
+as sent.
+
+---
+
+> Dear Judges and #AlertAIStudents,
+>
+> Three items for you:
+>
+> 1. Get ready:
+>  "Final Submission and Code Freeze."
+>
+>    - *Code freeze:* Monday, Nov 16, 11:59 p.m. ET. Judges evaluate the last
+>    commit on main before that time, and students should not redeploy to AWS
+>    after it.
+>    - *Final submission,* subject line "Final Submission: Your Name, App
+>    Name." It includes their repo, live link, a one-click demo login, a video
+>    under 5 minutes, and a two-sentence summary.
+>    - *Zoom presentations:* Friday, Nov 20, "tentatively."
+>    - *RSVP:* students confirm by Monday, Nov 9.
+>
+> 2. You are in an elite group of students who are among the 15
+> Finalists, as noted in our press release. If possible, let me know the
+> email addresses of your hometown newspaper and high school alumni relations
+> -- yours is a perfect human-interest story.
+>
+> 3. RSVP, if you have not already, for yourself and friends for the Eisen
+> Lecture this (Lucky) Friday the 13th at 1:30 in Maloney Hall, room 207 --
+> with Chick-fil-A.
+>
+> I look forward to seeing each of you soon,
+> Cheers,
+> Jack
 
 ---

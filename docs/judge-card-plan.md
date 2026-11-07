@@ -1,8 +1,8 @@
 # Prof. Yoest's October 29 ask: the tests, the judge card, and the confirmation
 
 Plan, November 4, 2026. Nothing here is built yet. His email:
-`docs/approvals/2026-10-29-yoest-judge-tests-and-card.md`. Due by the November 13 code freeze,
-except the confirmation, which comes after a reseed.
+`docs/approvals/2026-10-29-yoest-judge-tests-and-card.md`. Due by the code freeze, now November 16 (moved from
+November 13 on November 7), except the confirmation, which comes after a reseed.
 
 ## 1. The tests he asked for
 
@@ -145,7 +145,7 @@ before judging.
 ## 4. Two lines confirming it held on production
 
 **After a reseed.** The November 3 plain reseed already ran the world-setting seed. The
-judging-week `--rotate-passwords` reseed is the one he names. Checked by JT, read-only and in the
+`--rotate-passwords` reseed, the one he calls the judging-week reseed, is the one he names. It now runs before the November 16 freeze. Checked by JT, read-only and in the
 app:
 - **Worlds:** `SELECT judge_world, count(*) FROM users WHERE email LIKE '%@demo.circlebite.test' GROUP BY 1 ORDER BY 1;`
   Expect 4 in each of worlds 1–4, and 3 with none (the two reporting families and `deploy.check`).

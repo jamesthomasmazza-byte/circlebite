@@ -461,10 +461,10 @@ Not yet reported to Prof. Yoest.
   and one pre-purge set is kept on JT's Mac, encrypted, until judging is over. The confirmation he
   gets must say both.
 - **Answered November 7, 9:16 AM ET:** JT's reply to the asks above (the date he gave was Monday,
-  November 9). **It told him the judge link would come in judging week. Superseded** 20 minutes later
-  by his 9:36 AM group email: with the code freeze on November 16, the link now goes to him in the
-  final submission email, before the freeze ("Contest reminders" below). No copy of the reply is in
-  `docs/approvals/` yet.
+  November 9). **It said the judge link would come in judging week. Corrected the same day** by JT's
+  RSVP, sent after Prof. Yoest's 9:36 AM group email ("Contest reminders" below): "With the freeze now
+  on November 16, the judge link will come in my final submission rather than during judging week."
+  No copy of either message is in `docs/approvals/` yet.
 - **Withdrawn:** "two or three demo family accounts" with logins on the card. Replaced by the judge
   link in his 4:38 PM email (below): "drop them."
 
@@ -514,23 +514,30 @@ No date of its own; the code freeze is November 16, moved from November 13 by hi
 
 ### Contest reminders (his November 7, 9:36 AM group email, `2026-11-07-yoest-contest-reminders.md`)
 
-Sent to every contestant, not to JT alone. Three items, and an RSVP:
+Sent to the finalists and the judges ("Dear Judges and #AlertAIStudents"), not to JT alone. His item
+1, "Final Submission and Code Freeze", has four parts:
 
-- **"code freeze Monday Nov 16, 11:59 PM ET: judges grade the last commit on main before then, and no
-  redeploy to AWS after it."** Moves the freeze from November 13. Everything planned for judging
-  week that touches production moves before it: the judge-link sequence (`docs/server-setup.md`
-  §16a: reseed, token, `JUDGE_LINK=on`, JT's click-through, the `curl` checks) and the final
-  submission email. `CONTEST_RULES.md` §5 and `BACKLOG.md` updated November 7. **Open:** all of it.
-- **"a final submission email, subject \"Final Submission: Your Name, App Name\", with the repo, the
+- **"Code freeze: Monday, Nov 16, 11:59 p.m. ET. Judges evaluate the last commit on main before that
+  time, and students should not redeploy to AWS after it."** Moves the freeze from November 13.
+  Everything planned for judging week that touches production moves before it: the judge-link sequence
+  (`docs/server-setup.md` §16a: reseed, token, `JUDGE_LINK=on`, JT's click-through, the `curl` checks)
+  and the final submission email. `CONTEST_RULES.md` §4 and §5 and `BACKLOG.md` updated November 7.
+  **Open:** all of it.
+- **"Final submission, subject line \"Final Submission: Your Name, App Name.\" It includes their repo,
   live link, a one-click demo login, a video under 5 minutes, and a two-sentence summary."** The
   one-click demo login is the judge link, sent by one-time secret link per `CONTEST_RULES.md` §4. The
-  video and the two-sentence summary are new `BACKLOG.md` items before the freeze. The video's
-  content waits on his answer to JT's November 7 questions. **Open.**
-- **"Zoom presentations Friday Nov 20, tentatively."** Judging stays November 20, but not firmly.
-  `JUDGE_LINK_EXPIRES` (November 21, midnight Eastern) assumes it; `docs/server-setup.md` §16a says
-  what to do if the date moves.
-- **"RSVP by Nov 9."** JT's questions about the RSVP and the video were sent November 7. **Open until
-  he answers and JT RSVPs.**
+  video and the two-sentence summary are new `BACKLOG.md` items before the freeze. **Open.**
+- **"Zoom presentations: Friday, Nov 20, \"tentatively.\""** Judging stays November 20, but not
+  firmly. `JUDGE_LINK_EXPIRES` (November 21, midnight Eastern) assumes it; `docs/server-setup.md` §16a
+  says what to do if the date moves.
+- **"RSVP: students confirm by Monday, Nov 9."** **Done November 7:** JT's RSVP, sent after this email
+  (no copy in `docs/approvals/` yet), told him: "With the freeze now on November 16, the judge link will
+  come in my final submission rather than during judging week." It also asked about the video's focus,
+  scoring, format and delivery. **His answer is pending**, and the video waits on it.
+
+His items 2 and 3 are not contest requirements and are not tracked here: the email addresses of
+finalists' hometown newspapers and high school alumni relations ("if possible"), and an RSVP for the
+Eisen Lecture, Friday, November 13, 1:30 PM, Maloney Hall 207.
 
 ## Corrections owed to Prof. Yoest
 

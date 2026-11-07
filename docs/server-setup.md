@@ -690,7 +690,7 @@ server change is not behind it and is harmless off: a barcode scan's response ca
 may-contain tags (`record_may_contain`). Off by default; off is today's Scan, unchanged. No data
 involved.
 
-**Before turning it on:** JT's review, before the November 13 code freeze, or it stays off for
+**Before turning it on:** JT's review, before the November 16 code freeze, or it stays off for
 judging (BACKLOG item 13). In the redesign the **Barcode** field is behind **Type it**; the judge
 card says so since November 6, so reprint any copy printed before then.
 
@@ -1020,7 +1020,7 @@ scans of those are never touched.
 
 **Known limit.** If a judge deletes the account *before* a reseed, the reports they filed are
 already anonymous (`reported_by` is set to NULL on account deletion) and the seed can no longer find
-them. Check the review queue (`/admin/review-queue`) daily during judging week for reports on real
+them. Check the review queue (`/admin/review-queue`) daily while the judge link is on for reports on real
 products that don't look like real families'. Since migration 0049 this matters less: a report keeps
 its judge world after the account is gone, so it still counts only in that world and never reaches a
 real family. A report filed before 0049 has no world, and the limit applies to it in full.
@@ -1416,7 +1416,7 @@ free tier — local disk isn't the constraint until ~1 GB of photos.
 ### 17.10 Check the off-box copy matches — from the Mac
 
 The box can't read the bucket (§17.2), so this check is yours. Do it once after setup and once before
-judging week. In the S3 console, download the newest `circlebite/<set>/` (all four files), then:
+the freeze. In the S3 console, download the newest `circlebite/<set>/` (all four files), then:
 
 > **Two console quirks, both seen on the first check (2026-10-05):**
 > - **Download is disabled when more than one object is selected.** Select and download the four

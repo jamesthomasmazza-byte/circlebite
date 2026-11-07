@@ -35,8 +35,10 @@ things that don't touch production remain.
   on 2026-10-26 (`076eefb`); portrait with Stop camera above the tab bar, and "Got it" then the
   result in portrait, on 2026-10-27 (`docs/journal.md`).*
 - [ ] Owner-only acknowledgement check on production.
-- [ ] **RSVP by Nov 9** (Prof. Yoest's Nov 7 email). JT's questions on the RSVP and the video went to
-  him Nov 7; RSVP once he answers (`docs/approvals/conditions.md`, "Contest reminders").
+- [x] **RSVP by Nov 9** (Prof. Yoest's Nov 7 email). *Sent Nov 7, after his email. It told him the
+  judge link will come in the final submission, not during judging week, and asked about the video's
+  focus, scoring, format and delivery. His answer is pending (`docs/approvals/conditions.md`,
+  "Contest reminders").*
 
 ### Week of Oct 26 — low risk
 
@@ -444,7 +446,7 @@ room to fix what the click-through finds.
   Yoest" step and the Oct 5 promise of a fresh credentials email on the Monday of judging week.
 - [ ] No reseed after the link goes out, until judging is over (Nov 20, tentatively).
 - [ ] **The video, under 5 minutes** (his Nov 7 email; new). Content pending Prof. Yoest's answer to
-  JT's Nov 7 questions. Record it against production as it will be frozen, and don't script around
+  the questions in JT's Nov 7 RSVP (focus, scoring, format, delivery). Record it against production as it will be frozen, and don't script around
   anything that needs a redeploy.
 - [ ] **The two-sentence summary** (his Nov 7 email; new). Two sentences: the problem and what
   CircleBite does. Separate from the one-page summary in Week 10.

@@ -1,7 +1,8 @@
 # USDA FoodData Central as a second product source
 
 Plan, November 4, 2026. No code. **Decided (JT, November 4): after judging, with no measurement
-before it.**
+before it.** *November 7: the code freeze moved from November 13 to November 16, three days later. The
+decision stands; the sizing below was not redone.*
 
 ## What it would add
 
@@ -124,12 +125,12 @@ The same shape as `docs/evidence/2026-11-03-matcher-before-after.md`:
   merge, source label, scan-record field, switch, tests in both switch states, and the measurement.
 - **Bulk import:** 1–2 days more, with the backup-script change.
 - **Risk: high for this week.** It touches every barcode scan's verdict path (the safety core), the
-  card's copy and the scan record, between now and a November 13 freeze, a week before judging.
+  card's copy and the scan record, between now and a November 13 freeze (now November 16), a week before judging (now four days).
   The freeze's other work (Prof. Yoest's tests and judge card, the logo, the pre-purge backups) is
   already promised.
 
-**Verdict: it doesn't fit before November 13 without risking the verdict path a week before
-judging. It belongs after judging.** What would fit is the measurement alone: an offline script,
+**Verdict: it doesn't fit before November 13 (now November 16) without risking the verdict path a week
+before judging (now four days). It belongs after judging.** What would fit is the measurement alone: an offline script,
 no app change, about half a day, using `DEMO_KEY` or a key kept out of the repo. That would show
 judges a number ("on US products, a second source would add X warnings"), and it would decide
 the strict-or-not question with evidence.
