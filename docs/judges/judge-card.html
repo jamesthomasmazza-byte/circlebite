@@ -21,23 +21,49 @@
   li { margin: 4px 0; }
   .expect p { margin: 6px 0; }
   .quote { display: block; margin-top: 2px; }
+  .start { margin: 0 0 8px; padding: 12px 14px; border: 2px solid #15171c; border-radius: 8px; }
+  .start p { margin: 4px 0; }
+  .optional { margin-top: 24px; }
+  .case p { margin: 6px 0; }
   .fine { margin-top: 20px; font-size: 14px; }
+  /* One printed page: tighter type and spacing on paper only. The barcode keeps its width. */
+  @media print {
+    body { font-size: 13.5px; line-height: 1.35; }
+    main { padding: 0; }
+    h1 { font-size: 22px; }
+    h2 { font-size: 16px; margin: 14px 0 4px; }
+    .start { padding: 8px 12px; }
+    .optional { margin-top: 14px; }
+    .lead { margin-bottom: 10px; }
+    .code { padding: 12px 0 8px; }
+    .code svg { height: 1.2in; }
+    .digits { font-size: 28px; margin-top: 6px; }
+    li, .expect p, .case p { margin: 3px 0; }
+    .fine { margin-top: 12px; font-size: 12px; }
+  }
 </style>
 </head>
 <body>
 <main>
   <h1>CircleBite judge card</h1>
-  <p class="lead">One barcode for every judge. Scan it off this page or off a laptop screen.</p>
+
+  <div class="start">
+    <h2>Start here: click your judge link</h2>
+    <p>Prof. Yoest sends one link for every judge. Click it: CircleBite opens already signed in to a demo judge account, on Maya's result for <strong>2990000000083</strong>. There is nothing to type and no password.</p>
+    <p>Each judge's demo family is kept apart in the data: a report you file never counts toward another judge's, or toward a real family's.</p>
+  </div>
+
+  <section class="optional">
+  <h2>Optional: see the scan yourself</h2>
+  <p class="lead">Scanning is the heart of the app. Scan this barcode off this page or off a laptop screen, after opening the link.</p>
 
   <div class="code">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 147 50" preserveAspectRatio="none" shape-rendering="crispEdges" role="img" aria-label="Barcode 2990000000083"><rect width="147" height="50" fill="#fff"/><g fill="#000"><rect x="12" y="0" width="2" height="50"/><rect x="15" y="0" width="1" height="50"/><rect x="18" y="0" width="3" height="50"/><rect x="23" y="0" width="3" height="50"/><rect x="28" y="0" width="2" height="50"/><rect x="32" y="0" width="1" height="50"/><rect x="34" y="0" width="2" height="50"/><rect x="37" y="0" width="4" height="50"/><rect x="42" y="0" width="2" height="50"/><rect x="45" y="0" width="2" height="50"/><rect x="48" y="0" width="2" height="50"/><rect x="52" y="0" width="2" height="50"/><rect x="56" y="0" width="2" height="50"/><rect x="59" y="0" width="2" height="50"/><rect x="63" y="0" width="2" height="50"/><rect x="67" y="0" width="2" height="50"/><rect x="70" y="0" width="2" height="50"/><rect x="74" y="0" width="2" height="50"/><rect x="78" y="0" width="1" height="50"/><rect x="82" y="0" width="2" height="50"/><rect x="86" y="0" width="1" height="50"/><rect x="89" y="0" width="1" height="50"/><rect x="91" y="0" width="4" height="50"/><rect x="96" y="0" width="3" height="50"/><rect x="100" y="0" width="2" height="50"/><rect x="104" y="0" width="1" height="50"/><rect x="106" y="0" width="3" height="50"/><rect x="111" y="0" width="1" height="50"/><rect x="114" y="0" width="1" height="50"/><rect x="116" y="0" width="4" height="50"/><rect x="122" y="0" width="2" height="50"/><rect x="127" y="0" width="3" height="50"/><rect x="131" y="0" width="1" height="50"/><rect x="133" y="0" width="2" height="50"/></g></svg>
     <p class="digits">2990000000083</p>
   </div>
 
-  <h2>Scan it</h2>
   <ol>
-    <li>Sign in at <strong>circlebite.app</strong> with the login from your one-time link.</li>
-    <li>On <strong>Scan</strong>, choose <strong>Maya</strong> first, then tap <strong>Scan with camera</strong> and hold this barcode inside the box.</li>
+    <li>Tap <strong>Scan</strong>, choose <strong>Maya</strong> first, then tap <strong>Scan with camera</strong> and hold this barcode inside the box.</li>
     <li>Camera won't read it? Tap <strong>Type it</strong> if you see it, then type <strong>2990000000083</strong> in <strong>Barcode</strong> and tap <strong>Check this product</strong>.</li>
     <li>Then choose <strong>Noor</strong> and scan it again.</li>
   </ol>
@@ -47,8 +73,15 @@
     <p><strong>Maya</strong> (you own her profile): <strong>Contains an allergen</strong>.<span class="quote">“Priya Nair (co-manager) reported Sesame present and photographed the label. No other family has confirmed it yet.”</span></p>
     <p><strong>Noor</strong> (you follow her): <strong>Contains an allergen</strong>.<span class="quote">“A co-manager in Noor's circle reported Wheat present and photographed the label. No other family has confirmed it yet.”</span></p>
   </div>
+  </section>
 
-  <p class="fine">Every judge scans this same barcode and sees only their own circle's reports. Every product, family and report in this demo is invented. The full guide is <strong>JUDGES.md</strong> in the project's GitHub repository.</p>
+  <h2>Why one person can't clear a warning</h2>
+  <div class="case">
+    <p>One real case from testing. Two test accounts, both belonging to the developer, reported sesame in a real Icelandic butter spread. Its ingredients have no sesame. The app counted the two accounts as two families, so the warning was confirmed for everyone. It was removed by hand on November 3.</p>
+    <p>It also shows the safeguard working as designed: two accounts from one person could only add a warning, never clear one. A report that an allergen isn't there is noted on the reporter's own card and never applied, so the same trick can't remove a real warning.</p>
+  </div>
+
+  <p class="fine">Every product, family and report in the demo accounts is invented; the butter spread above is the one real case, from the developer's own testing. The full guide is <strong>JUDGES.md</strong> in the project's GitHub repository.</p>
 </main>
 </body>
 </html>

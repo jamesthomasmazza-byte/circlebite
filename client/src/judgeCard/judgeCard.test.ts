@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
-import { JUDGE_BARCODE, MAYA_LINE, NOOR_LINE, renderJudgeCard } from "./judgeCard";
+import { BUTTER_SPREAD_LINES, JUDGE_BARCODE, MAYA_LINE, NOOR_LINE, renderJudgeCard } from "./judgeCard";
 
 const repo = (path: string) => readFileSync(new URL(`../../../${path}`, import.meta.url), "utf8");
 const html = renderJudgeCard();
@@ -24,7 +24,7 @@ test("the page names the app's own controls for the camera and for typing the di
   // "Type it" only shows with SCAN_REDESIGN on (lib/scanRedesign.ts scanModes); the step says "if you
   // see it", so it reads right either way (JT, 2026-11-06).
   for (const label of ["Scan with camera", "Type it", "Barcode", "Check this product"]) assert.ok(html.includes(label), label);
-  assert.equal(html.split(JUDGE_BARCODE).length - 1, 3, "the digits under the barcode, in the typed step, and its label");
+  assert.equal(html.split(JUDGE_BARCODE).length - 1, 4, "in the link's section, the digits under the barcode, in the typed step, and its label");
   const scanner = repo("client/src/BarcodeScanner.tsx");
   const scan = repo("client/src/routes/Scan.tsx");
   assert.ok(scanner.includes("Scan with camera"));
@@ -45,4 +45,28 @@ test("nothing dark beside the barcode: its box has rules above and below only", 
   assert.match(rule, /border-top:/);
   assert.match(rule, /border-bottom:/);
   assert.doesNotMatch(rule, /border(-left|-right)?:\s*\d/, "no side border, and no all-round border");
+});
+
+// Prof. Yoest, Nov 5, 2026 (docs/approvals/2026-11-05-yoest-*.md): the link comes first, the scan is
+// an optional extra with the printed barcode kept, no demo logins, and the butter spread case.
+
+test("the link comes first, then the optional scan, which keeps the printed barcode", () => {
+  const link = html.indexOf("Start here: click your judge link");
+  const optional = html.indexOf("Optional: see the scan yourself");
+  assert.ok(link > 0 && optional > link, "link, then the optional section");
+  assert.ok(html.indexOf("<svg") > optional, "the barcode sits in the optional section");
+});
+
+test("no logins: no password, credential or sign-in step anywhere on the card", () => {
+  const text = html.replace(/<style>[\s\S]*?<\/style>/, "").replace(/<[^>]+>/g, " ");
+  assert.doesNotMatch(text, /\bsign in with\b|\blog ?in\b|credential|judge[1-4]@|one-time link/i);
+  assert.match(text, /no password/);
+});
+
+test("the butter spread case: two accounts from one person could only add a warning, never clear one", () => {
+  for (const line of BUTTER_SPREAD_LINES) assert.ok(html.includes(line), line.slice(0, 40));
+  assert.match(BUTTER_SPREAD_LINES.join(" "), /could only add a warning, never clear one/);
+  // The journal's own record of it (2026-11-03), so the card can't drift from what happened.
+  const journal = repo("docs/journal.md");
+  assert.ok(journal.includes("sesame in Smjörvi") && journal.includes("a real Icelandic butter spread"));
 });
