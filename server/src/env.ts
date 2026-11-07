@@ -37,6 +37,28 @@ export function parseSwitch(name: string, raw: string | undefined, fallback: boo
   throw new Error(`${name} must be "on" or "off", got "${raw}"`);
 }
 
+/**
+ * A moment read from the environment as an ISO 8601 date-time with its offset. Blank or unset falls
+ * back; anything unparseable throws at startup, like parseSwitch: an expiry that silently resolved
+ * to "never" is the failure it exists to prevent.
+ */
+export function parseInstant(name: string, raw: string | undefined, fallback: string): Date {
+  const value = raw === undefined || raw.trim() === "" ? fallback : raw.trim();
+  const at = new Date(value);
+  if (!/^\d{4}-\d{2}-\d{2}T/.test(value) || Number.isNaN(at.getTime())) {
+    throw new Error(`${name} must be an ISO date-time with an offset, like 2026-11-21T00:00:00-05:00, got "${value}"`);
+  }
+  return at;
+}
+
+/** A SHA-256 digest in hex, or undefined if unset. Anything else throws at startup. */
+export function parseSha256Hex(name: string, raw: string | undefined): string | undefined {
+  if (raw === undefined || raw.trim() === "") return undefined;
+  const value = raw.trim().toLowerCase();
+  if (!/^[0-9a-f]{64}$/.test(value)) throw new Error(`${name} must be a SHA-256 digest: 64 hex characters`);
+  return value;
+}
+
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   isProduction: process.env.NODE_ENV === "production",
@@ -124,4 +146,12 @@ export const env = {
   // standard state, and the default, so an unset variable keeps sign-up closed. Sign-in, invites to
   // existing accounts and the judge seed are unaffected. The client reads it via GET /features.
   registration: parseSwitch("REGISTRATION", process.env.REGISTRATION, false),
+  // The judge link (auth/judgeLink.ts, 2026-11-07, Prof. Yoest's Nov 5 ask): one URL that signs each
+  // click in to an unused world from the seed's pool. Off by default, and unset is off. Off, or past
+  // JUDGE_LINK_EXPIRES, the link is a plain 404 and every session it made stops working
+  // (auth/session.ts). JUDGE_LINK_TOKEN_HASH is the SHA-256 of the link's token, made on the box
+  // (docs/server-setup.md §16a); the token itself is never stored. Unset, no token matches.
+  judgeLink: parseSwitch("JUDGE_LINK", process.env.JUDGE_LINK, false),
+  judgeLinkExpires: parseInstant("JUDGE_LINK_EXPIRES", process.env.JUDGE_LINK_EXPIRES, "2026-11-21T00:00:00-05:00"),
+  judgeLinkTokenHash: parseSha256Hex("JUDGE_LINK_TOKEN_HASH", process.env.JUDGE_LINK_TOKEN_HASH),
 };

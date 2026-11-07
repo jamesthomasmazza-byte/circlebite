@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
-import { parseOptionalCents, parseSwitch } from "./env.js";
+import { parseInstant, parseOptionalCents, parseSha256Hex, parseSwitch } from "./env.js";
 
 test("falls back to the default when the var is unset", () => {
   assert.equal(parseOptionalCents(undefined, 200), 200);
@@ -106,6 +106,30 @@ test("REGISTRATION goes through parseSwitch and defaults to off", () => {
   assert.match(source, /registration: parseSwitch\("REGISTRATION", process\.env\.REGISTRATION, false\)/);
   assert.equal(parseSwitch("REGISTRATION", undefined, false), false);
   assert.equal(parseSwitch("REGISTRATION", "", false), false);
+});
+
+// JUDGE_LINK (2026-11-07): off unless switched on, like REGISTRATION; unset is off.
+test("JUDGE_LINK goes through parseSwitch and defaults to off", () => {
+  const source = readFileSync(new URL("./env.ts", import.meta.url), "utf8");
+  assert.match(source, /judgeLink: parseSwitch\("JUDGE_LINK", process\.env\.JUDGE_LINK, false\)/);
+});
+
+test("JUDGE_LINK_EXPIRES defaults to midnight Eastern starting November 21, 2026, and refuses garbage", () => {
+  const source = readFileSync(new URL("./env.ts", import.meta.url), "utf8");
+  assert.match(source, /parseInstant\("JUDGE_LINK_EXPIRES", process\.env\.JUDGE_LINK_EXPIRES, "2026-11-21T00:00:00-05:00"\)/);
+  assert.equal(parseInstant("X", undefined, "2026-11-21T00:00:00-05:00").toISOString(), "2026-11-21T05:00:00.000Z");
+  assert.equal(parseInstant("X", " ", "2026-11-21T00:00:00-05:00").toISOString(), "2026-11-21T05:00:00.000Z");
+  assert.equal(parseInstant("X", "2026-11-20T18:00:00-05:00", "2026-11-21T00:00:00-05:00").toISOString(), "2026-11-20T23:00:00.000Z");
+  for (const bad of ["tomorrow", "2026-11-21", "never"]) {
+    assert.throws(() => parseInstant("JUDGE_LINK_EXPIRES", bad, "2026-11-21T00:00:00-05:00"), /JUDGE_LINK_EXPIRES must be/, bad);
+  }
+});
+
+test("JUDGE_LINK_TOKEN_HASH is a SHA-256 hex digest or unset; anything else refuses to boot", () => {
+  assert.equal(parseSha256Hex("X", undefined), undefined);
+  assert.equal(parseSha256Hex("X", ""), undefined);
+  assert.equal(parseSha256Hex("X", "A".repeat(64)), "a".repeat(64));
+  assert.throws(() => parseSha256Hex("JUDGE_LINK_TOKEN_HASH", "abc"), /64 hex characters/);
 });
 
 // GUIDED_SETUP (2026-10-27): off unless switched on.
