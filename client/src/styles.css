@@ -2161,6 +2161,13 @@ a.card:hover {
   font-weight: 600;
 }
 
+/* Where a "Create an account" was, with REGISTRATION off: plain text, not a button. */
+.landing__closed {
+  margin: 0;
+  padding: var(--space-3) var(--space-2);
+  font-weight: 600;
+}
+
 /* Links that look like the app's buttons: a filled primary, an outlined secondary. */
 .landing__button {
   display: inline-flex;

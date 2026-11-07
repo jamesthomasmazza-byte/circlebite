@@ -8,12 +8,18 @@ import { MemoryRouter } from "react-router-dom";
 
 import { CIRCLE_ROW_SOURCE } from "../lib/allergenRowCopy";
 import { DEMO_NOTICE } from "../lib/demoNoticeCopy";
+import { REGISTRATION_CLOSED } from "../lib/registrationCopy";
 import { DISCLAIMER, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
-import { Landing, LANDING_TITLE } from "./Landing";
+import { Landing, LANDING_TITLE, LandingPage } from "./Landing";
 
 // The signed-out landing page (2026-10-30, docs/design/landing-mockup.html), rendered as HTML.
+// With sign-up open unless a test says otherwise: REGISTRATION's own tests are below.
 
-const html = renderToStaticMarkup(createElement(MemoryRouter, null, createElement(Landing)));
+function render(registrationOpen: boolean): string {
+  return renderToStaticMarkup(createElement(MemoryRouter, null, createElement(LandingPage, { registrationOpen })));
+}
+
+const html = render(true);
 const text = html.replace(/<[^>]+>/g, " ").replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/\s+/g, " ");
 
 function hrefsOf(label: string): string[] {
@@ -124,4 +130,26 @@ test("the contest-demo notice sits with every 'Create an account': above the hea
   assert.equal(creates, 3);
   assert.equal(html.split(DEMO_NOTICE).length - 1, creates);
   assert.ok(html.indexOf(DEMO_NOTICE) < html.indexOf("<header"), "the strip comes before the header's button");
+});
+
+// REGISTRATION off (2026-11-06, Prof. Yoest's Nov 5 ask): no working sign-up link anywhere on the
+// page, and the plain closed line where each "Create an account" was. Log in is unchanged.
+
+test("with REGISTRATION off, the page has no sign-up link, and says sign-up is closed in each place", () => {
+  const closed = render(false);
+  assert.doesNotMatch(closed, /href="\/register/);
+  assert.doesNotMatch(closed, />Create an account</);
+  assert.equal(closed.split(`<p class="landing__closed">${REGISTRATION_CLOSED}</p>`).length - 1, 3);
+  assert.deepEqual(
+    [...closed.matchAll(/<a [^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>/g)].filter(([, h]) => h === "/login").map(([, , t]) => t),
+    ["Log in", "Already have an account? Log in"],
+  );
+});
+
+test("the page as served starts closed, before the switch is read, and opens only on registrationOpen: true", () => {
+  const served = renderToStaticMarkup(createElement(MemoryRouter, null, createElement(Landing)));
+  assert.doesNotMatch(served, /href="\/register/);
+  const source = readFileSync(new URL("./Landing.tsx", import.meta.url), "utf8");
+  assert.match(source, /useState\(false\);/);
+  assert.match(source, /setRegistrationOpen\(f\.registrationOpen === true\)/);
 });

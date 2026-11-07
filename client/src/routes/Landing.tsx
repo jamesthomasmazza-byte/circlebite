@@ -1,11 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { BrandLogo } from "../BrandLogo";
 import type { MatchedAllergen, ScanResult } from "../lib/api";
 import { classificationLabel, sourceLabel } from "../lib/allergenRowCopy";
 import { circleReportLine } from "../lib/correctionCopy";
+import { fetchFeatures } from "../lib/api";
 import { DEMO_NOTICE } from "../lib/demoNoticeCopy";
+import { REGISTRATION_CLOSED } from "../lib/registrationCopy";
 import { DISCLAIMER, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
 
 /**
@@ -66,6 +68,33 @@ export function Landing() {
     };
   }, []);
 
+  // REGISTRATION (2026-11-06): closed until the server says it's open, so a failed or slow read
+  // never offers a sign-up the server would refuse.
+  const [registrationOpen, setRegistrationOpen] = useState(false);
+  useEffect(() => {
+    let live = true;
+    fetchFeatures()
+      .then((f) => live && setRegistrationOpen(f.registrationOpen === true))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  return <LandingPage registrationOpen={registrationOpen} />;
+}
+
+/** Each "Create an account", or with REGISTRATION off the plain closed line in its place. */
+function CreateAccount({ open, className }: { open: boolean; className: string }) {
+  if (!open) return <p className="landing__closed">{REGISTRATION_CLOSED}</p>;
+  return (
+    <Link to="/register" className={className}>
+      Create an account
+    </Link>
+  );
+}
+
+export function LandingPage({ registrationOpen }: { registrationOpen: boolean }) {
   return (
     <div className="landing">
       {/* Above the header, so it sits with the header's "Create an account" (R9, lib/demoNoticeCopy.ts). */}
@@ -81,9 +110,7 @@ export function Landing() {
             <Link to="/login" className="landing__text-link">
               Log in
             </Link>
-            <Link to="/register" className="landing__button landing__button--small">
-              Create an account
-            </Link>
+            <CreateAccount open={registrationOpen} className="landing__button landing__button--small" />
           </nav>
         </div>
       </header>
@@ -98,9 +125,7 @@ export function Landing() {
                 what your circle has reported, so the grandparents and the babysitter check the same way you do.
               </p>
               <div className="landing__actions">
-                <Link to="/register" className="landing__button">
-                  Create an account
-                </Link>
+                <CreateAccount open={registrationOpen} className="landing__button" />
                 <a href="#how" className="landing__button landing__button--secondary">
                   See how it works
                 </a>
@@ -346,9 +371,7 @@ export function Landing() {
               them.
             </p>
             <div className="landing__actions">
-              <Link to="/register" className="landing__button">
-                Create an account
-              </Link>
+              <CreateAccount open={registrationOpen} className="landing__button" />
               <Link to="/login" className="landing__text-link">
                 Already have an account? Log in
               </Link>
