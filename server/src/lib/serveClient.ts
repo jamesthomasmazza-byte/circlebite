@@ -9,6 +9,9 @@ const HASHED_DIR = "assets";
 export const IMMUTABLE = "public, max-age=31536000, immutable";
 export const REVALIDATE = "no-cache";
 
+/** The judge link's client page (client routes/JudgeLink.tsx). */
+export const JUDGE_LINK_PATH = "/judge";
+
 /**
  * The built client, as production serves it (app.ts, behind nginx). Two cache rules (2026-10-29):
  *
@@ -33,8 +36,15 @@ export function serveClient(app: Express, clientDist: string): void {
   );
   // Any other GET — a direct load or refresh of a client-side route (/scan, /login, ...) — gets
   // index.html, so it doesn't 404.
-  app.get(/.*/, (_req, res) => {
+  app.get(/.*/, (req, res) => {
     res.setHeader("Cache-Control", REVALIDATE);
+    // The judge link's page (2026-11-07): never indexed, and never names itself to another site.
+    // Its token is in the fragment, which no request carries, so neither header guards the token
+    // itself; they keep the page out of search results and out of Referer headers.
+    if (req.path === JUDGE_LINK_PATH) {
+      res.setHeader("X-Robots-Tag", "noindex, nofollow");
+      res.setHeader("Referrer-Policy", "no-referrer");
+    }
     res.sendFile(path.join(clientDist, "index.html"));
   });
 }

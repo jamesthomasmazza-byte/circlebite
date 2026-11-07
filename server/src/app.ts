@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import cookieParser from "cookie-parser";
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
 
+import { judgeLinkRouter } from "./auth/judgeLink.js";
 import { authRouter } from "./auth/routes.js";
 import { env } from "./env.js";
 import { HttpError } from "./lib/httpError.js";
@@ -51,6 +52,8 @@ export function createApp(): Express {
   // browser load of a client route with the same name as an API path would get raw JSON instead
   // of the app shell.
   app.use("/api/auth", authRouter);
+  // The judge link (auth/judgeLink.ts): public, token-gated, a plain 404 for every refusal.
+  app.use("/api/auth", judgeLinkRouter);
   app.use("/api", meRouter);
   // Public: a signed-out page's switches (routes/features.ts).
   app.use("/api", featuresRouter);

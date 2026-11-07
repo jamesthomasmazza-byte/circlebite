@@ -1,20 +1,23 @@
 import { createHmac, randomBytes } from "node:crypto";
 
 import type { CookieOptions } from "express";
+import type { PoolClient } from "pg";
 
 import { pool } from "../db/pool.js";
 import { env } from "../env.js";
+import { isJudgeLinkAccount, judgeLinkOpen } from "./judgeLinkRules.js";
 
 export const SESSION_COOKIE_NAME = "cb_session";
-const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // fixed 30-day window, not sliding
+export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // fixed 30-day window, not sliding
 
-export function sessionCookieOptions(): CookieOptions {
+/** maxAgeMs: shorter for a session that ends sooner, the judge link's (auth/judgeLink.ts). */
+export function sessionCookieOptions(maxAgeMs: number = SESSION_TTL_MS): CookieOptions {
   return {
     httpOnly: true,
     secure: env.isProduction,
     sameSite: "lax",
     path: "/",
-    maxAge: SESSION_TTL_MS,
+    maxAge: maxAgeMs,
   };
 }
 
@@ -22,11 +25,18 @@ function hashToken(token: string): string {
   return createHmac("sha256", env.sessionSecret).update(token).digest("hex");
 }
 
-export async function createSession(userId: string): Promise<{ token: string; expiresAt: Date }> {
+/**
+ * options (2026-11-07, the judge link): a client to write inside the caller's transaction, and an
+ * expiry earlier than the usual 30 days. Every other caller passes neither.
+ */
+export async function createSession(
+  userId: string,
+  options: { client?: PoolClient; expiresAt?: Date } = {},
+): Promise<{ token: string; expiresAt: Date }> {
   const token = randomBytes(32).toString("hex");
-  const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
+  const expiresAt = options.expiresAt ?? new Date(Date.now() + SESSION_TTL_MS);
 
-  await pool.query(
+  await (options.client ?? pool).query(
     `INSERT INTO sessions (user_id, token_hash, expires_at) VALUES ($1, $2, $3)`,
     [userId, hashToken(token), expiresAt],
   );
@@ -58,6 +68,9 @@ export async function validateSession(token: string): Promise<ValidatedSession |
 
   const row = rows[0];
   if (!row) return null;
+  // A judge link session stops with the link: switched off, or past JUDGE_LINK_EXPIRES, even before
+  // its own expiry (auth/judgeLinkRules.ts). Turning JUDGE_LINK off signs every link judge out.
+  if (isJudgeLinkAccount(row.email) && !judgeLinkOpen(new Date())) return null;
 
   return {
     sessionId: row.session_id,
