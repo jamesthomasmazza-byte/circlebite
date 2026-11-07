@@ -100,6 +100,14 @@ test("PROFILE_REDESIGN goes through parseSwitch and defaults to off", () => {
   assert.match(source, /profileRedesign: parseSwitch\("PROFILE_REDESIGN", process\.env\.PROFILE_REDESIGN, false\)/);
 });
 
+// REGISTRATION (2026-11-06): closed unless switched on, so an unset variable can't reopen sign-up.
+test("REGISTRATION goes through parseSwitch and defaults to off", () => {
+  const source = readFileSync(new URL("./env.ts", import.meta.url), "utf8");
+  assert.match(source, /registration: parseSwitch\("REGISTRATION", process\.env\.REGISTRATION, false\)/);
+  assert.equal(parseSwitch("REGISTRATION", undefined, false), false);
+  assert.equal(parseSwitch("REGISTRATION", "", false), false);
+});
+
 // GUIDED_SETUP (2026-10-27): off unless switched on.
 test("GUIDED_SETUP goes through parseSwitch and defaults to off", () => {
   const source = readFileSync(new URL("./env.ts", import.meta.url), "utf8");

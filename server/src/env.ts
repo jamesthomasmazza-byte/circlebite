@@ -118,4 +118,10 @@ export const env = {
   // to anyone who can read the profile either way. Off by default, and off is today's pages. The
   // client reads it via GET /me.
   profileRedesign: parseSwitch("PROFILE_REDESIGN", process.env.PROFILE_REDESIGN, false),
+  // Whether new accounts can be created (auth/routes.ts POST /register, 2026-11-06). Closed until
+  // after judging at Prof. Yoest's ask of Nov 5: a friendly landing page would eventually draw a
+  // real parent entering a real child's allergy (R9). Unlike the switches above, off is the
+  // standard state, and the default, so an unset variable keeps sign-up closed. Sign-in, invites to
+  // existing accounts and the judge seed are unaffected. The client reads it via GET /features.
+  registration: parseSwitch("REGISTRATION", process.env.REGISTRATION, false),
 };
