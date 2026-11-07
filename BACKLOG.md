@@ -336,6 +336,9 @@ precedents, Nov 5.
    checklist first; Type it's number pad; names only in the "Scanning for" picker), checked at 390px
    at 100, 125 and 150% text in light and dark. **Still owed before it goes on again:** JT's iPhone
    check of the same screens, and the cameras themselves.*
+   *Switched on again in production at JT's request, Nov 6, on release `a490f1f`, deployed first so
+   the fixed layout was live before the switch. JT's iPhone check and the cameras are still owed; to
+   switch it off: `docs/server-setup.md` §11g.*
 
 ### Nov 13 — code freeze
 
