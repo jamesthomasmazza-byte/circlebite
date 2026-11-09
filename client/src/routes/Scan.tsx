@@ -299,15 +299,15 @@ export function Scan() {
 
   // Redesign: leaving Barcode stops the camera; Label photo opens the same photo form as "No
   // barcode? Photograph the label"; leaving it closes that form, as Cancel does.
+  // Picking a way to scan starts a new scan, so the last card goes with it (JT, 2026-11-09): the
+  // mode control only shows over a result once "Scan another product" has the camera up, and
+  // leaving the camera for Type it brought that last card's sheet back over the Barcode field. The
+  // next typed scan then landed in a sheet already up — its sound played, but nothing came up.
   function chooseMode(next: ScanMode) {
     setMode(next);
     if (next !== "barcode") scannerRef.current?.stop();
     if (next === "photo") openStandalonePhotoCapture();
-    else if (photoCaptureOpen && photoCaptureMode === "standalone") {
-      setPhotoCaptureOpen(false);
-      setPhotoFile(null);
-      setPhotoError(null);
-    }
+    else resetForNewScan();
   }
 
   // Shared between the barcode flow and the photo flow — clears whatever the other one left behind
@@ -366,6 +366,9 @@ export function Scan() {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    // The phone's number pad has no return key, and tapping "Check this product" doesn't close it
+    // in iOS Safari: left up, it sits over the bottom of the screen where the card's sheet rises.
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     await runScan(barcode, profileId);
   }
 

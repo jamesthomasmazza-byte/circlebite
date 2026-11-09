@@ -45,6 +45,15 @@ test("the segmented control: leaving Barcode stops the camera; Label photo opens
   assert.match(SCAN, /scanModes\(labelScanEnabled\)\.map/);
 });
 
+test("picking a mode clears the last card, so the next typed scan's sheet comes up (JT, Nov 9)", () => {
+  // Scan another → camera → Type it brought the previous card's sheet back over the Barcode field.
+  const choose = SCAN.slice(SCAN.indexOf("function chooseMode("), SCAN.indexOf("// Shared between the barcode flow"));
+  assert.match(choose, /else resetForNewScan\(\);/);
+  // A typed submit closes the phone's number pad, which otherwise sits where the sheet rises.
+  const submit = SCAN.slice(SCAN.indexOf("async function handleSubmit("), SCAN.indexOf("// The barcode-less entry point"));
+  assert.match(submit, /document\.activeElement\.blur\(\);[\s\S]*await runScan\(barcode, profileId\);/);
+});
+
 // ---- The result sheet: today's card, in a sheet ----
 
 const LABEL_CAMERA = readFileSync(new URL("../LabelCamera.tsx", import.meta.url), "utf8");
