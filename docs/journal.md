@@ -2742,3 +2742,24 @@ repo, only the capped rows file and the audit's findings are in.
 word and the tag; 83.6% on text alone, and the audit's hidden-name list found no English word for
 it that the matcher lacks). Lupin (77.0%) and fish (79.6%) have the lowest text-only rates; what
 remains after this change wasn't read row by row, so whether it is tag noise or more words is open.
+
+## 2026-11-10 — Deployed: the hidden-allergen words
+
+`ae7ff7c` deployed at about 7:23 PM ET (release `20261111002238`; the folder's name is UTC;
+rollback target `20261109153443`), through `deploy.sh`, with a backup taken first
+(`circlebite-20261111T002215Z`, local and offsite). No migration. The service came back active
+and `/health` answered 200. The SSH rule in the security group had gone stale and JT reset it to
+his IP first (`docs/server-setup.md` §2).
+
+Checked after, from the Mac, signed in as the operator account (a normal account in no judge's
+world, as on November 4), on its profile Maya (Egg, Milk, Peanut), each barcode typed in:
+- **§8 false-safety check:** `2990000000076` read **"Contains an allergen"**, peanut "reported by
+  2 shoppers with a label photo".
+- **The new words, live:** Kate's Butter, `0041231000131` ("Grade a cream, sea salt."), read
+  "Contains an allergen", Milk — "found in ingredient text — "cream"". Before this release that
+  label read clear for milk. Jayhawk Butter Toffee Peanuts, `0085582012740`, read Contains for
+  milk and peanut by the product record's tags, so the text path wasn't exercised there.
+
+One thing seen and not diagnosed: after "Scan another product", typing a second barcode into the
+same form and pressing Check (or Enter) produced no card and no error; a page reload and the same
+barcode worked. Not reproduced on purpose; noted in BACKLOG.

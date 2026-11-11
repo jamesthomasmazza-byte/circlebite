@@ -221,7 +221,11 @@ things that don't touch production remain.
   carry a guard (`match.ts`, `GUARDED_KEYWORDS`) so peanut/cocoa/cacao/nut/seed butters, coconut
   cream, cream of tartar, water kefir and bean curd stay clear for milk (bean curd is a soy keyword).
   Measured over the full export, 6,633 product–allergen pairs that read clear now warn, 0 the other
-  way: `docs/evidence/2026-11-10-matcher-before-after.md`.*
+  way: `docs/evidence/2026-11-10-matcher-before-after.md`. Deployed Nov 10 in `ae7ff7c`; §8 check
+  and a live butter scan passed (journal).*
+- [ ] **A second typed barcode after "Scan another product" did nothing** (seen once, 2026-11-10, on
+  the operator account in desktop Chrome: Check and Enter both silent, no error; a reload fixed it).
+  Reproduce first; if real, it's a stale form state in the typed-barcode path on Scan.
   **Rejected on purpose — don't re-add without new evidence:** *couscous* and *farina* (corn
   couscous, Italian "farina di …", see `synonyms.ts`); *worcestershire* (1,387 rows; the fish isn't
   always there, and when it is the label declares it); *chestnut(s)* (778 rows, mostly water
