@@ -83,9 +83,10 @@ test("on Scan the camera is the one primary button; the typed-barcode submit is 
   // Outlined on today's Scan; filled in the redesign's Type it, where it's the only action (2026-11-06).
   assert.match(form, /<button type="submit" className=\{redesign \? undefined : "button-secondary"\}/);
   // The one other primary button on Scan is the pinned "Scan another product" over a result, and
-  // it is the same action: it starts the camera through the scanner (2026-10-29).
+  // it is the same action: it starts the camera through the scanner (2026-10-29), back in Barcode
+  // mode so the camera is on screen (2026-11-10, routes/ScanAnother.test.ts).
   assert.equal(SCAN.match(/button-primary/g)?.length, 1, "Scan.tsx adds one primary button");
-  assert.match(SCAN, /className="button-primary" onClick=\{\(\) => scannerRef\.current\?\.start\(\)\}/);
+  assert.match(SCAN, /className="button-primary" onClick=\{scanAnother\}/);
 });
 
 // A landscape phone (2026-10-26): "Scan with camera", the offer and Stop camera clear of the tab bar.

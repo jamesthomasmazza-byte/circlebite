@@ -36,3 +36,7 @@ logs/
 
 # Local scratch from Claude/Cowork sessions — handoff notes, drafts. Not project source.
 Claude outputs/
+
+# Playwright (client/e2e) run output
+client/test-results/
+client/playwright-report/

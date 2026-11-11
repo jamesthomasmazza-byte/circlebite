@@ -40,9 +40,12 @@ test("it renders after both result sections, at the end of the page, pinned", ()
   assert.match(SCAN.slice(pinned - 40, pinned), /\{showScanAnother && \(/);
 });
 
-test("its tap calls the scanner's start() and nothing else, synchronously", () => {
-  assert.match(SCAN, /<button type="button" className="button-primary" onClick=\{\(\) => scannerRef\.current\?\.start\(\)\}>\s*\{SCAN_ANOTHER\}/);
-  assert.equal(SCAN.match(/\.start\(\)/g)?.length, 1, "start() is called from that one click only");
+test("its tap goes back to Barcode and calls the scanner's start(), nothing else, synchronously", () => {
+  // Barcode first (2026-11-10): in Type it the stage is hidden, and a camera started there ran out of
+  // sight while the camera-up layout hid the next typed card (client/e2e/scan-two-typed-barcodes).
+  assert.match(SCAN, /<button type="button" className="button-primary" onClick=\{scanAnother\}>\s*\{SCAN_ANOTHER\}/);
+  assert.match(SCAN, /function scanAnother\(\) \{\s*setMode\("barcode"\);\s*scannerRef\.current\?\.start\(\);\s*\}/);
+  assert.equal(SCAN.match(/\.start\(\)/g)?.length, 1, "start() is called from that one place only");
   assert.match(SCAN, /<BarcodeScanner\s+ref=\{scannerRef\}\s+onBusyChange=\{setScannerBusy\}/);
 });
 

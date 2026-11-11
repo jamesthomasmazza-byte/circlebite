@@ -310,6 +310,13 @@ export function Scan() {
     else resetForNewScan();
   }
 
+  // "Scan another product": the camera, on screen. The stage is hidden in any other mode, and the
+  // camera must never run out of sight — the camera-up layout hides the card that comes next.
+  function scanAnother() {
+    setMode("barcode");
+    scannerRef.current?.start();
+  }
+
   // Shared between the barcode flow and the photo flow — clears whatever the other one left behind
   // so switching between them never shows stale state.
   function resetForNewScan() {
@@ -1294,8 +1301,11 @@ export function Scan() {
 
       {showScanAnother && (
         <div className="scan-another">
-          {/* Synchronous in the tap: the same path as "Scan with camera" (BarcodeScanner start()). */}
-          <button type="button" className="button-primary" onClick={() => scannerRef.current?.start()}>
+          {/* Synchronous in the tap: the same path as "Scan with camera" (BarcodeScanner start()).
+              Back to Barcode first (2026-11-10): over a typed card the mode was still Type it, so the
+              camera this starts opened inside the hidden stage, and the camera-up layout hid the next
+              typed card — a second barcode did nothing until a reload (client/e2e). */}
+          <button type="button" className="button-primary" onClick={scanAnother}>
             {SCAN_ANOTHER}
           </button>
         </div>
