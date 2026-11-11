@@ -2763,3 +2763,29 @@ world, as on November 4), on its profile Maya (Egg, Milk, Peanut), each barcode 
 One thing seen and not diagnosed: after "Scan another product", typing a second barcode into the
 same form and pressing Check (or Enter) produced no card and no error; a page reload and the same
 barcode worked. Not reproduced on purpose; noted in BACKLOG.
+
+## 2026-11-10 — Fixed and deployed: a second typed barcode after "Scan another product"
+
+The thing seen after the evening's deploy, reproduced and fixed. **Cause:** over a typed card the
+mode control still says Type it; "Scan another product" called the scanner's `start()`, which
+opened the camera inside the stage the Type it mode hides, and the camera-up layout
+(`styles.css`, `.scan-camera-up`) hides the result section — so the next typed scan ran, its card
+rendered, and nothing was visible. No error, because nothing failed. **Not `ab949a3`:** the same
+test fails with the Scan page from just before it; the hidden stage came with the redesign's
+camera landing (`daedb43`, Nov 6). **Fix (`ede5a20`):** "Scan another product" goes back to
+Barcode mode before starting the camera, so the camera it opens is on screen — the phone flow JT
+checked on Nov 9 (camera → Scan another → Type it) is unchanged.
+
+**How it was reproduced:** the client's tests are source-level and can't drive a page, so a
+Playwright spec was added — `client/e2e/scan-two-typed-barcodes.spec.ts`, against the Vite dev
+server with every `/api` call stubbed (no server, no database), in the Mac's installed Chrome with
+a fake camera so `start()` behaves as on a phone (`client/playwright.config.ts`; `npm run test:e2e`
+in `client/`). Before the fix it fails the way production did: the second card is in the DOM and
+hidden. `@playwright/test` is a client dev dependency; no browser download is needed.
+
+Deployed at about 8:32 PM ET (release `20261111013112`; rollback target `20261111002238`), no
+migration, no backup taken for a client-only change on top of the evening's set. Checked on
+production, as the operator on Maya: Kate's Butter typed → "Contains an allergen" → Scan another
+product → the camera came up on screen, in Barcode mode → Type it → `2990000000076` →
+"Contains an allergen", peanut reported by 2 shoppers, with no reload. That last card is also the
+§8 check for this release.

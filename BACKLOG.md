@@ -223,9 +223,14 @@ things that don't touch production remain.
   Measured over the full export, 6,633 product–allergen pairs that read clear now warn, 0 the other
   way: `docs/evidence/2026-11-10-matcher-before-after.md`. Deployed Nov 10 in `ae7ff7c`; §8 check
   and a live butter scan passed (journal).*
-- [ ] **A second typed barcode after "Scan another product" did nothing** (seen once, 2026-11-10, on
+- [x] **A second typed barcode after "Scan another product" did nothing** (seen once, 2026-11-10, on
   the operator account in desktop Chrome: Check and Enter both silent, no error; a reload fixed it).
-  Reproduce first; if real, it's a stale form state in the typed-barcode path on Scan.
+  *Reproduced and fixed 2026-11-10 (`ede5a20`): over a typed card the mode was still Type it, so
+  "Scan another product" started the camera inside the hidden stage and the camera-up layout hid
+  the next card. Not `ab949a3` — the same spec fails before it; it dates from the redesign's hidden
+  stage (`daedb43`). "Scan another" now goes back to Barcode first. Regression test in
+  `client/e2e/scan-two-typed-barcodes.spec.ts` (Playwright, `/api` stubbed, the Mac's Chrome:
+  `npm run test:e2e` in `client/`). Deployed and repeated on production the same evening.*
   **Rejected on purpose — don't re-add without new evidence:** *couscous* and *farina* (corn
   couscous, Italian "farina di …", see `synonyms.ts`); *worcestershire* (1,387 rows; the fish isn't
   always there, and when it is the label declares it); *chestnut(s)* (778 rows, mostly water
