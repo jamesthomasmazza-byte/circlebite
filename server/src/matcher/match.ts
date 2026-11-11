@@ -104,7 +104,45 @@ export function allergenFamilyKey(allergenName: string): string {
  */
 function wordBoundaryMatch(text: string, keyword: string): string | null {
   const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`(?<![a-z0-9])${escaped}(?![a-z0-9])`, "i").exec(text)?.[0] ?? null;
+  const pattern = new RegExp(`(?<![a-z0-9])${escaped}(?![a-z0-9])`, "gi");
+  const guard = GUARDED_KEYWORDS[keyword.toLowerCase()];
+  for (const found of text.matchAll(pattern)) {
+    if (!guard || !isExcludedUse(text, found.index, found[0].length, guard)) return found[0];
+  }
+  return null;
+}
+
+/**
+ * Keywords that name the allergen on their own but not in a few fixed phrases (2026-11-10,
+ * docs/evidence/2026-11-10-off-full-audit.md). "butter" is milk — "Peanuts, sugar, butter (cream,
+ * salt), and salt." (0085582012740) — but "peanut butter", "cocoa butter" and the other nut and seed
+ * butters aren't; "cream" is milk — "Grade a cream, sea salt." (0041231000131) — but "coconut cream"
+ * and "cream of tartar" aren't. About 2,200 real products named butter and 2,950 named cream and read
+ * clear for milk before these two keywords. "kefir" is milk — but "water kefir" is a soda; "curd" is
+ * milk — but "bean curd" is tofu, which is soy, and a soy keyword of its own (synonyms.ts). "kefir
+ * culture" on its own still warns: it may be either, and over-warning is the cautious side.
+ * The butter list was widened after the first full-export run showed "cacao butter" (400 products),
+ * "parkii butter" (156, Butyrospermum parkii is shea, in the cosmetics Open Food Facts also holds),
+ * "coconut butter" (50), "sesame butter" (40) and "hazelnut butter" (26) warning for milk
+ * (2026-11-10-matcher-before-after.md).
+ *
+ * A guard can only narrow where its keyword fires, never widen it, and it skips one use at a time:
+ * "peanut butter, butter" still matches on the second word. `notAfter` is the single word directly
+ * before the keyword (a space, hyphen or underscore between); `notBefore` is the phrase directly
+ * after it. The matched text is still sliced from the ingredient text, as for every keyword.
+ */
+const GUARDED_KEYWORDS: Record<string, { notAfter?: string[]; notBefore?: string[] }> = {
+  butter: { notAfter: ["peanut", "cocoa", "cacao", "almond", "cashew", "hazelnut", "shea", "parkii", "apple", "coconut", "sunflower", "sesame", "seed", "nut"] },
+  cream: { notAfter: ["coconut"], notBefore: ["of tartar"] },
+  kefir: { notAfter: ["water"] },
+  curd: { notAfter: ["bean"] },
+};
+
+function isExcludedUse(text: string, index: number, length: number, guard: { notAfter?: string[]; notBefore?: string[] }): boolean {
+  const wordBefore = /([a-z0-9]+)[\s\-_]+$/i.exec(text.slice(0, index))?.[1].toLowerCase();
+  if (wordBefore && guard.notAfter?.includes(wordBefore)) return true;
+  const after = text.slice(index + length);
+  return guard.notBefore?.some((phrase) => new RegExp(`^[\\s_]+${phrase.replace(/ /g, "\\s+")}(?![a-z0-9])`, "i").test(after)) ?? false;
 }
 
 /**
