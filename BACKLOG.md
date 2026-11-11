@@ -211,6 +211,27 @@ things that don't touch production remain.
   1,810 real products, 121 read clear before for an allergen they're tagged with and now warn: 131
   product–allergen pairs, 113 of them sesame. One known false caution, a wrong OFF tag we trust
   (`docs/evidence/2026-11-03-tag-gap.md`). Deployed Nov 3 in `553832e`.*
+- [x] **Allergens the ingredient text names by another word.** The full Open Food Facts export
+  (4,904,675 products, 605,512 with English text) was run through the matcher read-only on
+  2026-11-10 (`docs/evidence/2026-11-10-off-full-audit.md`). The barcode path had no gap: of 735,709
+  product–allergen pairs OFF tags, 0 read clear. Text alone caught 92.2%; the misses were words the
+  keyword lists didn't have — butter, cream, cheese, malt, the E220–E228 codes, mayonnaise, miso,
+  surimi, prawns, snails, marzipan and so on.
+  *Fixed 2026-11-10: the words are keywords (never aliases); "butter", "cream", "kefir" and "curd"
+  carry a guard (`match.ts`, `GUARDED_KEYWORDS`) so peanut/cocoa/cacao/nut/seed butters, coconut
+  cream, cream of tartar, water kefir and bean curd stay clear for milk (bean curd is a soy keyword).
+  Measured over the full export, 6,633 product–allergen pairs that read clear now warn, 0 the other
+  way: `docs/evidence/2026-11-10-matcher-before-after.md`.*
+  **Rejected on purpose — don't re-add without new evidence:** *couscous* and *farina* (corn
+  couscous, Italian "farina di …", see `synonyms.ts`); *worcestershire* (1,387 rows; the fish isn't
+  always there, and when it is the label declares it); *chestnut(s)* (778 rows, mostly water
+  chestnuts, not a tree nut); *pesto* (349; nut content varies, and a nut is named when present);
+  *nougat* (often nut-free); *til* (Hindi for sesame, also an abbreviation — 453 rows, noise); *bass*
+  (7 of 26 rows were sea bass, the rest OCR noise, "bassé" and "bass.com"); *soja*, *moutarde*,
+  *senf* (other languages leaking through the audit's English heuristic — a non-English label is
+  the photo path's problem, not a keyword's); *kamut*, *tempeh*, *tvp*, *benne*, *escargot*,
+  *abalone*, *whelk*, *cockles*, *lactoferrin*, *okara*, *gianduja* (one or two rows each — no label
+  found that read clear on that word alone, so there's nothing to show on a real package yet).
 
 ### Week of Nov 9 — highest risk
 

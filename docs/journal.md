@@ -2675,3 +2675,70 @@ No screenshot of either is in the repo.
 
 Still owed: the judging-week reseed, then the judge link turned on and checked once by JT (§16a)
 before it goes to Prof. Yoest by Password Pusher.
+
+## 2026-11-10 — The matcher against the whole of Open Food Facts: 0 barcode-path gaps, and the words the text path lacked
+
+**The audit.** The full Open Food Facts CSV export (4,904,675 products, downloaded this morning)
+was run through the live matcher at `ab949a3`, read-only, on the 605,512 products with English
+ingredient text (`docs/evidence/2026-11-10-off-full-audit.md`, script next to it). Two checks:
+
+- **The barcode path holds.** Of 735,709 product–allergen pairs that Open Food Facts tags with one
+  of the 14 major allergens, **0 read "No listed allergens found."** The November 3 tag fixes hold
+  across the whole database, not just the 1,810-product sample.
+- **The text path — label photos, and products with no tags — caught 92.2%.** Per allergen, from
+  soy 96.2% down to lupin 77.0% and fish 79.6%. The misses were almost all words the keyword lists
+  didn't have: butter, cream, cheese, yogurt (milk); malt (barley); E220–E228 (sulphites);
+  mayonnaise, albumen, lysozyme (egg); miso, tamari (soy); surimi, pollock, trout (fish); prawns,
+  shrimps, crawfish (crustaceans); snails, calamari (molluscs); marzipan, praline, filberts (tree
+  nuts); gingelly, tahina (sesame). 10,698 products named an allergen by one of these and read clear.
+
+**The fix** (`server/src/matcher/synonyms.ts`, `match.ts`): every one of those words is a keyword
+now — keywords only, never aliases, so no profile's correction key moves — each with a real
+barcode and its label text in the comment. Four are **guarded** (`GUARDED_KEYWORDS`, next to the
+word-boundary match): "butter" fires except after peanut, cocoa, cacao, almond, cashew, hazelnut,
+shea, parkii, apple, coconut, sunflower, sesame, seed or nut; "cream" except as "coconut cream" or
+"cream of tartar"; "kefir" except as "water kefir"; "curd" except as "bean curd" — which is tofu,
+so "bean curd" is a soy keyword. A guard can only narrow where its own word fires, and it skips
+one use at a time ("peanut butter, butter" still warns on the second). The matched text the card
+quotes is still sliced from the label.
+
+**Rejected words,** so nobody re-adds them without new evidence: couscous and farina (already
+excluded), worcestershire, chestnut(s), pesto, nougat, til, bass, and the non-English soja /
+moutarde / senf. The reasons are in `BACKLOG.md` (Week of Nov 2, "Allergens the ingredient text
+names by another word").
+
+**Before and after, over the full export** (`docs/evidence/2026-11-10-matcher-before-after.md`,
+one profile per cluster per product, traces not unsafe):
+
+- **Pairs that read clear before and warn now: 6,633** (6,619 Contains, 14 May contain), 6,255
+  distinct products. By allergen: milk 3,655 · gluten 1,588 · sulphites 381 · egg 234 · soy 163 · fish 71 · crustaceans 67 · tree nuts 65 · molluscs 27 · sesame 18, and each single-nut cluster 41–54 (almost all "praline", which doesn't say which nut, so it reaches every one of them). By word: butter 1,801 · malt 1,481 · cream 888 · cheese 485 · E223 203 · yogurt 181 · mayonnaise 160 · E224 112 · yoghurt 104 · miso 97 · graham 71 · kefir 61 · ghee 59 · curd 56 · praline 33–46 per nut cluster · lysozyme 36 · E221 36 · surimi 34 · prawns 26 · farro 26 · tamari 24 · E222 24 · pollock 21 · albumen 21 · textured vegetable protein 17 · crawfish 16 · meringue 16 · snail 15 · butterfat 14 · krill 12 · trout 12 · marzipan 12 · gingelly 12 · natto 12 · calamari 10 · shoyu 9 · pine nut 6 · tahina 6 · shrimps 6 · paneer 6 · triticale 5 · filberts 5 · scampi 5 · tilapia 4 · einkorn 4 · E228 4 · yuba 4 · snails 2 · langoustines 1 · E226 1 · crayfish 1. Sixteen came from a tag that now equals a keyword ("praline", "butter") rather than from the text; none came from "bean curd" as soy, since every bean-curd label already says soybeans.
+- **Pairs that warned before and read clear now: 0.**
+- **Pairs that moved Contains → May contain: 0.**
+
+A first run, before the guard was widened, had 7,771 pairs; reading its rows showed "cacao butter"
+(400 products), "parkii butter" (156 — Butyrospermum parkii is shea, in the cosmetics Open Food
+Facts also holds), "coconut butter" (50), "sesame butter" (40) and "hazelnut butter" (26) warning
+for milk, and 60 of 79 kefir rows being water kefir and 36 of 93 curd rows bean curd. JT chose to
+guard those, to keep "kefir culture" warning (ambiguous, so the cautious side), and to keep E227
+although no label in the export writes it (a real EU sulphite code that can't fire on anything
+else).
+
+**Known over-warns, accepted under principle 1** (false caution beats false safety):
+- **malt vinegar** — about 106 of the 1,481 malt products; barley-derived, gluten disputed;
+- **"vegetable ghee"** — 20 of 59 ghee products; palm oil sold as ghee;
+- **dairy-free cheese, vegan mayonnaise, "meringue grains (sugar, wheat starch)"** — about 55 of
+  485 cheese rows and 10 of 160 mayonnaise rows say vegan or dairy-free;
+- **"natural / artificial butter flavor"** — about 180 products; many do carry milk derivatives;
+- **"kefir culture"** in sodas, **"soya paneer"** (tofu), **"natural graham flavor"**, **"Yuba City,
+  CA"** in a packer's address (two products), **praline** in European filled chocolates that may
+  hold no nut, and a few non-food products ("hand cream") Open Food Facts carries.
+
+**Limits.** The English heuristic is a guess (ten common words); Open Food Facts tags are noisy;
+one allergen per profile; the new warnings were read by class from the first 2,000 rows, not one
+by one. Open Food Facts data is under the ODbL; the export and the raw audit TSVs stay out of the
+repo, only the capped rows file and the audit's findings are in.
+
+**Not in this change:** mustard has no synonym cluster (a "Mustard" profile matches the literal
+word and the tag; 83.6% on text alone, and the audit's hidden-name list found no English word for
+it that the matcher lacks). Lupin (77.0%) and fish (79.6%) have the lowest text-only rates; what
+remains after this change wasn't read row by row, so whether it is tag noise or more words is open.
