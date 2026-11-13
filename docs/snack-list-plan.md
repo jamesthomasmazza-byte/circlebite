@@ -34,13 +34,16 @@ the playdate, not just a scanner at the shelf.
    and the **same chosen profile the shell already holds**, so moving between Scan and Snacks keeps the
    same child. With one profile, the pill is just words. The profile page gets a "Snacks →" link to it.
 8. **Shopping.** Each item has **Shop on Amazon** and **Shop on Instacart**: plain search links by
-   barcode, else by product name, opened in a new tab. No API, no key, no product matching claimed.
-   Every item shows "Scan it when it arrives — stores can send a different version." Whoever checks out
-   gets the delivery, so a circle member shopping from the list ships it to their own house.
-9. **Affiliate income later, wired now.** `AMAZON_ASSOCIATE_TAG` and `INSTACART_AFFILIATE_ID` (names to
-   confirm against each program) are read from the environment, **blank by default**, appended to links
-   only when set, and documented in `.env.example` with no values. Commissions never touch verdicts or
-   list order. The disclosure line appears only once a tag is set.
+   product name and brand, by barcode only when the record has no name (JT, Nov 13), opened in a new
+   tab. No API, no key, no product matching claimed. Every item shows "Scan it when it arrives — stores
+   can send a different version." Whoever checks out gets the delivery, so a circle member shopping from
+   the list ships it to their own house. The server omits the links for a "Contains" item; the client
+   never receives them.
+9. **Affiliate income later, wired now.** `AMAZON_ASSOCIATE_TAG` is read from the environment, **blank
+   by default**, appended to the Amazon link only when set, and documented in `.env.example` with no
+   value. Commissions never touch verdicts or list order. The disclosure line appears only once a tag is
+   set. Instacart affiliate tracking runs through Impact redirect links, not a query parameter, so
+   nothing is wired for it; that waits on the program's terms after judging.
 10. **Behind `SNACK_LIST`, off by default.** Off: no Snacks tab (the bar is the three tabs already
     checked on JT's iPhone), no "Add to" button, and the API returns 404.
 
