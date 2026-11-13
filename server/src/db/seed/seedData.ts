@@ -79,6 +79,7 @@ export const CO_MANAGERS: CoManager[] = [];
 export const FOLLOWERS: Follower[] = [];
 export const SCANS: SeedScan[] = [];
 export const CIRCLE_REPORTS: SeedCommunityReport[] = [];
+export const SNACK_ITEMS: SeedSnackItem[] = [];
 
 function addCast(cast: JudgeCast): void {
   const { n } = cast;
@@ -155,6 +156,18 @@ function addCast(cast: JudgeCast): void {
     // Ids 9 and 10 are the reporting families' scans (below), in cast 1's range only.
     { id: id(6, 11), profile: cast.maya, scanner: cast.priya, product: "circleReported", daysAgo: 3 },
     { id: id(6, 12), profile: cast.noor, scanner: cast.sam, product: "circleReported", daysAgo: 2 },
+  );
+
+  // ---- Maya's snack list (docs/snack-list-plan.md step 10, 2026-11-13; behind SNACK_LIST) ----
+  // Three items, each added from one of Maya's scans above, so the list shows each verdict the way the
+  // tab does: a clean item with both shop links, a "May contain" item with a note, and a "Contains"
+  // item, whose shop links the server omits and which offers the correction flow instead. Added by the
+  // judge (the owner) and by Priya (the co-manager), so "Approved by" shows both. Nothing here if the
+  // switch is off: the rows sit unused and the tab doesn't exist.
+  SNACK_ITEMS.push(
+    { id: id(8, 1), profile: cast.maya, scan: id(6, 1), addedBy: cast.judge, note: null },
+    { id: id(8, 2), profile: cast.maya, scan: id(6, 3), addedBy: cast.priya, note: "For playdates — the sesame is only a may-contain, so check the bag each time." },
+    { id: id(8, 3), profile: cast.maya, scan: id(6, 2), addedBy: cast.judge, note: null },
   );
 
   // ---- A co-manager's pending report on each of two children (Prof. Yoest, 2026-10-27) ----
@@ -357,6 +370,16 @@ export const RETIRED_SEED_BARCODES = ["2990000000090", "2990000000106", "2990000
 // from their own child's scan, so each counts as their own family. The seed inserts them pending and
 // runs the real threshold step; it never writes 'corroborated' itself (judgeSeed.ts). Live only for
 // PRODUCTS.reported's barcode, which no real product can have.
+
+/** A snack list item, added from one of the profile's seeded scans (migration 0050). */
+export type SeedSnackItem = {
+  id: string;
+  profile: string;
+  /** The scan it was added from; its barcode is the item's, as the route does it. */
+  scan: string;
+  addedBy: string;
+  note: string | null;
+};
 
 export type SeedCommunityReport = {
   id: string;

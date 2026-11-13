@@ -37,6 +37,19 @@ different result for each child, which is the point.
 On Leo or Noor, `2990000000076` gets no warning: the families reported peanut, and neither child
 is allergic to it.
 
+## Snacks (if the tab is there)
+
+If the tab bar shows a fourth tab, **Snacks**, Maya's list is on it: three products approved from
+her scans, each with its verdict as it is **now** — computed from the stored product data, no AI
+call — in the same words as a scan card. "Approved by" names who added it. One item reads **Contains
+an allergen** (the peanut bar): the app never offers to shop for a Contains item, and shows "Label
+wrong? Report a correction" instead. The other two carry "Shop on Amazon" and "Shop on Instacart",
+plain search links that open in a new tab, under "Scan it when it arrives — stores can send a
+different version." As Maya's owner you can add a note or remove an item; on Noor, whom you follow,
+you can only read. To add one, scan a product for Maya and tap "Add to Maya's snacks" under its card.
+
+If there is no Snacks tab, the feature stayed switched off for judging and nothing above applies.
+
 ## Reporting a correction
 
 Please file reports only against the demo barcodes above (every one starts `2990000000`). A report

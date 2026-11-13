@@ -32,6 +32,7 @@ import {
   RETIRED_SEED_BARCODES,
   SEED_BARCODES,
   SEEDED_REPORTS,
+  SNACK_ITEMS,
   type SeedCommunityReport,
 } from "./seedData.js";
 
@@ -113,6 +114,7 @@ export type SeedSummary = {
   accounts: number;
   profiles: number;
   scans: number;
+  snackItems: number;
   npsRows: number;
 };
 
@@ -263,6 +265,7 @@ export async function seedJudge(client: PoolClient, options: SeedOptions): Promi
     accounts: Object.keys(PEOPLE).length,
     profiles: Object.keys(PROFILES).length,
     scans: SCANS.length,
+    snackItems: SNACK_ITEMS.length,
     npsRows: NPS_ROWS.length,
   };
 }
@@ -369,6 +372,17 @@ async function createSeed(client: PoolClient, options: { loginHashes: Record<str
         JSON.stringify(matchedAllergens),
         scan.daysAgo,
       ],
+    );
+  }
+
+  // Maya's snack list (seedData.ts SNACK_ITEMS): each item from one of her scans, the barcode the
+  // scan's, as POST /profiles/:id/snacks does it. The items cascade with the profile on the next reseed.
+  for (const item of SNACK_ITEMS) {
+    const scan = SCANS.find((s) => s.id === item.scan)!;
+    await client.query(
+      `INSERT INTO snack_list_items (id, allergen_profile_id, barcode, scan_id, added_by, note, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, now() - make_interval(days => $7))`,
+      [item.id, PROFILES[item.profile].id, PRODUCTS[scan.product].barcode, scan.id, PEOPLE[item.addedBy].id, item.note, scan.daysAgo],
     );
   }
 

@@ -55,7 +55,7 @@ async function main(): Promise<void> {
       console.log(`Rejected ${summary.judgeCorrectionsRejected} correction(s) the seeded accounts had filed.`);
     }
     console.log(
-      `Seeded ${summary.accounts} accounts, ${summary.profiles} profiles, ${summary.scans} scans, ${summary.npsRows} NPS rows.`,
+      `Seeded ${summary.accounts} accounts, ${summary.profiles} profiles, ${summary.scans} scans, ${summary.snackItems} snack list items, ${summary.npsRows} NPS rows.`,
     );
     console.log("Judge logins — each line goes in that judge's own one-time link, and nowhere else:");
     for (const line of credentialLines(summary.judgeCredentials, passwords)) console.log(`  ${line}`);
