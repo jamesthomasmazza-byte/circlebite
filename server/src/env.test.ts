@@ -114,14 +114,14 @@ test("JUDGE_LINK goes through parseSwitch and defaults to off", () => {
   assert.match(source, /judgeLink: parseSwitch\("JUDGE_LINK", process\.env\.JUDGE_LINK, false\)/);
 });
 
-test("JUDGE_LINK_EXPIRES defaults to midnight Eastern starting November 21, 2026, and refuses garbage", () => {
+test("JUDGE_LINK_EXPIRES defaults to midnight Eastern starting December 1, 2026, and refuses garbage", () => {
   const source = readFileSync(new URL("./env.ts", import.meta.url), "utf8");
-  assert.match(source, /parseInstant\("JUDGE_LINK_EXPIRES", process\.env\.JUDGE_LINK_EXPIRES, "2026-11-21T00:00:00-05:00"\)/);
-  assert.equal(parseInstant("X", undefined, "2026-11-21T00:00:00-05:00").toISOString(), "2026-11-21T05:00:00.000Z");
-  assert.equal(parseInstant("X", " ", "2026-11-21T00:00:00-05:00").toISOString(), "2026-11-21T05:00:00.000Z");
-  assert.equal(parseInstant("X", "2026-11-20T18:00:00-05:00", "2026-11-21T00:00:00-05:00").toISOString(), "2026-11-20T23:00:00.000Z");
-  for (const bad of ["tomorrow", "2026-11-21", "never"]) {
-    assert.throws(() => parseInstant("JUDGE_LINK_EXPIRES", bad, "2026-11-21T00:00:00-05:00"), /JUDGE_LINK_EXPIRES must be/, bad);
+  assert.match(source, /parseInstant\("JUDGE_LINK_EXPIRES", process\.env\.JUDGE_LINK_EXPIRES, "2026-12-01T00:00:00-05:00"\)/);
+  assert.equal(parseInstant("X", undefined, "2026-12-01T00:00:00-05:00").toISOString(), "2026-12-01T05:00:00.000Z");
+  assert.equal(parseInstant("X", " ", "2026-12-01T00:00:00-05:00").toISOString(), "2026-12-01T05:00:00.000Z");
+  assert.equal(parseInstant("X", "2026-11-20T18:00:00-05:00", "2026-12-01T00:00:00-05:00").toISOString(), "2026-11-20T23:00:00.000Z");
+  for (const bad of ["tomorrow", "2026-12-01", "never"]) {
+    assert.throws(() => parseInstant("JUDGE_LINK_EXPIRES", bad, "2026-12-01T00:00:00-05:00"), /JUDGE_LINK_EXPIRES must be/, bad);
   }
 });
 

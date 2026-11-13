@@ -46,7 +46,7 @@ export function parseInstant(name: string, raw: string | undefined, fallback: st
   const value = raw === undefined || raw.trim() === "" ? fallback : raw.trim();
   const at = new Date(value);
   if (!/^\d{4}-\d{2}-\d{2}T/.test(value) || Number.isNaN(at.getTime())) {
-    throw new Error(`${name} must be an ISO date-time with an offset, like 2026-11-21T00:00:00-05:00, got "${value}"`);
+    throw new Error(`${name} must be an ISO date-time with an offset, like 2026-12-01T00:00:00-05:00, got "${value}"`);
   }
   return at;
 }
@@ -152,6 +152,6 @@ export const env = {
   // (auth/session.ts). JUDGE_LINK_TOKEN_HASH is the SHA-256 of the link's token, made on the box
   // (docs/server-setup.md §16a); the token itself is never stored. Unset, no token matches.
   judgeLink: parseSwitch("JUDGE_LINK", process.env.JUDGE_LINK, false),
-  judgeLinkExpires: parseInstant("JUDGE_LINK_EXPIRES", process.env.JUDGE_LINK_EXPIRES, "2026-11-21T00:00:00-05:00"),
+  judgeLinkExpires: parseInstant("JUDGE_LINK_EXPIRES", process.env.JUDGE_LINK_EXPIRES, "2026-12-01T00:00:00-05:00"),
   judgeLinkTokenHash: parseSha256Hex("JUDGE_LINK_TOKEN_HASH", process.env.JUDGE_LINK_TOKEN_HASH),
 };
