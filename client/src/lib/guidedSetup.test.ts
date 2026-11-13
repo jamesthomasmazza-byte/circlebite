@@ -156,16 +156,31 @@ test("no allergies: the allergens step continues, severity and may-contain are s
   assert.deepEqual(toCreateInput(a), { label: "Maya", isSelf: false, allergens: [] });
 });
 
-test("picking an allergen, or typing one, turns 'no allergies' back off; choosing it clears the picks", () => {
-  let a = chooseNoAllergies({ ...initialAnswers(), who: "child", name: "Maya" });
-  a = togglePick(a, "peanut");
-  assert.equal(a.noAllergies, false);
-  assert.deepEqual(a.picked, ["peanut"]);
-  a = chooseNoAllergies(a);
-  assert.deepEqual(a.picked, []);
+// Exclusive both ways (JT, Nov 13): the chips show answers.picked, so clearing it clears every chip.
+test("choosing 'no allergies' clears every allergen chip, listed and typed, and the step still continues", () => {
+  let a = answered(); // peanut and tree-nut
   a = addOther(a, checkOtherName("kiwi", CHOICES) as Extract<ReturnType<typeof checkOtherName>, { ok: true }>);
-  assert.equal(a.noAllergies, false);
-  assert.deepEqual(a.picked, ["other:kiwi"]);
+  assert.deepEqual(a.picked, ["peanut", "tree-nut", "other:kiwi"]);
+  a = chooseNoAllergies(a);
+  assert.equal(a.noAllergies, true);
+  assert.deepEqual(a.picked, [], "no chip is pressed");
+  assert.equal(canContinue({ step: "allergens" }, a), true);
+  assert.deepEqual(positions(a).map((p) => p.step), ["who", "name", "allergens", "review"]);
+});
+
+test("choosing any allergen, listed or typed, clears 'no allergies' and brings the severity steps back", () => {
+  const none = chooseNoAllergies({ ...initialAnswers(), who: "child", name: "Maya" });
+  const listed = togglePick(none, "peanut");
+  assert.equal(listed.noAllergies, false);
+  assert.deepEqual(listed.picked, ["peanut"]);
+  assert.deepEqual(positions(listed).map((p) => p.step), ["who", "name", "allergens", "severity", "mayContain", "review"]);
+  const typed = addOther(none, checkOtherName("kiwi", CHOICES) as Extract<ReturnType<typeof checkOtherName>, { ok: true }>);
+  assert.equal(typed.noAllergies, false);
+  assert.deepEqual(typed.picked, ["other:kiwi"]);
+  // Unticking the last allergen doesn't quietly turn "no allergies" back on: the step waits again.
+  const unticked = togglePick(listed, "peanut");
+  assert.equal(unticked.noAllergies, false);
+  assert.equal(canContinue({ step: "allergens" }, unticked), false);
 });
 
 test("'no allergies' still needs who and a name before anything is saved", () => {
