@@ -195,7 +195,7 @@ things that don't touch production remain.
   *Done by JT, Nov 5 (journal, 2026-11-05). The box had none left. The Mac holds
   `circlebite-20261103T184714Z` in an encrypted image, `shasum -c` OK. In S3, 52 pre-purge folders
   were deleted, leaving the 7 clean sets.*
-- [ ] **About Nov 12: confirm the pre-purge versions are gone from S3.** The S3 delete left them as
+- [x] **About Nov 12: confirm the pre-purge versions are gone from S3.** *Done Nov 13 (Claude in Chrome, view only): with Show versions on, the 52 folders hold only 0 B delete markers dated Nov 5, checked at the oldest (`20261006T014807Z`) and the kept set (`20261103T184714Z`); no data versions remain (`docs/journal.md`, 2026-11-13).* The S3 delete left them as
   noncurrent versions, which the lifecycle rule (§17.2) deletes 7 days later. With **Show versions**
   on, none of the 52 folders should remain; delete any that do (§17.14 step 3).
 - [ ] **After November 30, when judging ends (Prof. Yoest, Nov 13): delete the Mac's pre-purge copy** (§17.14, last step).
@@ -402,10 +402,11 @@ precedents, Nov 5.
 Prof. Yoest's two Nov 13 replies (`docs/approvals/2026-11-13-yoest-video-expiry-and-backups.md`).
 **Judging now runs to the end of November**: every "after judging" step below moves to after Nov 30.
 
-- [ ] **Judge link expiry to the end of Nov 30:** default `2026-12-01T00:00:00-05:00` in
+- [x] **Judge link expiry to the end of Nov 30:** default `2026-12-01T00:00:00-05:00` in
   `server/src/env.ts`, its test, `.env.example`, `CONTEST_RULES.md` §5, `docs/principles.md`,
-  `docs/server-setup.md` §16a. Deploys before the reseed. Confirm the date to him.
-- [ ] **Confirm the pre-purge S3 versions are gone** (the "About Nov 12" item above). Confirm to him.
+  `docs/server-setup.md` §16a. Deploys before the reseed. *Done Nov 13: `ddd4107` and `83014fb`, deployed at about 5:25 PM ET (release `20261113222445`); the box sets no `JUDGE_LINK_EXPIRES`, so the default applies (`docs/journal.md`).*
+- [x] **Confirm the pre-purge S3 versions are gone** (the "About Nov 12" item above). *Done Nov 13, see that item.*
+- [ ] **Confirm both to him by Monday Nov 16:** the new expiry (`2026-12-01T00:00:00-05:00`, the link works all of Nov 30) and that the pre-purge S3 versions are gone.
 - [ ] **Video per his answers:** problem in ~30 s, then the live scan and verdict (escalates, never
   clears), then the circle; no code tour; business case in one sentence. Unlisted YouTube; the same link
   at the top of `README.md`.
