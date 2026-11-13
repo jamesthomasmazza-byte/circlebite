@@ -406,7 +406,7 @@ Prof. Yoest's two Nov 13 replies (`docs/approvals/2026-11-13-yoest-video-expiry-
   `server/src/env.ts`, its test, `.env.example`, `CONTEST_RULES.md` §5, `docs/principles.md`,
   `docs/server-setup.md` §16a. Deploys before the reseed. *Done Nov 13: `ddd4107` and `83014fb`, deployed at about 5:25 PM ET (release `20261113222445`); the box sets no `JUDGE_LINK_EXPIRES`, so the default applies (`docs/journal.md`).*
 - [x] **Confirm the pre-purge S3 versions are gone** (the "About Nov 12" item above). *Done Nov 13, see that item.*
-- [ ] **Confirm both to him by Monday Nov 16:** the new expiry (`2026-12-01T00:00:00-05:00`, the link works all of Nov 30) and that the pre-purge S3 versions are gone.
+- [x] **Confirm both to him by Monday Nov 16:** the new expiry (`2026-12-01T00:00:00-05:00`, the link works all of Nov 30) and that the pre-purge S3 versions are gone. *Sent Nov 13, about 5:28 PM ET, as a reply in his "shared escalations, and three corrections" thread.*
 - [ ] **Video per his answers:** problem in ~30 s, then the live scan and verdict (escalates, never
   clears), then the circle; no code tour; business case in one sentence. Unlisted YouTube; the same link
   at the top of `README.md`.
