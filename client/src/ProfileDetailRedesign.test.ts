@@ -46,7 +46,7 @@ function unseenEntry(): ProfileHistoryEntry {
   };
 }
 
-function render(access: ProfileAccess, opts: { hash?: string; showScanFor?: boolean; history?: ProfileHistoryEntry[] } = {}): string {
+function render(access: ProfileAccess, opts: { hash?: string; showScanFor?: boolean; showSnacks?: boolean; history?: ProfileHistoryEntry[] } = {}): string {
   const manages = access.level !== "follower";
   return renderToStaticMarkup(
     createElement(
@@ -59,6 +59,7 @@ function render(access: ProfileAccess, opts: { hash?: string; showScanFor?: bool
         canManage: manages,
         isOwner: access.level === "owner",
         showScanFor: opts.showScanFor ?? false,
+        showSnacks: opts.showSnacks ?? false,
         choices: [],
         history: opts.history ?? [],
         historyFailed: false,
@@ -141,8 +142,20 @@ test("the Scans tab: tiles with the exact verdict label, then the disclaimer and
 });
 
 test("switch off is today's page; the #circle redirect and #changes jump are shared", () => {
-  assert.match(PAGE, /const \{ profileRedesignEnabled: redesign, user \} = useAuth\(\);/);
+  assert.match(PAGE, /const \{ profileRedesignEnabled: redesign, snackListEnabled, user \} = useAuth\(\);/);
   const branch = PAGE.indexOf("if (redesign) {");
   assert.ok(branch > PAGE.indexOf('if (id && canManage && location.hash === "#circle")'), "after the shared hooks");
   assert.ok(PAGE.indexOf("<ChangeHistory", branch) > 0 && PAGE.indexOf('<Link to="/profiles">← Your profiles</Link>') > branch);
+});
+
+// Snack lists (docs/snack-list-plan.md step 9, 2026-11-13): "Snacks →" on the profile page, both
+// layouts, for every role, only while SNACK_LIST is on.
+test("'Snacks →' links to the profile's list on both layouts, behind SNACK_LIST", () => {
+  assert.match(PAGE, /showSnacks=\{snackListEnabled\}/);
+  assert.match(PAGE, /\{snackListEnabled && \(\s*<p>\s*<Link to=\{snacksPath\(id\)\}>\{SNACKS_LINK\}<\/Link>/);
+  assert.match(SRC, /\{p\.showSnacks && \(\s*<Link to=\{snacksPath\(id\)\} className="button-link">\s*\{SNACKS_LINK\}/);
+  for (const access of [OWNER, CO, FULL, SEVERE]) {
+    assert.match(render(access, { showSnacks: true }), /href="\/snacks\?profile=p1"[^>]*>Snacks →<\/a>/, access.level);
+    assert.doesNotMatch(render(access, { showSnacks: false }), /\/snacks/, `${access.level}, switch off`);
+  }
 });

@@ -18,6 +18,7 @@ import {
 } from "./lib/api";
 import { initials, members } from "./lib/circleRedesign";
 import { shortDateTime } from "./lib/dateCopy";
+import { SNACKS_LINK, snacksPath } from "./lib/snackListCopy";
 import {
   allergensStat,
   inCircleStat,
@@ -41,6 +42,8 @@ type Props = {
   canManage: boolean;
   isOwner: boolean;
   showScanFor: boolean;
+  /** Snack lists (SNACK_LIST): a "Snacks →" link in the actions, for every role. */
+  showSnacks: boolean;
   choices: AllergenChoice[] | null;
   history: ProfileHistoryEntry[] | null;
   historyFailed: boolean;
@@ -169,12 +172,17 @@ export function ProfileDetailRedesign(p: Props) {
       <p className="profile-hero__name">{profile.label}</p>
       <p className="profile-hero__role">{roleLine(profile.access)}</p>
 
-      {(p.showScanFor || p.canManage) && (
+      {(p.showScanFor || p.canManage || p.showSnacks) && (
         <p className="profile-hero__actions">
           {/* Chooses this profile for Scan (TabShell.tsx); only with 2+ profiles to scan for. */}
           {p.showScanFor && (
             <Link to={`/scan?profile=${id}`} className="button-link">
               Scan for {profile.label}
+            </Link>
+          )}
+          {p.showSnacks && (
+            <Link to={snacksPath(id)} className="button-link">
+              {SNACKS_LINK}
             </Link>
           )}
           {p.canManage && (

@@ -22,6 +22,7 @@ import { AllergenItem } from "../AllergenItem";
 import { ChangeHistory } from "../ChangeHistory";
 import { reviewNotice } from "../lib/allergenChoiceCopy";
 import { circleCardHref } from "../lib/inviteCopy";
+import { SNACKS_LINK, snacksPath } from "../lib/snackListCopy";
 import { showScanForButton } from "../lib/tabs";
 import { useScanningFor } from "../TabShell";
 import { accessNotice } from "../lib/profileLineCopy";
@@ -35,7 +36,7 @@ export function ProfileDetail() {
   const { scannableCount } = useScanningFor();
   // PROFILE_REDESIGN (JT's mockup, 2026-11-06): the same page, laid out with a header and tabs
   // (ProfileDetailRedesign.tsx). Every request and rule below is shared; off, today's markup.
-  const { profileRedesignEnabled: redesign, user } = useAuth();
+  const { profileRedesignEnabled: redesign, snackListEnabled, user } = useAuth();
   const [profile, setProfile] = useState<ProfileDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -239,6 +240,7 @@ export function ProfileDetail() {
         canManage={canManage}
         isOwner={isOwner}
         showScanFor={showScanForButton(scannableCount)}
+        showSnacks={snackListEnabled}
         choices={choices}
         history={history}
         historyFailed={historyFailed}
@@ -272,6 +274,12 @@ export function ProfileDetail() {
       <p>
         <Link to={`/profiles/${id}/history`}>Recent scans</Link>
       </p>
+      {/* Snack lists (SNACK_LIST): the profile's list, which anyone who reads the profile can see. */}
+      {snackListEnabled && (
+        <p>
+          <Link to={snacksPath(id)}>{SNACKS_LINK}</Link>
+        </p>
+      )}
 
       {/* First: what the page is for (2026-10-28 audit — at 390px it
           started about 650px down). Order only. */}

@@ -126,8 +126,8 @@ export const AFFILIATE_DISCLOSURE = "Amazon links may earn CircleBite a commissi
 
 export const LIST_FAILED = "Couldn't load the list — you may not have access to this profile.";
 
-/** The "Scanning for" pill reads oddly over a list, so the page's own heading says whose list it is. */
-export const SNACKS_TAB_LABEL = "Snacks";
+/** The profile page's link to the list (plan step 9). */
+export const SNACKS_LINK = "Snacks →";
 
 /** "Nov 13", with the year only when it isn't this one — the date on "Approved by", no time of day. */
 export function shortDate(value: string | Date, now: Date = new Date(), opts: { locale?: string; timeZone?: string } = {}): string {
