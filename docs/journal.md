@@ -2789,3 +2789,30 @@ production, as the operator on Maya: Kate's Butter typed → "Contains an allerg
 product → the camera came up on screen, in Barcode mode → Type it → `2990000000076` →
 "Contains an allergen", peanut reported by 2 shoppers, with no reload. That last card is also the
 §8 check for this release.
+
+## 2026-11-13 — Deployed: the judge link works through November 30; the S3 pre-purge check
+
+Prof. Yoest's two replies of the afternoon (`docs/approvals/2026-11-13-yoest-video-expiry-and-backups.md`)
+set the judging window: "Final judging runs to the end of November ... November 30 is safe." The
+judge link had defaulted to midnight Eastern starting November 21, keyed to the tentative November 20
+Zoom. **`ddd4107`** moves `JUDGE_LINK_EXPIRES`'s default to `2026-12-01T00:00:00-05:00` (server
+tests: 631 pass); **`83014fb`** moves the window across the docs, so everything keyed to "after
+judging" (no reseed, the instance up, `JUDGE_LINK=off`, reopening sign-up, deleting the Mac's
+pre-purge copy) is now after November 30. The November 7 entry in `docs/approvals/conditions.md`
+keeps its text with a dated note.
+
+Deployed at about 5:25 PM ET (release `20261113222445`; the folder's name is UTC; rollback target
+`20261111013112`), through `deploy.sh`. No migration, no backup taken for a default-value and docs
+change. The service came back and `/health` answered 200. The SSH rule had gone stale again and JT
+reset it to his IP first (`docs/server-setup.md` §2). Before deploying, a `grep` on the box's `.env`
+found no `JUDGE_LINK_EXPIRES` line, so the new default is what runs. The link stays off
+(`JUDGE_LINK` unset), so the expiry can't be seen from outside until it is switched on before the
+reseed; every refusal is the same 404 by design. The §8 false-safety check for this release is JT's
+to do and isn't recorded here as done.
+
+**S3 pre-purge versions, checked** (the "About Nov 12" item in `BACKLOG.md`; `docs/server-setup.md`
+§17.14 step 3). Claude in Chrome, view only, in the S3 console with **Show versions** on: the 52
+pre-purge folders hold only 0 B delete markers dated November 5, the day of the purge. Checked at
+the oldest set, `20261006T014807Z`, and at `20261103T184714Z`, the set kept on the Mac. No data
+versions remain; the lifecycle rule did its work. Still open from his email, by Monday November 16:
+confirming both the new expiry and this result to him.
