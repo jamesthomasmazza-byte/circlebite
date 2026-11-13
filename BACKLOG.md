@@ -198,7 +198,7 @@ things that don't touch production remain.
 - [ ] **About Nov 12: confirm the pre-purge versions are gone from S3.** The S3 delete left them as
   noncurrent versions, which the lifecycle rule (§17.2) deletes 7 days later. With **Show versions**
   on, none of the 52 folders should remain; delete any that do (§17.14 step 3).
-- [ ] **After November 20: delete the Mac's pre-purge copy** (§17.14, last step).
+- [ ] **After November 30, when judging ends (Prof. Yoest, Nov 13): delete the Mac's pre-purge copy** (§17.14, last step).
 - [ ] **Report correction photos no row refers to.** The Oct 5 item (Week 9, "Orphaned correction
   photos") already found the two closed windows that made them: Sept 10–16, and Sept 10 – Oct 1
   before `1a6a638`. A crash between writing a photo and recording the report can still leave one. Proposal: `backup.sh`

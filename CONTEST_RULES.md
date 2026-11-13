@@ -1,6 +1,7 @@
 # Contest Rules — binding constraints
 
-Source of truth for this repository until judging ends (**November 20, 2026**, over Zoom).
+Source of truth for this repository until judging ends (**November 30, 2026**; Zoom presentations
+November 20, tentatively, and final judging through the end of November).
 Derived from the *AI Vibe Coding Competition Student FAQ, Fall 2026* (Prof. Jack Yoest,
 yoest@cua.edu) and his written approval email of September 8, 2026.
 
@@ -90,10 +91,11 @@ Requirements, same standing as §3:
 | Sept 14, 2026 | Idea submission due |
 | Oct 14, 2026, 2:10 PM | Sponsor lecture — David and Courtney Eisen, Maloney 207 |
 | TBA | Two group Zoom sessions during the build window |
-| Nov 9, 2026 | RSVP to Prof. Yoest's Nov 7 reminders email. JT RSVPed Nov 7, with questions on the video's focus, scoring, format and delivery (answer pending) |
+| Nov 9, 2026 | RSVP to Prof. Yoest's Nov 7 reminders email. JT RSVPed Nov 7, with questions on the video's focus, scoring, format and delivery (answered Nov 13, `docs/approvals/2026-11-13-yoest-video-expiry-and-backups.md`) |
 | **Nov 16, 2026, 11:59 PM ET** | **Code freeze**, moved from Nov 13 (`docs/approvals/2026-11-07-yoest-contest-reminders.md`). Judges grade the last commit on `main` before then, and nothing is redeployed to AWS after it. Everything that touches production happens first: the judge reseed, the judge link switched on and checked, the final submission email sent |
 | By the freeze | **Final submission email**, subject "Final Submission: Your Name, App Name", with the repo, the live link, a one-click demo login (the judge link, sent by one-time secret link per §4), a video under 5 minutes, and a two-sentence summary |
-| Nov 20, 2026 | Judging, over Zoom, **tentatively** (his Nov 7 email) — moved from the week of Nov 26 (`docs/approvals/2026-10-14-yoest-shared-escalations-ask.md`). `JUDGE_LINK_EXPIRES` (Nov 21) assumes this date |
+| Nov 20, 2026 | Judging, over Zoom, **tentatively** (his Nov 7 email) — moved from the week of Nov 26 (`docs/approvals/2026-10-14-yoest-shared-escalations-ask.md`) |
+| **Nov 30, 2026** | **Final judging ends** (his Nov 13 email, `docs/approvals/2026-11-13-yoest-video-expiry-and-backups.md`). `JUDGE_LINK_EXPIRES` defaults to midnight starting Dec 1 ET so the link works all of Nov 30. Everything keyed to "after judging" — no reseed, the instance up (R10), `JUDGE_LINK=off`, deleting the Mac's pre-purge backup copy — is after Nov 30 |
 
 ## 6. Scoring — where effort pays
 

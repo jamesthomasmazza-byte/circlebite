@@ -1,7 +1,7 @@
 # CircleBite — contest entry
 
 Read `CONTEST_RULES.md` and `AGENTS.md` before proposing or changing anything in this repository.
-They are binding until judging ends (November 20, 2026, over Zoom), and they override normal
+They are binding until judging ends (November 30, 2026; Zoom presentations November 20), and they override normal
 engineering defaults.
 
 ## The three that get this entry disqualified

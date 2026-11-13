@@ -423,7 +423,7 @@ reapplied the working config and confirmed the real app came back.
 
 ## 10. Rules that constrain this box
 
-- The instance **stays running through judging week** — do not stop it to save credits (R10).
+- The instance **stays running through the end of judging, November 30** (Prof. Yoest, Nov 13) — do not stop it to save credits (R10).
 - No managed AWS services in the application path: no RDS, no ElastiCache, no Cognito (R6).
   The S3 bucket that holds backup copies is outside that path — the app never reads it; why
   that keeps R5 and R6 intact is in §17.
@@ -778,7 +778,7 @@ curl -s -X POST https://<domain>/api/auth/register -H 'content-type: application
 Then, signed out, `/` should show the closed line in the header, the hero and the closing section,
 with no "Create an account" anywhere, and `/register` should show the line and "Log in".
 
-**Reopen after judging** — only after November 20, and only with Prof. Yoest's written word in
+**Reopen after judging** — only after November 30 (final judging runs to the end of November, his November 13 email), and only with Prof. Yoest's written word in
 `docs/approvals/`:
 
 ```bash
@@ -1063,11 +1063,13 @@ CircleBite signed in to a demo judge account, on Maya's card for `2990000000083`
 
 Settings in `~/circlebite/.env`, all optional:
 - `JUDGE_LINK`: `on` or `off`. Unset is off.
-- `JUDGE_LINK_EXPIRES`: an ISO date-time with offset. Unset is `2026-11-21T00:00:00-05:00`.
-  **That default assumes judging on November 20, which Prof. Yoest's November 7 email calls
-  tentative.** If the date moves, set this to the end of the new judging day. The link is also on
-  from the moment of step 3, days before judging, so it is reachable by anyone it was sent to for that
-  whole stretch; the expiry is what ends it.
+- `JUDGE_LINK_EXPIRES`: an ISO date-time with offset. Unset is `2026-12-01T00:00:00-05:00`, so the
+  link works through all of November 30 Eastern. **Prof. Yoest set that window on November 13:
+  "Final judging runs to the end of November ... November 30 is safe"**
+  (`docs/approvals/2026-11-13-yoest-video-expiry-and-backups.md`); it was `2026-11-21T00:00:00-05:00`,
+  keyed to the tentative November 20 Zoom. If the window moves again, set this to midnight starting
+  the day after the new last day. The link is also on from the moment of step 3, days before judging,
+  so it is reachable by anyone it was sent to for that whole stretch; the expiry is what ends it.
 - `JUDGE_LINK_TOKEN_HASH`: 64 hex characters. Unset matches no token.
 
 A malformed value refuses to boot, like a switch.
@@ -1078,7 +1080,9 @@ Prof. Yoest's November 7 email moved the code freeze to **Monday November 16, 11
 is redeployed to AWS after it (`docs/approvals/2026-11-07-yoest-contest-reminders.md`). What this
 section called judging week is therefore **before the freeze**: steps 1–5 all happen first, and the
 link goes to him in the **final submission email** (`BACKLOG.md`, "Before the Nov 16 freeze"), as its
-one-click demo login, by the deadline. Judging itself is Friday November 20, tentatively.
+one-click demo login, by the deadline. The Zoom presentations are Friday November 20, tentatively,
+and final judging runs to the end of November (his November 13 email), so "the end of judging"
+below means after November 30.
 
 **1. Reseed first.** The reseed before the freeze (§16, `--rotate-passwords`) must run **before** the link
 is sent. It is what makes the 40 pool worlds, and every reseed after the link goes out deletes each
@@ -1132,9 +1136,9 @@ curl -sI https://circlebite.app/judge | grep -i -E 'x-robots-tag|referrer-policy
 **5. Send it** to Prof. Yoest by one-time secret link (Password Pusher), per `CONTEST_RULES.md` §4,
 with the test name above, as part of the final submission email: the secret link is the email's
 one-click demo login. Never paste the link itself into the email, chat or a document, and never into
-the repo. Set the push to one view, and an expiry that outlasts the judging date (Nov 20), since he
-may not open it before then. He forwards it to the judges as he chooses; one link works for all of
-them.
+the repo. Set the push to one view, and an expiry that outlasts the judging window (through Nov 30),
+since he may not open it before then. He forwards it to the judges as he chooses; one link works for
+all of them. Be ready to push it again if he loses it (his Nov 13 email).
 
 **How many worlds are left.** JT runs this himself, read-only:
 
@@ -1156,8 +1160,8 @@ sudo systemctl restart circlebite
 
 ### After judging — turn it off and purge
 
-The link stops by itself at `JUDGE_LINK_EXPIRES` (midnight Eastern starting November 21, assuming
-judging stays on November 20) even if nothing is done. Then, once judging is over:
+The link stops by itself at `JUDGE_LINK_EXPIRES` (midnight Eastern starting December 1, the end of
+the judging window Prof. Yoest set on November 13) even if nothing is done. Then, after November 30:
 1. Turn it off (above), and delete the `JUDGE_LINK_TOKEN_HASH` line from `.env`. Restart.
 2. Reseed (§16). This deletes every pool judge and their invented circle, and recreates them unused.
    Reports the link judges filed are **rejected**, not deleted, so any warning they started stops at
@@ -1502,7 +1506,7 @@ pre-purge. The newest of those is the one taken just before the purge, and is th
 
 **Done November 5, 2026** (JT; `docs/journal.md`, 2026-11-05). The box had already rotated every
 pre-purge set out, so step 1 came from S3, step 2 had nothing to delete, and step 3 ran with **Show
-versions** off. The Mac holds `circlebite-20261103T184714Z`. Step 4 is after judging.
+versions** off. The Mac holds `circlebite-20261103T184714Z`. Step 4 is after November 30, when judging ends (Prof. Yoest, Nov 13).
 
 **1. Keep one pre-purge set on the Mac**, in an encrypted disk image (it holds password hashes and
 the test accounts). Local rotation keeps the 7 newest sets (§17.1), so a few days after the purge the box has
@@ -1565,7 +1569,7 @@ deletes them, 7 days after they became noncurrent. **A week after step 3**, turn
 on and check that none of those folders' versions remain. If some do, select those version rows
 and delete them, typing `permanently delete`.
 
-**4. After November 20, delete the Mac copy:**
+**4. After November 30, delete the Mac copy:**
 
 ```bash
 rm ~/circlebite-prepurge.dmg

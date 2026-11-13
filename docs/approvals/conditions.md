@@ -470,7 +470,7 @@ Not yet reported to Prof. Yoest.
 
 ### Judge link (his November 5, 4:38 PM email, `2026-11-05-yoest-one-click-judge-link.md`)
 
-No date of its own; the code freeze is November 16, moved from November 13 by his November 7 email, and judging is November 20, tentatively.
+No date of its own; the code freeze is November 16, moved from November 13 by his November 7 email. The Zoom presentations are November 20, tentatively, and final judging runs to the end of November (his November 13 email, `2026-11-13-yoest-video-expiry-and-backups.md`): `JUDGE_LINK_EXPIRES` now defaults to midnight Eastern starting December 1.
 
 - **"Please build one link that works for every judge. A click should open CircleBite already signed
   in to a demo account and showing the card for 2990000000083."** No printing, scanning or logins.
@@ -529,7 +529,7 @@ Sent to the finalists and the judges ("Dear Judges and #AlertAIStudents"), not t
   video and the two-sentence summary are new `BACKLOG.md` items before the freeze. **Open.**
 - **"Zoom presentations: Friday, Nov 20, \"tentatively.\""** Judging stays November 20, but not
   firmly. `JUDGE_LINK_EXPIRES` (November 21, midnight Eastern) assumes it; `docs/server-setup.md` §16a
-  says what to do if the date moves.
+  says what to do if the date moves. **Moved November 13** (`2026-11-13-yoest-video-expiry-and-backups.md`): final judging runs to the end of November, so the default is now December 1, midnight Eastern, and everything keyed to "after judging" is after November 30.
 - **"RSVP: students confirm by Monday, Nov 9."** **Done November 7:** JT's RSVP, sent after this email
   (no copy in `docs/approvals/` yet), told him: "With the freeze now on November 16, the judge link will
   come in my final submission rather than during judging week." It also asked about the video's focus,
