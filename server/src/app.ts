@@ -19,6 +19,7 @@ import { npsRouter } from "./routes/nps.js";
 import { profileChangesRouter } from "./routes/profileChanges.js";
 import { profilesRouter } from "./routes/profiles.js";
 import { scansRouter } from "./routes/scans.js";
+import { snackListRouter } from "./routes/snackList.js";
 
 // server/dist/app.js -> ../../client/dist (release layout: <release>/server, <release>/client).
 const clientDist = path.join(
@@ -71,6 +72,8 @@ export function createApp(): Express {
   app.use("/api", profileChangesRouter);
   app.use("/api", npsRouter);
   app.use("/api", adminRouter);
+  // Snack lists (routes/snackList.ts): per-route requireAuth and a 404 while SNACK_LIST is off.
+  app.use("/api", snackListRouter);
 
   if (env.isProduction) {
     // In dev, Vite serves the client on :5173 and proxies API calls here. In production, nginx
