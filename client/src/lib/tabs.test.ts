@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import { safeReturnTo } from "./returnTo";
-import { activeTab, badgeLabel, keptChoice, LANDING_PATH, noticesShownOn, profileBadgeCount, requestedProfile, scanningForId, showScanForButton } from "./tabs";
+import { activeTab, badgeLabel, keptChoice, LANDING_PATH, noticesShownOn, profileBadgeCount, requestedProfile, scanningForId, showScanForButton, tabsShown } from "./tabs";
 
 const MAIN = readFileSync(new URL("../main.tsx", import.meta.url), "utf8");
 const SHELL = readFileSync(new URL("../TabShell.tsx", import.meta.url), "utf8");
@@ -27,7 +27,7 @@ test("Scan, and every signed-in page, sits inside the tab bar's layout", () => {
   const close = MAIN.indexOf("</Route>", open);
   assert.ok(open > 0 && close > open);
   const inside = MAIN.slice(open, close);
-  for (const path of ["/scan", "/profiles", "/profiles/:id", "/profiles/:id/history", "/circle", "/settings", "/admin/ai-accuracy", "/admin/review-queue", "/admin/nps"]) {
+  for (const path of ["/scan", "/profiles", "/profiles/:id", "/profiles/:id/history", "/circle", "/snacks", "/settings", "/admin/ai-accuracy", "/admin/review-queue", "/admin/nps"]) {
     assert.ok(inside.includes(`path="${path}"`), `${path} is inside TabShell`);
   }
   assert.ok(noticesShownOn(LANDING_PATH), "the banner shows on the landing page itself");
@@ -37,6 +37,7 @@ test("every route maps to the tab it belongs to", () => {
   const expected: Record<string, string> = {
     "/scan": "scan",
     "/circle": "circle",
+    "/snacks": "snacks",
     "/profiles": "profile",
     "/profiles/abc": "profile",
     "/profiles/abc/history": "profile",
@@ -46,6 +47,15 @@ test("every route maps to the tab it belongs to", () => {
     "/admin/nps": "profile",
   };
   for (const [path, tab] of Object.entries(expected)) assert.equal(activeTab(path), tab, path);
+});
+
+// Snack lists (docs/snack-list-plan.md decision 7, 2026-11-13): a fourth tab after Circle, and only
+// while the switch is on — off must be exactly today's three tabs.
+test("Snacks is the fourth tab after Circle with SNACK_LIST on, and the bar is the three tabs without it", () => {
+  assert.deepEqual(tabsShown(true), ["profile", "scan", "circle", "snacks"]);
+  assert.deepEqual(tabsShown(false), ["profile", "scan", "circle"]);
+  assert.match(SHELL, /\{tabsShown\(snackListEnabled\)\.map\(\(tab\) => \(/);
+  assert.doesNotMatch(SHELL, /\["profile", "scan", "circle"\] as Tab\[\]/, "no second copy of the list");
 });
 
 test("the notices show in full on Scan and the Profile tab's page, and nowhere else", () => {
@@ -117,7 +127,8 @@ test("leaving a circle re-reads the shell's profiles right away, not on the next
   const shell = readFileSync(new URL("../TabShell.tsx", import.meta.url), "utf8");
   assert.match(shell, /\}, \[pathname, profilesRead\]\);/);
   assert.match(shell, /refreshProfiles: \(\) => setProfilesRead\(\(n\) => n \+ 1\),/);
-  assert.match(shell, /if \(profiles\.status === "fulfilled"\) setChosenProfileId\(\(chosen\) => keptChoice\(chosen, all\)\);/);
+  // In a block since 2026-11-13: the same read also marks the list as loaded, for the Snacks tab.
+  assert.match(shell, /if \(profiles\.status === "fulfilled"\) \{\s*setProfilesLoaded\(true\);\s*setChosenProfileId\(\(chosen\) => keptChoice\(chosen, all\)\);\s*\}/);
   const circle = readFileSync(new URL("../routes/CircleRedesign.tsx", import.meta.url), "utf8");
   assert.match(circle, /onLeft=\{\(\) => \{\s*setProfilesRead\(\(n\) => n \+ 1\);\s*refreshProfiles\(\);\s*\}\}/);
 });

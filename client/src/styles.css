@@ -3855,3 +3855,84 @@ button.scan-tile {
 .profile-page .allergen-item__name {
   overflow-wrap: anywhere;
 }
+
+/* ---------- Snack lists (routes/Snacks.tsx, SNACK_LIST, 2026-11-13) --------------------------- */
+/* One card per item, keyed by its verdict like the scan card: the verdict word in its colour with
+   its icon (the [data-verdict] tokens above), a thick left rule in the same colour, and nothing else
+   coloured. Existing tokens only — styles.contrast.test.ts covers the pairs. */
+
+.snack-item {
+  border-left: var(--verdict-rule) var(--verdict-line);
+  padding-block: var(--space-4);
+}
+
+.snack-item__verdict {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+}
+
+.snack-item__product {
+  margin: 0;
+}
+
+.snack-item__approved {
+  margin: var(--space-1) 0 0;
+}
+
+.snack-item__changed {
+  margin-top: var(--space-2);
+}
+
+.snack-item__changed p,
+.snack-item__changed ul {
+  margin: 0;
+}
+
+.snack-item__note {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--color-border);
+  font-style: italic;
+}
+
+.snack-item__note-form {
+  margin-top: var(--space-2);
+}
+
+.snack-item__note-form label {
+  display: block;
+}
+
+.snack-item__note-form input {
+  display: block;
+  width: 100%;
+  margin-top: var(--space-1);
+}
+
+.snack-item__arrives {
+  margin: var(--space-2) 0 0;
+}
+
+.snack-item__shop,
+.snack-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+}
+
+.snack-item__actions button {
+  margin: 0;
+}
+
+.snack-item__report {
+  margin: var(--space-2) 0 0;
+}
+
+.snack-item .history-entry__disclaimer {
+  margin-top: var(--space-3);
+}
+
+.snacks__affiliate {
+  margin-top: var(--space-4);
+}

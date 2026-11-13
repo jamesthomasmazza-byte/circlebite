@@ -21,6 +21,7 @@ import {
   scanningForId,
   TAB_LABEL,
   TAB_PATH,
+  tabsShown,
   type Tab,
 } from "./lib/tabs";
 
@@ -31,6 +32,10 @@ export type ScanningFor = {
   chosenProfileId: string | null;
   chooseProfile: (id: string) => void;
   scannableCount: number;
+  /** The profiles the choice is among, managed then followed, and whether the list has been read
+   *  (the Snacks tab, which shows the chosen profile's list). */
+  profiles: ProfileSummary[];
+  profilesLoaded: boolean;
   requests: CircleRequest[];
   refreshRequests: () => void;
   // Read the profile list again without a navigation: after leaving a circle on the Circle tab.
@@ -59,11 +64,12 @@ export function TabShell() {
   const [notices, setNotices] = useState<NoticeData>(EMPTY);
   const [badge, setBadge] = useState(0);
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
+  const [profilesLoaded, setProfilesLoaded] = useState(false);
   const [chosenProfileId, setChosenProfileId] = useState<string | null>(() => requestedProfile(search));
   // Follow requests waiting on this owner (CIRCLE_REQUESTS): a line on Scan after Condition 2's
   // notices, never before them, and a badge on the Circle tab. Gone only when each is approved or
   // declined. Empty for anyone who owns nothing, and while the switch is off.
-  const { circleRequestsEnabled, scanRedesignEnabled, profileRedesignEnabled } = useAuth();
+  const { circleRequestsEnabled, scanRedesignEnabled, profileRedesignEnabled, snackListEnabled } = useAuth();
   const [requests, setRequests] = useState<CircleRequest[]>([]);
   const [requestsRead, setRequestsRead] = useState(0);
   const [profilesRead, setProfilesRead] = useState(0);
@@ -83,7 +89,10 @@ export function TabShell() {
       const all = profiles.status === "fulfilled" ? [...managed, ...profiles.value.followed] : [];
       setProfiles(all);
       // Only once the list was read: a failed read says nothing about which profiles are still yours.
-      if (profiles.status === "fulfilled") setChosenProfileId((chosen) => keptChoice(chosen, all));
+      if (profiles.status === "fulfilled") {
+        setProfilesLoaded(true);
+        setChosenProfileId((chosen) => keptChoice(chosen, all));
+      }
       setNotices({
         unseen: unseenRows,
         unseenFailed: unseen.status === "rejected",
@@ -117,10 +126,15 @@ export function TabShell() {
   // Condition 2's notices still come straight after it, before the page. Every other screen keeps
   // the header. With no profile there's no pill; Scan says how to add one.
   const stage = scanStageOn(scanRedesignEnabled, current === "scan");
+  // Snacks (SNACK_LIST, 2026-11-13): the same pill in the header's place, choosing the same profile,
+  // without Scan's camera layout. With no profile there's no pill, and the page says what to do.
+  const pillShown = (stage || current === "snacks") && chosen !== undefined;
   const context: ScanningFor = {
     chosenProfileId,
     chooseProfile: setChosenProfileId,
     scannableCount: profiles.length,
+    profiles,
+    profilesLoaded,
     requests,
     refreshRequests: () => setRequestsRead((n) => n + 1),
     refreshProfiles: () => setProfilesRead((n) => n + 1),
@@ -128,9 +142,9 @@ export function TabShell() {
 
   return (
     <div className={stage ? "tab-shell tab-shell--camera" : "tab-shell"}>
-      {stage ? (
-        chosen && <ScanPill profiles={profiles} chosen={chosen} onChoose={setChosenProfileId} />
-      ) : (
+      {pillShown ? (
+        <ScanPill profiles={profiles} chosen={chosen!} onChoose={setChosenProfileId} />
+      ) : stage ? null : (
         // PROFILE_REDESIGN (2026-11-06): on the Profile tab's own page, a menu icon to /settings.
         <ShellHeader scanningFor={scanningFor} accountMenu={profileRedesignEnabled && pathname === TAB_PATH.profile} />
       )}
@@ -143,7 +157,7 @@ export function TabShell() {
       )}
       <Outlet context={context} />
       <nav className="tab-bar" aria-label="Main">
-        {(["profile", "scan", "circle"] as Tab[]).map((tab) => (
+        {tabsShown(snackListEnabled).map((tab) => (
           <Link
             key={tab}
             to={TAB_PATH[tab]}
@@ -223,6 +237,15 @@ function TabIcon({ tab }: { tab: Tab }) {
       <svg {...common}>
         <path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3" />
         <path d="M8 9v6M11 9v6M14 9v6M16.5 9v6" />
+      </svg>
+    );
+  }
+  if (tab === "snacks") {
+    // A shopping basket.
+    return (
+      <svg {...common}>
+        <path d="M3 10h18l-1.5 9a2 2 0 0 1-2 1.7H6.5a2 2 0 0 1-2-1.7Z" />
+        <path d="M8 10l3-6M16 10l-3-6M9 14v3M15 14v3" />
       </svg>
     );
   }

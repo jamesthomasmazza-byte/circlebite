@@ -49,8 +49,11 @@ test("with SCAN_REDESIGN, Scan's pill takes the header's place on Scan only, sti
   const page = SHELL.indexOf("<Outlet");
   assert.ok(pill > 0 && pill < notices && notices < page);
   assert.match(SHELL, /const stage = scanStageOn\(scanRedesignEnabled, current === "scan"\);/);
-  assert.match(SHELL, /\{stage \? \(\s*chosen && <ScanPill /);
-  assert.match(SHELL, /\) : \([^<]*<ShellHeader scanningFor=\{scanningFor\} accountMenu=\{[^}]*\} \/>\s*\)\}/, "the header everywhere else");
+  // The Snacks tab borrows the pill too (2026-11-13), without the camera layout, which stays Scan's.
+  assert.match(SHELL, /const pillShown = \(stage \|\| current === "snacks"\) && chosen !== undefined;/);
+  assert.match(SHELL, /\{pillShown \? \(\s*<ScanPill /);
+  assert.match(SHELL, /className=\{stage \? "tab-shell tab-shell--camera" : "tab-shell"\}/);
+  assert.match(SHELL, /\) : stage \? null : \([^<]*<ShellHeader scanningFor=\{scanningFor\} accountMenu=\{[^}]*\} \/>\s*\)\}/, "the header everywhere else");
 });
 
 test("Scan gets the slim notices and the Profile tab the full ones (Condition 2, 2026-10-26)", () => {

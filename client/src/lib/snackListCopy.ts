@@ -84,6 +84,17 @@ export function approvedBy(name: string | null, when: string): string {
   return name ? `Approved by ${name}, ${when}` : `Approved ${when}`;
 }
 
+/**
+ * An item's allergens the matcher cleared but nothing reliable checked (server snackList/itemVerdict.ts:
+ * a text-only product the model never read for them, or whose text has changed). Named, as on a scan
+ * card: uncertainty is shown, never folded away (docs/principles.md principle 2).
+ */
+export function notCheckedLine(names: string[]): string {
+  if (names.length === 0) return "";
+  const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  return `Not checked for ${list}: this product's record has only ingredient text, and it hasn't been read for ${names.length === 1 ? "it" : "them"}. Scan it to check.`;
+}
+
 /** On every item: whoever checks out may get a different version of the product. */
 export const SCAN_WHEN_IT_ARRIVES = "Scan it when it arrives — stores can send a different version.";
 

@@ -1,21 +1,31 @@
 import type { ProfileSummary, UnseenProfileChanges } from "./api";
 
-// The bottom tab bar (TabShell.tsx, 2026-10-23): Profile · Scan · Circle. Plain values, under test.
+// The bottom tab bar (TabShell.tsx, 2026-10-23): Profile · Scan · Circle, and Snacks after Circle
+// while SNACK_LIST is on (2026-11-13). Plain values, under test.
 
 /** Where a signed-in person lands — after sign-in, at "/", and at the old "/dashboard". */
 export const LANDING_PATH = "/scan";
 
-export type Tab = "profile" | "scan" | "circle";
+export type Tab = "profile" | "scan" | "circle" | "snacks";
 
-export const TAB_LABEL: Record<Tab, string> = { profile: "Profile", scan: "Scan", circle: "Circle" };
+export const TAB_LABEL: Record<Tab, string> = { profile: "Profile", scan: "Scan", circle: "Circle", snacks: "Snacks" };
 
-export const TAB_PATH: Record<Tab, string> = { profile: "/profiles", scan: LANDING_PATH, circle: "/circle" };
+export const TAB_PATH: Record<Tab, string> = { profile: "/profiles", scan: LANDING_PATH, circle: "/circle", snacks: "/snacks" };
 
-/** Which tab a signed-in page belongs to. Everything that isn't Scan or Circle is the person's own
- *  stuff — profiles, their scan history, settings, and the admin pages. */
+/**
+ * The tabs in the bar, in order. Snacks (docs/snack-list-plan.md decision 7) only while SNACK_LIST is
+ * on: off, the bar is exactly the three tabs checked on JT's iPhone.
+ */
+export function tabsShown(snackListEnabled: boolean): Tab[] {
+  return snackListEnabled ? ["profile", "scan", "circle", "snacks"] : ["profile", "scan", "circle"];
+}
+
+/** Which tab a signed-in page belongs to. Everything that isn't Scan, Circle or Snacks is the person's
+ *  own stuff — profiles, their scan history, settings, and the admin pages. */
 export function activeTab(pathname: string): Tab {
   if (pathname === "/scan" || pathname.startsWith("/scan/")) return "scan";
   if (pathname === "/circle" || pathname.startsWith("/circle/")) return "circle";
+  if (pathname === "/snacks" || pathname.startsWith("/snacks/")) return "snacks";
   return "profile";
 }
 
