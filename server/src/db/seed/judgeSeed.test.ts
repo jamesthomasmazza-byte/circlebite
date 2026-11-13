@@ -244,7 +244,7 @@ test("fresh seed: four judges can sign in, each holding every circle role, with 
   assert.ok(baseline.nps.every((r) => r.source === "seed" && r.user_id === null));
 
   // Maya's snack list (docs/snack-list-plan.md step 10): three items in every world, from her own
-  // scans, with the scan's barcode, one with a note, approved by the judge and by Priya.
+  // scans, with the scan's barcode, two with a note, approved by the judge and by Priya.
   for (const cast of [...JUDGE_CASTS, ...JUDGE_LINK_POOL]) {
     const items = baseline.snackItems.filter((i) => i.allergen_profile_id === PROFILES[cast.maya].id);
     assert.equal(items.length, 3, `world ${cast.n}`);
@@ -253,7 +253,7 @@ test("fresh seed: four judges can sign in, each holding every circle role, with 
       assert.ok(scan && scan.profile === cast.maya, `world ${cast.n}: each item comes from one of Maya's scans`);
       assert.equal(item.barcode, PRODUCTS[scan!.product].barcode, "the scan's barcode");
     }
-    assert.equal(items.filter((i) => i.note !== null).length, 1, `world ${cast.n}: one note`);
+    assert.equal(items.filter((i) => i.note !== null).length, 2, `world ${cast.n}: two notes`);
     assert.deepEqual(new Set(items.map((i) => i.added_by)), new Set([PEOPLE[cast.judge].id, PEOPLE[cast.priya].id]));
   }
   assert.equal(summary.snackItems, SNACK_ITEMS.length);

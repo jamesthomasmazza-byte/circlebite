@@ -161,13 +161,15 @@ function addCast(cast: JudgeCast): void {
   // ---- Maya's snack list (docs/snack-list-plan.md step 10, 2026-11-13; behind SNACK_LIST) ----
   // Three items, each added from one of Maya's scans above, so the list shows each verdict the way the
   // tab does: a clean item with both shop links, a "May contain" item with a note, and a "Contains"
-  // item, whose shop links the server omits and which offers the correction flow instead. Added by the
+  // item, whose shop links the server omits and which offers the correction flow instead; its note
+  // says it was approved before the allergy was confirmed, the case a live verdict exists for. Added by the
   // judge (the owner) and by Priya (the co-manager), so "Approved by" shows both. Nothing here if the
   // switch is off: the rows sit unused and the tab doesn't exist.
   SNACK_ITEMS.push(
     { id: id(8, 1), profile: cast.maya, scan: id(6, 1), addedBy: cast.judge, note: null },
     { id: id(8, 2), profile: cast.maya, scan: id(6, 3), addedBy: cast.priya, note: "For playdates — the sesame is only a may-contain, so check the bag each time." },
-    { id: id(8, 3), profile: cast.maya, scan: id(6, 2), addedBy: cast.judge, note: null },
+    // A later allergen flagging an old item (plan decision 4): the note says it was approved before.
+    { id: id(8, 3), profile: cast.maya, scan: id(6, 2), addedBy: cast.judge, note: "Approved before Maya's peanut allergy was confirmed." },
   );
 
   // ---- A co-manager's pending report on each of two children (Prof. Yoest, 2026-10-27) ----
