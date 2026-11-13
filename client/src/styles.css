@@ -3913,12 +3913,29 @@ button.scan-tile {
   margin: var(--space-2) 0 0;
 }
 
-.snack-item__shop,
 .snack-item__actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
   margin: var(--space-3) 0 0;
+}
+
+/* The two store links on one row when they fit (390px at 100% text), each in its own column, and one
+   under the other once the text no longer fits — at 150% text the minimum is 150% wider too, since
+   it's in rem. Smaller text and tighter padding than the other outlined buttons, still 44px tall. */
+.snack-item__shop {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+}
+
+.snack-item__shop .button-link {
+  justify-content: center;
+  min-width: 0;
+  padding-inline: var(--space-2);
+  font-size: var(--text-sm);
+  text-align: center;
 }
 
 .snack-item__actions button {

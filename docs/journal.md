@@ -2875,6 +2875,13 @@ local seed's password (shown by the seed, never stored). Screenshots in `docs/ap
   its "Scan a product" link. The profile it made was deleted after.
 - **The note form** (`note-form-390`): Save note / Cancel in place of the item's buttons.
 
+*Later the same day (JT's three changes):* the seeded peanut bar's note reads "Approved before Maya's
+peanut allergy was confirmed." (`bf548f7`); "No allergies" is tested exclusive both ways
+(`8063fd6`); and the two store links share one row when they fit, each in its own column, stacking
+once the text doesn't fit. Measured in Chrome at 390 wide: at 100% text, two 157px buttons on one row
+with nothing overflowing; at 150%, one under the other. Light and dark, no horizontal scroll;
+`list-390`, `list-390-150`, `list-390-dark` and `list-390-dark-150` are from this pass.
+
 **Not checked here:** JT's iPhone (BACKLOG's gate, Sunday noon); what Amazon and Instacart return for
 a query (links only, no claim of a match); a community or circle report landing on a listed product
 (the layers are the scan card's own code, tested on the server; no seeded report falls on a listed
