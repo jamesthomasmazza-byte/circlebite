@@ -397,6 +397,23 @@ precedents, Nov 5.
    (`docs/journal.md`, Nov 6). To switch it off: `docs/server-setup.md` §11h. JT's iPhone check is
    his to do and isn't recorded here as done.*
 
+### Nov 13 — Prof. Yoest's asks and the snack lists (added by JT, Nov 13)
+
+Prof. Yoest's two Nov 13 replies (`docs/approvals/2026-11-13-yoest-video-expiry-and-backups.md`).
+**Judging now runs to the end of November**: every "after judging" step below moves to after Nov 30.
+
+- [ ] **Judge link expiry to the end of Nov 30:** default `2026-12-01T00:00:00-05:00` in
+  `server/src/env.ts`, its test, `.env.example`, `CONTEST_RULES.md` §5, `docs/principles.md`,
+  `docs/server-setup.md` §16a. Deploys before the reseed. Confirm the date to him.
+- [ ] **Confirm the pre-purge S3 versions are gone** (the "About Nov 12" item above). Confirm to him.
+- [ ] **Video per his answers:** problem in ~30 s, then the live scan and verdict (escalates, never
+  clears), then the circle; no code tour; business case in one sentence. Unlisted YouTube; the same link
+  at the top of `README.md`.
+- [ ] **Snack lists** (`docs/snack-list-plan.md`), suggested by the judge who funds the award; JT, Nov 13.
+  Behind `SNACK_LIST`. Shop links work; affiliate income does not, by design, until after judging.
+  **Gate: Sunday Nov 15, noon ET**, deployed, phone-checked and on, or it stays off and becomes the
+  roadmap slide. Deploys before the reseed; the judge seed gives Maya a list in every world.
+
 ### Nov 16, 11:59 PM ET — code freeze (was Nov 13; moved Nov 7)
 
 - [x] **Deploy the reporter row before the freeze** (Prof. Yoest's Oct 27 ask,
