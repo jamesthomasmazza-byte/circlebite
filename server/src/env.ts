@@ -59,6 +59,12 @@ export function parseSha256Hex(name: string, raw: string | undefined): string | 
   return value;
 }
 
+/** A free-text setting, or undefined when unset or blank — the same blank-string trap as above. */
+export function optionalTrimmed(raw: string | undefined): string | undefined {
+  const value = raw?.trim();
+  return value ? value : undefined;
+}
+
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   isProduction: process.env.NODE_ENV === "production",
@@ -154,4 +160,15 @@ export const env = {
   judgeLink: parseSwitch("JUDGE_LINK", process.env.JUDGE_LINK, false),
   judgeLinkExpires: parseInstant("JUDGE_LINK_EXPIRES", process.env.JUDGE_LINK_EXPIRES, "2026-12-01T00:00:00-05:00"),
   judgeLinkTokenHash: parseSha256Hex("JUDGE_LINK_TOKEN_HASH", process.env.JUDGE_LINK_TOKEN_HASH),
+  // Snack lists (routes/snackList.ts, docs/snack-list-plan.md, 2026-11-13): each profile's list of
+  // products approved from a scan's card, with each item's current verdict and shop links. Same
+  // pattern as the switches above: off by default, and off makes every list route 404 and hides the
+  // Snacks tab and the "Add to" button. Items already saved stay in the database until it's on
+  // again. The client reads it via GET /me.
+  snackList: parseSwitch("SNACK_LIST", process.env.SNACK_LIST, false),
+  // Amazon Associates tag, appended to an item's Amazon search link only when set
+  // (snackList/shopLinks.ts). Blank by default: no tag, no affiliate link, no disclosure line. It is
+  // a public query parameter, not a secret, but it lives in .env on the box like every setting. It
+  // never touches a verdict or the order of a list (plan decision 9).
+  amazonAssociateTag: optionalTrimmed(process.env.AMAZON_ASSOCIATE_TAG),
 };

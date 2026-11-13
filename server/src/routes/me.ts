@@ -35,6 +35,8 @@ meRouter.get("/me", requireAuth, (req, res) => {
     scanRedesignEnabled: env.scanRedesign,
     // The redesigned Profile tab and page's switch, the same free field.
     profileRedesignEnabled: env.profileRedesign,
+    // Snack lists' switch, the same free field. The list routes check env.snackList themselves.
+    snackListEnabled: env.snackList,
   });
 });
 

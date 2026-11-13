@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
-import { parseInstant, parseOptionalCents, parseSha256Hex, parseSwitch } from "./env.js";
+import { optionalTrimmed, parseInstant, parseOptionalCents, parseSha256Hex, parseSwitch } from "./env.js";
 
 test("falls back to the default when the var is unset", () => {
   assert.equal(parseOptionalCents(undefined, 200), 200);
@@ -136,4 +136,21 @@ test("JUDGE_LINK_TOKEN_HASH is a SHA-256 hex digest or unset; anything else refu
 test("GUIDED_SETUP goes through parseSwitch and defaults to off", () => {
   const source = readFileSync(new URL("./env.ts", import.meta.url), "utf8");
   assert.match(source, /guidedSetup: parseSwitch\("GUIDED_SETUP", process\.env\.GUIDED_SETUP, false\)/);
+});
+
+// SNACK_LIST (2026-11-13, docs/snack-list-plan.md): off unless switched on, like the others.
+test("SNACK_LIST goes through parseSwitch and defaults to off", () => {
+  const source = readFileSync(new URL("./env.ts", import.meta.url), "utf8");
+  assert.match(source, /snackList: parseSwitch\("SNACK_LIST", process\.env\.SNACK_LIST, false\)/);
+  assert.throws(() => parseSwitch("SNACK_LIST", "yes", false), /SNACK_LIST must be "on" or "off"/);
+});
+
+// AMAZON_ASSOCIATE_TAG: a plain string, blank is none — a blank line in .env must not become a tag.
+test("AMAZON_ASSOCIATE_TAG is read trimmed, and blank or unset is undefined", () => {
+  const source = readFileSync(new URL("./env.ts", import.meta.url), "utf8");
+  assert.match(source, /amazonAssociateTag: optionalTrimmed\(process\.env\.AMAZON_ASSOCIATE_TAG\)/);
+  assert.equal(optionalTrimmed(undefined), undefined);
+  assert.equal(optionalTrimmed(""), undefined);
+  assert.equal(optionalTrimmed("   "), undefined);
+  assert.equal(optionalTrimmed(" circlebite-20 "), "circlebite-20");
 });
