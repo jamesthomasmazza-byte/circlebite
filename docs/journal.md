@@ -2816,3 +2816,67 @@ pre-purge folders hold only 0 B delete markers dated November 5, the day of the 
 the oldest set, `20261006T014807Z`, and at `20261103T184714Z`, the set kept on the Mac. No data
 versions remain; the lifecycle rule did its work. Still open from his email, by Monday November 16:
 confirming both the new expiry and this result to him.
+
+## 2026-11-13 — Built: snack lists, steps 1–11, behind `SNACK_LIST` (not yet deployed)
+
+Suggested out loud by the judge who funds the award; JT decided the same day to build it for the
+final submission, with the shopping links working and the affiliate income not (`docs/snack-list-plan.md`).
+Built in the plan's order, one logical change per commit, server and client suites green at each:
+
+- **Server** (`6d87a68`…`0c72764`): migration 0050 `snack_list_items` (scan reference set null on
+  retention, product reference cascading for the reseed); the `SNACK_LIST` switch and
+  `AMAZON_ASSOCIATE_TAG`; `snackList/itemVerdict.ts`, the item's verdict with no AI call; the shop
+  link builder; the API with permission tests. **JT's four changes to the first proposal:** the
+  originating scan carries only the model's Path B findings as a floor, never a stored matcher hit, so
+  an approved correction can change the verdict and bring the links back; the server omits the shop
+  links for a "Contains" item; queries are name and brand first, barcode only with no name; no
+  `INSTACART_AFFILIATE_ID` (Impact redirect links, after judging).
+- **Client** (`5702695`, `26e8021`, `10a002c`, `1bfbdf0`): "Add to <name>'s snacks" under the card
+  (managers, barcode scans, never the sample; a confirm step on Contains and May contain that names
+  the verdict and the allergens; "Already on <name>'s snacks" on a 409); the Snacks tab after Circle,
+  only with the switch on, under the same pill as Scan and the shell's chosen profile; "No allergies
+  — just snack lists" in the guided setup, which skips severity and may-contain and saves an empty
+  list; "Snacks →" on both profile page layouts. A list item's "Label wrong? Report a correction"
+  sends Scan the item's id, never its barcode: Scan looks the item up, scans its product once for the
+  profile and opens the report form.
+- **Seed** (`307cdd2`): three items on Maya's list in every judge world — the crackers (clean), the
+  oat biscuits (May contain, with Priya's note) and the peanut bar (Contains) — and a Snacks section
+  in `JUDGES.md` that applies only if the tab is there. The judge link's landing is unchanged.
+- Server tests 631 → 661; client 493 → 507.
+
+**Checked locally, Nov 13.** The judge seed re-run on the local database; a second server on 3001 with
+`SNACK_LIST=on` and the production switches (the three redesigns, guided setup, circle escalations
+and requests), a second Vite on 5174 proxying to it, JT's own dev server and Vite left alone. Driven
+with Playwright in the Mac's installed Chrome, signed in as judge1 through the login API with the
+local seed's password (shown by the seed, never stored). Screenshots in `docs/approvals/img/`,
+`circlebite-snacks-*-2026-11-13.png`:
+
+- **The tab bar:** on, `Profile · Scan · Circle · Snacks`; off, exactly `Profile · Scan · Circle`,
+  `/snacks` reads "Page not found", and no "Add to" button under a card (`off-tabbar-390`,
+  `off-snacks-390`).
+- **Maya's list** as judge1 (`list-390`, `list-390-dark`, `list-1280`, `list-1280-dark`,
+  `list-390-125`, `list-390-150`): the server's order, Contains first, then May contain, then clean;
+  the peanut bar with no shop links and "Label wrong? Report a correction"; the crackers with both
+  links; Priya's note on the biscuits in italics; "Approved by Judge 1" and "Approved by Priya Nair";
+  the word "safe" absent from the page; no horizontal scroll at any width or text size. The pill and
+  chips above the heading are Scan's own, choosing the same profile.
+- **A follower** (`follower-390`): Noor's list (one item added by SQL for the check, removed after):
+  the Contains item with the report link, no Remove or note buttons.
+- **Adding from the card** (`card-add-button-390`, `card-confirm-390`, `card-added-390`): the
+  yogurt scanned for Leo (Contains, milk) → "Add to Leo's snacks" → the confirm box names "Contains
+  an allergen" and "Leo: Milk", with "Don't add" as the primary → "Add it anyway" → "Added to Leo's
+  snacks. View the list". The crackers for Maya → "Already on Maya's snacks" (`card-already-390`).
+- **The correction flow from the list** (`leo-contains-390`, `report-from-list-390`): Leo's new
+  Contains item has no shop links; its link opened Scan on Leo with the yogurt's card and "Report a
+  problem with this verdict" open.
+- **Guided setup** (`guided-chip-390`, `guided-review-390`, `guided-finish-390`, `empty-390`): the
+  chip after "Something else"; the review reads "Allergens: None — snack lists only" with no "May
+  contain" row; the finish screen offers "Open the Snacks tab", which lands on the empty state with
+  its "Scan a product" link. The profile it made was deleted after.
+- **The note form** (`note-form-390`): Save note / Cancel in place of the item's buttons.
+
+**Not checked here:** JT's iPhone (BACKLOG's gate, Sunday noon); what Amazon and Instacart return for
+a query (links only, no claim of a match); a community or circle report landing on a listed product
+(the layers are the scan card's own code, tested on the server; no seeded report falls on a listed
+barcode). Nothing deployed: the switch is off by default, so the deploy alone changes nothing a
+judge sees.

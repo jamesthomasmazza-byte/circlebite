@@ -99,6 +99,10 @@ child when the parent isn't in the room.
 Under active development, September–November 2026. Deployed at
 [circlebite.app](https://circlebite.app) — placeholder page while authentication is built.
 
+Snack lists (November 13, 2026, behind `SNACK_LIST`): each profile's list of products approved from a
+scan, visible to the whole circle, with each item's verdict recomputed from stored data and plain
+store search links, omitted for a "Contains" item. Plan and decisions: `docs/snack-list-plan.md`.
+
 ## Rules
 
 This repository is governed by [`CONTEST_RULES.md`](CONTEST_RULES.md). AI assistants working here

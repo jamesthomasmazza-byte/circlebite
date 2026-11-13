@@ -791,6 +791,63 @@ drops its three "use a made-up name" notices and the closing section's "Create y
 your child's allergens one question at a time…" line; both come back with the buttons when it
 reopens.
 
+## 11j. Snack lists — switch
+
+With `SNACK_LIST=on`, a fourth tab, **Snacks**, follows Circle: each profile's list of products its
+owner and co-managers approved from a scan's card, visible to everyone in the circle, each item with
+its verdict as it is **now** (computed from the stored product row and the current allergens, the
+same community and circle layers as a scan, no AI call), "Approved by <name>, <date>", a note, and
+plain "Shop on Amazon" / "Shop on Instacart" search links that the server omits for a "Contains"
+item. Also on: "Add to <name>'s snacks" under the verdict card for a manager, "Snacks →" on the
+profile page, and "No allergies — just snack lists" in the guided setup. Off by default; off is
+exactly today's three tabs, no "Add to" button, and every `/api/profiles/:id/snacks` route a plain
+404 (`docs/snack-list-plan.md`; `server/src/routes/snackList.ts`, `server/src/snackList/`).
+
+**Data:** migration 0050, `snack_list_items`. Items saved while the switch was on stay in the
+database while it is off, untouched, and come back when it's on again. The judge seed (§16) gives
+Maya three items in every judge world.
+
+**Optional, affiliate:** `AMAZON_ASSOCIATE_TAG`, blank by default. Set, it is appended to each
+item's Amazon link as `&tag=` and the list shows a one-line disclosure; it never touches a verdict or
+the order of a list. Instacart's affiliate tracking runs through Impact redirect links, not a
+parameter, so nothing is wired for it until after judging.
+
+**Before turning it on:** JT's review on the iPhone (BACKLOG, Nov 13), with the switch on, against
+the judge seed, as judge1 and as a follower. Checked locally Nov 13 at 390×844 and 1280×800, light
+and dark, 100/125/150% text (`docs/journal.md`, 2026-11-13; screenshots `docs/approvals/img/
+circlebite-snacks-*-2026-11-13.png`).
+
+**Order on the box:** deploy (§8), then the switch, then the judge reseed (§16): the reseed writes
+Maya's items into the table the deploy's migration creates. Nothing after the freeze.
+
+**Turn it on:**
+
+```bash
+grep -q '^SNACK_LIST=' ~/circlebite/.env \
+  && sed -i 's/^SNACK_LIST=.*/SNACK_LIST=on/' ~/circlebite/.env \
+  || echo "SNACK_LIST=on" >> ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
+**Turn it off** (the rollback) — today's three tabs again on each browser's next page load, the
+list routes 404, and the data stays:
+
+```bash
+sed -i 's/^SNACK_LIST=.*/SNACK_LIST=off/' ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
+**Check it on production after the switch** — from the Mac, signed out, nothing is created:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' https://<domain>/api/profiles/00000000-0000-0000-0000-000000000000/snacks
+#   401 with the switch on (the route exists and wants a session); 404 with it off
+```
+
+Then, signed in as judge1 on the phone: four tabs; Snacks shows Maya's three items with the peanut
+bar first and without shop links; the crackers carry both links; scanning `2990000000014` for Maya
+and tapping "Add to Maya's snacks" says "Already on Maya's snacks".
+
 ## 12. Admin access — the AI accuracy page
 
 `users.is_admin` gates internal aggregate pages (the AI accuracy page today, the review queue
