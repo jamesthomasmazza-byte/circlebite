@@ -1507,6 +1507,8 @@ pre-purge. The newest of those is the one taken just before the purge, and is th
 **Done November 5, 2026** (JT; `docs/journal.md`, 2026-11-05). The box had already rotated every
 pre-purge set out, so step 1 came from S3, step 2 had nothing to delete, and step 3 ran with **Show
 versions** off. The Mac holds `circlebite-20261103T184714Z`. Step 4 is after November 30, when judging ends (Prof. Yoest, Nov 13).
+Checked again November 13 with **Show versions** on: only 0 B delete markers remain, no data versions
+(`docs/journal.md`, 2026-11-13).
 
 **1. Keep one pre-purge set on the Mac**, in an encrypted disk image (it holds password hashes and
 the test accounts). Local rotation keeps the 7 newest sets (§17.1), so a few days after the purge the box has
