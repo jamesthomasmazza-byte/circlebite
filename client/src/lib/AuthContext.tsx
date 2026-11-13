@@ -46,6 +46,9 @@ type AuthState = {
   // The redesigned Profile tab and page (PROFILE_REDESIGN), same default: until it's confirmed on,
   // today's pages.
   profileRedesignEnabled: boolean;
+  // Snack lists (SNACK_LIST, routes/Snacks.tsx), same default: until it's confirmed on, no Snacks
+  // tab and no "Add to" button.
+  snackListEnabled: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (input: { email: string; password: string; displayName: string; dob: string }) => Promise<void>;
@@ -67,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [circleRedesignEnabled, setCircleRedesignEnabled] = useState(false);
   const [scanRedesignEnabled, setScanRedesignEnabled] = useState(false);
   const [profileRedesignEnabled, setProfileRedesignEnabled] = useState(false);
+  const [snackListEnabled, setSnackListEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // refresh() runs both at mount (before any session cookie exists) and after login/register
@@ -91,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setCircleRedesignEnabled(me.circleRedesignEnabled);
       setScanRedesignEnabled(me.scanRedesignEnabled);
       setProfileRedesignEnabled(me.profileRedesignEnabled);
+      setSnackListEnabled(me.snackListEnabled);
     } catch {
       // Any failure to confirm identity — 401 or a transient network/server error — just means
       // we don't currently know who's logged in. Never rethrow: login()/register() call this
@@ -107,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setCircleRedesignEnabled(false);
       setScanRedesignEnabled(false);
       setProfileRedesignEnabled(false);
+      setSnackListEnabled(false);
     } finally {
       if (requestIdRef.current === requestId) setLoading(false);
     }
@@ -172,6 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setCircleRedesignEnabled(false);
       setScanRedesignEnabled(false);
       setProfileRedesignEnabled(false);
+      setSnackListEnabled(false);
     }
   }, []);
 
@@ -187,6 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         circleRedesignEnabled,
         scanRedesignEnabled,
         profileRedesignEnabled,
+        snackListEnabled,
         loading,
         login,
         register,

@@ -943,6 +943,44 @@ th {
   margin-top: 0;
 }
 
+/* ---------- Add to snacks — under the card, before Report (AddToSnacks.tsx, SNACK_LIST) ------- */
+/* The same full-width outlined button as Report; the confirm step is the report form's box. */
+
+.snack-add {
+  margin-top: var(--space-3);
+}
+
+.snack-add__open {
+  width: 100%;
+  margin: 0;
+}
+
+.snack-add__confirm {
+  margin-top: var(--space-3);
+  padding: var(--space-4);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.snack-add__confirm h3 {
+  margin-top: 0;
+}
+
+.snack-add__confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: 0;
+}
+
+.snack-add__confirm-actions button {
+  margin: 0;
+}
+
+.snack-add__done {
+  margin-top: var(--space-3);
+}
+
 /* ---------- Changes to review — the owner's dashboard notice --------------------------------- */
 /* Caution tint and rule: "look at this", not a verdict. Every pair it uses is already in
    styles.contrast.test.ts (text on caution-bg, caution-line on caution-bg and on bg). No

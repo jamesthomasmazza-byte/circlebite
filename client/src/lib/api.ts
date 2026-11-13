@@ -50,6 +50,7 @@ export function fetchMe(): Promise<{
   circleRedesignEnabled: boolean;
   scanRedesignEnabled: boolean;
   profileRedesignEnabled: boolean;
+  snackListEnabled: boolean;
 }> {
   return apiFetch("/me");
 }
@@ -743,6 +744,50 @@ export function getScanHistory(profileId: string): Promise<ScanHistoryEntry[]> {
 /** How many scans the history covers, uncapped (PROFILE_REDESIGN's "<n> scans"). */
 export function getScanCount(profileId: string): Promise<{ count: number }> {
   return apiFetch(`/profiles/${profileId}/scan-count`);
+}
+
+// ---- Snack lists (server routes/snackList.ts, behind SNACK_LIST; docs/snack-list-plan.md) ----
+
+export type ShopLinks = { amazon: string; instacart: string; affiliate: boolean };
+
+/** One item, with its verdict computed now from the stored product data — no AI call — and the same
+ *  community and circle layers as a scan's card. `shop` is null for a "Contains" item: the server omits
+ *  the links rather than the client hiding them. */
+export type SnackItem = {
+  id: string;
+  barcode: string;
+  product: { name: string | null; brand: string | null };
+  note: string | null;
+  // The approver's display name; null when their account is gone.
+  added_by: string | null;
+  created_at: string;
+  scan_id: string | null;
+  original: { result: Verdict; matched_allergens: MatchedAllergen[] };
+  effective: { result: Verdict; matched_allergens: MatchedAllergen[] } | null;
+  community_reports: CommunityReport[];
+  pending_circle_reports: CircleReport[];
+  shop: ShopLinks | null;
+  // What the card headlines: `effective` when a layer changed it, else the engine's own verdict.
+  headline: Verdict;
+};
+
+export type SnackList = { items: SnackItem[]; affiliate: boolean };
+
+export function getSnackList(profileId: string): Promise<SnackList> {
+  return apiFetch(`/profiles/${profileId}/snacks`);
+}
+
+/** Items are added from a scan's card only: the barcode comes from the scan, never from here. */
+export function addSnack(profileId: string, scanId: string, note?: string): Promise<{ id: string; barcode: string }> {
+  return apiFetch(`/profiles/${profileId}/snacks`, { method: "POST", body: JSON.stringify({ scanId, note }) });
+}
+
+export function updateSnackNote(profileId: string, itemId: string, note: string | null): Promise<{ id: string; note: string | null }> {
+  return apiFetch(`/profiles/${profileId}/snacks/${itemId}`, { method: "PATCH", body: JSON.stringify({ note: note ?? "" }) });
+}
+
+export function removeSnack(profileId: string, itemId: string): Promise<void> {
+  return apiFetch(`/profiles/${profileId}/snacks/${itemId}`, { method: "DELETE" });
 }
 
 // `effective`/`corrections`/`community_reports`: the reporter's own view of the scan once this

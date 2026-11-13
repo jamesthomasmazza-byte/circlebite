@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
+import { AddToSnacks } from "../AddToSnacks";
 import { BarcodeScanner, type BarcodeScannerHandle } from "../BarcodeScanner";
 import { LabelCamera } from "../LabelCamera";
+import { wantsSnackReport } from "../lib/snackListCopy";
 import { useScanningFor } from "../TabShell";
 import { guidedSetupSkipped, sendToGuidedSetup } from "../lib/guidedSetupEntry";
 import { addProfileHref, NEW_PROFILE_PATH } from "../lib/profileSections";
@@ -27,6 +29,7 @@ import {
   discardLabelEvidence,
   downscaleLabelPhoto,
   getMyReports,
+  getSnackList,
   listProfiles,
   type CombineOutcome,
   type CorrectionType,
@@ -137,7 +140,7 @@ function disagreementNote(m: ScanResult["matched_allergens"][number]): string | 
 }
 
 export function Scan() {
-  const { labelScanEnabled, scannerRegionEnabled, guidedSetupEnabled, scanSoundsEnabled, scanRedesignEnabled, user } = useAuth();
+  const { labelScanEnabled, scannerRegionEnabled, guidedSetupEnabled, scanSoundsEnabled, scanRedesignEnabled, snackListEnabled, user } = useAuth();
   // SCAN_REDESIGN (JT's mockup, 2026-11-06): the same Scan, laid out as a camera screen. Every
   // state, request and rule below is shared; only the markup differs, and with the switch off it's
   // today's, unchanged (lib/scanRedesign.ts).
@@ -157,6 +160,7 @@ export function Scan() {
   const navigate = useNavigate();
   const sampleStarted = useRef(false);
   const judgeCardStarted = useRef(false);
+  const snackReportStarted = useRef(false);
   const [barcode, setBarcode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -296,6 +300,31 @@ export function Scan() {
     navigate(`/scan?profile=${profileId}`, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, loadingProfiles, profileId]);
+
+  // A snack list's "Label wrong? Report a correction" (lib/snackListCopy.ts snackReportPath): the item
+  // is looked up on the server by its id, its product scanned once for this profile, the same way as
+  // the sample, and the report form opened on the card. The barcode comes from the list, never the URL.
+  useEffect(() => {
+    if (snackReportStarted.current || loadingProfiles || !snackListEnabled) return;
+    const itemId = wantsSnackReport(search);
+    if (!itemId || !profileId || profileId !== requestedProfile(search)) return;
+    snackReportStarted.current = true;
+    navigate(`/scan?profile=${profileId}`, { replace: true });
+    void (async () => {
+      const item = (await getSnackList(profileId).catch(() => null))?.items.find((i) => i.id === itemId);
+      if (!item) {
+        setError("That snack isn't on the list any more.");
+        return;
+      }
+      setBarcode(item.barcode);
+      await runScan(item.barcode, profileId);
+      setReportOpen(true);
+      setReportOrigin(null);
+      setReportType(reportableTypes(managedProfiles, profileId)[0]);
+      setReportAllergen("");
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, loadingProfiles, profileId, snackListEnabled]);
 
   // Redesign: leaving Barcode stops the camera; Label photo opens the same photo form as "No
   // barcode? Photograph the label"; leaving it closes that form, as Cancel does.
@@ -613,7 +642,8 @@ export function Scan() {
   // The engine's own verdict unless a corroborated community report escalated it. Both are always
   // on the card: the headline is what to act on, the note under it says what changed it.
   const shown = result && (result.effective ?? { result: result.result, matched_allergens: result.matched_allergens });
-  const resultProfileLabel = profiles.find((p) => p.id === resultProfileId)?.label ?? null;
+  const resultProfile = profiles.find((p) => p.id === resultProfileId) ?? null;
+  const resultProfileLabel = resultProfile?.label ?? null;
   // Followers only see "it IS in this product" — removals are for the profile's managers (Prof.
   // Yoest's Oct 1 approval). Offering a report the server will refuse wastes a photo in the aisle.
   const reportTypes = reportableTypes(managedProfiles, resultProfileId);
@@ -1176,6 +1206,16 @@ export function Scan() {
           </div>
           </div>
           </div>
+
+          {/* Snack lists (SNACK_LIST, AddToSnacks.tsx): for a manager of the card's profile, on a scan
+              with a barcode that isn't the sample. Keyed by the scan, so a new card starts afresh. */}
+          {snackListEnabled &&
+            resultProfile &&
+            managedProfiles.some((p) => p.id === resultProfile.id) &&
+            result.barcode &&
+            !isSampleScan(result.barcode) && (
+              <AddToSnacks key={result.id} profile={resultProfile} scanId={result.id} verdict={shown.result} matched={shown.matched_allergens} />
+            )}
 
           {/* Directly under the card it disputes — never at the foot of the page. */}
           {reportOutcome && <p role="status">{reportOutcome}</p>}
