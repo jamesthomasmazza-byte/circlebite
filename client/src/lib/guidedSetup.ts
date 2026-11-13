@@ -23,10 +23,13 @@ export type GuidedAnswers = {
   severity: Record<AllergenId, Severity>;
   /** On unless the parent turns it off, the classic form's default. */
   mayContainUnsafe: Record<AllergenId, boolean>;
+  /** "No allergies — just snack lists" (docs/snack-list-plan.md decision 6, behind SNACK_LIST): a
+   *  profile with no allergens. Picking any allergen turns it back off. */
+  noAllergies: boolean;
 };
 
 export function initialAnswers(): GuidedAnswers {
-  return { who: null, name: "", picked: [], otherNames: {}, severity: {}, mayContainUnsafe: {} };
+  return { who: null, name: "", picked: [], otherNames: {}, severity: {}, mayContainUnsafe: {}, noAllergies: false };
 }
 
 export type Position =
@@ -37,8 +40,10 @@ export type Position =
   | { step: "mayContain" }
   | { step: "review" };
 
-/** Every position, in order: one severity question per chosen allergen. */
+/** Every position, in order: one severity question per chosen allergen. With no allergies there is
+ *  nothing to ask a severity or "may contain" about, so those steps are skipped. */
 export function positions(a: GuidedAnswers): Position[] {
+  if (a.noAllergies) return [{ step: "who" }, { step: "name" }, { step: "allergens" }, { step: "review" }];
   return [
     { step: "who" },
     { step: "name" },
@@ -65,7 +70,7 @@ export function canContinue(p: Position, a: GuidedAnswers): boolean {
     case "name":
       return a.name.trim().length > 0;
     case "allergens":
-      return a.picked.length > 0;
+      return a.picked.length > 0 || a.noAllergies;
     case "severity":
       return a.severity[p.id] !== undefined;
     default:
@@ -95,7 +100,12 @@ export function progress(p: Position, a: GuidedAnswers): number {
 }
 
 export function togglePick(a: GuidedAnswers, id: AllergenId): GuidedAnswers {
-  return { ...a, picked: a.picked.includes(id) ? a.picked.filter((x) => x !== id) : [...a.picked, id] };
+  return { ...a, noAllergies: false, picked: a.picked.includes(id) ? a.picked.filter((x) => x !== id) : [...a.picked, id] };
+}
+
+/** "No allergies — just snack lists": clears the picks; their severities stay, as an untick keeps them. */
+export function chooseNoAllergies(a: GuidedAnswers): GuidedAnswers {
+  return { ...a, noAllergies: true, picked: [] };
 }
 
 /** The "may contain" answer for an allergen: on unless turned off. */
@@ -124,7 +134,7 @@ export function checkOtherName(typed: string, choices: AllergenChoice[]): OtherC
 }
 
 export function addOther(a: GuidedAnswers, check: Extract<OtherCheck, { ok: true }>): GuidedAnswers {
-  const withName = { ...a, otherNames: { ...a.otherNames, [check.id]: check.name } };
+  const withName = { ...a, noAllergies: false, otherNames: { ...a.otherNames, [check.id]: check.name } };
   return withName.picked.includes(check.id) ? withName : { ...withName, picked: [...withName.picked, check.id] };
 }
 
@@ -143,7 +153,10 @@ export function allergenName(id: AllergenId, a: GuidedAnswers, choices: Allergen
  * key, or { key: "other", name } for one typed. Only when every chosen allergen has a severity.
  */
 export function toCreateInput(a: GuidedAnswers): { label: string; isSelf: boolean; allergens: AllergenInput[] } | null {
-  if (!a.who || a.name.trim() === "" || a.picked.length === 0) return null;
+  if (!a.who || a.name.trim() === "") return null;
+  // A no-allergies profile: the same body with an empty list, which POST /profiles accepts.
+  if (a.noAllergies) return { label: a.name.trim(), isSelf: a.who === "self", allergens: [] };
+  if (a.picked.length === 0) return null;
   if (a.picked.some((id) => a.severity[id] === undefined)) return null;
   return {
     label: a.name.trim(),

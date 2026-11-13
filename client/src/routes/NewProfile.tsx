@@ -6,6 +6,7 @@ import { listedAllergenMessage, OTHER_WARNING } from "../lib/allergenChoiceCopy"
 import { ApiRequestError, createProfile, type AllergenChoice, type Severity } from "../lib/api";
 import { useAuth } from "../lib/AuthContext";
 import { signupSetupProgress } from "../lib/guidedRegister";
+import { snacksPath } from "../lib/snackListCopy";
 import { markGuidedSetupSkipped, setupArrival, SKIP_FOR_NOW } from "../lib/guidedSetupEntry";
 import {
   addOther,
@@ -13,6 +14,7 @@ import {
   back,
   canContinue,
   checkOtherName,
+  chooseNoAllergies,
   firstUnanswered,
   initialAnswers,
   isOther,
@@ -45,6 +47,11 @@ import {
   NAME_LABEL,
   NAME_SUB,
   nameQuestion,
+  NO_ALLERGIES,
+  NO_ALLERGIES_REPLY,
+  NO_ALLERGIES_SUMMARY,
+  noAllergiesFinishLine,
+  OPEN_SNACKS,
   OTHER_LABEL,
   REVIEW_SUB,
   reviewQuestion,
@@ -77,7 +84,7 @@ const CHECK = (
  * (lib/guidedSetup.ts toCreateInput). Back never clears an answer. Each new question takes focus.
  */
 export function NewProfile() {
-  const { guidedSetupEnabled, user } = useAuth();
+  const { guidedSetupEnabled, snackListEnabled, user } = useAuth();
   const navigate = useNavigate();
   // Reached from sign-up or a first visit (lib/guidedSetupEntry.ts): "Skip for now" on every step,
   // and from sign-up the progress bar carries on from register's.
@@ -165,21 +172,27 @@ export function NewProfile() {
           <h1 className="guided__question" tabIndex={-1} ref={headingRef}>
             {finishQuestion(answers)}
           </h1>
-          <ul className="card-list">
-            {answers.picked.map((id) => (
-              <li key={id} className="card">
-                <strong>{name(id)}</strong>
-                <span className="card__meta card__line">
-                  {severityLabel(answers.severity[id]!)} · {mayContainSummary(mayContainUnsafe(answers, id))}
-                </span>
-              </li>
-            ))}
-          </ul>
+          {answers.noAllergies ? (
+            // A no-allergies profile (SNACK_LIST): nothing to list; where its snack list lives instead.
+            <p className="guided__sub">{noAllergiesFinishLine(answers)}</p>
+          ) : (
+            <ul className="card-list">
+              {answers.picked.map((id) => (
+                <li key={id} className="card">
+                  <strong>{name(id)}</strong>
+                  <span className="card__meta card__line">
+                    {severityLabel(answers.severity[id]!)} · {mayContainSummary(mayContainUnsafe(answers, id))}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
           <div className="guided__actions">
             <button type="button" className="button-primary" onClick={() => navigate(`/scan?profile=${savedId}&sample=1`)}>
               {SAMPLE_BUTTON}
             </button>
             <p className="guided__sub">{SAMPLE_LINE}</p>
+            {answers.noAllergies && <Link to={snacksPath(savedId)}>{OPEN_SNACKS}</Link>}
             <Link to={`/scan?profile=${savedId}`}>{GO_TO_SCAN}</Link>
           </div>
         </section>
@@ -205,7 +218,7 @@ export function NewProfile() {
       case "name":
         return answers.name.trim();
       case "allergens":
-        return answers.picked.map(name).join(", ");
+        return answers.noAllergies ? NO_ALLERGIES_SUMMARY : answers.picked.map(name).join(", ");
       case "severity":
         return answers.severity[p.id] ? severityLabel(answers.severity[p.id]!) : "";
       case "mayContain":
@@ -326,6 +339,23 @@ export function NewProfile() {
                 {otherOpen && CHECK}
                 {SOMETHING_ELSE}
               </button>
+              {/* "No allergies — just snack lists" (docs/snack-list-plan.md decision 6), only with the
+                  Snacks tab to go to. A chip like the others; ticking any allergen turns it off. */}
+              {snackListEnabled && (
+                <button
+                  type="button"
+                  className="guided__chip guided__chip--none"
+                  aria-pressed={answers.noAllergies}
+                  onClick={() => {
+                    setAnswers(chooseNoAllergies(answers));
+                    setOtherOpen(false);
+                    setReply(NO_ALLERGIES_REPLY);
+                  }}
+                >
+                  {answers.noAllergies && CHECK}
+                  {NO_ALLERGIES}
+                </button>
+              )}
             </div>
             {!showMore && (
               <p>
@@ -473,11 +503,13 @@ export function NewProfile() {
                   onChange={() => edit({ step: "severity", id })}
                 />
               ))}
-              <ReviewRow
-                label="“May contain”"
-                value={answers.picked.map((id) => `${name(id)}: ${mayContainSummary(mayContainUnsafe(answers, id))}`).join("; ")}
-                onChange={() => edit({ step: "mayContain" })}
-              />
+              {!answers.noAllergies && (
+                <ReviewRow
+                  label="“May contain”"
+                  value={answers.picked.map((id) => `${name(id)}: ${mayContainSummary(mayContainUnsafe(answers, id))}`).join("; ")}
+                  onChange={() => edit({ step: "mayContain" })}
+                />
+              )}
             </ul>
             {saveError && <p role="alert">{saveError}</p>}
             <p>

@@ -50,3 +50,16 @@ test("its styles use tokens only, and move only when motion is welcome", () => {
   assert.doesNotMatch(block, /--color-(contains|alert|caution|safe)/, "no verdict colours");
   assert.match(block, /@media \(prefers-reduced-motion: no-preference\) \{\s*\.guided__step \{\s*animation/);
 });
+
+// "No allergies — just snack lists" (docs/snack-list-plan.md decision 6, 2026-11-13): a chip on the
+// allergens step, only while SNACK_LIST is on, so the choice never appears without the tab it leads to.
+test("the no-allergies chip is behind SNACK_LIST, is a chip like the others, and the finish screen points at Snacks", () => {
+  const chip = PAGE.indexOf('className="guided__chip guided__chip--none"');
+  assert.ok(chip > 0, "the chip exists");
+  assert.match(PAGE.slice(PAGE.lastIndexOf("{snackListEnabled && (", chip), chip), /snackListEnabled && \(/);
+  assert.match(PAGE, /aria-pressed=\{answers\.noAllergies\}/);
+  assert.match(PAGE, /setAnswers\(chooseNoAllergies\(answers\)\)/);
+  assert.match(PAGE, /answers\.noAllergies \? NO_ALLERGIES_SUMMARY :/);
+  assert.match(PAGE, /\{answers\.noAllergies && <Link to=\{snacksPath\(savedId\)\}>\{OPEN_SNACKS\}<\/Link>\}/);
+  assert.match(PAGE, /\{!answers\.noAllergies && \(\s*<ReviewRow\s*label="“May contain”"/);
+});

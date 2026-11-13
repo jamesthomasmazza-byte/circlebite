@@ -4,6 +4,7 @@ import { test } from "node:test";
 import type { AllergenChoice } from "./api";
 import {
   addOther,
+  chooseNoAllergies,
   back,
   canContinue,
   checkOtherName,
@@ -141,4 +142,34 @@ test("a chip's quiet reply is the list's own hint; severity lines are severityCo
   assert.equal(chipReply(CHOICES[2]), "Tree nuts — matches any tree nut: almond, cashew, walnut and more.");
   assert.equal(chipReply(CHOICES[1]), "Peanut");
   assert.equal(SEVERITY_CHOICES.length, 3);
+});
+
+// "No allergies — just snack lists" (docs/snack-list-plan.md decision 6, 2026-11-13).
+test("no allergies: the allergens step continues, severity and may-contain are skipped, and the body is an empty list", () => {
+  let a: GuidedAnswers = { ...initialAnswers(), who: "child", name: "Maya" };
+  assert.equal(canContinue({ step: "allergens" }, a), false);
+  a = chooseNoAllergies(a);
+  assert.equal(a.noAllergies, true);
+  assert.equal(canContinue({ step: "allergens" }, a), true);
+  assert.deepEqual(positions(a).map((p) => p.step), ["who", "name", "allergens", "review"]);
+  assert.deepEqual(next({ step: "allergens" }, a), { step: "review" });
+  assert.deepEqual(toCreateInput(a), { label: "Maya", isSelf: false, allergens: [] });
+});
+
+test("picking an allergen, or typing one, turns 'no allergies' back off; choosing it clears the picks", () => {
+  let a = chooseNoAllergies({ ...initialAnswers(), who: "child", name: "Maya" });
+  a = togglePick(a, "peanut");
+  assert.equal(a.noAllergies, false);
+  assert.deepEqual(a.picked, ["peanut"]);
+  a = chooseNoAllergies(a);
+  assert.deepEqual(a.picked, []);
+  a = addOther(a, checkOtherName("kiwi", CHOICES) as Extract<ReturnType<typeof checkOtherName>, { ok: true }>);
+  assert.equal(a.noAllergies, false);
+  assert.deepEqual(a.picked, ["other:kiwi"]);
+});
+
+test("'no allergies' still needs who and a name before anything is saved", () => {
+  assert.equal(toCreateInput(chooseNoAllergies(initialAnswers())), null);
+  assert.equal(toCreateInput(chooseNoAllergies({ ...initialAnswers(), who: "self" })), null);
+  assert.equal(toCreateInput(chooseNoAllergies({ ...initialAnswers(), who: "self", name: "Sam" }))?.isSelf, true);
 });

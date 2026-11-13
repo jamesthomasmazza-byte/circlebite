@@ -36,6 +36,16 @@ export function allergensQuestion(a: Named): string {
 export const ALLERGENS_SUB = "Choose all that apply.";
 export const SHOW_MORE = "Show more";
 export const SOMETHING_ELSE = "Something else";
+// "No allergies — just snack lists" (docs/snack-list-plan.md decision 6; shown only with SNACK_LIST on).
+export const NO_ALLERGIES = "No allergies — just snack lists";
+export const NO_ALLERGIES_REPLY = "No allergens on this profile. Its snack list works the same way for everyone in the circle.";
+export const NO_ALLERGIES_SUMMARY = "None — snack lists only";
+export function noAllergiesFinishLine(a: Named): string {
+  return self(a)
+    ? "No allergens on file. Scans for you will say what the product record lists, and your snack list is on the Snacks tab."
+    : `No allergens on file. Scans for ${a.name.trim()} will say what the product record lists, and ${whose(a)} snack list is on the Snacks tab.`;
+}
+export const OPEN_SNACKS = "Open the Snacks tab";
 export const OTHER_LABEL = "Allergen name";
 export const ADD_OTHER = "Add";
 
