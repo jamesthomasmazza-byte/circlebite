@@ -3083,3 +3083,27 @@ by the tests. Server 704 tests, client 537.
 
 **Not checked here:** JT's iPhone. Not deployed: items 1–9 go in one deploy, which applies migration
 0052; no switch change, no reseed.
+
+*Later, Nov 14 (two fixes from JT's phone test):*
+
+1. **Photos on products saved before migration 0052.** `lib/productLookup.ts` now treats a found,
+   non-seed row with no image, fetched before the migration was applied (the time read once from
+   `schema_migrations`), as stale, so a scan refreshes it (`3a942c2`); and the one-off
+   `db/backfillProductImages.ts` (`lib/backfillImages.ts`, `f4be6a8`) walks such rows, asks Open Food
+   Facts again 4 seconds apart, writes the two image fields only — the row's name, tags and text are
+   untouched, so no verdict can move — and prints counts: candidates, updated, no image there, not
+   found there, failed. Tested against the local database with a fake Open Food Facts (only the right
+   rows asked about, only image fields changed, the seed's and not-found rows never touched, a 503
+   counted and left). Run for real locally: 27 candidates, 26 updated, 1 not found, 0 failed, about
+   two minutes.
+2. **Cart checkboxes only on linked items** (`5d458b8`). On a row the checkbox appears only once the
+   item has an Amazon link; until then a manager gets a small "Link on Amazon" in its place — the
+   Amazon search in a new tab and the paste box inline under the row — and a follower nothing;
+   "Not for cart" on a "Contains" item as before. The page keeps only linked items ticked, so the bar
+   counts ticked, linked items; the server's left-out naming stays as the backstop. Checked at 390 as
+   judge1 on Maya: both clean rows showed "Link on Amazon" (133×30) and no checkbox, the peanut bar
+   "Not for cart"; the row's button opened the Amazon tab and the paste box under the row; a short
+   link got the short-link line; a real link turned the row into "· On Amazon" with a checkbox; ticked,
+   the bar read "Add 1 to Amazon cart" and the server's cart had one item; unlinked from the detail
+   page, the button came back and the bar read 0. As a follower on Noor's empty list: no link buttons,
+   no checkboxes, no bar. Server 707 tests, client 539. Screenshots `circlebite-snacks-mockup-rowlink-*`.

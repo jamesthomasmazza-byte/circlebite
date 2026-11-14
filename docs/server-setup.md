@@ -806,7 +806,21 @@ exactly today's three tabs, no "Add to" button, and every `/api/profiles/:id/sna
 **Data:** migration 0050, `snack_list_items`; migration 0052 adds Open Food Facts' front image URLs to
 `products` (saved on lookup and on search; the seed's products have none and draw a placeholder). Items
 saved while the switch was on stay in the database while it is off, untouched, and come back when it's
-on again. The judge seed (§16) gives
+on again.
+
+**Photos for rows saved before migration 0052** (JT, Nov 14): a found, non-seed row with no image that
+was fetched before the migration counts as stale, so a scan refreshes it; and a one-off script does the
+rest in one pass — it asks Open Food Facts for each such row again, 4 seconds apart (under its 15 reads
+a minute), writes the two image fields only, and prints counts. Run once from the live release, after
+the deploy that carries it; about 4 seconds per row:
+
+```bash
+cd ~/circlebite/current
+( set -a; source ~/circlebite/.env; set +a; node server/dist/db/backfillProductImages.js )
+```
+
+A row Open Food Facts has no image for stays as it is; a failed read is left for the next scan. Running
+it again is harmless: it only sees rows still without an image. The judge seed (§16) gives
 Maya three items in every judge world.
 
 **Optional, affiliate:** `AMAZON_ASSOCIATE_TAG`, blank by default. Set, it is appended to each
