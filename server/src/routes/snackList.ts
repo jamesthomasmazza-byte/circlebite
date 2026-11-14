@@ -1,5 +1,6 @@
 import { Router } from "express";
 
+import { assertIsAdmin } from "../authorization/admin.js";
 import { assertCanManageProfile, assertCanReadProfile } from "../authorization/profiles.js";
 import { requireAuth } from "../auth/requireAuth.js";
 import { publicCircleReports } from "../corrections/circleEscalations.js";
@@ -62,6 +63,9 @@ type ItemRow = {
   amazon_asin: string | null;
   amazon_linked_by_name: string | null;
   amazon_linked_at: Date | null;
+  product_amazon_asin: string | null;
+  product_amazon_set_by_name: string | null;
+  product_amazon_set_at: Date | null;
   found: boolean;
   name: string | null;
   brand: string | null;
@@ -96,7 +100,9 @@ type ListItem = {
   community_reports: unknown[];
   pending_circle_reports: unknown[];
   shop: ReturnType<typeof buildShopLinks> | null;
-  amazon: { asin: string; linked_by: string | null; linked_at: Date } | null;
+  // The link in force: the item's own (a manager's override) if set, else the product's (an admin's,
+  // shared by every family's list), with `source` saying which. Null with neither.
+  amazon: { asin: string; linked_by: string | null; linked_at: Date; source: "item" | "product" } | null;
   headline: Verdict;
 };
 
@@ -115,6 +121,8 @@ async function loadList(
     `SELECT i.id, i.barcode, i.scan_id, i.note, i.created_at,
             u.display_name AS added_by_name,
             i.amazon_asin, i.amazon_linked_at, lu.display_name AS amazon_linked_by_name,
+            p.amazon_asin AS product_amazon_asin, p.amazon_asin_set_at AS product_amazon_set_at,
+            su.display_name AS product_amazon_set_by_name,
             p.found, p.name, p.brand, p.image_front_small_url, p.image_front_url,
             p.ingredients_text, p.allergens_tags, p.traces_tags,
             s.matched_allergens AS scan_matched_allergens, s.ingredients_text AS scan_ingredients_text
@@ -123,6 +131,7 @@ async function loadList(
      LEFT JOIN scans s ON s.id = i.scan_id
      LEFT JOIN users u ON u.id = i.added_by
      LEFT JOIN users lu ON lu.id = i.amazon_linked_by
+     LEFT JOIN users su ON su.id = p.amazon_asin_set_by
      WHERE i.allergen_profile_id = $1
      ORDER BY i.created_at ASC`,
     [profileId],
@@ -173,7 +182,16 @@ async function loadList(
       const shownNames = new Set(shownAllergens.map((m) => m.allergenName.toLowerCase()));
       // Carts on: the ASIN a manager linked, and "Shop on Amazon" goes to that product instead of a
       // search. Off: no field at all, and the search link as before.
-      const amazon = env.snackCarts && row.amazon_asin && row.amazon_linked_at ? { asin: row.amazon_asin, linked_by: row.amazon_linked_by_name, linked_at: row.amazon_linked_at } : null;
+      // Carts on: the item's own link first (a manager's override), else the product's shared one
+      // (an admin's, JT Nov 14). "Shop on Amazon" goes to that product instead of a search. Off: no
+      // field at all, and the search link as before.
+      const amazon: ListItem["amazon"] = !env.snackCarts
+        ? null
+        : row.amazon_asin && row.amazon_linked_at
+          ? { asin: row.amazon_asin, linked_by: row.amazon_linked_by_name, linked_at: row.amazon_linked_at, source: "item" }
+          : row.product_amazon_asin && row.product_amazon_set_at
+            ? { asin: row.product_amazon_asin, linked_by: row.product_amazon_set_by_name, linked_at: row.product_amazon_set_at, source: "product" }
+            : null;
       const shop =
         headline === "contains_allergen"
           ? null
@@ -332,7 +350,47 @@ snackListRouter.patch(
     if (!rows[0]) throw new HttpError(404, "not_found");
     res.json({
       id: rows[0].id,
-      amazon: rows[0].amazon_asin && rows[0].amazon_linked_at ? { asin: rows[0].amazon_asin, linked_by: req.user!.displayName, linked_at: rows[0].amazon_linked_at } : null,
+      amazon: rows[0].amazon_asin && rows[0].amazon_linked_at ? { asin: rows[0].amazon_asin, linked_by: req.user!.displayName, linked_at: rows[0].amazon_linked_at, source: "item" } : null,
+    });
+  }),
+);
+
+// "Set Amazon link for everyone" (JT, Nov 14): the product's own ASIN, shared by every family's list.
+// Admins only — authorization/admin.ts, the same gate as /admin: is_admin and never an account on the
+// judge seed's domain, so no judge session can set one; a plain 404 for anyone else. The product is
+// resolved from the item row on the server, as the add route does: no barcode in the URL or the body.
+// `url: null` clears it. A manager's own item link, if any, still wins on that list.
+snackListRouter.patch(
+  "/profiles/:id/snacks/:itemId/product-amazon",
+  requireAuth,
+  requireSnackListEnabled,
+  requireSnackCartsEnabled,
+  asyncHandler(async (req, res) => {
+    const { id: profileId, itemId } = req.params;
+    if (!UUID_PATTERN.test(itemId)) throw new HttpError(404, "not_found");
+    if (req.body?.url === undefined) throw new HttpError(400, "invalid_request");
+    const url = req.body.url as unknown;
+    const asin = url === null ? null : asinFromAmazonLink(url);
+    if (url !== null && !asin) throw new HttpError(400, "invalid_amazon_link");
+    await assertIsAdmin(req.user!.id);
+    await assertCanReadProfile(req.user!.id, profileId);
+
+    const { rows: items } = await pool.query<{ barcode: string }>("SELECT barcode FROM snack_list_items WHERE id = $1 AND allergen_profile_id = $2", [itemId, profileId]);
+    if (!items[0]) throw new HttpError(404, "not_found");
+
+    const { rows } = await pool.query<{ amazon_asin: string | null; amazon_asin_set_at: Date | null }>(
+      `UPDATE products
+       SET amazon_asin = $2,
+           amazon_asin_set_by = CASE WHEN $2::text IS NULL THEN NULL ELSE $3::uuid END,
+           amazon_asin_set_at = CASE WHEN $2::text IS NULL THEN NULL ELSE now() END
+       WHERE barcode = $1
+       RETURNING amazon_asin, amazon_asin_set_at`,
+      [items[0].barcode, asin, req.user!.id],
+    );
+    if (!rows[0]) throw new HttpError(404, "not_found");
+    res.json({
+      id: itemId,
+      product_amazon: rows[0].amazon_asin && rows[0].amazon_asin_set_at ? { asin: rows[0].amazon_asin, set_by: req.user!.displayName, set_at: rows[0].amazon_asin_set_at } : null,
     });
   }),
 );

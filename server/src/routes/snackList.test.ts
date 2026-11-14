@@ -13,6 +13,8 @@ const OWNER = "aaaaaaaa-0000-0000-0000-0000000000e1";
 const CO_MANAGER = "aaaaaaaa-0000-0000-0000-0000000000e2";
 const FOLLOWER = "aaaaaaaa-0000-0000-0000-0000000000e3";
 const STRANGER = "aaaaaaaa-0000-0000-0000-0000000000e4";
+const ADMIN = "aaaaaaaa-0000-0000-0000-0000000000e5"; // in the circle as a follower, and is_admin
+const FLAGGED_JUDGE = "aaaaaaaa-0000-0000-0000-0000000000e6"; // is_admin by hand, on the seed domain: never an admin
 const PROFILE_ID = "bbbbbbbb-0000-0000-0000-0000000000e1";
 const OTHER_PROFILE_ID = "bbbbbbbb-0000-0000-0000-0000000000e2";
 
@@ -116,9 +118,12 @@ before(async () => {
        ($1, 'snacks-owner@example.com', 'x', 'James', true, now()),
        ($2, 'snacks-comanager@example.com', 'x', 'Grandma', true, now()),
        ($3, 'snacks-follower@example.com', 'x', 'Sitter', true, now()),
-       ($4, 'snacks-stranger@example.com', 'x', 'Nobody', true, now())`,
-    [OWNER, CO_MANAGER, FOLLOWER, STRANGER],
+       ($4, 'snacks-stranger@example.com', 'x', 'Nobody', true, now()),
+       ($5, 'snacks-admin@example.com', 'x', 'Admin Ann', true, now()),
+       ($6, 'snacks-flagged@demo.circlebite.test', 'x', 'Flagged Judge', true, now())`,
+    [OWNER, CO_MANAGER, FOLLOWER, STRANGER, ADMIN, FLAGGED_JUDGE],
   );
+  await pool.query("UPDATE users SET is_admin = true WHERE id = ANY($1)", [[ADMIN, FLAGGED_JUDGE]]);
   await pool.query("INSERT INTO allergen_profiles (id, manager_id, label) VALUES ($1, $2, 'Maya'), ($3, $4, 'Other child')", [
     PROFILE_ID,
     OWNER,
@@ -133,8 +138,10 @@ before(async () => {
   await pool.query("INSERT INTO profile_managers (allergen_profile_id, user_id, added_by) VALUES ($1, $2, $3)", [PROFILE_ID, CO_MANAGER, OWNER]);
   await pool.query(
     `INSERT INTO follow_relationships (allergen_profile_id, follower_id, invited_by, token_hash, status, share_level, responded_at)
-     VALUES ($1, $2, $3, 'snacks-test-token-all', 'accepted', 'all', now())`,
-    [PROFILE_ID, FOLLOWER, OWNER],
+     VALUES ($1, $2, $3, 'snacks-test-token-all', 'accepted', 'all', now()),
+            ($1, $4, $3, 'snacks-test-token-admin', 'accepted', 'all', now()),
+            ($1, $5, $3, 'snacks-test-token-flagged', 'accepted', 'all', now())`,
+    [PROFILE_ID, FOLLOWER, OWNER, ADMIN, FLAGGED_JUDGE],
   );
   await pool.query(
     `INSERT INTO products (barcode, found, name, brand, ingredients_text, allergens_tags, traces_tags, raw_data, fetched_at, image_front_small_url, image_front_url) VALUES
@@ -162,7 +169,7 @@ before(async () => {
 after(async () => {
   env.snackList = previousSwitch;
   env.amazonAssociateTag = previousTag;
-  await pool.query("DELETE FROM users WHERE id = ANY($1)", [[OWNER, CO_MANAGER, FOLLOWER, STRANGER]]);
+  await pool.query("DELETE FROM users WHERE id = ANY($1)", [[OWNER, CO_MANAGER, FOLLOWER, STRANGER, ADMIN, FLAGGED_JUDGE]]);
   await pool.query("DELETE FROM products WHERE barcode = ANY($1)", [[NUTTY, OATS, TEXTY]]);
   await pool.end();
 });
@@ -420,4 +427,62 @@ test("each item carries the product's front photo URLs when the record has them,
   const nutty = byBarcode(await list(OWNER), NUTTY) as WithImage;
   assert.equal(nutty.product.image_small, null);
   assert.equal(nutty.product.image, null);
+});
+
+// ---- The product's shared Amazon link (JT, Nov 14): admins only; the item's own link wins ----
+
+const setProductAmazon = (userId: string, itemId: string, url: unknown) =>
+  call("patch", "/profiles/:id/snacks/:itemId/product-amazon", { id: PROFILE_ID, itemId }, { url }, userId);
+
+test("the shared link: an admin in the circle sets the product's ASIN from the item; every list that holds the product sees it, with source product; non-admins and a flagged judge-domain account get 404", async () => {
+  const oats = await itemIdOf(OATS);
+  assert.equal((await linkAmazon(OWNER, oats, null)).status, 200, "start with no item link");
+  for (const who of [OWNER, CO_MANAGER, FOLLOWER, FLAGGED_JUDGE]) {
+    assert.equal((await setProductAmazon(who, oats, "https://www.amazon.com/dp/B000000002")).status, 404, who);
+  }
+  assert.equal((await shownOats()).amazon, null, "nothing set by the refusals");
+
+  const r = await setProductAmazon(ADMIN, oats, "https://www.amazon.com/Acme-Oat-Bar/dp/B000000002/ref=x");
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.equal((r.body as { product_amazon: { asin: string; set_by: string } }).product_amazon.asin, "B000000002");
+  const shown = await shownOats(FOLLOWER);
+  assert.deepEqual([shown.amazon?.asin, shown.amazon?.linked_by, (shown.amazon as { source?: string })?.source], ["B000000002", "Admin Ann", "product"]);
+  assert.equal(shown.shop?.amazon, "https://www.amazon.com/dp/B000000002");
+  const { rows } = await pool.query("SELECT amazon_asin FROM products WHERE barcode = $1", [OATS]);
+  assert.equal(rows[0].amazon_asin, "B000000002", "stored on the product row, found from the item");
+
+  assert.equal((await setProductAmazon(ADMIN, oats, "https://a.co/d/0abc")).status, 400);
+  assert.equal((await setProductAmazon(ADMIN, "cccccccc-0000-0000-0000-0000000000e9", "https://www.amazon.com/dp/B000000002")).status, 404, "an id not on the list");
+});
+
+test("a manager's own item link overrides the product's; removing it falls back to the product's; the cart uses whichever is in force", async () => {
+  const oats = await itemIdOf(OATS);
+  assert.equal((await linkAmazon(OWNER, oats, "https://www.amazon.com/dp/B07PGL2ZSL")).status, 200);
+  let shown = await shownOats();
+  assert.deepEqual([shown.amazon?.asin, (shown.amazon as { source?: string })?.source], ["B07PGL2ZSL", "item"]);
+  let built = (await cart(FOLLOWER, [oats])).body as CartBody;
+  assert.match(built.url!, /ASIN\.1=B07PGL2ZSL/);
+
+  assert.equal((await linkAmazon(OWNER, oats, null)).status, 200);
+  shown = await shownOats();
+  assert.deepEqual([shown.amazon?.asin, (shown.amazon as { source?: string })?.source], ["B000000002", "product"]);
+  built = (await cart(FOLLOWER, [oats])).body as CartBody;
+  assert.match(built.url!, /ASIN\.1=B000000002/);
+  assert.deepEqual(built.left_out, []);
+
+  assert.equal((await setProductAmazon(ADMIN, oats, null)).status, 200, "an admin clears the shared link");
+  shown = await shownOats();
+  assert.equal(shown.amazon, null);
+  assert.match(shown.shop!.amazon, /amazon\.com\/s\?k=/);
+  built = (await cart(FOLLOWER, [oats])).body as CartBody;
+  assert.equal(built.url, null);
+  assert.equal(built.left_out.length, 1, "named as left out again");
+
+  // A Contains item is refused from the cart whatever link its product carries.
+  const nutty = await itemIdOf(NUTTY);
+  assert.equal((await setProductAmazon(ADMIN, nutty, "https://www.amazon.com/dp/B000000003")).status, 200);
+  const refused = (await cart(OWNER, [nutty])).body as CartBody;
+  assert.equal(refused.url, null);
+  assert.equal(refused.refused.length, 1);
+  assert.equal(byBarcode(await list(OWNER), NUTTY).shop, null, "still no shop links on a Contains item");
 });
