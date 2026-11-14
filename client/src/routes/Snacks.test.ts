@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { createElement } from "react";
+import { createElement, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { MemoryRouter } from "react-router-dom";
 
 import type { MatchedAllergen, SnackItem } from "../lib/api";
-import { SnackCartPanel, SnackItemCard } from "./Snacks";
+import { SnackCartBar } from "./Snacks";
 
-// The Snacks tab's item card (docs/snack-list-plan.md decision 7, 2026-11-13; behind SNACK_LIST).
+// The Snacks tab rebuilt to JT's mockup (Nov 14; behind SNACK_LIST): compact rows that open a detail
+// page, one screening note per page, the cart bar. Nothing about verdicts changed (snackList.test.ts).
 
 const MAYA = { id: "p-maya", label: "Maya", is_self: false };
 const row = (allergenName: string, over: Partial<MatchedAllergen> = {}): MatchedAllergen => ({
@@ -34,231 +34,67 @@ function item(over: Partial<SnackItem>): SnackItem {
     community_reports: [],
     pending_circle_reports: [],
     shop: { amazon: "https://www.amazon.com/s?k=Plain%20Rice%20Crackers%20Hearthfield", instacart: "https://www.instacart.com/store/s?k=Plain%20Rice%20Crackers%20Hearthfield", affiliate: false },
+    amazon: null,
     headline: "safe",
     ...over,
   };
 }
-
-const noop = async () => {};
-type CardProps = Parameters<typeof SnackItemCard>[0];
-function render(i: SnackItem, canManage = true, extra: Partial<CardProps> = {}): string {
-  return renderToStaticMarkup(
-    createElement(MemoryRouter, null, createElement(SnackItemCard, { item: i, profile: MAYA, canManage, onRemove: noop, onSaveNote: noop, ...extra })),
-  );
-}
-const carts: Partial<CardProps> = { cartsEnabled: true, onToggle: () => {}, onLinkAmazon: noop };
-
-test("a clean item: the verdict card's own words in its colour, the product, both shop links in a new tab, and never who approved it", () => {
-  const html = render(item({}));
-  assert.match(html, /<li class="card snack-item" data-verdict="safe">/);
-  assert.match(html, /<p class="verdict-card__headline snack-item__verdict">No listed allergens found<\/p>/);
-  assert.match(html, /<strong>Plain Rice Crackers<\/strong><span class="snack-item__brand"> — Hearthfield<\/span>/);
-  assert.doesNotMatch(html, /Approved by|snack-item__approved/, "who approved it is kept, not shown (JT, Nov 14)");
-  assert.match(html, /<a class="button-link" href="https:\/\/www\.amazon\.com\/s\?k=Plain%20Rice%20Crackers%20Hearthfield" target="_blank" rel="noopener noreferrer">Shop on Amazon<\/a>/);
-  assert.match(html, /<a class="button-link" href="https:\/\/www\.instacart\.com\/store\/s\?k=[^"]+" target="_blank" rel="noopener noreferrer">Shop on Instacart<\/a>/);
-  assert.match(html, /Scan it when it arrives — stores can send a different version\./);
-  assert.match(html, /Screening aid, not a guarantee — check the label\./);
-  assert.doesNotMatch(html, /Label wrong/);
+const CONTAINS = item({
+  id: "i-2",
+  barcode: "2990000000021",
+  product: { name: "Crunchy Peanut Bar", brand: "Hearthfield" },
+  original: { result: "contains_allergen", matched_allergens: [row("Peanut", { matched: true, source: "tag", classification: "contains" }), row("Sesame", { severity: "moderate" })] },
+  headline: "contains_allergen",
+  shop: null,
 });
-
-test("a Contains item: no shop links come from the server and none are drawn; the correction link opens Scan on the item", () => {
-  const html = render(
-    item({
-      barcode: "2990000000021",
-      product: { name: "Crunchy Peanut Bar", brand: "Hearthfield" },
-      original: { result: "contains_allergen", matched_allergens: [row("Peanut", { matched: true, source: "tag", classification: "contains" }), row("Sesame", { severity: "moderate" })] },
-      headline: "contains_allergen",
-      shop: null,
-    }),
-  );
-  assert.match(html, /data-verdict="contains_allergen"/);
-  assert.match(html, /snack-item__verdict">Contains an allergen</);
-  assert.match(html, /<li>Peanut \(severe\) — contains<\/li>/);
-  assert.doesNotMatch(html, /Shop on|amazon\.com|instacart\.com/);
-  assert.match(html, /<a href="\/scan\?profile=p-maya&amp;snack=i-1"[^>]*>Label wrong\? Report a correction<\/a>/);
+const MAY = item({
+  id: "i-3",
+  product: { name: "Oat Biscuits", brand: "Fernhallow" },
+  original: { result: "may_contain_caution", matched_allergens: [row("Peanut"), row("Sesame", { matched: true, source: "trace", severity: "moderate", classification: "caution" })] },
+  headline: "may_contain_caution",
+  note: "For playdates",
 });
-
-test("a circle report that changed the verdict is named, and the engine's own verdict stays alongside", () => {
-  const html = render(
-    item({
-      barcode: "2990000000083",
-      product: { name: "Corn Tortilla Chips", brand: "Fernhallow" },
-      effective: { result: "contains_allergen", matched_allergens: [row("Peanut"), row("Sesame", { severity: "moderate", classification: "contains", circleReported: true })] },
-      pending_circle_reports: [{ allergenName: "Sesame", reporters: [{ name: "Priya Nair", role: "co_manager", isViewer: false }] }],
-      headline: "contains_allergen",
-      shop: null,
-    }),
-  );
-  assert.match(html, /The product data alone says <strong>No listed allergens found<\/strong>\. Changed because of:/);
-  assert.match(html, /Priya Nair/);
-  assert.doesNotMatch(html, /Shop on/);
-});
-
-test("Unable to confirm keeps its shop links and names what wasn't checked", () => {
-  const html = render(
-    item({
-      product: { name: null, brand: null },
-      original: { result: "unable_to_confirm", matched_allergens: [row("Peanut", { classification: "unchecked" })] },
-      headline: "unable_to_confirm",
-    }),
-  );
-  assert.match(html, /snack-item__verdict">Unable to confirm</);
-  assert.match(html, /<strong>Unknown product<\/strong>/);
-  assert.match(html, /Not checked for Peanut: this product&#x27;s record has only ingredient text/);
-  assert.match(html, /Shop on Amazon/);
-});
-
-test("the note shows when there is one; managers get Edit note or Add a note and Remove, followers get neither", () => {
-  const withNote = render(item({ note: "Priya keeps a box for playdates" }));
-  assert.match(withNote, /<p class="snack-item__note">Priya keeps a box for playdates<\/p>/);
-  assert.match(withNote, /<button type="button">Edit note<\/button><button type="button">Remove<\/button>/);
-  assert.match(render(item({})), /<button type="button">Add a note<\/button>/);
-  const follower = render(item({ note: "Priya keeps a box for playdates" }), false);
-  assert.match(follower, /snack-item__note/);
-  assert.doesNotMatch(follower, /Remove|Edit note|Add a note/);
-});
+const LINKED = { asin: "B07PGL2ZSL", linked_by: "Grandma", linked_at: "2026-11-13T16:00:00Z" };
 
 
-test("never the word 'safe' in what's read, on any verdict (the enum value stays in data-verdict only)", () => {
-  for (const headline of ["safe", "contains_allergen", "may_contain_caution", "unable_to_confirm"] as const) {
-    const text = render(item({ headline })).replace(/<[^>]+>/g, " ");
-    assert.doesNotMatch(text, /\bsafe\b/i, headline);
-  }
-});
-
-// The page itself: the switch, the shell's profile, the server's order.
 const PAGE = readFileSync(new URL("./Snacks.tsx", import.meta.url), "utf8");
 
-test("the page takes the shell's chosen profile, keeps the server's order, and reads as not found while the switch is off", () => {
-  assert.match(PAGE, /const \{ chosenProfileId, profiles, profilesLoaded \} = useScanningFor\(\);/);
-  assert.match(PAGE, /scanningForId\(chosenProfileId, profiles\)/);
-  assert.doesNotMatch(PAGE, /\.sort\(/, "the server's order: flagged items first");
-  assert.match(PAGE, /if \(!loading && !snackListEnabled\) \{/);
-  assert.match(PAGE, /canManage = profile\.relationship === "owner" \|\| profile\.relationship === "co_manager"/);
-});
-
-test("the search box (SNACK_SEARCH) sits above the list only while its own switch is on", () => {
-  assert.match(PAGE, /const \{ snackListEnabled, snackSearchEnabled, snackCartsEnabled, loading \} = useAuth\(\);/);
+test("the page: the title row with the count, one screening note under it (not on a plain list), the search box, rows, the sticky cart bar; the manager's empty line gone", () => {
+  assert.match(PAGE, /<div className="snacks__title">\s*<h1>\{listTitle\(profile\)\}<\/h1>\s*\{list && <span className="snacks__count card__meta">\{itemCount\(list\.items\.length\)\}<\/span>\}/);
+  assert.match(PAGE, /\{list !== null && !plain && \(\s*<p role="note" className="snacks__note">\s*\{SCREENING_NOTE\}/);
+  assert.match(PAGE, /const plain = list !== null && list\.allergen_count === 0;/);
   assert.match(PAGE, /\{snackSearchEnabled && <SnackSearch profile=\{profile\} canManage=\{canManage\} onAdded=\{refresh\} \/>\}/);
-  const box = PAGE.indexOf("<SnackSearch");
-  const list = PAGE.indexOf('className="card-list snacks__list"');
-  assert.ok(box > 0 && box < list, "the box comes before the list");
+  assert.match(PAGE, /\{list && list\.items\.length === 0 && !canManage && <p className="snacks__empty">\{emptyLine\(profile, false\)\}<\/p>\}/);
+  assert.match(PAGE, /<ul className="snacks__rows">/);
+  assert.match(PAGE, /\{snackCartsEnabled && shoppable\.length > 0 && \(\s*<SnackCartBar/);
+  assert.match(PAGE, /setCartResult\(await buildSnackCart\(profile!\.id, \[\.\.\.selected\]\)\)/);
+  assert.doesNotMatch(PAGE, /cart\/add\.html|DISCLAIMER_SHORT|SCAN_WHEN_IT_ARRIVES|EMPTY_SCAN_LINK|SnackItemCard|\.sort\(/);
+  assert.match(PAGE, /const \{ chosenProfileId, profiles, profilesLoaded \} = useScanningFor\(\);/);
+  assert.match(PAGE, /if \(!loading && !snackListEnabled\) \{/);
 });
 
-// ---- Carts (the addendum's part B, 2026-11-14; behind SNACK_CARTS) ----
-
-test("with carts off (the default) nothing of part B is drawn", () => {
-  const html = render(item({ amazon: { asin: "B07PGL2ZSL", linked_by: "Grandma", linked_at: "2026-11-13T16:00:00Z" } }));
-  assert.doesNotMatch(html, /checkbox|Link on Amazon|Amazon link added|Amazon cart|Change link/);
-});
-
-test("carts on, not linked: one Amazon control — a manager's is Link on Amazon, the search in a new tab; a follower's is Shop on Amazon; both get the checkbox", () => {
-  const manager = render(item({}), true, carts);
-  assert.match(manager, /<input type="checkbox" aria-label="Select Plain Rice Crackers for the Amazon cart"\/>/);
-  assert.match(manager, /<a class="button-link" href="https:\/\/www\.amazon\.com\/s\?k=Plain%20Rice%20Crackers%20Hearthfield" target="_blank" rel="noopener noreferrer">Link on Amazon<\/a>/);
-  assert.doesNotMatch(manager, /Shop on Amazon|Amazon link added|Change link|Remove link/);
-  assert.match(manager, /<button type="button">Add a note<\/button><button type="button">Remove<\/button><\/p>/, "the actions row has no Amazon buttons");
-  const follower = render(item({}), false, carts);
-  assert.match(follower, /aria-label="Select Plain Rice Crackers for the Amazon cart"/);
-  assert.match(follower, /href="https:\/\/www\.amazon\.com\/s\?k=[^"]+" target="_blank" rel="noopener noreferrer">Shop on Amazon</);
-  assert.doesNotMatch(follower, /Link on Amazon/);
-  assert.match(render(item({}), true, { ...carts, selected: true }), /<input type="checkbox" aria-label="[^"]+" checked=""/);
-});
-
-test("a linked item: Shop on Amazon is the server's product link, the line says who linked it, and a manager gets a small Change link", () => {
-  const html = render(
-    item({
-      amazon: { asin: "B07PGL2ZSL", linked_by: "Grandma", linked_at: "2026-11-13T16:00:00Z" },
-      shop: { amazon: "https://www.amazon.com/dp/B07PGL2ZSL", instacart: "https://www.instacart.com/store/s?k=x", affiliate: false },
-    }),
-    true,
-    carts,
-  );
-  assert.match(html, /<p class="card__meta snack-item__amazon">Amazon link added by Grandma, Nov 13 · <button type="button" class="link-button">Change link<\/button><\/p>/);
-  assert.match(html, /href="https:\/\/www\.amazon\.com\/dp\/B07PGL2ZSL"[^>]*>Shop on Amazon</);
-  assert.doesNotMatch(html, /Link on Amazon|Change Amazon link|Remove Amazon link/);
-  assert.match(render(item({ amazon: { asin: "B07PGL2ZSL", linked_by: null, linked_at: "2026-11-13T16:00:00Z" } }), true, carts), /Amazon link added Nov 13/);
-  const follower = render(item({ amazon: { asin: "B07PGL2ZSL", linked_by: "Grandma", linked_at: "2026-11-13T16:00:00Z" } }), false, carts);
-  assert.match(follower, /Amazon link added by Grandma, Nov 13<\/p>/);
-  assert.doesNotMatch(follower, /Change link/);
-});
-
-test("a Contains item, which the server sends without shop links, gets no checkbox and no Link on Amazon even with carts on", () => {
-  const html = render(
-    item({ original: { result: "contains_allergen", matched_allergens: [row("Peanut", { matched: true, source: "tag", classification: "contains" })] }, headline: "contains_allergen", shop: null }),
-    true,
-    carts,
-  );
-  assert.doesNotMatch(html, /checkbox|Link on Amazon|Amazon cart/);
-});
-
-function panel(over: Partial<Parameters<typeof SnackCartPanel>[0]> = {}): string {
-  return renderToStaticMarkup(createElement(SnackCartPanel, { count: 0, busy: false, result: null, error: null, onBuild: () => {}, ...over }));
+function bar(over: Partial<Parameters<typeof SnackCartBar>[0]> = {}): string {
+  return renderToStaticMarkup(createElement(SnackCartBar, { count: 0, busy: false, result: null, error: null, onBuild: () => {}, ...over }));
 }
 
-test("the cart panel: the button counts the selection and is disabled with none; building says so", () => {
-  assert.match(panel(), /<button type="button" class="button-primary" disabled="">Add selected to Amazon cart<\/button>/);
-  assert.match(panel({ count: 2 }), /<button type="button" class="button-primary">Add selected to Amazon cart \(2\)<\/button>/);
-  assert.match(panel({ count: 2, busy: true }), /disabled="">Building the cart…</);
-  assert.match(panel({ error: "Couldn't build the cart. Try again." }), /<p role="alert">Couldn&#x27;t build the cart\. Try again\.<\/p>/);
-});
-
-test("the cart panel's result: the one link in a new tab, who went in, who was left out and why, who was refused and why, and the standing note", () => {
-  const html = panel({
+test("the cart bar: Add N to Amazon cart, disabled at none; building says so; the result above the button names who went in, who was left out and why, who was refused and why", () => {
+  assert.match(bar(), /<div class="snacks__cart-bar" aria-label="Amazon cart"><p class="snacks__cart-actions"><button type="button" class="button-primary" disabled="">Add 0 to Amazon cart<\/button><\/p><\/div>/);
+  assert.match(bar({ count: 2 }), /<button type="button" class="button-primary">Add 2 to Amazon cart<\/button>/);
+  assert.match(bar({ count: 2, busy: true }), /disabled="">Building the cart…</);
+  assert.match(bar({ error: "Couldn't build the cart. Try again." }), /<p role="alert">Couldn&#x27;t build the cart\. Try again\.<\/p>/);
+  const html = bar({
     count: 3,
     result: {
       url: "https://www.amazon.com/gp/aws/cart/add.html?ASIN.1=B07PGL2ZSL&Quantity.1=1",
       included: [{ id: "i-1", name: "Plain Rice Crackers", asin: "B07PGL2ZSL" }],
-      left_out: [{ id: "i-2", name: "Oat Biscuits" }],
-      refused: [{ id: "i-3", name: "Crunchy Peanut Bar" }],
+      left_out: [{ id: "i-3", name: "Oat Biscuits" }],
+      refused: [{ id: "i-2", name: "Crunchy Peanut Bar" }],
     },
   });
   assert.match(html, /<div role="status" class="snacks__cart-result"><p>1 item is in the cart link\.<\/p>/);
   assert.match(html, /<a class="button-link" href="https:\/\/www\.amazon\.com\/gp\/aws\/cart\/add\.html\?ASIN\.1=B07PGL2ZSL&amp;Quantity\.1=1" target="_blank" rel="noopener noreferrer">Open the Amazon cart<\/a>/);
   assert.match(html, /Left out, no Amazon link yet: Oat Biscuits\./);
   assert.match(html, /Not added — it reads “Contains an allergen” now: Crunchy Peanut Bar\./);
-  assert.match(html, /Amazon opens in a new tab with these items in its add-to-cart step; sign in there to finish\. Scan each item when it arrives\./);
-  const nothing = panel({ count: 1, result: { url: null, included: [], left_out: [], refused: [{ id: "i-3", name: "Crunchy Peanut Bar" }] } });
-  assert.match(nothing, /Nothing could go in the cart\./);
-  assert.doesNotMatch(nothing, /Open the Amazon cart|sign in there/);
-});
-
-test("the page builds the cart on the server from the ticked ids, clears the selection when the profile changes, and shows the panel only with carts on and something to shop for", () => {
-  assert.match(PAGE, /setCartResult\(await buildSnackCart\(profile!\.id, \[\.\.\.selected\]\)\)/);
-  assert.match(PAGE, /useEffect\(\(\) => \{\n\s+setSelected\(new Set\(\)\);[\s\S]*?\}, \[profile\?\.id\]\);/);
-  assert.match(PAGE, /\{snackCartsEnabled && shoppable\.length > 0 && \(\s*<SnackCartPanel/);
-  assert.doesNotMatch(PAGE, /cart\/add\.html/, "the client never assembles a cart link itself");
-});
-
-test("an empty list: a manager sees only the search box; a follower's line is unchanged (JT, Nov 14)", () => {
-  assert.match(PAGE, /\{list && list\.items\.length === 0 && !canManage && <p className="snacks__empty">\{emptyLine\(profile, false\)\}<\/p>\}/);
-  assert.doesNotMatch(PAGE, /EMPTY_SCAN_LINK|Scan a product/);
-});
-
-// ---- A profile with no allergens (plan decision 6; JT, Nov 14) ----
-
-test("a plain card, for a no-allergen profile: the product, its note and the shop controls — no headline, no verdict colour, no rows, no screening line", () => {
-  const html = render(item({ note: "For playdates" }), true, { plain: true, ...carts });
-  assert.match(html, /^<li class="card snack-item"><label class="snack-item__select">/);
-  assert.match(html, /<strong>Plain Rice Crackers<\/strong>/);
-  assert.match(html, /<p class="snack-item__note">For playdates<\/p>/);
-  assert.match(html, /Link on Amazon|Shop on Amazon/);
-  assert.match(html, /Shop on Instacart/);
-  assert.match(html, /<button type="button">Edit note<\/button><button type="button">Remove<\/button>/);
-  assert.doesNotMatch(html, /data-verdict|No listed allergens found|snack-item__verdict|Scan it when it arrives|Screening aid|Label wrong/);
-  assert.doesNotMatch(html.replace(/<[^>]+>/g, " "), /\bsafe\b/i);
-});
-
-test("the same card with allergens back on the profile shows its verdict again — nothing is remembered on the client", () => {
-  const withVerdict = render(item({ note: "For playdates" }), true, { plain: false, ...carts });
-  assert.match(withVerdict, /data-verdict="safe"/);
-  assert.match(withVerdict, /snack-item__verdict">No listed allergens found</);
-  assert.match(withVerdict, /Scan it when it arrives/);
-  assert.match(withVerdict, /Screening aid, not a guarantee/);
-});
-
-test("the page decides plain from the server's allergen count with every load, and hides the screening-aid box on a plain list", () => {
-  assert.match(PAGE, /const plain = list !== null && list\.allergen_count === 0;/);
-  assert.match(PAGE, /\{list !== null && !plain && \(\s*<div role="note" className="verdict-card__disclaimer scan-history__disclaimer">/);
-  assert.match(PAGE, /plain=\{plain\}/);
+  assert.match(html, /Scan each item when it arrives\./);
+  assert.match(bar({ count: 1, result: { url: null, included: [], left_out: [], refused: [{ id: "i-2", name: "Crunchy Peanut Bar" }] } }), /Nothing could go in the cart\./);
 });

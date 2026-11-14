@@ -1230,6 +1230,13 @@ th {
   text-decoration: none;
 }
 
+/* The filled one, like button.button-primary: the page's main action when it is a link (the detail
+   page's Shop on Amazon, SnackDetail.tsx). */
+.button-link--primary {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
 /* ---------- Header — the wordmark and who you're scanning for (TabShell.tsx, 2026-10-25) ------- */
 /* One line, not sticky: it scrolls away with the page. Kept short so Condition 2's notice, right
    under it, stays on the landing screen. Existing tokens only — styles.contrast.test.ts covers them. */
@@ -4119,4 +4126,210 @@ button.scan-tile {
 .snacks__cart-result .button-link {
   width: 100%;
   justify-content: center;
+}
+
+/* ---------- Snacks tab, rebuilt to JT's mockup (Nov 14): rows, pill, note, sticky bar ---------- */
+
+.snacks__title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.snacks__title h1 {
+  margin-bottom: 0;
+}
+
+.snacks__count {
+  flex: none;
+}
+
+.snacks__note {
+  margin: var(--space-2) 0 var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.snacks__rows {
+  list-style: none;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.snack-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-left: var(--verdict-rule, 1px solid) var(--verdict-line, var(--color-border));
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+
+.snack-row__main {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  color: inherit;
+  text-decoration: none;
+}
+
+.snack-row__text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.snack-row__name {
+  overflow-wrap: anywhere;
+}
+
+.snack-row__brand {
+  overflow-wrap: anywhere;
+}
+
+.verdict-pill {
+  display: inline-block;
+  justify-self: start;
+  margin-top: 2px;
+  padding: 1px var(--space-2);
+  border: 1px solid var(--verdict-line);
+  border-radius: 999px;
+  background: var(--verdict-bg);
+  color: var(--verdict-text);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.snack-row__select {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  margin-right: var(--space-1);
+}
+
+.snack-row__select input {
+  margin: 0;
+}
+
+.snack-row__nocart {
+  flex: none;
+  padding-right: var(--space-3);
+  text-align: right;
+}
+
+.product-photo {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  object-fit: cover;
+}
+
+.product-photo--row {
+  width: 60px;
+  height: 60px;
+  font-size: 1.75rem;
+}
+
+.product-photo--detail {
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+  height: 210px;
+  margin: 0 0 var(--space-3);
+  font-size: 3rem;
+  object-fit: contain;
+}
+
+.product-photo--empty {
+  border: 1px solid var(--color-border);
+}
+
+/* The sticky bar: above the fixed tab bar, inside the page's own scroll. */
+.snacks__cart-bar {
+  position: sticky;
+  bottom: calc(var(--tab-bar-height) + var(--space-2));
+  z-index: 5;
+  margin-top: var(--space-4);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg);
+  box-shadow: var(--shadow);
+}
+
+.snacks__cart-bar .snacks__cart-result {
+  margin: 0 0 var(--space-3);
+}
+
+/* ---------- The detail page (routes/SnackDetail.tsx) ---------- */
+
+.snack-detail__back {
+  margin: 0 0 var(--space-3);
+}
+
+.snack-detail__name {
+  margin: 0 0 var(--space-1);
+}
+
+.snack-detail__product {
+  margin: 0 0 var(--space-3);
+}
+
+.snack-detail__verdict {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-left: var(--verdict-rule) var(--verdict-line);
+  border-radius: var(--radius-md);
+  background: var(--verdict-bg);
+}
+
+.snack-detail__verdict .verdict-card__headline {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+}
+
+.snack-detail__checked {
+  margin: 0 0 var(--space-1);
+}
+
+.snack-detail__verdict .history-entry__rows {
+  margin: 0;
+}
+
+.snack-detail__arrives {
+  margin: var(--space-3) 0;
+}
+
+.snack-detail__actions {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.snack-detail__actions .button-link {
+  justify-content: center;
+}
+
+.snack-detail__actions .snack-item__report,
+.snack-detail__actions .snack-item__actions {
+  margin: var(--space-2) 0 0;
 }
