@@ -88,3 +88,37 @@ don't move for it.
 Affiliate approval (Amazon Associates; Instacart Developer Platform, which can build a whole cart from
 one list), a share link for people outside the circle, other diets (diabetes and others, which bring
 medical claims and need their own review).
+
+## Addendum, Nov 14 — search and carts (JT chose "search plus both carts")
+
+Same gate (Sunday Nov 15, noon ET), each part behind its own switch, off by default. Anything not solid
+by the gate stays off; the reseed and the judge link don't move.
+
+**A. Search in the Snacks tab (`SNACK_SEARCH`).** A search box on the Snacks tab. Results first from the
+project's own `products` table; "Search more" asks Open Food Facts' text search through the server
+(never the browser), cached, and limited per user so one person can't spend the shared allowance.
+Tapping a result opens the **existing typed-barcode scan** for that barcode and the chosen profile, so the
+verdict card, its warnings and "Add to <name>'s snacks" are the ones already built: every item is still one
+exact barcode with a real verdict. Search never adds anything by itself and shows no verdicts in the
+results list (a result isn't checked until it's opened). If Open Food Facts is slow or down, local results
+still show and "Search more" says it couldn't reach it.
+
+**B. Carts (`SNACK_CARTS`).**
+- **"Link on Amazon"** per item (managers): paste an amazon.com product link; the server keeps only the
+  ASIN (from `/dp/<ASIN>` or `/gp/product/<ASIN>`, 10 characters) and rejects anything else, including
+  short links it would have to fetch. The item shows "Amazon link added by <name>". A linked item's Shop on
+  Amazon goes to that product instead of a search.
+- **Checkboxes** on items that have shop links (never on "Contains" items, which the server already sends
+  without links), and two buttons for the selection:
+  - **Add selected to Amazon cart** — selected items with an ASIN, one link:
+    `https://www.amazon.com/gp/aws/cart/add.html?ASIN.1=…&Quantity.1=1&…`, plus `AssociateTag` only when
+    `AMAZON_ASSOCIATE_TAG` is set. Checked Nov 14 in Chrome: Amazon carries every ASIN through to its
+    add-to-cart step after sign-in. Items without an ASIN are named as left out.
+  - **Shop selected on Instacart** — only when `INSTACART_API_KEY` is set (the box's `.env`, never the repo):
+    the server creates an Instacart shopping list page from the selected items (name, brand, UPC) and
+    returns its link. Without a key the button isn't shown. Production key from Instacart's developer
+    dashboard (JT); a development key isn't enough for judges.
+- The server builds both cart links and re-checks each selected item's verdict when it does: a "Contains"
+  item is refused even if the client sent it.
+- Judge seed: no Amazon links on the seeded products (they're invented brands); judges can search a real
+  product, add it, link it and build a cart.
