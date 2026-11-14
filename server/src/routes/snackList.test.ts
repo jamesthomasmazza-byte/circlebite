@@ -310,3 +310,97 @@ test("the scan reference is set null when the scan is deleted, and the text-only
   assert.equal(texty.headline, "unable_to_confirm", "no model answer to carry, so the matcher alone can't clear a text-only product");
   assert.equal(texty.original.matched_allergens.every((m) => m.classification === "unchecked"), true);
 });
+
+// ---- Carts (the addendum's part B, 2026-11-14; behind SNACK_CARTS on top of SNACK_LIST) ----
+
+const linkAmazon = (userId: string, itemId: string, url: unknown) =>
+  call("patch", "/profiles/:id/snacks/:itemId/amazon", { id: PROFILE_ID, itemId }, { url }, userId);
+const cart = (userId: string, itemIds: unknown) => call("post", "/profiles/:id/snacks/cart", { id: PROFILE_ID }, { itemIds }, userId);
+type CartBody = { url: string | null; included: { id: string; name: string; asin: string }[]; left_out: { id: string; name: string }[]; refused: { id: string; name: string }[] };
+type ItemWithAmazon = Item & { amazon?: { asin: string; linked_by: string | null; linked_at: string } | null };
+const shownOats = async (viewer = OWNER) => byBarcode(await list(viewer), OATS) as ItemWithAmazon;
+const itemIdOf = async (barcode: string) => byBarcode(await list(OWNER), barcode).id;
+
+let previousCarts: boolean;
+after(() => {
+  env.snackCarts = previousCarts;
+});
+
+test("with SNACK_CARTS off, even with the lists on, the link and cart routes are 404 and the list carries no amazon field", async () => {
+  previousCarts = env.snackCarts;
+  env.snackCarts = false;
+  assert.equal((await add(OWNER, scanIds[OATS])).status, 201, "the oat bar, removed above, is back on the list");
+  const oats = await itemIdOf(OATS);
+  assert.equal((await linkAmazon(OWNER, oats, "https://www.amazon.com/dp/B07PGL2ZSL")).status, 404);
+  assert.equal((await cart(OWNER, [oats])).status, 404);
+  assert.equal((await shownOats()).amazon, null);
+});
+
+test("Link on Amazon: a manager's amazon.com product link keeps only the ASIN; the list names who linked it and Shop on Amazon goes to that product", async () => {
+  env.snackCarts = true;
+  const oats = await itemIdOf(OATS);
+  const linked = await linkAmazon(OWNER, oats, "https://www.amazon.com/Acme-Oat-Bar/dp/B07PGL2ZSL/ref=sr_1_1?keywords=oat+bar");
+  assert.equal(linked.status, 200, JSON.stringify(linked.body));
+  assert.equal((linked.body as { amazon: { asin: string } }).amazon.asin, "B07PGL2ZSL");
+
+  const shown = await shownOats(FOLLOWER);
+  assert.equal(shown.amazon?.asin, "B07PGL2ZSL");
+  assert.equal(shown.amazon?.linked_by, "James");
+  assert.equal(shown.shop?.amazon, "https://www.amazon.com/dp/B07PGL2ZSL");
+  assert.match(shown.shop!.instacart, /instacart\.com\/store\/s\?k=/, "the Instacart search link is unchanged");
+
+  env.amazonAssociateTag = "circlebite-20";
+  try {
+    assert.equal((await shownOats()).shop?.amazon, "https://www.amazon.com/dp/B07PGL2ZSL?tag=circlebite-20");
+  } finally {
+    env.amazonAssociateTag = undefined;
+  }
+});
+
+test("Link on Amazon refuses anything that isn't an amazon.com product link, and a follower; a co-manager may link; url null unlinks", async () => {
+  const oats = await itemIdOf(OATS);
+  for (const bad of ["https://a.co/d/0abcdefg", "https://www.amazon.com/s?k=oat+bar", "B07PGL2ZSL", 42, ""]) {
+    const r = await linkAmazon(OWNER, oats, bad);
+    assert.equal(r.status, 400, String(bad));
+    assert.equal((r.body as { error: string }).error, "invalid_amazon_link", String(bad));
+  }
+  assert.equal((await call("patch", "/profiles/:id/snacks/:itemId/amazon", { id: PROFILE_ID, itemId: oats }, {}, OWNER)).status, 400, "no url at all");
+  assert.equal((await linkAmazon(FOLLOWER, oats, "https://www.amazon.com/dp/B000000001")).status, 404);
+  assert.equal((await shownOats()).amazon?.asin, "B07PGL2ZSL", "unchanged by the refusals");
+
+  assert.equal((await linkAmazon(CO_MANAGER, oats, "https://www.amazon.com/gp/product/B000000001")).status, 200);
+  assert.equal((await shownOats()).amazon?.linked_by, "Grandma");
+
+  assert.equal((await linkAmazon(OWNER, oats, null)).status, 200);
+  assert.equal((await shownOats()).amazon, null);
+  assert.match((await shownOats()).shop!.amazon, /amazon\.com\/s\?k=/, "back to the search link");
+  assert.equal((await linkAmazon(OWNER, oats, "https://www.amazon.com/dp/B07PGL2ZSL")).status, 200);
+});
+
+test("the cart: the server re-checks each selected item; a Contains item is refused, one without an ASIN is named as left out, an unknown id is ignored, and the link carries the rest", async () => {
+  const [nutty, oats, texty] = await Promise.all([itemIdOf(NUTTY), itemIdOf(OATS), itemIdOf(TEXTY)]);
+  const r = await cart(FOLLOWER, [nutty, oats, texty, "cccccccc-0000-0000-0000-0000000000e9"]);
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  const body = r.body as CartBody;
+  assert.equal(body.url, "https://www.amazon.com/gp/aws/cart/add.html?ASIN.1=B07PGL2ZSL&Quantity.1=1");
+  assert.deepEqual(body.included, [{ id: oats, name: "Oat Bar", asin: "B07PGL2ZSL" }]);
+  assert.deepEqual(body.refused, [{ id: nutty, name: "Nutty Bar" }]);
+  assert.deepEqual(body.left_out, [{ id: texty, name: TEXTY }], "no name and no brand: named by barcode");
+
+  env.amazonAssociateTag = "circlebite-20";
+  try {
+    const tagged = (await cart(OWNER, [oats])).body as CartBody;
+    assert.equal(tagged.url, "https://www.amazon.com/gp/aws/cart/add.html?ASIN.1=B07PGL2ZSL&Quantity.1=1&AssociateTag=circlebite-20");
+  } finally {
+    env.amazonAssociateTag = undefined;
+  }
+
+  const onlyContains = (await cart(OWNER, [nutty])).body as CartBody;
+  assert.equal(onlyContains.url, null, "no empty cart link");
+  assert.equal(onlyContains.refused.length, 1);
+
+  assert.equal((await cart(OWNER, [])).status, 400);
+  assert.equal((await cart(OWNER, "not-a-list")).status, 400);
+  assert.equal((await cart(OWNER, ["nope"])).status, 400);
+  assert.equal((await cart(STRANGER, [oats])).status, 404, "no access to the profile");
+});
