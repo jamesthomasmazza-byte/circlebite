@@ -180,7 +180,10 @@ export function Snacks() {
 
       {error && <p role="alert">{error}</p>}
 
-      {list && list.items.length === 0 && (
+      {/* An empty list (JT, Nov 14): a manager sees only the search box, which is the way in; the line
+          and its "Scan a product" link show for a manager only while search is switched off, so the
+          page is never blank. A follower's line is unchanged. */}
+      {list && list.items.length === 0 && (!canManage || !snackSearchEnabled) && (
         <p className="snacks__empty">
           {emptyLine(profile, canManage)}{" "}
           {canManage && <Link to={`/scan?profile=${encodeURIComponent(profile.id)}`}>{EMPTY_SCAN_LINK}</Link>}

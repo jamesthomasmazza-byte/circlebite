@@ -227,3 +227,9 @@ test("the page builds the cart on the server from the ticked ids, clears the sel
   assert.match(PAGE, /\{snackCartsEnabled && shoppable\.length > 0 && \(\s*<SnackCartPanel/);
   assert.doesNotMatch(PAGE, /cart\/add\.html/, "the client never assembles a cart link itself");
 });
+
+test("an empty list: a manager sees only the search box while search is on; the line and its Scan link show for a manager only with search off, and for a follower always (JT, Nov 14)", () => {
+  assert.match(PAGE, /\{list && list\.items\.length === 0 && \(!canManage \|\| !snackSearchEnabled\) && \(/);
+  assert.match(PAGE, /\{emptyLine\(profile, canManage\)\}/);
+  assert.match(PAGE, /\{canManage && <Link to=\{`\/scan\?profile=\$\{encodeURIComponent\(profile\.id\)\}`\}>\{EMPTY_SCAN_LINK\}<\/Link>\}/);
+});
