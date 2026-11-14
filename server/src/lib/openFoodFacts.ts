@@ -33,8 +33,9 @@ const FAILED: ProductLookup = { ...NOT_FOUND, status: "failed" };
 
 const FETCH_TIMEOUT_MS = 8000;
 
-/** Strips a language prefix ("en:"), lowercases, hyphens to spaces — docs/legacy-spec.md §3. */
-function normalizeTag(tag: string): string {
+/** Strips a language prefix ("en:"), lowercases, hyphens to spaces — docs/legacy-spec.md §3. Shared with
+ *  snackSearch/offSearch.ts, so a search hit's tags are stored exactly as a product lookup's. */
+export function normalizeTag(tag: string): string {
   return tag
     .replace(/^[a-z]{2}:/i, "")
     .toLowerCase()
