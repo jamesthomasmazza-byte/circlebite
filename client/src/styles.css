@@ -4231,6 +4231,26 @@ button.scan-tile {
   text-align: right;
 }
 
+/* A manager's "Link on Amazon" in the checkbox's place (JT, Nov 14): small, so the row stays a row. */
+.snack-row {
+  flex-wrap: wrap;
+}
+
+.snack-row__link {
+  flex: none;
+  min-height: auto;
+  margin-right: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-sm);
+}
+
+/* The paste box, inline under the row, full width. */
+.snack-row__link-form {
+  flex: 1 1 100%;
+  margin: 0;
+  padding: 0 var(--space-3) var(--space-3);
+}
+
 .product-photo {
   flex: none;
   display: inline-flex;

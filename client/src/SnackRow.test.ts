@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { createElement, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -78,6 +79,7 @@ test("a row carries nothing from the old card: no buttons, no note, no disclaime
   for (const i of [item({}), CONTAINS, MAY]) {
     const html = renderRow(i, { cartsEnabled: true, onToggle: () => {} });
     assert.doesNotMatch(html, /<button|Screening aid|Scan it when it arrives|For playdates|Approved by|Edit note|Remove/);
+    assert.doesNotMatch(html, /Link on Amazon/, "a follower never gets the link control");
     assert.doesNotMatch(text(html), /\bsafe\b/i);
   }
 });
@@ -88,18 +90,37 @@ test("'· On Amazon' after the brand once linked; a nameless product reads Unkno
   assert.doesNotMatch(renderRow(item({})), /On Amazon/);
 });
 
-test("carts on: a 44px checkbox named for the product on the right; a Contains item reads Not for cart instead; carts off, neither", () => {
-  const on = renderRow(item({}), { cartsEnabled: true, onToggle: () => {} });
-  assert.match(on, /<label class="snack-row__select"><input type="checkbox" aria-label="Select Plain Rice Crackers for the Amazon cart"\/><\/label><\/li>$/);
-  assert.match(renderRow(item({}), { cartsEnabled: true, selected: true, onToggle: () => {} }), /aria-label="[^"]+" checked=""/);
-  const contains = renderRow(CONTAINS, { cartsEnabled: true, onToggle: () => {} });
+test("carts on: the checkbox only once the item is linked, 44px and named for the product; a Contains item reads Not for cart; carts off, neither", () => {
+  const linked = renderRow(item({ amazon: LINKED }), { cartsEnabled: true, onToggle: () => {} });
+  assert.match(linked, /<label class="snack-row__select"><input type="checkbox" aria-label="Select Plain Rice Crackers for the Amazon cart"\/><\/label><\/li>$/);
+  assert.match(renderRow(item({ amazon: LINKED }), { cartsEnabled: true, selected: true, onToggle: () => {} }), /aria-label="[^"]+" checked=""/);
+  const contains = renderRow(CONTAINS, { cartsEnabled: true, canManage: true, onToggle: () => {}, onLinkAmazon: noop });
   assert.match(contains, /<span class="snack-row__nocart card__meta">Not for cart<\/span><\/li>$/);
-  assert.doesNotMatch(contains, /checkbox/);
-  assert.doesNotMatch(renderRow(item({})), /checkbox|Not for cart/);
+  assert.doesNotMatch(contains, /checkbox|Link on Amazon/);
+  assert.doesNotMatch(renderRow(item({ amazon: LINKED })), /checkbox|Not for cart/);
+});
+
+test("carts on, not linked: a manager gets a small Link on Amazon in the checkbox's place — the Amazon search in a new tab — and no checkbox; a follower gets nothing there (JT, Nov 14)", () => {
+  const manager = renderRow(item({}), { cartsEnabled: true, canManage: true, onToggle: () => {}, onLinkAmazon: noop });
+  assert.match(manager, /<a class="button-link snack-row__link" href="https:\/\/www\.amazon\.com\/s\?k=Plain%20Rice%20Crackers%20Hearthfield" target="_blank" rel="noopener noreferrer" aria-label="Link on Amazon: Plain Rice Crackers">Link on Amazon<\/a><\/li>$/);
+  assert.doesNotMatch(manager, /checkbox|snack-row__link-form/);
+  const follower = renderRow(item({}), { cartsEnabled: true, onToggle: () => {} });
+  assert.match(follower, /<\/a><\/li>$/, "the row's link closes the row: nothing on the right");
+  assert.doesNotMatch(follower, /checkbox|Link on Amazon|Not for cart/);
 });
 
 test("a no-allergen profile's row has no pill and no verdict colour", () => {
   const html = renderRow(CONTAINS, { plain: true });
   assert.match(html, /^<li class="snack-row"><a/);
   assert.doesNotMatch(html, /verdict-pill|data-verdict|Contains/);
+});
+
+const ROW = readFileSync(new URL("./SnackRow.tsx", import.meta.url), "utf8");
+
+test("the row's Link on Amazon opens the paste box inline under the row, and the pasted link goes to the server, which keeps the ASIN", () => {
+  assert.match(ROW, /const canLink = cartsEnabled && canManage && Boolean\(item\.shop\) && !item\.amazon && Boolean\(onLinkAmazon\);/);
+  assert.match(ROW, /setLinking\(true\);/);
+  assert.match(ROW, /\{linking && canLink && \(\s*<form className="snack-item__note-form snack-item__link-form snack-row__link-form"/);
+  assert.match(ROW, /await onLinkAmazon\(draft\.trim\(\)\);/);
+  assert.match(ROW, /linkRefusedLine\(draft\)/);
 });

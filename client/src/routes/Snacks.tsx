@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { SnackRow } from "../SnackRow";
 import { SnackSearch } from "../SnackSearch";
 import { useScanningFor } from "../TabShell";
-import { buildSnackCart, getSnackList, type CartBuild, type SnackList } from "../lib/api";
+import { buildSnackCart, getSnackList, linkSnackOnAmazon, type CartBuild, type SnackList } from "../lib/api";
 import { useAuth } from "../lib/AuthContext";
 import { JUDGE_LINK_NOT_FOUND } from "../lib/judgeLink";
 import { addProfileHref } from "../lib/profileSections";
@@ -66,8 +66,9 @@ export function Snacks() {
       .then((l) => {
         if (!live) return;
         setList(l);
-        const ids = new Set(l.items.map((i) => i.id));
-        setSelected((prev) => new Set([...prev].filter((id) => ids.has(id))));
+        // Only a linked item can be ticked (JT, Nov 14): an id that left the list, or lost its link, drops out.
+        const linked = new Set(l.items.filter((i) => i.amazon && i.shop).map((i) => i.id));
+        setSelected((prev) => new Set([...prev].filter((id) => linked.has(id))));
       })
       .catch(() => {
         if (!live) return;
@@ -103,6 +104,7 @@ export function Snacks() {
   const canManage = profile.relationship === "owner" || profile.relationship === "co_manager";
   const refresh = () => setReads((n) => n + 1);
   const shoppable = list?.items.filter((i) => i.shop) ?? [];
+  const linkable = shoppable.filter((i) => i.amazon).length;
   // A profile with no allergens (plan decision 6; JT, Nov 14): a plain list. No verdict pills, no
   // screening note. Decided from the server's count with each load, so an allergen added later brings
   // the verdicts back by itself.
@@ -164,8 +166,13 @@ export function Snacks() {
               profile={profile}
               plain={plain}
               cartsEnabled={snackCartsEnabled}
+              canManage={canManage}
               selected={selected.has(item.id)}
               onToggle={() => toggle(item.id)}
+              onLinkAmazon={async (url) => {
+                await linkSnackOnAmazon(profile.id, item.id, url);
+                refresh();
+              }}
             />
           ))}
         </ul>
@@ -173,7 +180,9 @@ export function Snacks() {
 
       {list?.affiliate && <p className="card__meta snacks__affiliate">{AFFILIATE_DISCLOSURE}</p>}
 
-      {snackCartsEnabled && shoppable.length > 0 && (
+      {/* The bar once anything on the list can go in a cart: a linked item for anyone, or an item a
+          manager could link. The count is the ticked, linked items. */}
+      {snackCartsEnabled && (linkable > 0 || (canManage && shoppable.length > 0)) && (
         <SnackCartBar count={selected.size} busy={cartBusy} result={cartResult} error={cartError} onBuild={() => void buildCart()} />
       )}
     </main>

@@ -66,7 +66,9 @@ test("the page: the title row with the count, one screening note under it (not o
   assert.match(PAGE, /\{snackSearchEnabled && <SnackSearch profile=\{profile\} canManage=\{canManage\} onAdded=\{refresh\} \/>\}/);
   assert.match(PAGE, /\{list && list\.items\.length === 0 && !canManage && <p className="snacks__empty">\{emptyLine\(profile, false\)\}<\/p>\}/);
   assert.match(PAGE, /<ul className="snacks__rows">/);
-  assert.match(PAGE, /\{snackCartsEnabled && shoppable\.length > 0 && \(\s*<SnackCartBar/);
+  assert.match(PAGE, /\{snackCartsEnabled && \(linkable > 0 \|\| \(canManage && shoppable\.length > 0\)\) && \(\s*<SnackCartBar/);
+  assert.match(PAGE, /const linked = new Set\(l\.items\.filter\(\(i\) => i\.amazon && i\.shop\)\.map\(\(i\) => i\.id\)\);/, "only linked items stay ticked");
+  assert.match(PAGE, /canManage=\{canManage\}\s*selected=\{selected\.has\(item\.id\)\}\s*onToggle=\{\(\) => toggle\(item\.id\)\}\s*onLinkAmazon=\{async \(url\) => \{\s*await linkSnackOnAmazon\(profile\.id, item\.id, url\);/);
   assert.match(PAGE, /setCartResult\(await buildSnackCart\(profile!\.id, \[\.\.\.selected\]\)\)/);
   assert.doesNotMatch(PAGE, /cart\/add\.html|DISCLAIMER_SHORT|SCAN_WHEN_IT_ARRIVES|EMPTY_SCAN_LINK|SnackItemCard|\.sort\(/);
   assert.match(PAGE, /const \{ chosenProfileId, profiles, profilesLoaded \} = useScanningFor\(\);/);
