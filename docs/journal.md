@@ -2887,3 +2887,56 @@ a query (links only, no claim of a match); a community or circle report landing 
 (the layers are the scan card's own code, tested on the server; no seeded report falls on a listed
 barcode). Nothing deployed: the switch is off by default, so the deploy alone changes nothing a
 judge sees.
+
+## 2026-11-14 — Deployed: snack lists on; built: snack search, part A, behind `SNACK_SEARCH` (not deployed)
+
+**Snack lists went live.** JT pushed and deployed release `20261114015031` (migration 0050 applied,
+healthy), set `SNACK_LIST=on` and restarted. The plain judge reseed (passwords kept, Maya's three items
+written) and the iPhone checklist are his, in his own terminal (`docs/server-setup.md` §11j, §16).
+
+**Snack search.** The plan's Nov 14 addendum, part A (`docs/snack-list-plan.md`; JT chose "search plus
+both carts", carts are part B). Before coding, JT OK'd the endpoint and the limits with one change: no
+migration — the per-account limit in memory, keyed by user id, reset on restart.
+
+- **Endpoint:** Open Food Facts' legacy `/cgi/search.pl` with `json=1` and the product lookup's own
+  `fields`. Its API docs (checked Nov 14) say full-text search isn't in the v2 API and list `search.pl`
+  as the only place it exists; the newer Search-a-licious service answered a probe without ingredient
+  text and its API is still "will be available". `search.pl` returns the same fields a product read
+  does, so each hit is written to `products` as a full row (seed rows never overwritten) and the scan a
+  result opens spends no product read.
+- **Limits** (`snackSearch/limits.ts`): Open Food Facts allows 10 search queries a minute per IP and
+  15 product reads, with bans past that and 503s at global limits. A process budget of 8 real search
+  calls a minute; 20 an hour per regular account and 8 per judge-link pool account; only real calls
+  count, a refused call counts nothing, and an account over its own limit is told so rather than
+  "busy". **Cache** (`snackSearch/cache.ts`): normalized query → results, a day, 500 entries.
+- **Routes** (`routes/snackSearch.ts`): `GET /api/snacks/search?q=` for our `products` (every word
+  somewhere in name or brand, found rows with something to show, 20 at most; LIKE's own characters
+  escaped) and `GET /api/snacks/search/more?q=` for Open Food Facts. 400 under 2 or over 80 characters,
+  429 `search_limit`, 503 `search_busy`, 502 `search_unavailable` (principle 2: a failure is never
+  "nothing matched"). Plain 404 with the switch off. Judge-link sessions may search, under the tighter
+  limit.
+- **Client:** `SnackSearch.tsx` above the list on the Snacks tab while `snackSearchEnabled`; results are
+  buttons with name, brand and barcode, never a verdict, never a link. A tap navigates to
+  `/scan?profile=<id>` with the barcode in the router's location state (`lib/snackSearch.ts`), and Scan
+  reads it once, shows it in the Type it form, runs the existing typed scan and clears the state — a
+  barcode is never read from the URL, and a reload doesn't scan again.
+- **One number changed during the check:** a search's fetch timeout is 15 seconds, not the product
+  lookup's 8. Probing the service directly, a no-match brand search ("hearthfield") took 11.8 seconds to
+  answer 200 with an empty list, which at 8 seconds read as "couldn't reach". A nonsense word
+  ("zzqqxx") got a 503 at once, so that line will be seen for real; it says what it is.
+
+**Local check** (Chrome, Playwright, a second server on 3001 and Vite on 5174, `SNACK_LIST` and
+`SNACK_SEARCH` on; then a server with `SNACK_SEARCH` off): at 390×844, the box, a one-letter query
+refused on the page, "hearthfield" giving the three seeded Hearthfield products with no verdict words
+and no links, "Search more" on it reading "no match either", "peanut butter crackers" bringing 20 real
+products from Open Food Facts; tapping Plain Rice Crackers landing on Scan at `/scan?profile=<Maya>`
+(the only query key) with the clean card and "Add to Maya's snacks", and a reload not scanning again;
+the field and its button on one row at 100% text and stacked at 150%; light and dark; 1280×800 light
+and dark; as a follower on Noor's list the box is there and a tap opens Scan for Noor with no Add
+button. Off: no box on the Snacks tab and the route a 404. No horizontal scroll anywhere.
+Server 689 tests, client 523. Screenshots `docs/approvals/img/circlebite-snack-search-*-2026-11-14.png`.
+
+**Not checked here:** JT's iPhone; the 429 and 503 lines on a real page (unit-tested on the server and
+in the view; forcing them would spend the shared Open Food Facts budget); a judge-link session's
+limit end to end (the account check is the same `isJudgeLinkAccount` the session check uses). Not
+deployed: JT said so, and the switch is off by default.
