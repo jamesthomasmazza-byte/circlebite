@@ -2940,3 +2940,65 @@ Server 688 tests, client 523. Screenshots `docs/approvals/img/circlebite-snack-s
 in the view; forcing them would spend the shared Open Food Facts budget); a judge-link session's
 limit end to end (the account check is the same `isJudgeLinkAccount` the session check uses). Not
 deployed: JT said so, and the switch is off by default.
+
+## 2026-11-14 — Deployed: snack search on; built: snack carts, part B, Amazon only, behind `SNACK_CARTS` (not deployed)
+
+**Snack search went live.** JT's first push and switch command timed out on SSH — the security
+group's port 22 rule had gone stale again, the same as the night before — then release
+`20261114162823` deployed clean and the search route answered 401 signed out, so the `SNACK_SEARCH=on`
+line had reached the box before the deploy and the restart picked it up. No migration, no reseed.
+
+**Carts, part B** (`docs/snack-list-plan.md` addendum). First the addendum: *Nov 14: Instacart
+Developer Platform not accepting applications (no waitlist); Instacart cart dropped, affiliate program
+after judging.* The per-item "Shop on Instacart" search links stay. Then, one logical change per commit:
+
+- **Switch** `SNACK_CARTS`, off by default, on `/me`, its own on top of `SNACK_LIST`.
+- **Migration 0051**: `amazon_asin` (CHECK ten characters A–Z/0–9), `amazon_linked_by` (SET NULL),
+  `amazon_linked_at` on `snack_list_items`, all nullable, so old code and a symlink rollback ignore them.
+- **`snackList/amazonLink.ts`**: `asinFromAmazonLink` keeps the ASIN from `/dp/<ASIN>` or
+  `/gp/product/<ASIN>` on amazon.com and its subdomains, uppercased, and returns null for everything
+  else — short links (a.co, amzn.to; following one would mean fetching it), other marketplaces, search
+  and cart pages, the wrong shape, not a URL. Nothing pasted is stored; a `tag=` in the pasted address
+  goes with the rest. `amazonProductUrl` is the linked item's "Shop on Amazon".
+- **`snackList/cartLink.ts`**: `cart/add.html?ASIN.1=…&Quantity.1=1&…`, `AssociateTag` only when
+  `AMAZON_ASSOCIATE_TAG` is set, null for no ASINs.
+- **Routes** (`routes/snackList.ts`): the list loader is one shared function now (`loadList`), so the
+  cart decides from exactly what the list shows. `PATCH /profiles/:id/snacks/:itemId/amazon {url}` for
+  managers (400 `invalid_amazon_link`; `url: null` unlinks); `POST /profiles/:id/snacks/cart {itemIds}`
+  for anyone who can read the list: re-computes every selected item's verdict, refuses a "Contains"
+  item even if the client sent it, names items without an ASIN as left out, ignores ids not on the
+  list, builds the one link. Both 404 with the switch off; the list's `amazon` is null off, and a
+  linked item's `shop.amazon` is the product page on. 14 route tests.
+- **Client**: `amazon` on `SnackItem`; a checkbox on items with shop links (none on a "Contains" item,
+  which has none), named per product for a screen reader; "Link on Amazon" / "Change Amazon link" /
+  "Remove Amazon link" for managers, with the pasted-link form and the short-link refusal said on the
+  card; "Amazon link added by <name>, <date>"; `SnackCartPanel` under the list with "Add selected to
+  Amazon cart (n)", then the server's answer — "1 item is in the cart link", "Open the Amazon cart"
+  (new tab, `rel="noopener noreferrer"`), "Left out, no Amazon link yet: …", "Not added — it reads
+  “Contains an allergen” now: …", and "Amazon opens in a new tab … Scan each item when it arrives."
+  The client never assembles a cart link itself (pinned by test). Selection clears when the profile
+  changes and drops ids that leave the list.
+- **Search's waiting state**, confirmed and tightened: while "Search more" waits (up to the server's
+  15 seconds), the button is gone and "Asking Open Food Facts…" is a `role="status" aria-busy` line.
+  Measured: up 58 ms after the tap.
+
+**Local check** (Chrome, Playwright, a second server on 3001 with all three switches on, then one with
+`SNACK_CARTS` off): at 390×844 as judge1 on Maya's list — checkboxes on the biscuits and the crackers,
+none on the peanut bar; "Link on Amazon" on the crackers, none on the peanut bar; the cart button
+disabled with nothing ticked; a pasted `a.co` link refused on the card with the short-link line; a
+titled `/dp/` link with someone else's `tag=` kept as `B07PGL2ZSL` only, "Amazon link added by Judge 1,
+Nov 14", Shop on Amazon → `/dp/B07PGL2ZSL`, the biscuits' still a search; both ticked → "(2)" →
+"1 item is in the cart link", the biscuits named as left out, the link
+`cart/add.html?ASIN.1=B07PGL2ZSL&Quantity.1=1` in a new tab; the peanut bar forced into the request
+from the API → refused by name and absent from the link; "Remove Amazon link" → the search link back,
+the line gone, the selection kept. 150% text, dark, 1280×800 light and dark. Off: no checkboxes, no
+link button, no panel, both routes 404, `amazon` null. No horizontal scroll anywhere. One capture
+lesson: a full-page screenshot taken while the page was scrolled came out blank below the fold; the
+script scrolls to the top first now, and the retaken set is whole. Server 700 tests, client 531.
+Screenshots `docs/approvals/img/circlebite-snack-carts-*-2026-11-14.png`.
+
+**Not checked here:** JT's iPhone; Amazon's own add-to-cart page from the link (JT checked the format
+in Chrome Nov 14; the seeded products are invented, so a real product must be searched, added and
+linked first); a follower building a cart from the page (the route allows it, tested on the server;
+judge1 follows Noor, whose list is empty). The local judge seed was rotated twice today for the checks
+(local only). Not deployed: JT said so, and the switch is off by default.
