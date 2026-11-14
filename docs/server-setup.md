@@ -848,6 +848,67 @@ Then, signed in as judge1 on the phone: four tabs; Snacks shows Maya's three ite
 bar first and without shop links; the crackers carry both links; scanning `2990000000014` for Maya
 and tapping "Add to Maya's snacks" says "Already on Maya's snacks".
 
+## 11k. Snack search — switch
+
+With `SNACK_SEARCH=on`, the Snacks tab (§11j) has a search box above the list. Results come first
+from this app's own `products` table (no outside call, no limit); "Search more" asks Open Food Facts'
+text search **through the server**, never the browser. Results are a name, a brand and a barcode,
+never a verdict: tapping one opens the existing typed-barcode scan for the chosen profile, with the
+barcode carried in the router's state and never in the URL, so the card, its warnings and "Add to
+<name>'s snacks" are the ones already built. Search adds nothing to a list by itself. Its own switch,
+independent of `SNACK_LIST`: off by default, and off hides the box and makes `/api/snacks/search`
+and `/api/snacks/search/more` a plain 404 (`docs/snack-list-plan.md` addendum;
+`server/src/routes/snackSearch.ts`, `server/src/snackSearch/`).
+
+**Open Food Facts' limits**, per IP, so for the whole box: 10 search queries a minute, 15 product
+reads a minute; over them the IP can be banned, and global limits answer 503. The server stays under
+them, in memory, reset on restart, no migration:
+
+- a budget of 8 real search calls a minute for the whole process — over it, "Search more" says
+  Open Food Facts is busy;
+- 20 real calls an hour per account, 8 for a judge-link pool account, keyed by user id — over it, a
+  line says this hour's outside searches are used up, and the local results still work;
+- a results cache for a day, 500 queries; and every hit is written to `products` as a full row, so the
+  scan a result opens is served from our own table and spends no product read.
+
+Only real calls count. A failed call (timeout at 15 seconds, 503, network) says "couldn't reach Open
+Food Facts right now", never "nothing matched". Measured Nov 14: a no-match search can take 12
+seconds to answer; a nonsense word got a 503 at once.
+
+**Before turning it on:** JT's iPhone check with it on. Checked locally Nov 14 at 390×844 and
+1280×800, light and dark, 100/150% text, on and off (`docs/journal.md`, 2026-11-14; screenshots
+`docs/approvals/img/circlebite-snack-search-*-2026-11-14.png`). No data of its own, so the order on
+the box is just deploy (§8), then the switch. Nothing after the freeze.
+
+**Turn it on:**
+
+```bash
+grep -q '^SNACK_SEARCH=' ~/circlebite/.env \
+  && sed -i 's/^SNACK_SEARCH=.*/SNACK_SEARCH=on/' ~/circlebite/.env \
+  || echo "SNACK_SEARCH=on" >> ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
+**Turn it off** (the rollback) — the box gone on each browser's next page load, the routes 404,
+nothing to clean up:
+
+```bash
+sed -i 's/^SNACK_SEARCH=.*/SNACK_SEARCH=off/' ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
+**Check it on production after the switch** — from the Mac, signed out, nothing is created:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' 'https://<domain>/api/snacks/search?q=peanut'
+#   401 with the switch on (the route exists and wants a session); 404 with it off
+```
+
+Then, signed in as judge1 on the phone: on Maya's Snacks tab, search "hearthfield" (three results,
+no verdicts); tap Plain Rice Crackers (Scan opens on Maya's card with "Add to Maya's snacks", the
+address carries only the profile); back on Snacks, search "peanut butter crackers" and tap "Search
+more" (real products, or the "couldn't reach" line if Open Food Facts is slow — try once more).
+
 ## 12. Admin access — the AI accuracy page
 
 `users.is_admin` gates internal aggregate pages (the AI accuracy page today, the review queue
