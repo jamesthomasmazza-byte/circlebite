@@ -51,6 +51,7 @@ export function fetchMe(): Promise<{
   scanRedesignEnabled: boolean;
   profileRedesignEnabled: boolean;
   snackListEnabled: boolean;
+  snackSearchEnabled: boolean;
 }> {
   return apiFetch("/me");
 }
@@ -788,6 +789,24 @@ export function updateSnackNote(profileId: string, itemId: string, note: string 
 
 export function removeSnack(profileId: string, itemId: string): Promise<void> {
   return apiFetch(`/profiles/${profileId}/snacks/${itemId}`, { method: "DELETE" });
+}
+
+// ---- Snack search (server routes/snackSearch.ts, behind SNACK_SEARCH; the plan's Nov 14 addendum) ----
+
+/** A product to open, never a verdict: a result isn't checked until its barcode is scanned. */
+export type SnackSearchResult = { barcode: string; name: string | null; brand: string | null };
+
+export type SnackSearchResponse = { query: string; source: "local" | "open_food_facts"; cached?: boolean; results: SnackSearchResult[] };
+
+/** This app's own product records. No outside call, no limit. */
+export function searchSnacks(query: string): Promise<SnackSearchResponse> {
+  return apiFetch(`/snacks/search?q=${encodeURIComponent(query)}`);
+}
+
+/** "Search more": Open Food Facts' text search through the server. Fails with search_limit (429),
+ *  search_busy (503) or search_unavailable (502), each said as what it is on the page. */
+export function searchSnacksMore(query: string): Promise<SnackSearchResponse> {
+  return apiFetch(`/snacks/search/more?q=${encodeURIComponent(query)}`);
 }
 
 // `effective`/`corrections`/`community_reports`: the reporter's own view of the scan once this
