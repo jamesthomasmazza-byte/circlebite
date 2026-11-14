@@ -41,7 +41,7 @@ is allergic to it.
 
 If the tab bar shows a fourth tab, **Snacks**, Maya's list is on it: three products approved from
 her scans, each with its verdict as it is **now** — computed from the stored product data, no AI
-call — in the same words as a scan card. "Approved by" names who added it. One item reads **Contains
+call — in the same words as a scan card. One item reads **Contains
 an allergen** (the peanut bar, its note "Approved before Maya's peanut allergy was confirmed": the
 verdict is live, so an allergen added later flags an old item): the app never offers to shop for a
 Contains item, and shows "Label wrong? Report a correction" instead. The other two carry "Shop on Amazon" and "Shop on Instacart",

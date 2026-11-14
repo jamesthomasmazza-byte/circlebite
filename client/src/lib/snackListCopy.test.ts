@@ -7,7 +7,6 @@ import {
   addButtonLabel,
   addedLine,
   alreadyListedLine,
-  approvedBy,
   confirmHeading,
   confirmLine,
   emptyLine,
@@ -64,10 +63,6 @@ test("the empty state tells a manager how to add, and a follower only that it's 
   assert.equal(emptyLine(MAYA, false), "Nothing on Maya's list yet.");
 });
 
-test("'Approved by <name>, <date>', and 'Approved <date>' when the approver's account is gone", () => {
-  assert.equal(approvedBy("James", "Nov 13"), "Approved by James, Nov 13");
-  assert.equal(approvedBy(null, "Nov 13"), "Approved Nov 13");
-});
 
 test("the date is short, with the year only when it isn't this one", () => {
   const now = new Date("2026-11-13T20:00:00Z");

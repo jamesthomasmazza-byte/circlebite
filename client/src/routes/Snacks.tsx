@@ -24,7 +24,6 @@ import {
   ADD_NOTE,
   AFFILIATE_DISCLOSURE,
   amazonLinkedBy,
-  approvedBy,
   CART_BUILDING,
   CART_FAILED,
   CART_NOTE,
@@ -222,7 +221,8 @@ export function Snacks() {
 
 /**
  * One item. The verdict first, in the card's colour and with its icon (styles.css [data-verdict]),
- * then the product, who approved it, the allergen rows that claim anything, what changed the verdict,
+ * then the product (never who approved it — kept in the database, not shown; JT, Nov 14), the allergen
+ * rows that claim anything, what changed the verdict,
  * the note, the "scan it when it arrives" line, the shop links when sent, the correction link on a
  * Contains item, and the manager's controls. Never the word "safe" (lib/verdictCopy.ts).
  */
@@ -311,7 +311,6 @@ export function SnackItemCard({
         {item.product.brand && <span className="snack-item__brand"> — {item.product.brand}</span>}
         <span className="card__meta card__line snack-item__barcode">{item.barcode}</span>
       </p>
-      <p className="card__meta snack-item__approved">{approvedBy(item.added_by, shortDate(item.created_at))}</p>
       {cartsEnabled && item.amazon && <p className="card__meta snack-item__amazon">{amazonLinkedBy(item.amazon.linked_by, shortDate(item.amazon.linked_at))}</p>}
 
       {rows.length > 0 && (

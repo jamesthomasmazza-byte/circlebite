@@ -3,8 +3,7 @@ import { VERDICT_LABEL } from "./verdictCopy";
 
 // Snack lists' words (docs/snack-list-plan.md, 2026-11-13). Plain values, under test. Never the word
 // "safe" (CONTEST_RULES.md §3a): a list item's verdict is the card's own label (verdictCopy.ts), and
-// the list is "<name>'s snacks", each item "Approved by <who>, <date>" — approved by a person, not
-// cleared by the app.
+// the list is "<name>'s snacks". Who approved an item is kept in the database and not shown (JT, Nov 14).
 
 export const SNACKS_PATH = "/snacks";
 
@@ -79,10 +78,6 @@ export const ADD_FAILED = "Couldn't add it. Try again in a moment.";
 export const NOT_ON_FILE = "This product isn't on file yet, so it can't go on the list.";
 
 // ---- The list page ----
-
-export function approvedBy(name: string | null, when: string): string {
-  return name ? `Approved by ${name}, ${when}` : `Approved ${when}`;
-}
 
 /**
  * An item's allergens the matcher cleared but nothing reliable checked (server snackList/itemVerdict.ts:
@@ -199,7 +194,7 @@ export function refusedLine(names: string[]): string {
 /** The profile page's link to the list (plan step 9). */
 export const SNACKS_LINK = "Snacks →";
 
-/** "Nov 13", with the year only when it isn't this one — the date on "Approved by", no time of day. */
+/** "Nov 13", with the year only when it isn't this one — the date on "Amazon link added by", no time of day. */
 export function shortDate(value: string | Date, now: Date = new Date(), opts: { locale?: string; timeZone?: string } = {}): string {
   const date = typeof value === "string" ? new Date(value) : value;
   const yearOf = (d: Date) => new Intl.DateTimeFormat("en-US", { year: "numeric", timeZone: opts.timeZone }).format(d);

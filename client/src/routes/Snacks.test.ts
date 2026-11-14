@@ -48,12 +48,12 @@ function render(i: SnackItem, canManage = true, extra: Partial<CardProps> = {}):
 }
 const carts: Partial<CardProps> = { cartsEnabled: true, onToggle: () => {}, onLinkAmazon: noop };
 
-test("a clean item: the verdict card's own words in its colour, the product, who approved it, both shop links in a new tab", () => {
+test("a clean item: the verdict card's own words in its colour, the product, both shop links in a new tab, and never who approved it", () => {
   const html = render(item({}));
   assert.match(html, /<li class="card snack-item" data-verdict="safe">/);
   assert.match(html, /<p class="verdict-card__headline snack-item__verdict">No listed allergens found<\/p>/);
   assert.match(html, /<strong>Plain Rice Crackers<\/strong><span class="snack-item__brand"> — Hearthfield<\/span>/);
-  assert.match(html, /Approved by Judge 1, Nov 13/);
+  assert.doesNotMatch(html, /Approved by|snack-item__approved/, "who approved it is kept, not shown (JT, Nov 14)");
   assert.match(html, /<a class="button-link" href="https:\/\/www\.amazon\.com\/s\?k=Plain%20Rice%20Crackers%20Hearthfield" target="_blank" rel="noopener noreferrer">Shop on Amazon<\/a>/);
   assert.match(html, /<a class="button-link" href="https:\/\/www\.instacart\.com\/store\/s\?k=[^"]+" target="_blank" rel="noopener noreferrer">Shop on Instacart<\/a>/);
   assert.match(html, /Scan it when it arrives — stores can send a different version\./);
@@ -118,9 +118,6 @@ test("the note shows when there is one; managers get Edit note or Add a note and
   assert.doesNotMatch(follower, /Remove|Edit note|Add a note/);
 });
 
-test("'Approved <date>' when the approver's account is gone", () => {
-  assert.match(render(item({ added_by: null })), /snack-item__approved">Approved Nov 13</);
-});
 
 test("never the word 'safe' in what's read, on any verdict (the enum value stays in data-verdict only)", () => {
   for (const headline of ["safe", "contains_allergen", "may_contain_caution", "unable_to_confirm"] as const) {

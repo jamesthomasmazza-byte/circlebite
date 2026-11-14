@@ -796,7 +796,7 @@ reopens.
 With `SNACK_LIST=on`, a fourth tab, **Snacks**, follows Circle: each profile's list of products its
 owner and co-managers approved from a scan's card, visible to everyone in the circle, each item with
 its verdict as it is **now** (computed from the stored product row and the current allergens, the
-same community and circle layers as a scan, no AI call), "Approved by <name>, <date>", a note, and
+same community and circle layers as a scan, no AI call), a note (who approved it is stored, not shown), and
 plain "Shop on Amazon" / "Shop on Instacart" search links that the server omits for a "Contains"
 item. Also on: "Add to <name>'s snacks" under the verdict card for a manager, "Snacks →" on the
 profile page, and "No allergies — just snack lists" in the guided setup. Off by default; off is
