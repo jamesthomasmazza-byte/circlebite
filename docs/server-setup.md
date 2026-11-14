@@ -854,7 +854,11 @@ from this app's own `products` table (no outside call, no limit); "Search more" 
 text search **through the server**, never the browser. Results are a name, a brand and a barcode,
 never a verdict: tapping one opens the existing typed-barcode scan for the chosen profile, with the
 barcode carried in the router's state and never in the URL, so the card, its warnings and "Add to
-<name>'s snacks" are the ones already built. Search adds nothing to a list by itself. Its own switch,
+<name>'s snacks" are the ones already built. With no local match, Open Food Facts is asked at once.
+A manager's result also has **Add** (JT, Nov 14): the client runs the Scan page's own scan route for
+the profile and barcode, then the existing add by scan id — the list's barcode is the scan row's —
+with the card's confirm step inline for a "Contains" or "May contain" verdict. Search adds nothing to
+a list by itself; every item still comes from a scan. Its own switch,
 independent of `SNACK_LIST`: off by default, and off hides the box and makes `/api/snacks/search`
 and `/api/snacks/search/more` a plain 404 (`docs/snack-list-plan.md` addendum;
 `server/src/routes/snackSearch.ts`, `server/src/snackSearch/`).
@@ -912,12 +916,14 @@ more" (real products, or the "couldn't reach" line if Open Food Facts is slow �
 With `SNACK_CARTS=on`, three things join the Snacks tab (§11j), Amazon only — the Instacart cart was
 dropped Nov 14 (the Developer Platform isn't taking applications; `docs/snack-list-plan.md` addendum):
 
-- **"Link on Amazon"** on an item, for a manager: paste the product's amazon.com link. The server keeps
+- **"Link on Amazon"** on an item, for a manager — the one Amazon control on an unlinked item (JT, Nov
+  14): it opens the Amazon search in a new tab and the paste box on the card. Paste the product's
+  amazon.com link. The server keeps
   only the ASIN (ten characters, from `/dp/<ASIN>` or `/gp/product/<ASIN>`) and refuses anything else —
   short links (a.co, amzn.to) included, because it would have to fetch them to learn what they are
   (`server/src/snackList/amazonLink.ts`). Nothing pasted is stored; a `tag=` in the pasted address is
-  dropped with the rest. The item shows "Amazon link added by <name>, <date>", and its "Shop on Amazon"
-  goes to that product instead of a search.
+  dropped with the rest. The item then shows "Amazon link added by <name>, <date>" with a small "Change
+  link", and its one control reads "Shop on Amazon" and goes to that product instead of a search.
 - **Checkboxes** on items that have shop links. A "Contains" item has none (the server already sends
   it without links).
 - **"Add selected to Amazon cart"**, built on the server only (`server/src/snackList/cartLink.ts`):

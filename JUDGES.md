@@ -50,13 +50,17 @@ different version." As Maya's owner you can add a note or remove an item; on Noo
 you can only read. To add one, scan a product for Maya and tap "Add to Maya's snacks" under its card.
 
 If the Snacks tab also has a **search box**, type a name or brand: results come first from products
-this app has already seen, and "Search more" asks Open Food Facts. A result is only a product to
-open — tapping one scans it for Maya, and only then is there a verdict and an "Add to Maya's snacks"
-button. Nothing goes on the list by itself. If Open Food Facts is slow or busy the page says it
-couldn't reach it; try once more.
+this app has already seen; with none, Open Food Facts is asked at once, and "Search more" asks it when
+there were local results. As Maya's owner each result has an **Add** button: it runs the same check a
+scan would for Maya, adds a clean product to the list, and asks first — naming the allergen — when the
+product reads "Contains an allergen" or "May contain". Tapping the result's name instead opens its
+full card on Scan. Nothing goes on the list by itself. If Open Food Facts is slow or busy the page says
+it couldn't reach it; try once more.
 
-If items on the list have a **checkbox**, the Amazon cart is on: as Maya's owner, "Link on Amazon" on
-an item takes the product's amazon.com address and keeps only its product code; tick items and "Add
+If items on the list have a **checkbox**, the Amazon cart is on: as Maya's owner, an item's "Link on
+Amazon" opens the Amazon search in a new tab and a box here for the product's amazon.com address, of
+which only the product code is kept (after that the button reads "Shop on Amazon" and goes straight to
+the product, with a small "Change link"); tick items and "Add
 selected to Amazon cart" gives one link that opens Amazon with them in its add-to-cart step. The app
 builds that link on its own server and checks each item's verdict again first: a "Contains an
 allergen" item is never put in a cart, and an item without an Amazon link is named as left out. The
