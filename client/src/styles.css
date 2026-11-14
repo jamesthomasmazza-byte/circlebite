@@ -3953,3 +3953,90 @@ button.scan-tile {
 .snacks__affiliate {
   margin-top: var(--space-4);
 }
+
+/* ---------- Snack search — the box above the list (SnackSearch.tsx, SNACK_SEARCH) ---------------- */
+/* The field and its button on one row when they fit, stacked at 150% text; results are full-width
+   buttons that read as rows, in the body colour, never a verdict colour. */
+
+.snack-search {
+  margin-block: var(--space-4);
+}
+
+.snack-search__form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.snack-search__form label {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.snack-search__form input {
+  display: block;
+  width: 100%;
+  margin-top: var(--space-1);
+}
+
+.snack-search__form button {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.snack-search__results {
+  margin-top: var(--space-3);
+}
+
+.snack-search__heading {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: var(--text-base);
+}
+
+.snack-search__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.snack-search__result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  width: 100%;
+  margin: 0;
+  padding: var(--space-3);
+  text-align: left;
+  font-weight: inherit;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: inherit;
+}
+
+.snack-search__title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.snack-search__barcode {
+  font-variant-numeric: tabular-nums;
+}
+
+.snack-search__more {
+  margin: var(--space-3) 0 0;
+}
+
+.snack-search__more button {
+  margin: 0;
+}
+
+.snack-search__empty,
+.snack-search__pick {
+  margin: var(--space-2) 0 0;
+}
