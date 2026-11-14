@@ -414,6 +414,9 @@ Prof. Yoest's two Nov 13 replies (`docs/approvals/2026-11-13-yoest-video-expiry-
   Behind `SNACK_LIST`. Shop links work; affiliate income does not, by design, until after judging.
   **Gate: Sunday Nov 15, noon ET**, deployed, phone-checked and on, or it stays off and becomes the
   roadmap slide. Deploys before the reseed; the judge seed gives Maya a list in every world.
+- [ ] **Snack search and carts** (JT, Nov 14; `docs/snack-list-plan.md` addendum): search in the Snacks
+  tab (`SNACK_SEARCH`), Amazon links per item and a multi-item Amazon cart, and an Instacart cart if JT
+  gets a production key (`SNACK_CARTS`). Same Sunday-noon gate; off if not solid.
 
 ### Nov 16, 11:59 PM ET — code freeze (was Nov 13; moved Nov 7)
 
