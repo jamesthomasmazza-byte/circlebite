@@ -98,7 +98,7 @@ export function SnackRow({
       )}
       {canLink && item.shop && (
         <a
-          className="button-link snack-row__link"
+          className="snack-row__link"
           href={item.shop.amazon}
           target="_blank"
           rel="noopener noreferrer"

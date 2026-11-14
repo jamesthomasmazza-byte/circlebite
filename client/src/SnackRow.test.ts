@@ -102,7 +102,7 @@ test("carts on: the checkbox only once the item is linked, 44px and named for th
 
 test("carts on, not linked: a manager gets a small Link on Amazon in the checkbox's place — the Amazon search in a new tab — and no checkbox; a follower gets nothing there (JT, Nov 14)", () => {
   const manager = renderRow(item({}), { cartsEnabled: true, canManage: true, onToggle: () => {}, onLinkAmazon: noop });
-  assert.match(manager, /<a class="button-link snack-row__link" href="https:\/\/www\.amazon\.com\/s\?k=Plain%20Rice%20Crackers%20Hearthfield" target="_blank" rel="noopener noreferrer" aria-label="Link on Amazon: Plain Rice Crackers">Link on Amazon<\/a><\/li>$/);
+  assert.match(manager, /<a class="snack-row__link" href="https:\/\/www\.amazon\.com\/s\?k=Plain%20Rice%20Crackers%20Hearthfield" target="_blank" rel="noopener noreferrer" aria-label="Link on Amazon: Plain Rice Crackers">Link on Amazon<\/a><\/li>$/);
   assert.doesNotMatch(manager, /checkbox|snack-row__link-form/);
   const follower = renderRow(item({}), { cartsEnabled: true, onToggle: () => {} });
   assert.match(follower, /<\/a><\/li>$/, "the row's link closes the row: nothing on the right");

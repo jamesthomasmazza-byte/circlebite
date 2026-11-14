@@ -3107,3 +3107,12 @@ by the tests. Server 704 tests, client 537.
    the bar read "Add 1 to Amazon cart" and the server's cart had one item; unlinked from the detail
    page, the button came back and the bar read 0. As a follower on Noor's empty list: no link buttons,
    no checkboxes, no bar. Server 707 tests, client 539. Screenshots `circlebite-snacks-mockup-rowlink-*`.
+
+*Later, Nov 14 (the list's layout, to the approved mockup):* rows are flat list items with a 1px
+divider — no box, no coloured left edge; the verdict's colour lives in the pill alone — and a manager's
+"Link on Amazon" sits in the text column under the pill as a small text-style button with a 44px-tall
+target, never wider than its column; the checkbox still appears on the right once linked. Measured in
+Chrome at 390: dividers 1px with none under the last row, no radius, no background; the link 44px tall
+at 100% text and 66px at 150%, inside the row and below the pill in every case; the paste box under
+the row without overflow; light and dark; no horizontal scroll. Screenshots
+`circlebite-snacks-mockup-flatrows-*`.
