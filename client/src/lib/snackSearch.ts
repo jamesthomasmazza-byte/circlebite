@@ -5,6 +5,8 @@
 export const QUERY_MIN = 2;
 export const QUERY_MAX = 80;
 
+/** The section's own name, distinct from the field's so a screen reader hears two things, not one twice. */
+export const SEARCH_REGION = "Snack search";
 export const SEARCH_LABEL = "Search for a product";
 export const SEARCH_PLACEHOLDER = "Name or brand";
 export const SEARCH_BUTTON = "Search";

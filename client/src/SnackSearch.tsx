@@ -18,6 +18,7 @@ import {
   SEARCH_LABEL,
   SEARCH_MORE,
   SEARCH_PLACEHOLDER,
+  SEARCH_REGION,
   SEARCHING,
   SEARCHING_MORE,
   TOO_SHORT,
@@ -131,7 +132,7 @@ export function SnackSearchView({
 }) {
   const hasResults = (local?.length ?? 0) > 0 || (more.kind === "done" && more.results.length > 0);
   return (
-    <section className="snack-search" aria-label={SEARCH_LABEL}>
+    <section className="snack-search" aria-label={SEARCH_REGION}>
       <form className="snack-search__form" onSubmit={onSubmit} noValidate>
         <label>
           {SEARCH_LABEL}
