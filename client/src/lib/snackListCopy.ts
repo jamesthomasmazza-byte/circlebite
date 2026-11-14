@@ -157,6 +157,16 @@ export function amazonLinkedBy(name: string | null, when: string): string {
   return name ? `Amazon link added by ${name}, ${when}` : `Amazon link added ${when}`;
 }
 
+/** The product's shared link (an admin's, JT Nov 14), in force on every family's list. */
+export function sharedAmazonLine(name: string | null, when: string): string {
+  return name ? `Amazon link for everyone, set by ${name}, ${when}` : `Amazon link for everyone, set ${when}`;
+}
+
+export const SET_SHARED_LINK = "Set Amazon link for everyone";
+export const CHANGE_SHARED_LINK = "Change the link for everyone";
+export const REMOVE_SHARED_LINK = "Remove the link for everyone";
+export const SHARED_LINK_HINT = "Admins only. This link is used on every family's list for this product; a family's own link on the item still wins.";
+
 /** The checkbox's own label, one per item, so a screen reader hears which product it is. */
 export function selectForCartLabel(productName: string | null): string {
   return `Select ${productName ?? "this product"} for the Amazon cart`;

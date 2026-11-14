@@ -778,7 +778,8 @@ export type SnackItem = {
   headline: Verdict;
 };
 
-export type AmazonLink = { asin: string; linked_by: string | null; linked_at: string };
+/** The link in force: the item's own (a manager's override) or the product's shared one (an admin's). */
+export type AmazonLink = { asin: string; linked_by: string | null; linked_at: string; source: "item" | "product" };
 
 /** `allergen_count` is the profile's full count, not the viewer's filtered view: zero means a plain list —
  *  no verdict headlines, no screening-aid box (JT, Nov 14; plan decision 6). */
@@ -807,6 +808,12 @@ export function removeSnack(profileId: string, itemId: string): Promise<void> {
  *  400 invalid_amazon_link for anything else. `null` removes the link. */
 export function linkSnackOnAmazon(profileId: string, itemId: string, url: string | null): Promise<{ id: string; amazon: AmazonLink | null }> {
   return apiFetch(`/profiles/${profileId}/snacks/${itemId}/amazon`, { method: "PATCH", body: JSON.stringify({ url }) });
+}
+
+/** "Set Amazon link for everyone": admins only (the server answers 404 to anyone else). The product is
+ *  resolved from the item on the server; `null` clears the shared link. */
+export function setProductAmazonLink(profileId: string, itemId: string, url: string | null): Promise<{ id: string; product_amazon: { asin: string; set_by: string; set_at: string } | null }> {
+  return apiFetch(`/profiles/${profileId}/snacks/${itemId}/product-amazon`, { method: "PATCH", body: JSON.stringify({ url }) });
 }
 
 export type CartBuild = {

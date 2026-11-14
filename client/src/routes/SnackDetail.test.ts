@@ -54,7 +54,8 @@ const MAY = item({
   headline: "may_contain_caution",
   note: "For playdates",
 });
-const LINKED = { asin: "B07PGL2ZSL", linked_by: "Grandma", linked_at: "2026-11-13T16:00:00Z" };
+const LINKED = { asin: "B07PGL2ZSL", linked_by: "Grandma", linked_at: "2026-11-13T16:00:00Z", source: "item" as const };
+const SHARED = { asin: "B000000002", linked_by: "Admin Ann", linked_at: "2026-11-14T16:00:00Z", source: "product" as const };
 
 const noop = async () => {};
 const inRouter = (el: ReactElement) => renderToStaticMarkup(createElement(MemoryRouter, null, el));
@@ -151,4 +152,30 @@ test("an image that fails to load gives way to the placeholder, and a new src ge
   assert.match(PHOTO, /if \(src && !failed\) \{/);
   assert.match(PHOTO, /useEffect\(\(\) => setFailed\(false\), \[src\]\);/);
   assert.match(PHOTO, /referrerPolicy="no-referrer"/);
+});
+
+// ---- The product's shared link (JT, Nov 14) ----
+
+test("a shared link reads as set for everyone; a manager still gets Link on Amazon as the override; a follower sees the line only", () => {
+  const manager = renderDetail(item({ amazon: SHARED, shop: { amazon: "https://www.amazon.com/dp/B000000002", instacart: "https://www.instacart.com/store/s?k=x", affiliate: false } }), true, { cartsEnabled: true });
+  assert.match(manager, /<p class="card__meta snack-item__amazon">Amazon link for everyone, set by Admin Ann, Nov 14<\/p>/);
+  assert.match(manager, /href="https:\/\/www\.amazon\.com\/dp\/B000000002"[^>]*>Shop on Amazon</);
+  assert.match(manager, /<button type="button" class="link-button">Link on Amazon<\/button>/, "the override is offered");
+  assert.doesNotMatch(manager, /Change Amazon link|Set Amazon link for everyone|Change the link for everyone/);
+  const follower = renderDetail(item({ amazon: SHARED }), false, { cartsEnabled: true });
+  assert.match(follower, /Amazon link for everyone, set by Admin Ann/);
+  assert.doesNotMatch(follower, /Link on Amazon|for everyone<\/button>/);
+});
+
+test("an admin gets Set Amazon link for everyone, or Change the link for everyone once set; nobody else sees it, and judge sessions are never admins on the server", () => {
+  const admin = renderDetail(item({}), false, { cartsEnabled: true, isAdmin: true, onSetProductAmazon: noop });
+  assert.match(admin, /<p class="snack-item__actions snack-detail__admin"><button type="button" class="link-button">Set Amazon link for everyone<\/button><\/p>/);
+  const adminSet = renderDetail(item({ amazon: SHARED }), false, { cartsEnabled: true, isAdmin: true, onSetProductAmazon: noop });
+  assert.match(adminSet, /Change the link for everyone/);
+  assert.doesNotMatch(renderDetail(item({}), true, { cartsEnabled: true }), /for everyone/);
+  assert.doesNotMatch(renderDetail(CONTAINS, true, { cartsEnabled: true, isAdmin: true, onSetProductAmazon: noop }), /for everyone/, "a Contains item has no shop or link actions");
+  assert.doesNotMatch(renderDetail(item({}), true, { cartsEnabled: false, isAdmin: true, onSetProductAmazon: noop }), /for everyone/, "carts off: nothing");
+  assert.match(DETAIL, /isAdmin=\{Boolean\(user\?\.isAdmin\)\}/);
+  assert.match(DETAIL, /await setProductAmazonLink\(profile\.id, item\.id, url\);/);
+  assert.match(DETAIL, /linkScope === "product" && onSetProductAmazon \? onSetProductAmazon\(url\) : onLinkAmazon\(url\)/);
 });

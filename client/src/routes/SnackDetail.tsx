@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ProductPhoto } from "../ProductPhoto";
 import { useScanningFor } from "../TabShell";
 import { shopperCount } from "../lib/allergenRowCopy";
-import { ApiRequestError, getSnackList, linkSnackOnAmazon, removeSnack, updateSnackNote, type ProfileSummary, type SnackItem, type SnackList } from "../lib/api";
+import { ApiRequestError, getSnackList, linkSnackOnAmazon, removeSnack, setProductAmazonLink, updateSnackNote, type ProfileSummary, type SnackItem, type SnackList } from "../lib/api";
 import { useAuth } from "../lib/AuthContext";
 import { changedByLine, circleReportLine } from "../lib/correctionCopy";
 import { JUDGE_LINK_NOT_FOUND } from "../lib/judgeLink";
@@ -12,6 +12,7 @@ import {
   ADD_NOTE,
   amazonLinkedBy,
   CHANGE_AMAZON_LINK,
+  CHANGE_SHARED_LINK,
   CHECKED_FOR,
   checkedRowLabel,
   DETAIL_ARRIVES,
@@ -32,6 +33,10 @@ import {
   NOTE_SAVE,
   REMOVE_FROM_LIST,
   REMOVE_LINK,
+  REMOVE_SHARED_LINK,
+  SET_SHARED_LINK,
+  SHARED_LINK_HINT,
+  sharedAmazonLine,
   SHOP_AMAZON,
   SHOP_INSTACART,
   shortDate,
@@ -52,7 +57,7 @@ import { VERDICT_LABEL } from "../lib/verdictCopy";
  */
 export function SnackDetail() {
   const { itemId = "" } = useParams();
-  const { snackListEnabled, snackCartsEnabled, loading } = useAuth();
+  const { snackListEnabled, snackCartsEnabled, loading, user } = useAuth();
   const { chosenProfileId, profiles, profilesLoaded } = useScanningFor();
   const profile = profiles.find((p) => p.id === scanningForId(chosenProfileId, profiles)) ?? null;
   const navigate = useNavigate();
@@ -113,6 +118,11 @@ export function SnackDetail() {
           plain={plain}
           canManage={canManage}
           cartsEnabled={snackCartsEnabled}
+          isAdmin={Boolean(user?.isAdmin)}
+          onSetProductAmazon={async (url) => {
+            await setProductAmazonLink(profile.id, item.id, url);
+            setReads((n) => n + 1);
+          }}
           onSaveNote={async (note) => {
             await updateSnackNote(profile.id, item.id, note);
             setReads((n) => n + 1);
@@ -138,8 +148,10 @@ export function SnackDetailView({
   plain = false,
   canManage,
   cartsEnabled = false,
+  isAdmin = false,
   onSaveNote,
   onLinkAmazon,
+  onSetProductAmazon,
   onRemove,
 }: {
   item: SnackItem;
@@ -147,8 +159,11 @@ export function SnackDetailView({
   plain?: boolean;
   canManage: boolean;
   cartsEnabled?: boolean;
+  /** An admin (the server checks again): "Set Amazon link for everyone", the product's shared link. */
+  isAdmin?: boolean;
   onSaveNote: (note: string | null) => Promise<void>;
   onLinkAmazon: (url: string | null) => Promise<void>;
+  onSetProductAmazon?: (url: string | null) => Promise<void>;
   onRemove: () => Promise<void>;
 }) {
   const shown = item.effective ?? item.original;
@@ -156,6 +171,8 @@ export function SnackDetailView({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(item.note ?? "");
   const [linking, setLinking] = useState(false);
+  // Which link the paste box sets: the item's own (a manager's) or the product's shared one (an admin's).
+  const [linkScope, setLinkScope] = useState<"item" | "product">("item");
   const [linkDraft, setLinkDraft] = useState("");
   const [linkError, setLinkError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -181,18 +198,21 @@ export function SnackDetailView({
     void run(() => onSaveNote(note === "" ? null : note), "Couldn't save the note. Try again.");
   }
 
-  function openLinkForm() {
+  function openLinkForm(scope: "item" | "product" = "item") {
+    setLinkScope(scope);
     setLinkDraft("");
     setLinkError(null);
     setLinking(true);
   }
+
+  const setLink = (url: string | null) => (linkScope === "product" && onSetProductAmazon ? onSetProductAmazon(url) : onLinkAmazon(url));
 
   async function saveLink(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
     setLinkError(null);
     try {
-      await onLinkAmazon(linkDraft.trim());
+      await setLink(linkDraft.trim());
       setLinking(false);
       setLinkDraft("");
     } catch (err) {
@@ -203,6 +223,8 @@ export function SnackDetailView({
   }
 
   const canLink = cartsEnabled && canManage && Boolean(item.shop);
+  const canSetShared = cartsEnabled && isAdmin && Boolean(item.shop) && Boolean(onSetProductAmazon);
+  const sharedSet = item.amazon?.source === "product";
 
   return (
     <article className="snack-detail__item" data-verdict={plain ? undefined : item.headline}>
@@ -272,7 +294,11 @@ export function SnackDetailView({
 
       <p className="card__meta snack-detail__arrives">{DETAIL_ARRIVES}</p>
 
-      {cartsEnabled && item.amazon && <p className="card__meta snack-item__amazon">{amazonLinkedBy(item.amazon.linked_by, shortDate(item.amazon.linked_at))}</p>}
+      {cartsEnabled && item.amazon && (
+        <p className="card__meta snack-item__amazon">
+          {item.amazon.source === "product" ? sharedAmazonLine(item.amazon.linked_by, shortDate(item.amazon.linked_at)) : amazonLinkedBy(item.amazon.linked_by, shortDate(item.amazon.linked_at))}
+        </p>
+      )}
 
       {linking && (
         <form className="snack-item__note-form snack-item__link-form" onSubmit={(e) => void saveLink(e)}>
@@ -280,7 +306,7 @@ export function SnackDetailView({
             {LINK_AMAZON_LABEL}
             <input type="url" inputMode="url" autoComplete="off" value={linkDraft} onChange={(e) => setLinkDraft(e.target.value)} required />
           </label>
-          <p className="card__meta">{LINK_AMAZON_HINT}</p>
+          <p className="card__meta">{linkScope === "product" ? SHARED_LINK_HINT : LINK_AMAZON_HINT}</p>
           {linkError && <p role="alert">{linkError}</p>}
           <p className="snack-item__actions">
             <button type="submit" className="button-primary" disabled={busy}>
@@ -289,9 +315,14 @@ export function SnackDetailView({
             <button type="button" disabled={busy} onClick={() => setLinking(false)}>
               {NOTE_CANCEL}
             </button>
-            {item.amazon && (
+            {linkScope === "item" && item.amazon?.source === "item" && (
               <button type="button" disabled={busy} onClick={() => void run(() => onLinkAmazon(null), LINK_FAILED)}>
                 {REMOVE_LINK}
+              </button>
+            )}
+            {linkScope === "product" && sharedSet && (
+              <button type="button" disabled={busy} onClick={() => void run(() => setLink(null), LINK_FAILED)}>
+                {REMOVE_SHARED_LINK}
               </button>
             )}
           </p>
@@ -307,7 +338,7 @@ export function SnackDetailView({
       <div className="snack-detail__actions">
         {item.shop &&
           (canLink && !item.amazon ? (
-            <a className="button-link button-link--primary" href={item.shop.amazon} target="_blank" rel="noopener noreferrer" onClick={openLinkForm}>
+            <a className="button-link button-link--primary" href={item.shop.amazon} target="_blank" rel="noopener noreferrer" onClick={() => openLinkForm("item")}>
               {LINK_AMAZON}
             </a>
           ) : (
@@ -337,13 +368,27 @@ export function SnackDetailView({
             >
               {item.note ? EDIT_NOTE : ADD_NOTE}
             </button>
-            {canLink && item.amazon && (
-              <button type="button" className="link-button" disabled={busy} onClick={openLinkForm}>
+            {canLink && item.amazon?.source === "item" && (
+              <button type="button" className="link-button" disabled={busy} onClick={() => openLinkForm("item")}>
                 {CHANGE_AMAZON_LINK}
+              </button>
+            )}
+            {canLink && item.amazon?.source === "product" && (
+              <button type="button" className="link-button" disabled={busy} onClick={() => openLinkForm("item")}>
+                {LINK_AMAZON}
               </button>
             )}
             <button type="button" disabled={busy} onClick={() => void run(onRemove, "Couldn't remove it. Try again.")}>
               {REMOVE_FROM_LIST}
+            </button>
+          </p>
+        )}
+        {/* Admins only (the server checks again, and never a judge account): the product's shared link,
+            in force on every family's list unless a family's own item link overrides it. */}
+        {canSetShared && !linking && (
+          <p className="snack-item__actions snack-detail__admin">
+            <button type="button" className="link-button" disabled={busy} onClick={() => openLinkForm("product")}>
+              {sharedSet ? CHANGE_SHARED_LINK : SET_SHARED_LINK}
             </button>
           </p>
         )}

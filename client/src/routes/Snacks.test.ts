@@ -54,7 +54,7 @@ const MAY = item({
   headline: "may_contain_caution",
   note: "For playdates",
 });
-const LINKED = { asin: "B07PGL2ZSL", linked_by: "Grandma", linked_at: "2026-11-13T16:00:00Z" };
+const LINKED = { asin: "B07PGL2ZSL", linked_by: "Grandma", linked_at: "2026-11-13T16:00:00Z", source: "item" as const };
 
 
 const PAGE = readFileSync(new URL("./Snacks.tsx", import.meta.url), "utf8");
