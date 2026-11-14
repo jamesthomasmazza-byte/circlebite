@@ -52,6 +52,7 @@ export function fetchMe(): Promise<{
   profileRedesignEnabled: boolean;
   snackListEnabled: boolean;
   snackSearchEnabled: boolean;
+  snackCartsEnabled: boolean;
 }> {
   return apiFetch("/me");
 }
@@ -768,9 +769,14 @@ export type SnackItem = {
   community_reports: CommunityReport[];
   pending_circle_reports: CircleReport[];
   shop: ShopLinks | null;
+  // Carts (SNACK_CARTS): the Amazon product a manager linked, or null. With it, `shop.amazon` is that
+  // product's page rather than a search. Absent entirely while the switch is off.
+  amazon?: AmazonLink | null;
   // What the card headlines: `effective` when a layer changed it, else the engine's own verdict.
   headline: Verdict;
 };
+
+export type AmazonLink = { asin: string; linked_by: string | null; linked_at: string };
 
 export type SnackList = { items: SnackItem[]; affiliate: boolean };
 
@@ -789,6 +795,29 @@ export function updateSnackNote(profileId: string, itemId: string, note: string 
 
 export function removeSnack(profileId: string, itemId: string): Promise<void> {
   return apiFetch(`/profiles/${profileId}/snacks/${itemId}`, { method: "DELETE" });
+}
+
+// ---- Snack carts (the plan's addendum part B, behind SNACK_CARTS; server routes/snackList.ts) ----
+
+/** "Link on Amazon": the pasted amazon.com product link; the server keeps only its ASIN and answers
+ *  400 invalid_amazon_link for anything else. `null` removes the link. */
+export function linkSnackOnAmazon(profileId: string, itemId: string, url: string | null): Promise<{ id: string; amazon: AmazonLink | null }> {
+  return apiFetch(`/profiles/${profileId}/snacks/${itemId}/amazon`, { method: "PATCH", body: JSON.stringify({ url }) });
+}
+
+export type CartBuild = {
+  /** Amazon's add-to-cart link for the included items, or null when nothing could go in. */
+  url: string | null;
+  included: { id: string; name: string; asin: string }[];
+  /** Selected, allowed, but with no Amazon link yet. */
+  left_out: { id: string; name: string }[];
+  /** Selected but reading "Contains an allergen" on the server's own re-check. */
+  refused: { id: string; name: string }[];
+};
+
+/** "Add selected to Amazon cart": built on the server, which re-checks every item's verdict. */
+export function buildSnackCart(profileId: string, itemIds: string[]): Promise<CartBuild> {
+  return apiFetch(`/profiles/${profileId}/snacks/cart`, { method: "POST", body: JSON.stringify({ itemIds }) });
 }
 
 // ---- Snack search (server routes/snackSearch.ts, behind SNACK_SEARCH; the plan's Nov 14 addendum) ----

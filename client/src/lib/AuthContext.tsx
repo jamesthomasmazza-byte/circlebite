@@ -51,6 +51,9 @@ type AuthState = {
   snackListEnabled: boolean;
   // Snack search (SNACK_SEARCH, SnackSearch.tsx), same default: until it's confirmed on, no search box.
   snackSearchEnabled: boolean;
+  // Snack carts (SNACK_CARTS, routes/Snacks.tsx), same default: until it's confirmed on, no Link on
+  // Amazon, no checkboxes, no cart button.
+  snackCartsEnabled: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (input: { email: string; password: string; displayName: string; dob: string }) => Promise<void>;
@@ -74,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profileRedesignEnabled, setProfileRedesignEnabled] = useState(false);
   const [snackListEnabled, setSnackListEnabled] = useState(false);
   const [snackSearchEnabled, setSnackSearchEnabled] = useState(false);
+  const [snackCartsEnabled, setSnackCartsEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // refresh() runs both at mount (before any session cookie exists) and after login/register
@@ -100,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfileRedesignEnabled(me.profileRedesignEnabled);
       setSnackListEnabled(me.snackListEnabled);
       setSnackSearchEnabled(me.snackSearchEnabled);
+      setSnackCartsEnabled(me.snackCartsEnabled);
     } catch {
       // Any failure to confirm identity — 401 or a transient network/server error — just means
       // we don't currently know who's logged in. Never rethrow: login()/register() call this
@@ -200,6 +205,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profileRedesignEnabled,
         snackListEnabled,
         snackSearchEnabled,
+        snackCartsEnabled,
         loading,
         login,
         register,
