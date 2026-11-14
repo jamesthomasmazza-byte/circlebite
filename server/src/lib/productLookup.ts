@@ -51,12 +51,39 @@ function isSeedProduct(row: ProductRow): boolean {
   return raw !== null && typeof raw === "object" && raw[SEED_PRODUCT_MARKER] === true;
 }
 
+// Product photos arrived with migration 0052 (Nov 14): a row written before it has no image fields,
+// however fresh. Such a row — found, not seeded, no image, fetched before the migration was applied —
+// counts as stale, so the next scan refreshes it (JT, Nov 14; the one-off db/backfillProductImages.ts
+// does the rest). The migration's time is read once per process; before it is known, or if the
+// migrations table can't say, nothing is treated as stale on this account.
+const IMAGES_MIGRATION = "0052_products_front_images.sql";
+let imagesMigrationAppliedAt: Promise<Date | null> | null = null;
+
+function imagesMigrationTime(): Promise<Date | null> {
+  imagesMigrationAppliedAt ??= pool
+    .query<{ applied_at: Date }>("SELECT applied_at FROM schema_migrations WHERE filename = $1", [IMAGES_MIGRATION])
+    .then((r) => r.rows[0]?.applied_at ?? null)
+    .catch(() => null);
+  return imagesMigrationAppliedAt;
+}
+
+/** For tests: forget the cached migration time. */
+export function resetImagesMigrationTime(): void {
+  imagesMigrationAppliedAt = null;
+}
+
+async function predatesImages(row: ProductRow): Promise<boolean> {
+  if (!row.found || row.image_front_small_url || row.image_front_url) return false;
+  const appliedAt = await imagesMigrationTime();
+  return appliedAt !== null && row.fetched_at.getTime() < appliedAt.getTime();
+}
+
 /** Cache-aware product lookup: consults `products` before ever calling Open Food Facts. */
 export async function getProduct(barcode: string): Promise<ProductLookup> {
   const { rows } = await pool.query<ProductRow>("SELECT * FROM products WHERE barcode = $1", [barcode]);
   const cached = rows[0];
 
-  if (cached && (isSeedProduct(cached) || Date.now() - cached.fetched_at.getTime() < CACHE_TTL_MS)) {
+  if (cached && (isSeedProduct(cached) || (Date.now() - cached.fetched_at.getTime() < CACHE_TTL_MS && !(await predatesImages(cached))))) {
     return rowToLookup(cached);
   }
 

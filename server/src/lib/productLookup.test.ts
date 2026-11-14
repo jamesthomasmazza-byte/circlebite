@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { after, afterEach, test } from "node:test";
 
 import { pool } from "../db/pool.js";
-import { getProduct, SEED_PRODUCT_MARKER } from "./productLookup.js";
+import { getProduct, resetImagesMigrationTime, SEED_PRODUCT_MARKER } from "./productLookup.js";
 
 // Barcodes only this file uses — invalid GTIN check digits, like the judge seed's, under a "1"
 // prefix the seed doesn't use.
@@ -12,7 +12,9 @@ const NEVER_CACHED = "1990000000037";
 const STALE_FOUND = "1990000000044";
 const NOT_FOUND = "1990000000051";
 const STALE_NOT_FOUND = "1990000000068";
-const ALL = [SEEDED, ORDINARY, NEVER_CACHED, STALE_FOUND, NOT_FOUND, STALE_NOT_FOUND];
+const PRE_IMAGES = "1990000000075";
+const PRE_IMAGES_SEEDED = "1990000000082";
+const ALL = [SEEDED, ORDINARY, NEVER_CACHED, STALE_FOUND, NOT_FOUND, STALE_NOT_FOUND, PRE_IMAGES, PRE_IMAGES_SEEDED];
 
 const realFetch = globalThis.fetch;
 let fetchCalls = 0;
@@ -135,4 +137,44 @@ test("a genuine not-found (404 with status 0) is still cached, so it isn't asked
   assert.equal((await cachedRow(NOT_FOUND))?.found, false);
   assert.equal((await getProduct(NOT_FOUND)).status, "not_found", "served from the cache");
   assert.equal(fetchCalls, 1);
+});
+
+// Product photos (migration 0052, Nov 14): a found row with no image, fetched before the migration,
+// is stale however fresh; a seeded one, and a row fetched after it with no image, are not.
+test("a found, non-seed row with no image fetched before migration 0052 is refreshed on the next lookup; a seeded one, or one fetched after, is served", async () => {
+  resetImagesMigrationTime();
+  const { rows } = await pool.query<{ applied_at: Date }>("SELECT applied_at FROM schema_migrations WHERE filename = '0052_products_front_images.sql'");
+  assert.ok(rows[0], "the migration is applied locally");
+  const before = new Date(rows[0].applied_at.getTime() - 60_000);
+  await pool.query(
+    `INSERT INTO products (barcode, found, name, allergens_tags, raw_data, fetched_at) VALUES
+       ($1, true, 'Old Crackers', '{}', 'null', $3),
+       ($2, true, 'Seeded Crackers', '{}', $4, $3)`,
+    [PRE_IMAGES, PRE_IMAGES_SEEDED, before, JSON.stringify({ [SEED_PRODUCT_MARKER]: true })],
+  );
+
+  let calls = 0;
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({ status: 1, product: { product_name: "Old Crackers", image_front_small_url: "https://images.openfoodfacts.org/images/products/199/000/000/0075/front_en.3.200.jpg", image_front_url: "https://images.openfoodfacts.org/images/products/199/000/000/0075/front_en.3.400.jpg" } }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    )) as typeof fetch;
+  globalThis.fetch = ((orig) => (async (...args: Parameters<typeof fetch>) => {
+    calls += 1;
+    return orig(...args);
+  }) as typeof fetch)(globalThis.fetch);
+
+  const refreshed = await getProduct(PRE_IMAGES);
+  assert.equal(calls, 1, "a row from before the migration is fetched again");
+  assert.equal(refreshed.imageSmallUrl, "https://images.openfoodfacts.org/images/products/199/000/000/0075/front_en.3.200.jpg");
+  const { rows: saved } = await pool.query("SELECT image_front_url FROM products WHERE barcode = $1", [PRE_IMAGES]);
+  assert.equal(saved[0].image_front_url, "https://images.openfoodfacts.org/images/products/199/000/000/0075/front_en.3.400.jpg");
+
+  const again = await getProduct(PRE_IMAGES);
+  assert.equal(calls, 1, "now it has an image and a fresh fetched_at: served from the table");
+  assert.equal(again.imageSmallUrl, refreshed.imageSmallUrl);
+
+  const seeded = await getProduct(PRE_IMAGES_SEEDED);
+  assert.equal(calls, 1, "a seeded row is never refreshed");
+  assert.equal(seeded.name, "Seeded Crackers");
 });
