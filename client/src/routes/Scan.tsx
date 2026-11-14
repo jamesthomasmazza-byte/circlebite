@@ -5,6 +5,7 @@ import { AddToSnacks } from "../AddToSnacks";
 import { BarcodeScanner, type BarcodeScannerHandle } from "../BarcodeScanner";
 import { LabelCamera } from "../LabelCamera";
 import { wantsSnackReport } from "../lib/snackListCopy";
+import { pickedBarcode } from "../lib/snackSearch";
 import { useScanningFor } from "../TabShell";
 import { guidedSetupSkipped, sendToGuidedSetup } from "../lib/guidedSetupEntry";
 import { addProfileHref, NEW_PROFILE_PATH } from "../lib/profileSections";
@@ -140,7 +141,8 @@ function disagreementNote(m: ScanResult["matched_allergens"][number]): string | 
 }
 
 export function Scan() {
-  const { labelScanEnabled, scannerRegionEnabled, guidedSetupEnabled, scanSoundsEnabled, scanRedesignEnabled, snackListEnabled, user } = useAuth();
+  const { labelScanEnabled, scannerRegionEnabled, guidedSetupEnabled, scanSoundsEnabled, scanRedesignEnabled, snackListEnabled, snackSearchEnabled, user } =
+    useAuth();
   // SCAN_REDESIGN (JT's mockup, 2026-11-06): the same Scan, laid out as a camera screen. Every
   // state, request and rule below is shared; only the markup differs, and with the switch off it's
   // today's, unchanged (lib/scanRedesign.ts).
@@ -156,11 +158,12 @@ export function Scan() {
   // the header and this page can't disagree. A profile page's "Scan for" button sets it.
   const { chosenProfileId, chooseProfile } = useScanningFor();
   const profileId = scanningForId(chosenProfileId, profiles);
-  const { search } = useLocation();
+  const { search, state: navState } = useLocation();
   const navigate = useNavigate();
   const sampleStarted = useRef(false);
   const judgeCardStarted = useRef(false);
   const snackReportStarted = useRef(false);
+  const snackSearchStarted = useRef(false);
   const [barcode, setBarcode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -325,6 +328,26 @@ export function Scan() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, loadingProfiles, profileId, snackListEnabled]);
+
+  // A tapped snack search result (SnackSearch.tsx, lib/snackSearch.ts): the barcode rides in the
+  // router's location state, never the URL, and is read once. The same typed-barcode scan as the
+  // form below — the card, its warnings and "Add to <name>'s snacks" are the ones already built.
+  // The state is cleared at once, so a reload or Back doesn't scan it again.
+  useEffect(() => {
+    const picked = pickedBarcode(navState);
+    if (!picked) {
+      snackSearchStarted.current = false;
+      return;
+    }
+    if (snackSearchStarted.current || loadingProfiles || !snackSearchEnabled) return;
+    if (!profileId || profileId !== requestedProfile(search)) return;
+    snackSearchStarted.current = true;
+    navigate(`/scan?profile=${profileId}`, { replace: true, state: null });
+    setMode("type");
+    setBarcode(picked);
+    void runScan(picked, profileId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navState, search, loadingProfiles, profileId, snackSearchEnabled]);
 
   // Redesign: leaving Barcode stops the camera; Label photo opens the same photo form as "No
   // barcode? Photograph the label"; leaving it closes that form, as Cancel does.
