@@ -55,6 +55,14 @@ open — tapping one scans it for Maya, and only then is there a verdict and an 
 button. Nothing goes on the list by itself. If Open Food Facts is slow or busy the page says it
 couldn't reach it; try once more.
 
+If items on the list have a **checkbox**, the Amazon cart is on: as Maya's owner, "Link on Amazon" on
+an item takes the product's amazon.com address and keeps only its product code; tick items and "Add
+selected to Amazon cart" gives one link that opens Amazon with them in its add-to-cart step. The app
+builds that link on its own server and checks each item's verdict again first: a "Contains an
+allergen" item is never put in a cart, and an item without an Amazon link is named as left out. The
+seeded products are invented brands with no Amazon page, so to try it end to end, search a real
+product, add it to Maya's list, link it, and build the cart.
+
 If there is no Snacks tab, the feature stayed switched off for judging and nothing above applies.
 
 ## Reporting a correction

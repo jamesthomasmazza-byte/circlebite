@@ -104,7 +104,10 @@ scan, visible to the whole circle, with each item's verdict recomputed from stor
 store search links, omitted for a "Contains" item. Plan and decisions: `docs/snack-list-plan.md`.
 Snack search (November 14, behind `SNACK_SEARCH`): a search box on that tab, this app's own product
 records first and Open Food Facts' text search through the server, cached and limited; a result opens
-the existing scan and never carries a verdict of its own.
+the existing scan and never carries a verdict of its own. Snack carts (November 14, behind
+`SNACK_CARTS`, Amazon only): a manager links an item to its amazon.com product (only the product code
+is kept), and "Add selected to Amazon cart" is one link built on the server, which re-checks every
+item's verdict and refuses a "Contains" item.
 
 ## Rules
 
