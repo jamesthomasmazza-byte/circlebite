@@ -41,8 +41,8 @@ import {
   LINK_AMAZON_HINT,
   LINK_AMAZON_LABEL,
   LINK_FAILED,
-  LINK_INVALID,
   LINK_SAVE,
+  linkRefusedLine,
   LIST_FAILED,
   listTitle,
   NO_PROFILE,
@@ -295,7 +295,7 @@ export function SnackItemCard({
       setLinking(false);
       setLinkDraft("");
     } catch (err) {
-      setLinkError(err instanceof ApiRequestError && err.message === "invalid_amazon_link" ? LINK_INVALID : LINK_FAILED);
+      setLinkError(err instanceof ApiRequestError && err.message === "invalid_amazon_link" ? linkRefusedLine(linkDraft) : LINK_FAILED);
     } finally {
       setBusy(false);
     }

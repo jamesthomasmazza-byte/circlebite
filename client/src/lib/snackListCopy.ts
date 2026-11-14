@@ -134,8 +134,29 @@ export const REMOVE_AMAZON_LINK = "Remove Amazon link";
 export const LINK_AMAZON_LABEL = "The product's amazon.com link";
 export const LINK_AMAZON_HINT = "Open the product on amazon.com and copy the address. Only the product code is kept.";
 export const LINK_SAVE = "Save link";
-export const LINK_INVALID = "That isn't an amazon.com product link. Copy the address from the product's page; short links (a.co) can't be used.";
+export const LINK_INVALID = "That isn't an amazon.com product link. Copy the address from the product's page on amazon.com.";
+/** A share link (a.co, amzn.to, amzn.com) says nothing about the product without being followed, which the server never does. */
+export const LINK_SHORT = "Short share links can't be used. Open the product on amazon.com (in Safari or Chrome) and copy the address from the address bar.";
 export const LINK_FAILED = "Couldn't save the link. Try again.";
+
+const SHORT_LINK_HOSTS = ["a.co", "amzn.to", "amzn.com", "amzn.eu", "amzn.asia"];
+
+/** True for Amazon's share links, by host — the ones the server refuses because resolving them would mean fetching them. */
+export function isShortAmazonLink(raw: string): boolean {
+  const text = raw.trim();
+  let host: string;
+  try {
+    host = new URL(/^[a-z]+:\/\//i.test(text) ? text : `https://${text}`).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  return SHORT_LINK_HOSTS.some((h) => host === h || host.endsWith(`.${h}`));
+}
+
+/** What the card says when the server refuses a pasted link: the short-link line for a share link, else the general one. */
+export function linkRefusedLine(pasted: string): string {
+  return isShortAmazonLink(pasted) ? LINK_SHORT : LINK_INVALID;
+}
 
 export function amazonLinkedBy(name: string | null, when: string): string {
   return name ? `Amazon link added by ${name}, ${when}` : `Amazon link added ${when}`;

@@ -95,6 +95,17 @@ test("the cart's words: the button counts, the lines name what went in, what was
   assert.equal(copy.amazonLinkedBy(null, "Nov 13"), "Amazon link added Nov 13");
   assert.equal(copy.selectForCartLabel("Oat Biscuits"), "Select Oat Biscuits for the Amazon cart");
   assert.equal(copy.selectForCartLabel(null), "Select this product for the Amazon cart");
-  assert.match(copy.LINK_INVALID, /a\.co/, "short links are named as the thing that can't be used");
+  assert.equal(copy.LINK_SHORT, "Short share links can't be used. Open the product on amazon.com (in Safari or Chrome) and copy the address from the address bar.");
   assert.match(copy.CART_NOTE, /Scan each item when it arrives/);
+});
+
+test("a refused pasted link gets the short-link line for a share link, by host, and the general line for anything else (JT, Nov 14)", () => {
+  for (const short of ["https://a.co/d/0abcdefg", "http://amzn.to/3abcdef", "https://www.amzn.com/B07PGL2ZSL", "a.co/d/0abcdefg", "  https://amzn.eu/d/xyz "]) {
+    assert.equal(copy.isShortAmazonLink(short), true, short);
+    assert.equal(copy.linkRefusedLine(short), copy.LINK_SHORT, short);
+  }
+  for (const other of ["https://www.amazon.com/s?k=rice+crackers", "https://www.amazon.co.uk/dp/B07PGL2ZSL", "https://notamzn.to.example/x", "B07PGL2ZSL", "", "not a url at all"]) {
+    assert.equal(copy.isShortAmazonLink(other), false, other);
+    assert.equal(copy.linkRefusedLine(other), copy.LINK_INVALID, other);
+  }
 });
