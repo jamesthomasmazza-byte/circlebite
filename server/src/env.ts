@@ -171,6 +171,11 @@ export const env = {
   // through the server, cached and limited. Off by default; off 404s the search routes and hides the
   // box. Its own switch so it can stay off while SNACK_LIST is on.
   snackSearch: parseSwitch("SNACK_SEARCH", process.env.SNACK_SEARCH, false),
+  // Snack carts (routes/snackList.ts, the plan's addendum part B, 2026-11-14): "Link on Amazon" on an
+  // item, checkboxes on items with shop links, and "Add selected to Amazon cart" built on the server.
+  // Off by default; off 404s the link and cart routes and hides all three. Its own switch, so it can
+  // stay off while the lists and search are on. Amazon only: the Instacart cart was dropped Nov 14.
+  snackCarts: parseSwitch("SNACK_CARTS", process.env.SNACK_CARTS, false),
   // Amazon Associates tag, appended to an item's Amazon search link only when set
   // (snackList/shopLinks.ts). Blank by default: no tag, no affiliate link, no disclosure line. It is
   // a public query parameter, not a secret, but it lives in .env on the box like every setting. It

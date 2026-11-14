@@ -115,3 +115,14 @@ test("GET /me exposes snackSearchEnabled from env.snackSearch, so the Snacks tab
 
   assert.equal(body?.snackSearchEnabled, env.snackSearch);
 });
+
+test("GET /me exposes snackCartsEnabled from env.snackCarts, so the list shows Link on Amazon and the cart only when the routes exist", () => {
+  const handler = findMeHandler();
+  const req = { user: { id: "u1", email: "a@example.com", displayName: "A", isAdmin: false }, session: { id: "s1", actingProfileId: null } };
+  let body: { snackCartsEnabled?: boolean } | undefined;
+  const res = { json: (b: unknown) => { body = b as typeof body; } };
+
+  handler(req, res);
+
+  assert.equal(body?.snackCartsEnabled, env.snackCarts);
+});
