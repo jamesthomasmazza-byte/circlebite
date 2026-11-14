@@ -49,6 +49,12 @@ plain search links that open in a new tab, under "Scan it when it arrives — st
 different version." As Maya's owner you can add a note or remove an item; on Noor, whom you follow,
 you can only read. To add one, scan a product for Maya and tap "Add to Maya's snacks" under its card.
 
+If the Snacks tab also has a **search box**, type a name or brand: results come first from products
+this app has already seen, and "Search more" asks Open Food Facts. A result is only a product to
+open — tapping one scans it for Maya, and only then is there a verdict and an "Add to Maya's snacks"
+button. Nothing goes on the list by itself. If Open Food Facts is slow or busy the page says it
+couldn't reach it; try once more.
+
 If there is no Snacks tab, the feature stayed switched off for judging and nothing above applies.
 
 ## Reporting a correction

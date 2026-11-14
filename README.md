@@ -102,6 +102,9 @@ Under active development, September–November 2026. Deployed at
 Snack lists (November 13, 2026, behind `SNACK_LIST`): each profile's list of products approved from a
 scan, visible to the whole circle, with each item's verdict recomputed from stored data and plain
 store search links, omitted for a "Contains" item. Plan and decisions: `docs/snack-list-plan.md`.
+Snack search (November 14, behind `SNACK_SEARCH`): a search box on that tab, this app's own product
+records first and Open Food Facts' text search through the server, cached and limited; a result opens
+the existing scan and never carries a verdict of its own.
 
 ## Rules
 
