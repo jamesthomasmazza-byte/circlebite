@@ -3002,3 +3002,13 @@ in Chrome Nov 14; the seeded products are invented, so a real product must be se
 linked first); a follower building a cart from the page (the route allows it, tested on the server;
 judge1 follows Noor, whose list is empty). The local judge seed was rotated twice today for the checks
 (local only). Not deployed: JT said so, and the switch is off by default.
+
+*Later, Nov 14 (JT's iPhone, then the Mac):* the search box wasn't on the phone after a full reload.
+From the Mac, signed in, `/api/me` said `snackSearchEnabled: false` on release `20261114162823` — the
+switch line had never reached the box (its SSH command was the one that timed out), and my "the 401
+means it's on" the night before was wrong: `requireAuth` runs before the switch check on every switched
+route, so a signed-out request is 401 on or off. The runbook's three curl checks (§11j, §11k, §11l) are
+replaced by the signed-in `/api/me` field. JT then set `SNACK_SEARCH=on`, pushed, deployed release
+`20261114170711` (migration 0051 applied) and set `SNACK_CARTS=on`; `/api/me` signed in now reads
+`snackListEnabled`, `snackSearchEnabled` and `snackCartsEnabled` all `true`, and the served bundle is
+the new release's. Carts are live for the phone check.

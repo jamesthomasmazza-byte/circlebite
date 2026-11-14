@@ -837,12 +837,11 @@ sed -i 's/^SNACK_LIST=.*/SNACK_LIST=off/' ~/circlebite/.env
 sudo systemctl restart circlebite
 ```
 
-**Check it on production after the switch** — from the Mac, signed out, nothing is created:
-
-```bash
-curl -s -o /dev/null -w '%{http_code}\n' https://<domain>/api/profiles/00000000-0000-0000-0000-000000000000/snacks
-#   401 with the switch on (the route exists and wants a session); 404 with it off
-```
+**Check it on production after the switch** — signed in, in a browser, open
+`https://<domain>/api/me` and read `snackListEnabled`: `true` with the switch on, `false` off. A signed-out
+`curl` of the route is **not** a check: `requireAuth` runs before the switch on every switched route,
+so a signed-out request is 401 either way (learned Nov 14, when a 401 was read as "on" and the switch
+was still off; `docs/journal.md`).
 
 Then, signed in as judge1 on the phone: four tabs; Snacks shows Maya's three items with the peanut
 bar first and without shop links; the crackers carry both links; scanning `2990000000014` for Maya
@@ -897,12 +896,11 @@ sed -i 's/^SNACK_SEARCH=.*/SNACK_SEARCH=off/' ~/circlebite/.env
 sudo systemctl restart circlebite
 ```
 
-**Check it on production after the switch** — from the Mac, signed out, nothing is created:
-
-```bash
-curl -s -o /dev/null -w '%{http_code}\n' 'https://<domain>/api/snacks/search?q=peanut'
-#   401 with the switch on (the route exists and wants a session); 404 with it off
-```
+**Check it on production after the switch** — signed in, in a browser, open
+`https://<domain>/api/me` and read `snackSearchEnabled`: `true` with the switch on, `false` off. A signed-out
+`curl` of the route is **not** a check: `requireAuth` runs before the switch on every switched route,
+so a signed-out request is 401 either way (learned Nov 14, when a 401 was read as "on" and the switch
+was still off; `docs/journal.md`).
 
 Then, signed in as judge1 on the phone: on Maya's Snacks tab, search "hearthfield" (three results,
 no verdicts); tap Plain Rice Crackers (Scan opens on Maya's card with "Add to Maya's snacks", the
@@ -960,13 +958,11 @@ sed -i 's/^SNACK_CARTS=.*/SNACK_CARTS=off/' ~/circlebite/.env
 sudo systemctl restart circlebite
 ```
 
-**Check it on production after the switch** — from the Mac, signed out, nothing is created:
-
-```bash
-curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'content-type: application/json' -d '{"itemIds":[]}' \
-  https://<domain>/api/profiles/00000000-0000-0000-0000-000000000000/snacks/cart
-#   401 with the switch on (the route exists and wants a session); 404 with it off
-```
+**Check it on production after the switch** — signed in, in a browser, open
+`https://<domain>/api/me` and read `snackCartsEnabled`: `true` with the switch on, `false` off. A signed-out
+`curl` of the route is **not** a check: `requireAuth` runs before the switch on every switched route,
+so a signed-out request is 401 either way (learned Nov 14, when a 401 was read as "on" and the switch
+was still off; `docs/journal.md`).
 
 Then, signed in as judge1 on the phone, on Maya's Snacks tab: a checkbox on the oat biscuits and the
 crackers, none on the peanut bar; "Link on Amazon" on the crackers, paste a real amazon.com product
