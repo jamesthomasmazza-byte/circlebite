@@ -502,6 +502,8 @@ room to fix what the click-through finds.
 - [ ] **The two-sentence summary** (his Nov 7 email; new). Two sentences: the problem and what
   CircleBite does. Separate from the one-page summary in Week 10.
 - [ ] After judging: `JUDGE_LINK=off`, remove `JUDGE_LINK_TOKEN_HASH`, reseed (§16a, "After judging").
+- [ ] After judging: add a Content-Security-Policy (production sends none; checked Nov 14 while adding
+  Open Food Facts product photos, which load from images.openfoodfacts.org).
   *After the freeze, and not a redeploy: it changes the box's settings and data, not the code. The
   link also stops by itself at `JUDGE_LINK_EXPIRES`.*
 - [ ] Confirm the AI key works, **before the freeze**: Console "Last used", plus a label photo.
