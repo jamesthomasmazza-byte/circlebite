@@ -104,7 +104,11 @@ type ListItem = {
  * in the order flagged-first. Shared by GET and by the cart route, which must decide from exactly
  * what the list shows (part B: a "Contains" item is refused even if the client sent it).
  */
-async function loadList(profileId: string, viewerId: string, access: Awaited<ReturnType<typeof assertCanReadProfile>>): Promise<ListItem[]> {
+async function loadList(
+  profileId: string,
+  viewerId: string,
+  access: Awaited<ReturnType<typeof assertCanReadProfile>>,
+): Promise<{ items: ListItem[]; allergenCount: number }> {
   const { rows } = await pool.query<ItemRow>(
     `SELECT i.id, i.barcode, i.scan_id, i.note, i.created_at,
             u.display_name AS added_by_name,
@@ -158,7 +162,7 @@ async function loadList(profileId: string, viewerId: string, access: Awaited<Ret
   const filterSevere = <T extends { severity: string }>(details: T[]): T[] =>
     severeOnly ? details.filter((d) => d.severity === "severe") : details;
 
-  return computed
+  const items = computed
     .map(({ row, verdict, matchedAllergens }): ListItem => {
       const view = views.get(row.scan_id ?? row.id)!;
       const headline = (view.effective?.result as Verdict | undefined) ?? verdict;
@@ -194,6 +198,7 @@ async function loadList(profileId: string, viewerId: string, access: Awaited<Ret
       };
     })
     .sort((a, b) => HEADLINE_ORDER[a.headline] - HEADLINE_ORDER[b.headline] || a.created_at.getTime() - b.created_at.getTime());
+  return { items, allergenCount: allergens.length };
 }
 
 snackListRouter.get(
@@ -203,8 +208,11 @@ snackListRouter.get(
   asyncHandler(async (req, res) => {
     const profileId = req.params.id;
     const access = await assertCanReadProfile(req.user!.id, profileId);
-    const items = await loadList(profileId, req.user!.id, access);
-    res.json({ items, affiliate: Boolean(env.amazonAssociateTag) });
+    const { items, allergenCount } = await loadList(profileId, req.user!.id, access);
+    // The profile's full allergen count, not the viewer's filtered view: a profile with no allergens at
+    // all is a plain list — no verdict headlines, no screening-aid box (JT, Nov 14; plan decision 6).
+    // A severe_only follower of a profile with mild allergens still sees a list with verdicts.
+    res.json({ items, allergen_count: allergenCount, affiliate: Boolean(env.amazonAssociateTag) });
   }),
 );
 
@@ -343,7 +351,7 @@ snackListRouter.post(
       throw new HttpError(400, "invalid_request");
     }
     const access = await assertCanReadProfile(req.user!.id, profileId);
-    const items = await loadList(profileId, req.user!.id, access);
+    const { items } = await loadList(profileId, req.user!.id, access);
     const wanted = new Set(itemIds as string[]);
     const selected = items.filter((item) => wanted.has(item.id));
 

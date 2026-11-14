@@ -234,3 +234,31 @@ test("an empty list: a manager sees only the search box; a follower's line is un
   assert.match(PAGE, /\{list && list\.items\.length === 0 && !canManage && <p className="snacks__empty">\{emptyLine\(profile, false\)\}<\/p>\}/);
   assert.doesNotMatch(PAGE, /EMPTY_SCAN_LINK|Scan a product/);
 });
+
+// ---- A profile with no allergens (plan decision 6; JT, Nov 14) ----
+
+test("a plain card, for a no-allergen profile: the product, its note and the shop controls — no headline, no verdict colour, no rows, no screening line", () => {
+  const html = render(item({ note: "For playdates" }), true, { plain: true, ...carts });
+  assert.match(html, /^<li class="card snack-item"><label class="snack-item__select">/);
+  assert.match(html, /<strong>Plain Rice Crackers<\/strong>/);
+  assert.match(html, /<p class="snack-item__note">For playdates<\/p>/);
+  assert.match(html, /Link on Amazon|Shop on Amazon/);
+  assert.match(html, /Shop on Instacart/);
+  assert.match(html, /<button type="button">Edit note<\/button><button type="button">Remove<\/button>/);
+  assert.doesNotMatch(html, /data-verdict|No listed allergens found|snack-item__verdict|Scan it when it arrives|Screening aid|Label wrong/);
+  assert.doesNotMatch(html.replace(/<[^>]+>/g, " "), /\bsafe\b/i);
+});
+
+test("the same card with allergens back on the profile shows its verdict again — nothing is remembered on the client", () => {
+  const withVerdict = render(item({ note: "For playdates" }), true, { plain: false, ...carts });
+  assert.match(withVerdict, /data-verdict="safe"/);
+  assert.match(withVerdict, /snack-item__verdict">No listed allergens found</);
+  assert.match(withVerdict, /Scan it when it arrives/);
+  assert.match(withVerdict, /Screening aid, not a guarantee/);
+});
+
+test("the page decides plain from the server's allergen count with every load, and hides the screening-aid box on a plain list", () => {
+  assert.match(PAGE, /const plain = list !== null && list\.allergen_count === 0;/);
+  assert.match(PAGE, /\{list !== null && !plain && \(\s*<div role="note" className="verdict-card__disclaimer scan-history__disclaimer">/);
+  assert.match(PAGE, /plain=\{plain\}/);
+});

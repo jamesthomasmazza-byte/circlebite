@@ -136,6 +136,10 @@ export function Snacks() {
   const canManage = profile.relationship === "owner" || profile.relationship === "co_manager";
   const refresh = () => setReads((n) => n + 1);
   const shoppable = list?.items.filter((i) => i.shop) ?? [];
+  // A profile with no allergens (plan decision 6; JT, Nov 14): a plain list. No verdict headline, no
+  // screening-aid box — each card is the product, its note and the shop controls. Decided from the
+  // server's count with each load, so an allergen added later brings the verdicts back by itself.
+  const plain = list !== null && list.allergen_count === 0;
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -164,13 +168,16 @@ export function Snacks() {
   return (
     <main className="snacks">
       <h1>{listTitle(profile)}</h1>
-      {/* In full once for the whole list; each item also carries the short line, as scan history does. */}
-      <div role="note" className="verdict-card__disclaimer scan-history__disclaimer">
-        <p>{DISCLAIMER}</p>
-        <p>
-          <strong>{EMERGENCY}</strong>
-        </p>
-      </div>
+      {/* In full once for the whole list; each item also carries the short line, as scan history does.
+          Not on a plain list, and not before the list has said which kind this is. */}
+      {list !== null && !plain && (
+        <div role="note" className="verdict-card__disclaimer scan-history__disclaimer">
+          <p>{DISCLAIMER}</p>
+          <p>
+            <strong>{EMERGENCY}</strong>
+          </p>
+        </div>
+      )}
 
       {/* Search (SnackSearch.tsx, behind SNACK_SEARCH): above the list, for anyone who can see it; a
           result opens Scan for this profile, where only a manager gets "Add to". */}
@@ -198,6 +205,7 @@ export function Snacks() {
                 await updateSnackNote(profile.id, item.id, note);
                 refresh();
               }}
+              plain={plain}
               cartsEnabled={snackCartsEnabled}
               selected={selected.has(item.id)}
               onToggle={() => toggle(item.id)}
@@ -232,6 +240,7 @@ export function SnackItemCard({
   canManage,
   onRemove,
   onSaveNote,
+  plain = false,
   cartsEnabled = false,
   selected = false,
   onToggle,
@@ -242,6 +251,8 @@ export function SnackItemCard({
   canManage: boolean;
   onRemove: () => Promise<void>;
   onSaveNote: (note: string | null) => Promise<void>;
+  /** A no-allergen profile's list: the product, its note and the shop controls, nothing about verdicts. */
+  plain?: boolean;
   /** Carts (SNACK_CARTS): the checkbox on items with shop links, "Link on Amazon" for managers. */
   cartsEnabled?: boolean;
   selected?: boolean;
@@ -306,8 +317,8 @@ export function SnackItemCard({
   }
 
   return (
-    <li className="card snack-item" data-verdict={item.headline}>
-      <p className="verdict-card__headline snack-item__verdict">{VERDICT_LABEL[item.headline]}</p>
+    <li className="card snack-item" data-verdict={plain ? undefined : item.headline}>
+      {!plain && <p className="verdict-card__headline snack-item__verdict">{VERDICT_LABEL[item.headline]}</p>}
       {cartable && (
         <label className="snack-item__select">
           <input type="checkbox" checked={selected} onChange={onToggle} aria-label={selectForCartLabel(item.product.name)} />
@@ -320,7 +331,7 @@ export function SnackItemCard({
         <span className="card__meta card__line snack-item__barcode">{item.barcode}</span>
       </p>
 
-      {rows.length > 0 && (
+      {!plain && rows.length > 0 && (
         <ul className="history-entry__rows">
           {rows.map((m) => (
             <li key={m.allergenName}>
@@ -329,9 +340,9 @@ export function SnackItemCard({
           ))}
         </ul>
       )}
-      {unchecked.length > 0 && <p role="note">{notCheckedLine(unchecked)}</p>}
+      {!plain && unchecked.length > 0 && <p role="note">{notCheckedLine(unchecked)}</p>}
 
-      {item.effective && (
+      {!plain && item.effective && (
         <div role="note" className="snack-item__changed">
           <p>
             The product data alone says <strong>{VERDICT_LABEL[item.original.result]}</strong>.{" "}
@@ -371,7 +382,7 @@ export function SnackItemCard({
         item.note && <p className="snack-item__note">{item.note}</p>
       )}
 
-      <p className="card__meta snack-item__arrives">{SCAN_WHEN_IT_ARRIVES}</p>
+      {!plain && <p className="card__meta snack-item__arrives">{SCAN_WHEN_IT_ARRIVES}</p>}
 
       {/* One Amazon control (JT, Nov 14). A manager with carts on and no link yet: "Link on Amazon",
           which is the Amazon search in a new tab and opens the paste box here. Otherwise "Shop on
@@ -406,7 +417,7 @@ export function SnackItemCard({
         </p>
       )}
 
-      {item.headline === "contains_allergen" && (
+      {!plain && item.headline === "contains_allergen" && (
         <p className="snack-item__report">
           <Link to={snackReportPath(profile.id, item.id)}>{LABEL_WRONG}</Link>
         </p>
@@ -456,7 +467,7 @@ export function SnackItemCard({
         </p>
       )}
 
-      <p className="history-entry__disclaimer">{DISCLAIMER_SHORT}</p>
+      {!plain && <p className="history-entry__disclaimer">{DISCLAIMER_SHORT}</p>}
     </li>
   );
 }

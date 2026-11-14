@@ -778,7 +778,9 @@ export type SnackItem = {
 
 export type AmazonLink = { asin: string; linked_by: string | null; linked_at: string };
 
-export type SnackList = { items: SnackItem[]; affiliate: boolean };
+/** `allergen_count` is the profile's full count, not the viewer's filtered view: zero means a plain list —
+ *  no verdict headlines, no screening-aid box (JT, Nov 14; plan decision 6). */
+export type SnackList = { items: SnackItem[]; allergen_count: number; affiliate: boolean };
 
 export function getSnackList(profileId: string): Promise<SnackList> {
   return apiFetch(`/profiles/${profileId}/snacks`);

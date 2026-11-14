@@ -167,6 +167,13 @@ after(async () => {
   await pool.end();
 });
 
+test("the list carries the profile's full allergen count, so a no-allergen profile reads as a plain list (JT, Nov 14)", async () => {
+  const r = await list(OWNER);
+  assert.equal((r.body as { allergen_count: number }).allergen_count, 2, "Peanut and Egg");
+  assert.equal((await list(FOLLOWER)).status, 200);
+  assert.equal(((await list(FOLLOWER)).body as { allergen_count: number }).allergen_count, 2, "the profile's count, not the viewer's filtered view");
+});
+
 test("with SNACK_LIST off every route is a plain 404, even for the owner", async () => {
   env.snackList = false;
   try {
