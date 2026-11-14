@@ -126,6 +126,57 @@ export const AFFILIATE_DISCLOSURE = "Amazon links may earn CircleBite a commissi
 
 export const LIST_FAILED = "Couldn't load the list — you may not have access to this profile.";
 
+// ---- Carts (the plan's addendum part B, 2026-11-14; behind SNACK_CARTS). Amazon only. ----
+
+export const LINK_AMAZON = "Link on Amazon";
+export const CHANGE_AMAZON_LINK = "Change Amazon link";
+export const REMOVE_AMAZON_LINK = "Remove Amazon link";
+export const LINK_AMAZON_LABEL = "The product's amazon.com link";
+export const LINK_AMAZON_HINT = "Open the product on amazon.com and copy the address. Only the product code is kept.";
+export const LINK_SAVE = "Save link";
+export const LINK_INVALID = "That isn't an amazon.com product link. Copy the address from the product's page; short links (a.co) can't be used.";
+export const LINK_FAILED = "Couldn't save the link. Try again.";
+
+export function amazonLinkedBy(name: string | null, when: string): string {
+  return name ? `Amazon link added by ${name}, ${when}` : `Amazon link added ${when}`;
+}
+
+/** The checkbox's own label, one per item, so a screen reader hears which product it is. */
+export function selectForCartLabel(productName: string | null): string {
+  return `Select ${productName ?? "this product"} for the Amazon cart`;
+}
+
+export function cartButtonLabel(count: number): string {
+  return count > 0 ? `Add selected to Amazon cart (${count})` : "Add selected to Amazon cart";
+}
+
+export const CART_BUILDING = "Building the cart…";
+export const OPEN_CART = "Open the Amazon cart";
+export const CART_FAILED = "Couldn't build the cart. Try again.";
+export const CART_NOTHING = "Nothing could go in the cart.";
+/** Under the cart link, every time: what happens next and the standing rule. */
+export const CART_NOTE = "Amazon opens in a new tab with these items in its add-to-cart step; sign in there to finish. Scan each item when it arrives.";
+
+function nameList(names: string[]): string {
+  return names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
+export function cartIncludedLine(count: number): string {
+  return count === 1 ? "1 item is in the cart link." : `${count} items are in the cart link.`;
+}
+
+/** Selected, allowed, but no Amazon link yet — named, so a manager knows what to link. */
+export function leftOutLine(names: string[]): string {
+  if (names.length === 0) return "";
+  return `Left out, no Amazon link yet: ${nameList(names)}.`;
+}
+
+/** Selected, but the server's own re-check reads "Contains an allergen" now. */
+export function refusedLine(names: string[]): string {
+  if (names.length === 0) return "";
+  return `Not added — ${names.length === 1 ? "it reads" : "they read"} “Contains an allergen” now: ${nameList(names)}.`;
+}
+
 /** The profile page's link to the list (plan step 9). */
 export const SNACKS_LINK = "Snacks →";
 

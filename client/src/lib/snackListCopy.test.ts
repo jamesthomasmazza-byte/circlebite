@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import * as copy from "./snackListCopy";
+
 import {
   addButtonLabel,
   addedLine,
@@ -75,4 +77,24 @@ test("the date is short, with the year only when it isn't this one", () => {
 
 test("the list's path carries the profile, which the shell takes as its choice", () => {
   assert.equal(snacksPath("abc"), "/snacks?profile=abc");
+});
+
+// ---- Carts (the addendum's part B, 2026-11-14) ----
+
+test("the cart's words: the button counts, the lines name what went in, what was left out and why, what was refused and why", () => {
+  assert.equal(copy.cartButtonLabel(0), "Add selected to Amazon cart");
+  assert.equal(copy.cartButtonLabel(3), "Add selected to Amazon cart (3)");
+  assert.equal(copy.cartIncludedLine(1), "1 item is in the cart link.");
+  assert.equal(copy.cartIncludedLine(2), "2 items are in the cart link.");
+  assert.equal(copy.leftOutLine([]), "");
+  assert.equal(copy.leftOutLine(["Oat Biscuits"]), "Left out, no Amazon link yet: Oat Biscuits.");
+  assert.equal(copy.leftOutLine(["A", "B", "C"]), "Left out, no Amazon link yet: A, B and C.");
+  assert.equal(copy.refusedLine(["Crunchy Peanut Bar"]), "Not added — it reads “Contains an allergen” now: Crunchy Peanut Bar.");
+  assert.equal(copy.refusedLine(["A", "B"]), "Not added — they read “Contains an allergen” now: A and B.");
+  assert.equal(copy.amazonLinkedBy("Grandma", "Nov 13"), "Amazon link added by Grandma, Nov 13");
+  assert.equal(copy.amazonLinkedBy(null, "Nov 13"), "Amazon link added Nov 13");
+  assert.equal(copy.selectForCartLabel("Oat Biscuits"), "Select Oat Biscuits for the Amazon cart");
+  assert.equal(copy.selectForCartLabel(null), "Select this product for the Amazon cart");
+  assert.match(copy.LINK_INVALID, /a\.co/, "short links are named as the thing that can't be used");
+  assert.match(copy.CART_NOTE, /Scan each item when it arrives/);
 });
