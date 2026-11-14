@@ -953,8 +953,17 @@ dropped Nov 14 (the Developer Platform isn't taking applications; `docs/snack-li
 Its own switch, on top of `SNACK_LIST`: off by default, and off hides all three, sends every item's
 `amazon` as null whatever is stored, and makes the link and cart routes a plain 404. Independent of `SNACK_SEARCH`.
 
+**A product's shared link (JT, Nov 14; migration 0053):** an admin — `users.is_admin`, the same gate as
+§12, never an account on the judge seed's domain — can set the product's own ASIN from any item's
+page, "Set Amazon link for everyone": `PATCH /api/profiles/:id/snacks/:itemId/product-amazon`, the
+product resolved from the item row on the server, a plain 404 for anyone else. Every family's list
+that holds the product then shows "Shop on Amazon" to it, the row's checkbox, and "Amazon link for
+everyone, set by <name>". A family's own item link, if a manager sets one, wins on that list. The
+cart's re-check is unchanged: a "Contains" item is refused whatever link its product carries.
+
 **Data:** migration 0051 adds `amazon_asin`, `amazon_linked_by`, `amazon_linked_at` to
-`snack_list_items`, nullable. Links saved while the switch was on stay while it's off and come back
+`snack_list_items`, nullable; migration 0053 adds `amazon_asin`, `amazon_asin_set_by`,
+`amazon_asin_set_at` to `products`, nullable. Links saved while the switch was on stay while it's off and come back
 with it. The judge seed links nothing (invented brands); a judge can search a real product, add it,
 link it and build a cart. A reseed clears whatever they linked.
 

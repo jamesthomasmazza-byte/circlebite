@@ -3116,3 +3116,44 @@ Chrome at 390: dividers 1px with none under the last row, no radius, no backgrou
 at 100% text and 66px at 150%, inside the row and below the pill in every case; the paste box under
 the row without overflow; light and dark; no horizontal scroll. Screenshots
 `circlebite-snacks-mockup-flatrows-*`.
+
+## 2026-11-14 — Built: a product's Amazon link for everyone, admins only (not deployed)
+
+JT's ask, after a day of per-family links: one Amazon link per product, shared across every family's
+list, set and cleared by admins; the item's own link stays as a manager's override; judge sessions can
+never set one. Plan OK'd with one change — no barcode in the URL: the route hangs off the list item
+and the server resolves the product from the item row, as the add route does.
+
+- **Server** (`2ac581d`): migration 0053 adds `amazon_asin`, `amazon_asin_set_by` (SET NULL),
+  `amazon_asin_set_at` to `products`, nullable, the same ten-character check as the item column.
+  `PATCH /profiles/:id/snacks/:itemId/product-amazon {url}` behind `SNACK_LIST` and `SNACK_CARTS`,
+  gated by `assertIsAdmin` — `is_admin` and never a seed-domain account, the same check as `/admin` —
+  then the profile's read access; 404 for everyone else; the same ASIN parser and refusals; `url: null`
+  clears. The list loader resolves one link per item, the item's own first, else the product's, with
+  `source` "item" or "product"; it drives "Shop on Amazon", the row's checkbox and the cart, whose
+  re-check still refuses a "Contains" item. Tests: owner, co-manager, follower and a judge-domain
+  account flagged admin by hand all get 404; an admin in the circle sets it from the item and every
+  viewer sees it with source product; an item link overrides, removing it falls back, clearing the
+  shared link restores the search and the left-out naming; a Contains item with a product link is
+  still refused from the cart and still has no shop links.
+- **Client** (`ed12a29`): the detail page's line reads "Amazon link for everyone, set by <name>, <date>"
+  for a shared link; an admin gets "Set Amazon link for everyone" / "Change the link for everyone" with
+  the paste box (its own hint) and "Remove the link for everyone"; a manager keeps "Link on Amazon" as
+  the override even when a shared link is in force, and "Change Amazon link" / "Remove link" apply to
+  the item's own; a follower sees the line only. `/me` already carried `isAdmin`.
+
+**Local check** (Chrome, 390, a second server with lists, search and carts on and `REGISTRATION=on` for
+a throwaway local admin account, flipped `is_admin` by local SQL and deleted after): the admin's own
+item showed "Set Amazon link for everyone"; set, the line read "Amazon link for everyone, set by Admin
+Check, Nov 14" and the control became "Change the link for everyone". As judge1, Maya's crackers (the
+same seeded product) read "Hearthfield · On Amazon" with a checkbox and no row button; the cart link
+carried the shared ASIN; the page showed the shared line, "Link on Amazon" as the override and no
+"for everyone" control; forcing the admin route from judge1's session → 404. judge1's override took
+over ("Amazon link added by Judge 1", Shop on Amazon → the override's product) and removing it fell
+back to the shared line. The admin cleared the shared link; the local account and its profile were
+deleted. Screenshots `circlebite-snacks-shared-*-2026-11-14.png`. Server 709 tests, client 541 (one
+server run right after the check showed 8 failures that did not reproduce on the next run; noted
+here as a flake to watch, most likely the check servers still releasing the database).
+
+**Not checked here:** JT's phone with his admin account. Not deployed: the deploy applies migration
+0053; no switch change, no reseed.
