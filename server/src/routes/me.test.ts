@@ -104,3 +104,14 @@ test("GET /me exposes profileRedesignEnabled from env.profileRedesign", () => {
 
   assert.equal(body?.profileRedesignEnabled, env.profileRedesign);
 });
+
+test("GET /me exposes snackSearchEnabled from env.snackSearch, so the Snacks tab shows the search box only when the routes exist", () => {
+  const handler = findMeHandler();
+  const req = { user: { id: "u1", email: "a@example.com", displayName: "A", isAdmin: false }, session: { id: "s1", actingProfileId: null } };
+  let body: { snackSearchEnabled?: boolean } | undefined;
+  const res = { json: (b: unknown) => { body = b as typeof body; } };
+
+  handler(req, res);
+
+  assert.equal(body?.snackSearchEnabled, env.snackSearch);
+});

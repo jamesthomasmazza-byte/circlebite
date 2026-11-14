@@ -145,6 +145,14 @@ test("SNACK_LIST goes through parseSwitch and defaults to off", () => {
   assert.throws(() => parseSwitch("SNACK_LIST", "yes", false), /SNACK_LIST must be "on" or "off"/);
 });
 
+// SNACK_SEARCH (2026-11-14, the plan's addendum): its own switch, so search can stay off while the
+// lists are on.
+test("SNACK_SEARCH goes through parseSwitch and defaults to off", () => {
+  const source = readFileSync(new URL("./env.ts", import.meta.url), "utf8");
+  assert.match(source, /snackSearch: parseSwitch\("SNACK_SEARCH", process\.env\.SNACK_SEARCH, false\)/);
+  assert.throws(() => parseSwitch("SNACK_SEARCH", "yes", false), /SNACK_SEARCH must be "on" or "off"/);
+});
+
 // AMAZON_ASSOCIATE_TAG: a plain string, blank is none — a blank line in .env must not become a tag.
 test("AMAZON_ASSOCIATE_TAG is read trimmed, and blank or unset is undefined", () => {
   const source = readFileSync(new URL("./env.ts", import.meta.url), "utf8");

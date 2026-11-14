@@ -37,6 +37,8 @@ meRouter.get("/me", requireAuth, (req, res) => {
     profileRedesignEnabled: env.profileRedesign,
     // Snack lists' switch, the same free field. The list routes check env.snackList themselves.
     snackListEnabled: env.snackList,
+    // Snack search's switch, the same free field. The search routes check env.snackSearch themselves.
+    snackSearchEnabled: env.snackSearch,
   });
 });
 

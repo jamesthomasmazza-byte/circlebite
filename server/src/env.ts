@@ -166,6 +166,11 @@ export const env = {
   // Snacks tab and the "Add to" button. Items already saved stay in the database until it's on
   // again. The client reads it via GET /me.
   snackList: parseSwitch("SNACK_LIST", process.env.SNACK_LIST, false),
+  // Snack search (routes/snackSearch.ts, docs/snack-list-plan.md addendum, 2026-11-14): a search box
+  // on the Snacks tab, our own products first and Open Food Facts' text search on "Search more",
+  // through the server, cached and limited. Off by default; off 404s the search routes and hides the
+  // box. Its own switch so it can stay off while SNACK_LIST is on.
+  snackSearch: parseSwitch("SNACK_SEARCH", process.env.SNACK_SEARCH, false),
   // Amazon Associates tag, appended to an item's Amazon search link only when set
   // (snackList/shopLinks.ts). Blank by default: no tag, no affiliate link, no disclosure line. It is
   // a public query parameter, not a secret, but it lives in .env on the box like every setting. It
