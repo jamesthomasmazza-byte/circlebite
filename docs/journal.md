@@ -2934,7 +2934,7 @@ products from Open Food Facts; tapping Plain Rice Crackers landing on Scan at `/
 the field and its button on one row at 100% text and stacked at 150%; light and dark; 1280×800 light
 and dark; as a follower on Noor's list the box is there and a tap opens Scan for Noor with no Add
 button. Off: no box on the Snacks tab and the route a 404. No horizontal scroll anywhere.
-Server 689 tests, client 523. Screenshots `docs/approvals/img/circlebite-snack-search-*-2026-11-14.png`.
+Server 688 tests, client 523. Screenshots `docs/approvals/img/circlebite-snack-search-*-2026-11-14.png`.
 
 **Not checked here:** JT's iPhone; the 429 and 503 lines on a real page (unit-tested on the server and
 in the view; forcing them would spend the shared Open Food Facts budget); a judge-link session's
