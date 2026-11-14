@@ -3012,3 +3012,60 @@ replaced by the signed-in `/api/me` field. JT then set `SNACK_SEARCH=on`, pushed
 `20261114170711` (migration 0051 applied) and set `SNACK_CARTS=on`; `/api/me` signed in now reads
 `snackListEnabled`, `snackSearchEnabled` and `snackCartsEnabled` all `true`, and the served bundle is
 the new release's. Carts are live for the phone check.
+
+## 2026-11-14 — Built: the Snacks tab rebuilt to JT's mockup, items 1–8 (photos pending JT's OK; not deployed)
+
+JT's approved mockup, Nov 14; `docs/snack-list-plan.md` and `docs/verdict-engine.md` read first. Nothing
+about verdicts, the server's re-check or what is refused changed — layout, plus product photos to come.
+
+- **Rows** (`9316b78`; `SnackRow.tsx`, `ProductPhoto.tsx`): one compact row per item — a 60×60 photo
+  (Open Food Facts' front image once the server stores one; until then, and for the invented seed
+  brands, a neutral placeholder with a picture icon), the name in bold, the brand with "· On Amazon"
+  once linked, and a small pill in the verdict's own colour naming the allergens: "Contains: Peanut",
+  "May contain: Sesame", "No listed allergens", "Unable to confirm". The row is one link to the item's
+  page; at the right, the Amazon-cart checkbox (a 44×44 target), or "Not for cart" on a "Contains" item,
+  which the server already sends without shop links. No buttons, no note, no per-item disclaimer.
+- **The list** (`3300982`; `routes/Snacks.tsx`): the title row "<name>'s snacks" with the item count on
+  the right; one screening note under it — *Screening aid, not a guarantee. Check the label, especially
+  for "may contain." Allergic reaction? Call 911.* — in place of the per-item disclaimers, the
+  "Scan it when it arrives" lines and the per-item buttons (`docs/verdict-engine.md` rule 9 now renders
+  once per page: here and on the detail page; the principles row says so); the search box above the
+  rows as before; a sticky bar above the tab bar, "Add N to Amazon cart", disabled at 0, with the
+  server's answer (the link, who was left out, who was refused) above its button. A no-allergen
+  profile: no pills, no note.
+- **The detail page** (`dd10add`; `routes/SnackDetail.tsx`, `/snacks/:itemId`): read from the same list
+  call as the tab, so the access rules and the verdict are the list's. Back link "<name>'s snacks", a
+  210px photo, name, brand and barcode, the verdict block — the headline and every allergen that was
+  checked, each with its finding ("contains", "may contain traces", "couldn't confirm from the label
+  text", "not checked", "not found in the data") and what a report changed — the note, "Scan it when it
+  arrives — stores can send a different version. Screening aid, not a guarantee.", then the actions:
+  Shop on Amazon (primary; "Link on Amazon" with the paste box when not linked), Shop on Instacart,
+  Add/Edit note, a small "Change Amazon link", "Remove from list" (which goes back to the list). A
+  "Contains" item: no shop or link actions, "Label wrong? Report a correction" instead. Followers read.
+  A no-allergen profile's item: no verdict block.
+- **Docs** (`d23ec9e`): `JUDGES.md` and the principles row.
+
+**Local check** (Chrome, Playwright, a second server on 3001 with lists, search and carts on): as judge1
+on Maya at 390×844 — "Maya's snacks · 3 items", one screening note, three rows with the pills "Contains:
+Peanut", "May contain: Sesame", "No listed allergens" in their colours, placeholders for the photos, no
+buttons and no "Approved by" in the list, the crackers' checkbox 44×44, "Not for cart" on the peanut
+bar, the cart bar sticky and on screen at the top of the page, "Add 2 to Amazon cart" with two ticked
+and the result naming both as left out (nothing linked yet); the peanut bar's page with the back link,
+"Contains an allergen", "Checked for: Peanut (severe) — contains, Sesame (moderate) — not found in the
+data", the note, the 210px photo, and only the correction link, Edit note and Remove from list; the
+crackers' page with Link on Amazon → the Amazon tab and the paste box → "Shop on Amazon" to
+`/dp/B07PGL2ZSL`, "Change Amazon link", "· On Amazon" back on the row; a note saved and cleared; the
+granola added from search ("4 items") and removed from its page, landing back on the list ("3 items").
+As a follower on Noor: "0 items", the note, the search box, the empty line. A temporary no-allergies
+profile: no note, no pills, a checkbox on the peanut bar, no verdict block on its page; Peanut added →
+"Contains an allergen" on the page, "Contains: Peanut" and "Not for cart" on the list; deleted after.
+150% text, dark at 390, 1280 light and dark, list and detail. No horizontal scroll anywhere. Server
+701 tests, client 535. Screenshots `docs/approvals/img/circlebite-snacks-mockup-*-2026-11-14.png`.
+
+**Photos (item 9) wait on JT's OK:** `products` has no image columns and the lookup asks Open Food Facts
+for a fixed field list, so this is a migration plus two more fields on both the product lookup and the
+text search; existing rows get theirs on their next lookup after the 24-hour cache (the seed rows never,
+by design) unless a one-off backfill is run; production sends no Content-Security-Policy header at all
+(nginx, checked Nov 14), so nothing blocks `images.openfoodfacts.org` today.
+
+**Not checked here:** JT's iPhone. Not deployed.
