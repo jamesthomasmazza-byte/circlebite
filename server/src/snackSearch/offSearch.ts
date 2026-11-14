@@ -25,7 +25,10 @@ export type SearchHit = {
 export type SearchOutcome = { status: "ok"; hits: SearchHit[] } | { status: "failed" };
 
 export const SEARCH_PAGE_SIZE = 20;
-const FETCH_TIMEOUT_MS = 8000;
+// Longer than a product lookup's 8 seconds: measured Nov 14, a text search with no matches took 11.8
+// seconds to answer 200 with an empty list, where a cut-off would have read as "couldn't reach it".
+// The page says "Asking Open Food Facts…" meanwhile, and the local results are already up.
+const FETCH_TIMEOUT_MS = 15000;
 
 /** Digits, 6 to 14: exactly what the scan route accepts as a typed barcode (routes/scans.ts BARCODE_PATTERN). */
 const BARCODE_SHAPE = /^\d{6,14}$/;
