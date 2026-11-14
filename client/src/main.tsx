@@ -22,6 +22,7 @@ import { ReviewQueue } from "./routes/ReviewQueue";
 import { Scan } from "./routes/Scan";
 import { ScanHistory } from "./routes/ScanHistory";
 import { Settings } from "./routes/Settings";
+import { SnackDetail } from "./routes/SnackDetail";
 import { Snacks } from "./routes/Snacks";
 import { LANDING_PATH } from "./lib/tabs";
 import { TabShell } from "./TabShell";
@@ -54,6 +55,8 @@ function App() {
               <Route path="/circle" element={<Circle />} />
               {/* Snack lists (SNACK_LIST, routes/Snacks.tsx): the fourth tab; a plain "not found" while off. */}
               <Route path="/snacks" element={<Snacks />} />
+              {/* One item's detail page (routes/SnackDetail.tsx): same access as the list, which it reads. */}
+              <Route path="/snacks/:itemId" element={<SnackDetail />} />
               {/* The guided setup: inside RequireAuth like every page — no guest mode. */}
               <Route path="/profiles/new" element={<NewProfile />} />
               <Route path="/profiles/:id" element={<ProfileDetail />} />
