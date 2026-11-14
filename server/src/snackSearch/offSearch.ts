@@ -1,5 +1,5 @@
 import { env } from "../env.js";
-import { normalizeTag } from "../lib/openFoodFacts.js";
+import { normalizeTag, OFF_PRODUCT_FIELDS, offImageUrl } from "../lib/openFoodFacts.js";
 
 // Open Food Facts' text search (docs/snack-list-plan.md addendum, 2026-11-14). The legacy
 // /cgi/search.pl is the only full-text search the API offers (its docs, checked Nov 14: "Full-text /
@@ -19,6 +19,8 @@ export type SearchHit = {
   allergensTags: string[];
   tracesTags: string[];
   lastUpdated: Date | null;
+  imageSmallUrl: string | null;
+  imageUrl: string | null;
   raw: unknown;
 };
 
@@ -42,6 +44,8 @@ type OffSearchResponse = {
     allergens_tags?: string[];
     traces_tags?: string[];
     last_modified_t?: number;
+    image_front_small_url?: string;
+    image_front_url?: string;
   }>;
 };
 
@@ -52,7 +56,7 @@ export function searchUrl(query: string): URL {
   url.searchParams.set("action", "process");
   url.searchParams.set("json", "1");
   url.searchParams.set("page_size", String(SEARCH_PAGE_SIZE));
-  url.searchParams.set("fields", "code,product_name,brands,ingredients_text,allergens_tags,traces_tags,last_modified_t");
+  url.searchParams.set("fields", `code,${OFF_PRODUCT_FIELDS}`);
   return url;
 }
 
@@ -90,6 +94,8 @@ export async function searchProducts(query: string): Promise<SearchOutcome> {
         allergensTags: (p.allergens_tags ?? []).map(normalizeTag),
         tracesTags: (p.traces_tags ?? []).map(normalizeTag),
         lastUpdated: p.last_modified_t ? new Date(p.last_modified_t * 1000) : null,
+        imageSmallUrl: offImageUrl(p.image_front_small_url),
+        imageUrl: offImageUrl(p.image_front_url),
         raw: { source: "open_food_facts_search", product: p },
       });
     }

@@ -122,8 +122,9 @@ async function rememberHits(hits: SearchHit[]): Promise<void> {
   for (const hit of hits) {
     await pool.query(
       `INSERT INTO products
-         (barcode, found, name, brand, ingredients_text, allergens_tags, traces_tags, raw_data, product_last_updated, fetched_at)
-       VALUES ($1, true, $2, $3, $4, $5, $6, $7, $8, now())
+         (barcode, found, name, brand, ingredients_text, allergens_tags, traces_tags, raw_data, product_last_updated, fetched_at,
+          image_front_small_url, image_front_url)
+       VALUES ($1, true, $2, $3, $4, $5, $6, $7, $8, now(), $9, $10)
        ON CONFLICT (barcode) DO UPDATE SET
          found = true,
          name = EXCLUDED.name,
@@ -133,9 +134,11 @@ async function rememberHits(hits: SearchHit[]): Promise<void> {
          traces_tags = EXCLUDED.traces_tags,
          raw_data = EXCLUDED.raw_data,
          product_last_updated = EXCLUDED.product_last_updated,
-         fetched_at = now()
+         fetched_at = now(),
+         image_front_small_url = EXCLUDED.image_front_small_url,
+         image_front_url = EXCLUDED.image_front_url
        WHERE products.raw_data IS NULL OR products.raw_data->>'${SEED_PRODUCT_MARKER}' IS DISTINCT FROM 'true'`,
-      [hit.barcode, hit.name, hit.brand, hit.ingredientsText, hit.allergensTags, hit.tracesTags, JSON.stringify(hit.raw), hit.lastUpdated],
+      [hit.barcode, hit.name, hit.brand, hit.ingredientsText, hit.allergensTags, hit.tracesTags, JSON.stringify(hit.raw), hit.lastUpdated, hit.imageSmallUrl, hit.imageUrl],
     );
   }
 }

@@ -33,7 +33,7 @@ test("the request: the legacy search.pl with the product lookup's fields, 20 a p
   assert.equal(requested.searchParams.get("action"), "process");
   assert.equal(requested.searchParams.get("json"), "1");
   assert.equal(requested.searchParams.get("page_size"), String(SEARCH_PAGE_SIZE));
-  assert.equal(requested.searchParams.get("fields"), "code,product_name,brands,ingredients_text,allergens_tags,traces_tags,last_modified_t");
+  assert.equal(requested.searchParams.get("fields"), "code,product_name,brands,ingredients_text,allergens_tags,traces_tags,last_modified_t,image_front_small_url,image_front_url");
   assert.ok(userAgent && userAgent.length > 0, "a User-Agent identifies the app, as the service asks");
   assert.equal(searchUrl("a b").searchParams.get("search_terms"), "a b");
 });
@@ -52,6 +52,8 @@ test("hits: barcode, name, brand, the product fields with tags normalized; no ba
           allergens_tags: ["en:gluten", "en:peanuts"],
           traces_tags: ["en:tree-nuts"],
           last_modified_t: 1700000000,
+          image_front_small_url: "https://images.openfoodfacts.org/images/products/009/661/933/6753/front_en.3.200.jpg",
+          image_front_url: "https://images.openfoodfacts.org/images/products/009/661/933/6753/front_en.3.400.jpg",
         },
         { code: "80001157", brands: "Loacker" },
         { product_name: "No code at all" },
@@ -77,6 +79,9 @@ test("hits: barcode, name, brand, the product fields with tags normalized; no ba
   assert.deepEqual(first.tracesTags, ["tree nuts"]);
   assert.equal(first.lastUpdated?.getTime(), 1700000000 * 1000);
   assert.deepEqual((first.raw as { source: string }).source, "open_food_facts_search");
+  assert.equal(first.imageSmallUrl, "https://images.openfoodfacts.org/images/products/009/661/933/6753/front_en.3.200.jpg");
+  assert.equal(first.imageUrl, "https://images.openfoodfacts.org/images/products/009/661/933/6753/front_en.3.400.jpg");
+  assert.equal(r.hits[1].imageSmallUrl, null);
   assert.equal(r.hits[1].ingredientsText, null);
   assert.deepEqual(r.hits[1].allergensTags, []);
 });

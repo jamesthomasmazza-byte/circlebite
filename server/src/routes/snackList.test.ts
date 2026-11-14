@@ -137,10 +137,10 @@ before(async () => {
     [PROFILE_ID, FOLLOWER, OWNER],
   );
   await pool.query(
-    `INSERT INTO products (barcode, found, name, brand, ingredients_text, allergens_tags, traces_tags, raw_data, fetched_at) VALUES
-       ($1, true, 'Nutty Bar', 'Acme', 'peanuts, sugar', '{peanut}', '{}', 'null', now()),
-       ($2, true, 'Oat Bar', 'Acme Oat Bar', 'oats, sugar, whey', '{milk}', '{}', 'null', now()),
-       ($3, true, NULL, NULL, $4, '{}', '{}', 'null', now())`,
+    `INSERT INTO products (barcode, found, name, brand, ingredients_text, allergens_tags, traces_tags, raw_data, fetched_at, image_front_small_url, image_front_url) VALUES
+       ($1, true, 'Nutty Bar', 'Acme', 'peanuts, sugar', '{peanut}', '{}', 'null', now(), NULL, NULL),
+       ($2, true, 'Oat Bar', 'Acme Oat Bar', 'oats, sugar, whey', '{milk}', '{}', 'null', now(), 'https://images.openfoodfacts.org/images/products/730/000/000/0002/front_en.3.200.jpg', 'https://images.openfoodfacts.org/images/products/730/000/000/0002/front_en.3.400.jpg'),
+       ($3, true, NULL, NULL, $4, '{}', '{}', 'null', now(), NULL, NULL)`,
     [NUTTY, OATS, TEXTY, TEXT],
   );
 
@@ -410,4 +410,14 @@ test("the cart: the server re-checks each selected item; a Contains item is refu
   assert.equal((await cart(OWNER, "not-a-list")).status, 400);
   assert.equal((await cart(OWNER, ["nope"])).status, 400);
   assert.equal((await cart(STRANGER, [oats])).status, 404, "no access to the profile");
+});
+
+test("each item carries the product's front photo URLs when the record has them, null when not (JT's mockup, Nov 14)", async () => {
+  type WithImage = Item & { product: { image_small: string | null; image: string | null } };
+  const oats = byBarcode(await list(OWNER), OATS) as WithImage;
+  assert.equal(oats.product.image_small, "https://images.openfoodfacts.org/images/products/730/000/000/0002/front_en.3.200.jpg");
+  assert.equal(oats.product.image, "https://images.openfoodfacts.org/images/products/730/000/000/0002/front_en.3.400.jpg");
+  const nutty = byBarcode(await list(OWNER), NUTTY) as WithImage;
+  assert.equal(nutty.product.image_small, null);
+  assert.equal(nutty.product.image, null);
 });

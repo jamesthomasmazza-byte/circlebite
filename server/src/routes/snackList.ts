@@ -65,6 +65,8 @@ type ItemRow = {
   found: boolean;
   name: string | null;
   brand: string | null;
+  image_front_small_url: string | null;
+  image_front_url: string | null;
   ingredients_text: string | null;
   allergens_tags: string[];
   traces_tags: string[];
@@ -84,7 +86,7 @@ const HEADLINE_ORDER: Record<Verdict, number> = {
 type ListItem = {
   id: string;
   barcode: string;
-  product: { name: string | null; brand: string | null };
+  product: { name: string | null; brand: string | null; image_small: string | null; image: string | null };
   note: string | null;
   added_by: string | null;
   created_at: Date;
@@ -113,7 +115,8 @@ async function loadList(
     `SELECT i.id, i.barcode, i.scan_id, i.note, i.created_at,
             u.display_name AS added_by_name,
             i.amazon_asin, i.amazon_linked_at, lu.display_name AS amazon_linked_by_name,
-            p.found, p.name, p.brand, p.ingredients_text, p.allergens_tags, p.traces_tags,
+            p.found, p.name, p.brand, p.image_front_small_url, p.image_front_url,
+            p.ingredients_text, p.allergens_tags, p.traces_tags,
             s.matched_allergens AS scan_matched_allergens, s.ingredients_text AS scan_ingredients_text
      FROM snack_list_items i
      JOIN products p ON p.barcode = i.barcode
@@ -179,7 +182,9 @@ async function loadList(
       return {
         id: row.id,
         barcode: row.barcode,
-        product: { name: row.name, brand: row.brand },
+        // The front photo (JT's mockup, Nov 14): Open Food Facts' own URLs, saved with the product; null
+        // draws the placeholder. The seed's invented products never have one.
+        product: { name: row.name, brand: row.brand, image_small: row.image_front_small_url, image: row.image_front_url },
         note: row.note,
         // The approver is always a manager, whose name the circle already sees on the profile; so
         // unlike scan history's scanner (who may be another follower) it is shown to everyone here.

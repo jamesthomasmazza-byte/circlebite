@@ -81,7 +81,7 @@ function offAnswers(products: unknown[]) {
   offAnswer = () => new Response(JSON.stringify({ count: products.length, products }), { status: 200, headers: { "content-type": "application/json" } });
 }
 const HITS = [
-  { code: OFF_A, product_name: "Peanut Butter Pretzels", brands: "Kirkland Signature", ingredients_text: "wheat flour, peanut butter", allergens_tags: ["en:gluten", "en:peanuts"], traces_tags: [], last_modified_t: 1700000000 },
+  { code: OFF_A, product_name: "Peanut Butter Pretzels", brands: "Kirkland Signature", ingredients_text: "wheat flour, peanut butter", allergens_tags: ["en:gluten", "en:peanuts"], traces_tags: [], last_modified_t: 1700000000, image_front_small_url: "https://images.openfoodfacts.org/images/products/750/000/000/0101/front_en.3.200.jpg", image_front_url: "https://images.openfoodfacts.org/images/products/750/000/000/0101/front_en.3.400.jpg" },
   { code: OFF_B, product_name: "Peanut Puffs", brands: "Snackco", allergens_tags: ["en:peanuts"] },
   { code: SEEDED, product_name: "An outside record of the seeded barcode", brands: "Someone" },
 ];
@@ -186,6 +186,11 @@ test("more: hits come back as results, each written to products as a product loo
     ],
   );
   assert.equal((rows[1].product_last_updated as Date).getTime(), 1700000000 * 1000);
+  const { rows: images } = await pool.query("SELECT image_front_small_url, image_front_url FROM products WHERE barcode = ANY($1) ORDER BY barcode", [[OFF_A, OFF_B]]);
+  assert.deepEqual(images, [
+    { image_front_small_url: "https://images.openfoodfacts.org/images/products/750/000/000/0101/front_en.3.200.jpg", image_front_url: "https://images.openfoodfacts.org/images/products/750/000/000/0101/front_en.3.400.jpg" },
+    { image_front_small_url: null, image_front_url: null },
+  ]);
 
   const again = await more("  PEANUT ");
   assert.equal(again.status, 200);
