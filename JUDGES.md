@@ -40,14 +40,19 @@ is allergic to it.
 ## Snacks (if the tab is there)
 
 If the tab bar shows a fourth tab, **Snacks**, Maya's list is on it: three products approved from
-her scans, each with its verdict as it is **now** — computed from the stored product data, no AI
-call — in the same words as a scan card. One item reads **Contains
-an allergen** (the peanut bar, its note "Approved before Maya's peanut allergy was confirmed": the
+her scans, one compact row each — the product's photo (a placeholder for these invented brands), its
+name and brand, and a small pill with its verdict as it is **now**, computed from the stored product
+data with no AI call: "Contains: Peanut", "May contain: Sesame", "No listed allergens", "Unable to
+confirm". One screening note sits under the title for the whole list. Tap a row for the item's own
+page: the full verdict with every allergen that was checked, the note, "Scan it when it arrives —
+stores can send a different version. Screening aid, not a guarantee.", and the actions. The peanut
+bar reads **Contains: Peanut** (its note, "Approved before Maya's peanut allergy was confirmed": the
 verdict is live, so an allergen added later flags an old item): the app never offers to shop for a
-Contains item, and shows "Label wrong? Report a correction" instead. The other two carry "Shop on Amazon" and "Shop on Instacart",
-plain search links that open in a new tab, under "Scan it when it arrives — stores can send a
-different version." As Maya's owner you can add a note or remove an item; on Noor, whom you follow,
-you can only read. To add one, scan a product for Maya and tap "Add to Maya's snacks" under its card.
+Contains item, and its page shows "Label wrong? Report a correction" instead. The other two carry
+"Shop on Amazon" and "Shop on Instacart", plain search links that open in a new tab. As Maya's owner
+you can add a note or remove an item from its page; on Noor, whom you follow, you can only read. To
+add one, search for it on the tab (below), or scan it for Maya and tap "Add to Maya's snacks" under
+its card.
 
 If the Snacks tab also has a **search box**, type a name or brand: results come first from products
 this app has already seen; with none, Open Food Facts is asked at once, and "Search more" asks it when
@@ -57,11 +62,12 @@ product reads "Contains an allergen" or "May contain". Tapping the result's name
 full card on Scan. Nothing goes on the list by itself. If Open Food Facts is slow or busy the page says
 it couldn't reach it; try once more.
 
-If items on the list have a **checkbox**, the Amazon cart is on: as Maya's owner, an item's "Link on
-Amazon" opens the Amazon search in a new tab and a box here for the product's amazon.com address, of
-which only the product code is kept (after that the button reads "Shop on Amazon" and goes straight to
-the product, with a small "Change link"); tick items and "Add
-selected to Amazon cart" gives one link that opens Amazon with them in its add-to-cart step. The app
+If rows have a **checkbox** on the right, the Amazon cart is on: as Maya's owner, an item's page has
+"Link on Amazon", which opens the Amazon search in a new tab and a box for the product's amazon.com
+address, of which only the product code is kept (after that the button reads "Shop on Amazon" and goes
+straight to the product, the row says "· On Amazon", and the page has a small "Change Amazon link").
+A Contains row reads "Not for cart" instead of a checkbox. Tick rows and the bar above the tabs, "Add
+N to Amazon cart", gives one link that opens Amazon with them in its add-to-cart step. The app
 builds that link on its own server and checks each item's verdict again first: a "Contains an
 allergen" item is never put in a cart, and an item without an Amazon link is named as left out. The
 seeded products are invented brands with no Amazon page, so to try it end to end, search a real
