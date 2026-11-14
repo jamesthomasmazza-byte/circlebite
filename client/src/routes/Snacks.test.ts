@@ -137,3 +137,11 @@ test("the page takes the shell's chosen profile, keeps the server's order, and r
   assert.match(PAGE, /if \(!loading && !snackListEnabled\) \{/);
   assert.match(PAGE, /canManage = profile\.relationship === "owner" \|\| profile\.relationship === "co_manager"/);
 });
+
+test("the search box (SNACK_SEARCH) sits above the list only while its own switch is on", () => {
+  assert.match(PAGE, /const \{ snackListEnabled, snackSearchEnabled, loading \} = useAuth\(\);/);
+  assert.match(PAGE, /\{snackSearchEnabled && <SnackSearch profile=\{profile\} \/>\}/);
+  const box = PAGE.indexOf("<SnackSearch");
+  const list = PAGE.indexOf('className="card-list snacks__list"');
+  assert.ok(box > 0 && box < list, "the box comes before the list");
+});

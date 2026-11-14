@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 
+import { SnackSearch } from "../SnackSearch";
 import { useScanningFor } from "../TabShell";
 import { historyRowLabel, shopperCount } from "../lib/allergenRowCopy";
 import { getSnackList, removeSnack, updateSnackNote, type ProfileSummary, type SnackItem, type SnackList } from "../lib/api";
@@ -43,7 +44,7 @@ import { DISCLAIMER, DISCLAIMER_SHORT, EMERGENCY, VERDICT_LABEL } from "../lib/v
  * as Scan's pill, so moving between Scan and Snacks keeps the same child.
  */
 export function Snacks() {
-  const { snackListEnabled, loading } = useAuth();
+  const { snackListEnabled, snackSearchEnabled, loading } = useAuth();
   const { chosenProfileId, profiles, profilesLoaded } = useScanningFor();
   const profile = profiles.find((p) => p.id === scanningForId(chosenProfileId, profiles)) ?? null;
   const [list, setList] = useState<SnackList | null>(null);
@@ -100,6 +101,10 @@ export function Snacks() {
           <strong>{EMERGENCY}</strong>
         </p>
       </div>
+
+      {/* Search (SnackSearch.tsx, behind SNACK_SEARCH): above the list, for anyone who can see it; a
+          result opens Scan for this profile, where only a manager gets "Add to". */}
+      {snackSearchEnabled && <SnackSearch profile={profile} />}
 
       {error && <p role="alert">{error}</p>}
 
