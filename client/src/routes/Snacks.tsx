@@ -33,7 +33,6 @@ import {
   cartIncludedLine,
   CHANGE_AMAZON_LINK,
   EDIT_NOTE,
-  EMPTY_SCAN_LINK,
   emptyLine,
   LABEL_WRONG,
   leftOutLine,
@@ -180,15 +179,9 @@ export function Snacks() {
 
       {error && <p role="alert">{error}</p>}
 
-      {/* An empty list (JT, Nov 14): a manager sees only the search box, which is the way in; the line
-          and its "Scan a product" link show for a manager only while search is switched off, so the
-          page is never blank. A follower's line is unchanged. */}
-      {list && list.items.length === 0 && (!canManage || !snackSearchEnabled) && (
-        <p className="snacks__empty">
-          {emptyLine(profile, canManage)}{" "}
-          {canManage && <Link to={`/scan?profile=${encodeURIComponent(profile.id)}`}>{EMPTY_SCAN_LINK}</Link>}
-        </p>
-      )}
+      {/* An empty list (JT, Nov 14): a manager sees only the search box, which is the way in. A
+          follower's line is unchanged. */}
+      {list && list.items.length === 0 && !canManage && <p className="snacks__empty">{emptyLine(profile, false)}</p>}
 
       {list && list.items.length > 0 && (
         <ul className="card-list snacks__list">

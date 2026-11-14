@@ -112,13 +112,11 @@ export const NOTE_SAVE = "Save note";
 export const NOTE_CANCEL = "Cancel";
 export const NOTE_MAX = 200;
 
+/** A follower's empty list. A manager with an empty list sees only the search box (JT, Nov 14). */
 export function emptyLine(profile: { label: string; is_self: boolean }, canManage: boolean): string {
   const whose = profile.is_self ? "your" : `${profile.label}'s`;
-  if (!canManage) return `Nothing on ${whose} list yet.`;
-  return `Nothing on ${whose} list yet. Scan a product, then tap “${addButtonLabel(profile)}” on its card.`;
+  return canManage ? "" : `Nothing on ${whose} list yet.`;
 }
-
-export const EMPTY_SCAN_LINK = "Scan a product";
 
 export const NO_PROFILE = "Snack lists belong to a profile. Add one, or accept an invite, and the list appears here.";
 

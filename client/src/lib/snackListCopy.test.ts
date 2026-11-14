@@ -60,7 +60,7 @@ test("never the word 'safe'", () => {
 });
 
 test("the empty state tells a manager how to add, and a follower only that it's empty", () => {
-  assert.equal(emptyLine(MAYA, true), "Nothing on Maya's list yet. Scan a product, then tap “Add to Maya's snacks” on its card.");
+  assert.equal(emptyLine(MAYA, true), "", "a manager with an empty list sees only the search box (JT, Nov 14)");
   assert.equal(emptyLine(MAYA, false), "Nothing on Maya's list yet.");
 });
 
