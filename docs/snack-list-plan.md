@@ -114,11 +114,10 @@ still show and "Search more" says it couldn't reach it.
     `https://www.amazon.com/gp/aws/cart/add.html?ASIN.1=…&Quantity.1=1&…`, plus `AssociateTag` only when
     `AMAZON_ASSOCIATE_TAG` is set. Checked Nov 14 in Chrome: Amazon carries every ASIN through to its
     add-to-cart step after sign-in. Items without an ASIN are named as left out.
-  - **Shop selected on Instacart** — only when `INSTACART_API_KEY` is set (the box's `.env`, never the repo):
-    the server creates an Instacart shopping list page from the selected items (name, brand, UPC) and
-    returns its link. Without a key the button isn't shown. Production key from Instacart's developer
-    dashboard (JT); a development key isn't enough for judges.
-- The server builds both cart links and re-checks each selected item's verdict when it does: a "Contains"
+  - ~~**Shop selected on Instacart**~~ — **Nov 14: Instacart Developer Platform not accepting applications
+    (no waitlist); Instacart cart dropped, affiliate program after judging.** The per-item "Shop on
+    Instacart" search links stay as they are.
+- The server builds the cart link and re-checks each selected item's verdict when it does: a "Contains"
   item is refused even if the client sent it.
 - Judge seed: no Amazon links on the seeded products (they're invented brands); judges can search a real
   product, add it, link it and build a cart.
