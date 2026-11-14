@@ -136,3 +136,19 @@ test("the detail route reads the same list call as the tab (the same access rule
   assert.match(DETAIL, /if \(!loading && !snackListEnabled\) \{/);
   assert.match(DETAIL, /\{list && !item && <p role="status">\{ITEM_GONE\}<\/p>\}/);
 });
+
+test("the detail photo: the full image, no referrer, not lazy; the small one when that's all there is; the placeholder with none", () => {
+  const both = renderDetail(item({ product: { name: "Plain Rice Crackers", brand: "Hearthfield", image_small: "https://images.openfoodfacts.org/x.200.jpg", image: "https://images.openfoodfacts.org/x.400.jpg" } }));
+  assert.match(both, /<img class="product-photo product-photo--detail" src="https:\/\/images\.openfoodfacts\.org\/x\.400\.jpg" alt="" referrer[Pp]olicy="no-referrer" decoding="async"\/>/);
+  assert.match(renderDetail(item({ product: { name: "Plain Rice Crackers", brand: "Hearthfield", image_small: "https://images.openfoodfacts.org/x.200.jpg" } })), /src="https:\/\/images\.openfoodfacts\.org\/x\.200\.jpg"/);
+  assert.match(renderDetail(item({})), /product-photo--detail product-photo--empty/);
+});
+
+const PHOTO = readFileSync(new URL("../ProductPhoto.tsx", import.meta.url), "utf8");
+
+test("an image that fails to load gives way to the placeholder, and a new src gets a fresh try", () => {
+  assert.match(PHOTO, /onError=\{\(\) => setFailed\(true\)\}/);
+  assert.match(PHOTO, /if \(src && !failed\) \{/);
+  assert.match(PHOTO, /useEffect\(\(\) => setFailed\(false\), \[src\]\);/);
+  assert.match(PHOTO, /referrerPolicy="no-referrer"/);
+});

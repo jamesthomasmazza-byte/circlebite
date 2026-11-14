@@ -71,7 +71,7 @@ test("a row: the photo placeholder, the name, the brand, a verdict pill naming t
   assert.match(renderRow(MAY), /data-verdict="may_contain_caution".*Oat Biscuits.*verdict-pill snack-row__pill">May contain: Sesame</);
   assert.match(renderRow(item({})), /data-verdict="safe".*verdict-pill snack-row__pill">No listed allergens</);
   assert.match(renderRow(item({ headline: "unable_to_confirm", original: { result: "unable_to_confirm", matched_allergens: [row("Peanut", { classification: "unchecked" })] } })), /data-verdict="unable_to_confirm".*>Unable to confirm</);
-  assert.match(renderRow(item({ product: { name: "Plain Rice Crackers", brand: "Hearthfield", image_small: "https://images.openfoodfacts.org/x.200.jpg" } })), /<img class="product-photo product-photo--row" src="https:\/\/images\.openfoodfacts\.org\/x\.200\.jpg" alt="" loading="lazy" decoding="async"\/>/);
+  assert.match(renderRow(item({ product: { name: "Plain Rice Crackers", brand: "Hearthfield", image_small: "https://images.openfoodfacts.org/x.200.jpg" } })), /<img class="product-photo product-photo--row" src="https:\/\/images\.openfoodfacts\.org\/x\.200\.jpg" alt="" referrer[Pp]olicy="no-referrer" loading="lazy" decoding="async"\/>/);
 });
 
 test("a row carries nothing from the old card: no buttons, no note, no disclaimer, no scan-when-it-arrives line, no Approved by, and never the word safe", () => {
