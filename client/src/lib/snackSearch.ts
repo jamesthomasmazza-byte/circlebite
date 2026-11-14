@@ -24,11 +24,16 @@ export function localEmptyLine(query: string): string {
   return `Nothing called “${query}” among the products this app has seen.`;
 }
 
+/** No local match, so Open Food Facts was asked at once (JT, Nov 14), and it had none either. */
+export function nothingAnywhereLine(query: string): string {
+  return `Nothing called “${query}” in this app's records or on Open Food Facts.`;
+}
+
 export const SEARCH_MORE = "Search more";
 export const SEARCHING_MORE = "Asking Open Food Facts…";
 export const MORE_HEADING = "More from Open Food Facts";
 export const MORE_EMPTY = "Open Food Facts has no match either.";
-export const MORE_UNAVAILABLE = "Couldn't reach Open Food Facts right now. The results above are from this app's own records.";
+export const MORE_UNAVAILABLE = "Couldn't reach Open Food Facts right now. Try again in a moment.";
 export const MORE_BUSY = "Open Food Facts search is busy right now. Try again in a minute.";
 export const MORE_LIMIT = "That's this hour's limit for outside searches. This app's own records still answer.";
 

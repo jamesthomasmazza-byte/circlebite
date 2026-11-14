@@ -49,11 +49,27 @@ test("results are buttons with the product and its barcode, never a verdict and 
   assert.match(html, /<button type="button">Search more<\/button>/);
 });
 
-test("no local match says so by name and still offers Search more", () => {
-  const html = render({ searched: "zucchini chips", local: [] });
-  assert.match(html, /Nothing called “zucchini chips” among the products this app has seen\./);
-  assert.match(html, /Search more/);
-  assert.doesNotMatch(html, /Tap a product/);
+test("no local match: Open Food Facts is asked at once (JT, Nov 14) — only the waiting line while it's asked, then its results, or one line that nothing matched anywhere", () => {
+  const waiting = render({ searched: "zucchini chips", local: [], more: { kind: "loading" } });
+  assert.match(waiting, /Asking Open Food Facts…/);
+  assert.doesNotMatch(waiting, /Nothing called|Search more/);
+  const found = render({ searched: "zucchini chips", local: [], more: { kind: "done", results: [PRETZELS] } });
+  assert.match(found, /More from Open Food Facts/);
+  assert.match(found, /Peanut Butter Pretzels/);
+  assert.doesNotMatch(found, /Nothing called/);
+  const none = render({ searched: "zucchini chips", local: [], more: { kind: "done", results: [] } });
+  assert.match(none, /Nothing called “zucchini chips” in this app&#x27;s records or on Open Food Facts\./);
+  assert.doesNotMatch(none, /More from Open Food Facts|no match either|Tap a product/);
+  const failed = render({ searched: "zucchini chips", local: [], more: { kind: "failed", line: MORE_UNAVAILABLE } });
+  assert.match(failed, /Nothing called “zucchini chips” among the products this app has seen\./);
+  assert.match(failed, /Couldn&#x27;t reach Open Food Facts right now\./);
+  assert.doesNotMatch(failed, /Search more/, "no tap to offer: the ask already ran");
+});
+
+test("with local results, Search more stays a tap away", () => {
+  const html = render({ searched: "crackers", local: [CRACKERS] });
+  assert.match(html, /<button type="button">Search more<\/button>/);
+  assert.doesNotMatch(html, /Asking Open Food Facts/);
 });
 
 test("Search more: loading, then its results under their own heading, or that Open Food Facts has none either", () => {
@@ -64,7 +80,7 @@ test("Search more: loading, then its results under their own heading, or that Op
   assert.match(done, /<h3 class="snack-search__heading">More from Open Food Facts<\/h3>/);
   assert.match(done, /Peanut Butter Pretzels — Kirkland Signature/);
   assert.doesNotMatch(done, /<button type="button">Search more<\/button>/, "offered once per search");
-  assert.match(render({ searched: "peanut", local: [], more: { kind: "done", results: [] } }), /Open Food Facts has no match either\./);
+  assert.match(render({ searched: "peanut", local: [CRACKERS], more: { kind: "done", results: [] } }), /Open Food Facts has no match either\./);
 });
 
 test("a Search more failure is said as what it is, in a status line, and the local results stay", () => {
@@ -86,5 +102,7 @@ test("a tap navigates to Scan for the profile with the barcode in location state
   assert.match(SOURCE, /navigate\(scanPathFor\(profile\.id\), \{ state: scanStateFor\(result\.barcode\) \}\)/);
   assert.doesNotMatch(SOURCE, /barcode=/, "no barcode query parameter");
   assert.match(SOURCE, /r\.results\.filter\(\(x\) => !shown\.has\(x\.barcode\)\)/);
+  assert.match(SOURCE, /if \(found && searchedQuery && found\.length === 0\) await searchMore\(searchedQuery, found\);/, "no local match asks Open Food Facts at once, through the same limited route");
+  assert.match(SOURCE, /const r = await searchSnacksMore\(query\);/);
   assert.match(SOURCE, /moreFailureLine\(err instanceof ApiRequestError \? err\.message : ""\)/);
 });

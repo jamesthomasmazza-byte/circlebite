@@ -5,6 +5,7 @@ import { ApiRequestError, searchSnacks, searchSnacksMore, type ProfileSummary, t
 import {
   localEmptyLine,
   MORE_EMPTY,
+  nothingAnywhereLine,
   MORE_HEADING,
   moreFailureLine,
   pickLine,
@@ -52,10 +53,14 @@ export function SnackSearch({ profile }: { profile: Pick<ProfileSummary, "id" | 
     setError(null);
     setSearching(true);
     setMore({ kind: "idle" });
+    let found: SnackSearchResult[] | null = null;
+    let searchedQuery: string | null = null;
     try {
       const r = await searchSnacks(q.slice(0, QUERY_MAX));
-      setLocal(r.results);
-      setSearched(r.query);
+      found = r.results;
+      searchedQuery = r.query;
+      setLocal(found);
+      setSearched(searchedQuery);
     } catch {
       setLocal(null);
       setSearched(null);
@@ -63,14 +68,17 @@ export function SnackSearch({ profile }: { profile: Pick<ProfileSummary, "id" | 
     } finally {
       setSearching(false);
     }
+    // No local match: ask Open Food Facts at once rather than waiting for a tap (JT, Nov 14). Same
+    // route, same limits, same waiting line. With local results, "Search more" stays a tap away.
+    if (found && searchedQuery && found.length === 0) await searchMore(searchedQuery, found);
   }
 
-  async function searchMore() {
-    if (!searched) return;
+  async function searchMore(query = searched, shownResults = local) {
+    if (!query) return;
     setMore({ kind: "loading" });
     try {
-      const r = await searchSnacksMore(searched);
-      const shown = new Set((local ?? []).map((x) => x.barcode));
+      const r = await searchSnacksMore(query);
+      const shown = new Set((shownResults ?? []).map((x) => x.barcode));
       setMore({ kind: "done", results: r.results.filter((x) => !shown.has(x.barcode)) });
     } catch (err) {
       setMore({ kind: "failed", line: moreFailureLine(err instanceof ApiRequestError ? err.message : "") });
@@ -92,7 +100,7 @@ export function SnackSearch({ profile }: { profile: Pick<ProfileSummary, "id" | 
       searched={searched}
       local={local}
       more={more}
-      onMore={searchMore}
+      onMore={() => void searchMore()}
       onPick={pick}
     />
   );
@@ -154,10 +162,12 @@ export function SnackSearchView({
 
       {searched !== null && local !== null && (
         <div className="snack-search__results">
-          {local.length === 0 && <p className="snack-search__empty">{localEmptyLine(searched)}</p>}
+          {/* No local match: Open Food Facts is already being asked, so the only line is the waiting
+              one, then its answer. The local-empty line shows only if that ask failed. */}
+          {local.length === 0 && (more.kind === "idle" || more.kind === "failed") && <p className="snack-search__empty">{localEmptyLine(searched)}</p>}
           {local.length > 0 && <ResultList results={local} onPick={onPick} />}
 
-          {more.kind === "idle" && (
+          {more.kind === "idle" && local.length > 0 && (
             <p className="snack-search__more">
               <button type="button" onClick={onMore}>
                 {SEARCH_MORE}
@@ -176,7 +186,10 @@ export function SnackSearchView({
               {more.line}
             </p>
           )}
-          {more.kind === "done" && (
+          {more.kind === "done" && local.length === 0 && more.results.length === 0 && (
+            <p className="snack-search__empty">{nothingAnywhereLine(searched)}</p>
+          )}
+          {more.kind === "done" && (local.length > 0 || more.results.length > 0) && (
             <>
               <h3 className="snack-search__heading">{MORE_HEADING}</h3>
               {more.results.length === 0 ? (

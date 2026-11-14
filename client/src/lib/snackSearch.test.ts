@@ -34,6 +34,7 @@ test("each Search more failure is said as what it is", () => {
   assert.equal(moreFailureLine("search_unavailable"), copy.MORE_UNAVAILABLE);
   assert.equal(moreFailureLine("request_failed_500"), copy.SEARCH_FAILED);
   assert.doesNotMatch(copy.MORE_UNAVAILABLE, /no match|nothing/i, "a failure never reads as 'nothing matched'");
+  assert.equal(copy.nothingAnywhereLine("zucchini chips"), "Nothing called “zucchini chips” in this app's records or on Open Food Facts.");
 });
 
 test("the hand-off: the path carries only the profile; the barcode rides in location state and is read back only when it looks like one", () => {
