@@ -193,6 +193,74 @@ export function refusedLine(names: string[]): string {
   return `Not added — ${names.length === 1 ? "it reads" : "they read"} “Contains an allergen” now: ${nameList(names)}.`;
 }
 
+// ---- The rebuilt list and the detail page (JT's mockup, Nov 14) ----
+
+/** One compact note per page, under the title, in place of the per-item disclaimers. */
+export const SCREENING_NOTE = "Screening aid, not a guarantee. Check the label, especially for “may contain.” Allergic reaction? Call 911.";
+/** On the detail page, before the actions. */
+export const DETAIL_ARRIVES = "Scan it when it arrives — stores can send a different version. Screening aid, not a guarantee.";
+export const NOT_FOR_CART = "Not for cart";
+export const ON_AMAZON = "On Amazon";
+export const REMOVE_FROM_LIST = "Remove from list";
+export const CHANGE_AMAZON_LINK = "Change Amazon link";
+export const UNKNOWN_PRODUCT = "Unknown product";
+export const CHECKED_FOR = "Checked for";
+export const ITEM_GONE = "That snack isn't on the list any more.";
+
+export function itemCount(n: number): string {
+  return n === 1 ? "1 item" : `${n} items`;
+}
+
+export function cartBarLabel(n: number): string {
+  return `Add ${n} to Amazon cart`;
+}
+
+/** The item's detail page, on the profile the shell holds. */
+export function snackDetailPath(profileId: string, itemId: string): string {
+  return `/snacks/${encodeURIComponent(itemId)}?profile=${encodeURIComponent(profileId)}`;
+}
+
+/**
+ * The row's pill: the verdict in a few words, naming the allergens it is about. "Contains: Peanut",
+ * "May contain: Sesame", "No listed allergens", "Unable to confirm". With no names to show (a
+ * severe_only follower's filtered rows), the verdict alone. Never the word "safe".
+ */
+export function verdictPill(verdict: Verdict, allergenNames: string[]): string {
+  const names = allergenNames.join(", ");
+  switch (verdict) {
+    case "contains_allergen":
+      return names ? `Contains: ${names}` : "Contains an allergen";
+    case "may_contain_caution":
+      return names ? `May contain: ${names}` : "May contain";
+    case "unable_to_confirm":
+      return "Unable to confirm";
+    default:
+      return "No listed allergens";
+  }
+}
+
+/** The allergens a verdict pill names: what the rows claim is present, or may be. */
+export function pillAllergens(verdict: Verdict, matched: Pick<MatchedAllergen, "allergenName" | "classification">[]): string[] {
+  const wanted = verdict === "contains_allergen" ? ["contains"] : verdict === "may_contain_caution" ? ["caution", "contains"] : [];
+  return matched.filter((m) => wanted.includes(m.classification)).map((m) => m.allergenName);
+}
+
+/** A row of the detail page's "Checked for" list. */
+export function checkedRowLabel(m: Pick<MatchedAllergen, "classification">): string {
+  switch (m.classification) {
+    case "contains":
+      return "contains";
+    case "caution":
+      return "may contain traces";
+    case "unresolved":
+      return "couldn't confirm from the label text";
+    case "unchecked":
+      return "not checked";
+    default:
+      return "not found in the data";
+  }
+}
+
 /** The profile page's link to the list (plan step 9). */
 export const SNACKS_LINK = "Snacks →";
 

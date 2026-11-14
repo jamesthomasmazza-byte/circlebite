@@ -758,7 +758,9 @@ export type ShopLinks = { amazon: string; instacart: string; affiliate: boolean 
 export type SnackItem = {
   id: string;
   barcode: string;
-  product: { name: string | null; brand: string | null };
+  // Photos (JT's mockup, Nov 14): Open Food Facts' front image, small for a row and full for the
+  // detail page, once the server stores them; absent or null draws the placeholder (ProductPhoto.tsx).
+  product: { name: string | null; brand: string | null; image_small?: string | null; image?: string | null };
   note: string | null;
   // The approver's display name; null when their account is gone.
   added_by: string | null;
