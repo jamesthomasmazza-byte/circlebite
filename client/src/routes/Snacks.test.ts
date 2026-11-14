@@ -149,21 +149,23 @@ test("the search box (SNACK_SEARCH) sits above the list only while its own switc
 
 test("with carts off (the default) nothing of part B is drawn", () => {
   const html = render(item({ amazon: { asin: "B07PGL2ZSL", linked_by: "Grandma", linked_at: "2026-11-13T16:00:00Z" } }));
-  assert.doesNotMatch(html, /checkbox|Link on Amazon|Amazon link added|Amazon cart/);
+  assert.doesNotMatch(html, /checkbox|Link on Amazon|Amazon link added|Amazon cart|Change link/);
 });
 
-test("carts on: an item with shop links gets a checkbox named for the product; a manager gets Link on Amazon; a follower gets the checkbox only", () => {
+test("carts on, not linked: one Amazon control — a manager's is Link on Amazon, the search in a new tab; a follower's is Shop on Amazon; both get the checkbox", () => {
   const manager = render(item({}), true, carts);
   assert.match(manager, /<input type="checkbox" aria-label="Select Plain Rice Crackers for the Amazon cart"\/>/);
-  assert.match(manager, /<button type="button">Link on Amazon<\/button>/);
-  assert.doesNotMatch(manager, /Amazon link added|Remove Amazon link/);
+  assert.match(manager, /<a class="button-link" href="https:\/\/www\.amazon\.com\/s\?k=Plain%20Rice%20Crackers%20Hearthfield" target="_blank" rel="noopener noreferrer">Link on Amazon<\/a>/);
+  assert.doesNotMatch(manager, /Shop on Amazon|Amazon link added|Change link|Remove link/);
+  assert.match(manager, /<button type="button">Add a note<\/button><button type="button">Remove<\/button><\/p>/, "the actions row has no Amazon buttons");
   const follower = render(item({}), false, carts);
   assert.match(follower, /aria-label="Select Plain Rice Crackers for the Amazon cart"/);
+  assert.match(follower, /href="https:\/\/www\.amazon\.com\/s\?k=[^"]+" target="_blank" rel="noopener noreferrer">Shop on Amazon</);
   assert.doesNotMatch(follower, /Link on Amazon/);
   assert.match(render(item({}), true, { ...carts, selected: true }), /<input type="checkbox" aria-label="[^"]+" checked=""/);
 });
 
-test("a linked item says who linked it and when, Shop on Amazon is the server's product link, and the manager may change or remove the link", () => {
+test("a linked item: Shop on Amazon is the server's product link, the line says who linked it, and a manager gets a small Change link", () => {
   const html = render(
     item({
       amazon: { asin: "B07PGL2ZSL", linked_by: "Grandma", linked_at: "2026-11-13T16:00:00Z" },
@@ -172,10 +174,13 @@ test("a linked item says who linked it and when, Shop on Amazon is the server's 
     true,
     carts,
   );
-  assert.match(html, /<p class="card__meta snack-item__amazon">Amazon link added by Grandma, Nov 13<\/p>/);
+  assert.match(html, /<p class="card__meta snack-item__amazon">Amazon link added by Grandma, Nov 13 · <button type="button" class="link-button">Change link<\/button><\/p>/);
   assert.match(html, /href="https:\/\/www\.amazon\.com\/dp\/B07PGL2ZSL"[^>]*>Shop on Amazon</);
-  assert.match(html, /<button type="button">Change Amazon link<\/button><button type="button">Remove Amazon link<\/button>/);
-  assert.match(render(item({ amazon: { asin: "B07PGL2ZSL", linked_by: null, linked_at: "2026-11-13T16:00:00Z" } }), true, carts), /Amazon link added Nov 13</);
+  assert.doesNotMatch(html, /Link on Amazon|Change Amazon link|Remove Amazon link/);
+  assert.match(render(item({ amazon: { asin: "B07PGL2ZSL", linked_by: null, linked_at: "2026-11-13T16:00:00Z" } }), true, carts), /Amazon link added Nov 13/);
+  const follower = render(item({ amazon: { asin: "B07PGL2ZSL", linked_by: "Grandma", linked_at: "2026-11-13T16:00:00Z" } }), false, carts);
+  assert.match(follower, /Amazon link added by Grandma, Nov 13<\/p>/);
+  assert.doesNotMatch(follower, /Change link/);
 });
 
 test("a Contains item, which the server sends without shop links, gets no checkbox and no Link on Amazon even with carts on", () => {

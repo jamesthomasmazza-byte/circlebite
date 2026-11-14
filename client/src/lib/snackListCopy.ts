@@ -121,9 +121,11 @@ export const LIST_FAILED = "Couldn't load the list — you may not have access t
 
 // ---- Carts (the plan's addendum part B, 2026-11-14; behind SNACK_CARTS). Amazon only. ----
 
+/** One Amazon control per item (JT, Nov 14): unlinked, this opens the Amazon search in a new tab and the
+ *  paste box at once; linked, the control is "Shop on Amazon" to the product, with a small "Change link". */
 export const LINK_AMAZON = "Link on Amazon";
-export const CHANGE_AMAZON_LINK = "Change Amazon link";
-export const REMOVE_AMAZON_LINK = "Remove Amazon link";
+export const CHANGE_LINK = "Change link";
+export const REMOVE_LINK = "Remove link";
 export const LINK_AMAZON_LABEL = "The product's amazon.com link";
 export const LINK_AMAZON_HINT = "Open the product on amazon.com and copy the address. Only the product code is kept.";
 export const LINK_SAVE = "Save link";

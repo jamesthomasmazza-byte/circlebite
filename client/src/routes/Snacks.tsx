@@ -30,7 +30,7 @@ import {
   CART_NOTHING,
   cartButtonLabel,
   cartIncludedLine,
-  CHANGE_AMAZON_LINK,
+  CHANGE_LINK,
   EDIT_NOTE,
   emptyLine,
   LABEL_WRONG,
@@ -52,7 +52,7 @@ import {
   OPEN_CART,
   refusedLine,
   REMOVE,
-  REMOVE_AMAZON_LINK,
+  REMOVE_LINK,
   SCAN_WHEN_IT_ARRIVES,
   selectForCartLabel,
   SHOP_AMAZON,
@@ -281,6 +281,14 @@ export function SnackItemCard({
     void run(() => onSaveNote(note === "" ? null : note), "Couldn't save the note. Try again.");
   }
 
+  // The paste box, opened by the one Amazon control: "Link on Amazon" (which also opens the Amazon
+  // search in a new tab, so the address can be copied from there) or a linked item's "Change link".
+  function openLinkForm() {
+    setLinkDraft("");
+    setLinkError(null);
+    setLinking(true);
+  }
+
   async function saveLink(e: FormEvent) {
     e.preventDefault();
     if (!onLinkAmazon) return;
@@ -311,7 +319,6 @@ export function SnackItemCard({
         {item.product.brand && <span className="snack-item__brand"> — {item.product.brand}</span>}
         <span className="card__meta card__line snack-item__barcode">{item.barcode}</span>
       </p>
-      {cartsEnabled && item.amazon && <p className="card__meta snack-item__amazon">{amazonLinkedBy(item.amazon.linked_by, shortDate(item.amazon.linked_at))}</p>}
 
       {rows.length > 0 && (
         <ul className="history-entry__rows">
@@ -366,14 +373,36 @@ export function SnackItemCard({
 
       <p className="card__meta snack-item__arrives">{SCAN_WHEN_IT_ARRIVES}</p>
 
+      {/* One Amazon control (JT, Nov 14). A manager with carts on and no link yet: "Link on Amazon",
+          which is the Amazon search in a new tab and opens the paste box here. Otherwise "Shop on
+          Amazon": the linked product when there is one (the server's link), else the search. */}
       {item.shop && (
         <p className="snack-item__shop">
-          <a className="button-link" href={item.shop.amazon} target="_blank" rel="noopener noreferrer">
-            {SHOP_AMAZON}
-          </a>
+          {cartable && canManage && onLinkAmazon && !item.amazon ? (
+            <a className="button-link" href={item.shop.amazon} target="_blank" rel="noopener noreferrer" onClick={openLinkForm}>
+              {LINK_AMAZON}
+            </a>
+          ) : (
+            <a className="button-link" href={item.shop.amazon} target="_blank" rel="noopener noreferrer">
+              {SHOP_AMAZON}
+            </a>
+          )}
           <a className="button-link" href={item.shop.instacart} target="_blank" rel="noopener noreferrer">
             {SHOP_INSTACART}
           </a>
+        </p>
+      )}
+      {cartsEnabled && item.amazon && (
+        <p className="card__meta snack-item__amazon">
+          {amazonLinkedBy(item.amazon.linked_by, shortDate(item.amazon.linked_at))}
+          {cartable && canManage && onLinkAmazon && !linking && (
+            <>
+              {" · "}
+              <button type="button" className="link-button" disabled={busy} onClick={openLinkForm}>
+                {CHANGE_LINK}
+              </button>
+            </>
+          )}
         </p>
       )}
 
@@ -398,6 +427,11 @@ export function SnackItemCard({
             <button type="button" disabled={busy} onClick={() => setLinking(false)}>
               {NOTE_CANCEL}
             </button>
+            {item.amazon && (
+              <button type="button" disabled={busy} onClick={() => void run(() => onLinkAmazon!(null), LINK_FAILED).then(() => setLinking(false))}>
+                {REMOVE_LINK}
+              </button>
+            )}
           </p>
         </form>
       )}
@@ -419,24 +453,6 @@ export function SnackItemCard({
           <button type="button" disabled={busy} onClick={() => void run(onRemove, "Couldn't remove it. Try again.")}>
             {REMOVE}
           </button>
-          {cartable && onLinkAmazon && (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => {
-                setLinkDraft("");
-                setLinkError(null);
-                setLinking(true);
-              }}
-            >
-              {item.amazon ? CHANGE_AMAZON_LINK : LINK_AMAZON}
-            </button>
-          )}
-          {cartable && onLinkAmazon && item.amazon && (
-            <button type="button" disabled={busy} onClick={() => void run(() => onLinkAmazon(null), LINK_FAILED)}>
-              {REMOVE_AMAZON_LINK}
-            </button>
-          )}
         </p>
       )}
 
