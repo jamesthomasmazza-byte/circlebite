@@ -57,7 +57,9 @@ test("no local match says so by name and still offers Search more", () => {
 });
 
 test("Search more: loading, then its results under their own heading, or that Open Food Facts has none either", () => {
-  assert.match(render({ searched: "peanut", local: [CRACKERS], more: { kind: "loading" } }), /Asking Open Food Facts…/);
+  const waiting = render({ searched: "peanut", local: [CRACKERS], more: { kind: "loading" } });
+  assert.match(waiting, /<p role="status" aria-busy="true" class="snack-search__more snack-search__waiting">Asking Open Food Facts…<\/p>/);
+  assert.doesNotMatch(waiting, /Search more</, "the button is gone while it waits, so a tap isn't repeated");
   const done = render({ searched: "peanut", local: [CRACKERS], more: { kind: "done", results: [PRETZELS] } });
   assert.match(done, /<h3 class="snack-search__heading">More from Open Food Facts<\/h3>/);
   assert.match(done, /Peanut Butter Pretzels — Kirkland Signature/);

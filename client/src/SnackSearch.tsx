@@ -164,7 +164,13 @@ export function SnackSearchView({
               </button>
             </p>
           )}
-          {more.kind === "loading" && <p className="snack-search__more">{SEARCHING_MORE}</p>}
+          {/* The working state, for up to the server's 15-second wait: the button is gone and this line
+              is read out at once (role=status, aria-busy), so a tap isn't repeated. */}
+          {more.kind === "loading" && (
+            <p role="status" aria-busy="true" className="snack-search__more snack-search__waiting">
+              {SEARCHING_MORE}
+            </p>
+          )}
           {more.kind === "failed" && (
             <p role="status" className="snack-search__more">
               {more.line}
