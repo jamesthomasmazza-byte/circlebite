@@ -53,6 +53,18 @@ export function moreFailureLine(code: string): string {
 
 export const UNNAMED = "Unnamed product";
 
+// ---- Adding straight from a result (JT, Nov 14; managers only) ----
+// The Add button runs the same scan the Scan page would for that barcode and the chosen profile, on
+// the server, and then the existing add by scan id — the list's barcode comes from the scan row.
+export const ADD_BUTTON = "Add";
+export const ADD_CHECKING = "Checking…";
+export const ADD_ADDING = "Adding…";
+/** The result's own name button: what tapping the name does, said once under the list. */
+export function pickLineWithAdd(profile: { label: string; is_self: boolean }): string {
+  const who = profile.is_self ? "you" : profile.label;
+  return `Add checks the product for ${who} first and puts it on the list; tap the name instead to see its full card.`;
+}
+
 /** "Crunchy Peanut Bar — Hearthfield", or whichever of the two there is. */
 export function resultTitle(result: { name: string | null; brand: string | null }): string {
   if (result.name && result.brand) return `${result.name} — ${result.brand}`;

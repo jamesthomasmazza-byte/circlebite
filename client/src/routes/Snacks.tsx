@@ -181,7 +181,7 @@ export function Snacks() {
 
       {/* Search (SnackSearch.tsx, behind SNACK_SEARCH): above the list, for anyone who can see it; a
           result opens Scan for this profile, where only a manager gets "Add to". */}
-      {snackSearchEnabled && <SnackSearch profile={profile} />}
+      {snackSearchEnabled && <SnackSearch profile={profile} canManage={canManage} onAdded={refresh} />}
 
       {error && <p role="alert">{error}</p>}
 
