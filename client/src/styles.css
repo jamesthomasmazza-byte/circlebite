@@ -4040,3 +4040,54 @@ button.scan-tile {
 .snack-search__pick {
   margin: var(--space-2) 0 0;
 }
+
+/* ---------- Snack carts — the checkbox, the Amazon link, the cart panel (SNACK_CARTS) ------------ */
+
+.snack-item__select {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.snack-item__select input {
+  margin: 0;
+}
+
+.snack-item__amazon {
+  margin: var(--space-1) 0 0;
+}
+
+.snack-item__link-form .card__meta {
+  margin: var(--space-1) 0 0;
+}
+
+.snacks__cart {
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.snacks__cart-actions {
+  margin: 0;
+}
+
+.snacks__cart-actions button {
+  width: 100%;
+  margin: 0;
+}
+
+.snacks__cart-result {
+  margin-top: var(--space-3);
+}
+
+.snacks__cart-result p {
+  margin: var(--space-2) 0 0;
+}
+
+.snacks__cart-result .button-link {
+  width: 100%;
+  justify-content: center;
+}

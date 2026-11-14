@@ -4,7 +4,18 @@ import { Link } from "react-router-dom";
 import { SnackSearch } from "../SnackSearch";
 import { useScanningFor } from "../TabShell";
 import { historyRowLabel, shopperCount } from "../lib/allergenRowCopy";
-import { getSnackList, removeSnack, updateSnackNote, type ProfileSummary, type SnackItem, type SnackList } from "../lib/api";
+import {
+  ApiRequestError,
+  buildSnackCart,
+  getSnackList,
+  linkSnackOnAmazon,
+  removeSnack,
+  updateSnackNote,
+  type CartBuild,
+  type ProfileSummary,
+  type SnackItem,
+  type SnackList,
+} from "../lib/api";
 import { useAuth } from "../lib/AuthContext";
 import { changedByLine, circleReportLine } from "../lib/correctionCopy";
 import { JUDGE_LINK_NOT_FOUND } from "../lib/judgeLink";
@@ -12,11 +23,26 @@ import { addProfileHref } from "../lib/profileSections";
 import {
   ADD_NOTE,
   AFFILIATE_DISCLOSURE,
+  amazonLinkedBy,
   approvedBy,
+  CART_BUILDING,
+  CART_FAILED,
+  CART_NOTE,
+  CART_NOTHING,
+  cartButtonLabel,
+  cartIncludedLine,
+  CHANGE_AMAZON_LINK,
   EDIT_NOTE,
   EMPTY_SCAN_LINK,
   emptyLine,
   LABEL_WRONG,
+  leftOutLine,
+  LINK_AMAZON,
+  LINK_AMAZON_HINT,
+  LINK_AMAZON_LABEL,
+  LINK_FAILED,
+  LINK_INVALID,
+  LINK_SAVE,
   LIST_FAILED,
   listTitle,
   NO_PROFILE,
@@ -25,8 +51,12 @@ import {
   NOTE_MAX,
   NOTE_SAVE,
   notCheckedLine,
+  OPEN_CART,
+  refusedLine,
   REMOVE,
+  REMOVE_AMAZON_LINK,
   SCAN_WHEN_IT_ARRIVES,
+  selectForCartLabel,
   SHOP_AMAZON,
   SHOP_INSTACART,
   shortDate,
@@ -44,19 +74,36 @@ import { DISCLAIMER, DISCLAIMER_SHORT, EMERGENCY, VERDICT_LABEL } from "../lib/v
  * as Scan's pill, so moving between Scan and Snacks keeps the same child.
  */
 export function Snacks() {
-  const { snackListEnabled, snackSearchEnabled, loading } = useAuth();
+  const { snackListEnabled, snackSearchEnabled, snackCartsEnabled, loading } = useAuth();
   const { chosenProfileId, profiles, profilesLoaded } = useScanningFor();
   const profile = profiles.find((p) => p.id === scanningForId(chosenProfileId, profiles)) ?? null;
   const [list, setList] = useState<SnackList | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reads, setReads] = useState(0);
+  // Carts (SNACK_CARTS): the ticked items, by id. Cleared when the profile changes; an id that left
+  // the list is dropped when the list reloads. The cart itself is built on the server from these ids.
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [cartBusy, setCartBusy] = useState(false);
+  const [cartResult, setCartResult] = useState<CartBuild | null>(null);
+  const [cartError, setCartError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelected(new Set());
+    setCartResult(null);
+    setCartError(null);
+  }, [profile?.id]);
 
   useEffect(() => {
     if (!profile || !snackListEnabled) return;
     let live = true;
     setError(null);
     getSnackList(profile.id)
-      .then((l) => live && setList(l))
+      .then((l) => {
+        if (!live) return;
+        setList(l);
+        const ids = new Set(l.items.map((i) => i.id));
+        setSelected((prev) => new Set([...prev].filter((id) => ids.has(id))));
+      })
       .catch(() => {
         if (!live) return;
         setList(null);
@@ -90,6 +137,31 @@ export function Snacks() {
 
   const canManage = profile.relationship === "owner" || profile.relationship === "co_manager";
   const refresh = () => setReads((n) => n + 1);
+  const shoppable = list?.items.filter((i) => i.shop) ?? [];
+
+  function toggle(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    setCartResult(null);
+  }
+
+  async function buildCart() {
+    if (selected.size === 0) return;
+    setCartBusy(true);
+    setCartError(null);
+    setCartResult(null);
+    try {
+      setCartResult(await buildSnackCart(profile!.id, [...selected]));
+    } catch {
+      setCartError(CART_FAILED);
+    } finally {
+      setCartBusy(false);
+    }
+  }
 
   return (
     <main className="snacks">
@@ -131,9 +203,20 @@ export function Snacks() {
                 await updateSnackNote(profile.id, item.id, note);
                 refresh();
               }}
+              cartsEnabled={snackCartsEnabled}
+              selected={selected.has(item.id)}
+              onToggle={() => toggle(item.id)}
+              onLinkAmazon={async (url) => {
+                await linkSnackOnAmazon(profile.id, item.id, url);
+                refresh();
+              }}
             />
           ))}
         </ul>
+      )}
+
+      {snackCartsEnabled && shoppable.length > 0 && (
+        <SnackCartPanel count={selected.size} busy={cartBusy} result={cartResult} error={cartError} onBuild={() => void buildCart()} />
       )}
 
       {list?.affiliate && <p className="card__meta snacks__affiliate">{AFFILIATE_DISCLOSURE}</p>}
@@ -153,14 +236,29 @@ export function SnackItemCard({
   canManage,
   onRemove,
   onSaveNote,
+  cartsEnabled = false,
+  selected = false,
+  onToggle,
+  onLinkAmazon,
 }: {
   item: SnackItem;
   profile: Pick<ProfileSummary, "id" | "label" | "is_self">;
   canManage: boolean;
   onRemove: () => Promise<void>;
   onSaveNote: (note: string | null) => Promise<void>;
+  /** Carts (SNACK_CARTS): the checkbox on items with shop links, "Link on Amazon" for managers. */
+  cartsEnabled?: boolean;
+  selected?: boolean;
+  onToggle?: () => void;
+  onLinkAmazon?: (url: string | null) => Promise<void>;
 }) {
   const shown = item.effective ?? item.original;
+  // Only an item the list will shop for can go in a cart or be linked: a "Contains" item has no shop
+  // links (the server omits them) and the server refuses it from a cart anyway.
+  const cartable = cartsEnabled && Boolean(item.shop);
+  const [linking, setLinking] = useState(false);
+  const [linkDraft, setLinkDraft] = useState("");
+  const [linkError, setLinkError] = useState<string | null>(null);
   const rows = shown.matched_allergens.filter((m) => m.classification !== "clear" && m.classification !== "unchecked");
   const unchecked = shown.matched_allergens.filter((m) => m.classification === "unchecked").map((m) => m.allergenName);
   const [editing, setEditing] = useState(false);
@@ -187,15 +285,38 @@ export function SnackItemCard({
     void run(() => onSaveNote(note === "" ? null : note), "Couldn't save the note. Try again.");
   }
 
+  async function saveLink(e: FormEvent) {
+    e.preventDefault();
+    if (!onLinkAmazon) return;
+    setBusy(true);
+    setLinkError(null);
+    try {
+      await onLinkAmazon(linkDraft.trim());
+      setLinking(false);
+      setLinkDraft("");
+    } catch (err) {
+      setLinkError(err instanceof ApiRequestError && err.message === "invalid_amazon_link" ? LINK_INVALID : LINK_FAILED);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <li className="card snack-item" data-verdict={item.headline}>
       <p className="verdict-card__headline snack-item__verdict">{VERDICT_LABEL[item.headline]}</p>
+      {cartable && (
+        <label className="snack-item__select">
+          <input type="checkbox" checked={selected} onChange={onToggle} aria-label={selectForCartLabel(item.product.name)} />
+          <span aria-hidden="true">Amazon cart</span>
+        </label>
+      )}
       <p className="snack-item__product">
         <strong>{item.product.name ?? "Unknown product"}</strong>
         {item.product.brand && <span className="snack-item__brand"> — {item.product.brand}</span>}
         <span className="card__meta card__line snack-item__barcode">{item.barcode}</span>
       </p>
       <p className="card__meta snack-item__approved">{approvedBy(item.added_by, shortDate(item.created_at))}</p>
+      {cartsEnabled && item.amazon && <p className="card__meta snack-item__amazon">{amazonLinkedBy(item.amazon.linked_by, shortDate(item.amazon.linked_at))}</p>}
 
       {rows.length > 0 && (
         <ul className="history-entry__rows">
@@ -267,9 +388,28 @@ export function SnackItemCard({
         </p>
       )}
 
+      {linking && (
+        <form className="snack-item__note-form snack-item__link-form" onSubmit={(e) => void saveLink(e)}>
+          <label>
+            {LINK_AMAZON_LABEL}
+            <input type="url" inputMode="url" autoComplete="off" value={linkDraft} onChange={(e) => setLinkDraft(e.target.value)} required />
+          </label>
+          <p className="card__meta">{LINK_AMAZON_HINT}</p>
+          {linkError && <p role="alert">{linkError}</p>}
+          <p className="snack-item__actions">
+            <button type="submit" className="button-primary" disabled={busy}>
+              {busy ? "Saving…" : LINK_SAVE}
+            </button>
+            <button type="button" disabled={busy} onClick={() => setLinking(false)}>
+              {NOTE_CANCEL}
+            </button>
+          </p>
+        </form>
+      )}
+
       {failed && <p role="alert">{failed}</p>}
 
-      {canManage && !editing && (
+      {canManage && !editing && !linking && (
         <p className="snack-item__actions">
           <button
             type="button"
@@ -284,10 +424,77 @@ export function SnackItemCard({
           <button type="button" disabled={busy} onClick={() => void run(onRemove, "Couldn't remove it. Try again.")}>
             {REMOVE}
           </button>
+          {cartable && onLinkAmazon && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setLinkDraft("");
+                setLinkError(null);
+                setLinking(true);
+              }}
+            >
+              {item.amazon ? CHANGE_AMAZON_LINK : LINK_AMAZON}
+            </button>
+          )}
+          {cartable && onLinkAmazon && item.amazon && (
+            <button type="button" disabled={busy} onClick={() => void run(() => onLinkAmazon(null), LINK_FAILED)}>
+              {REMOVE_AMAZON_LINK}
+            </button>
+          )}
         </p>
       )}
 
       <p className="history-entry__disclaimer">{DISCLAIMER_SHORT}</p>
     </li>
+  );
+}
+
+/**
+ * "Add selected to Amazon cart" (the addendum's part B): one button for the ticked items, and what
+ * the server made of them — the one cart link, who went in, who was left out for want of an Amazon
+ * link, and who was refused because the server's own re-check reads "Contains an allergen" now.
+ */
+export function SnackCartPanel({
+  count,
+  busy,
+  result,
+  error,
+  onBuild,
+}: {
+  count: number;
+  busy: boolean;
+  result: CartBuild | null;
+  error: string | null;
+  onBuild: () => void;
+}) {
+  return (
+    <div className="snacks__cart" aria-label="Amazon cart">
+      <p className="snacks__cart-actions">
+        <button type="button" className="button-primary" disabled={busy || count === 0} onClick={onBuild}>
+          {busy ? CART_BUILDING : cartButtonLabel(count)}
+        </button>
+      </p>
+      {error && <p role="alert">{error}</p>}
+      {result && (
+        <div role="status" className="snacks__cart-result">
+          {result.url ? (
+            <>
+              <p>{cartIncludedLine(result.included.length)}</p>
+              <p>
+                <a className="button-link" href={result.url} target="_blank" rel="noopener noreferrer">
+                  {OPEN_CART}
+                </a>
+              </p>
+            </>
+          ) : (
+            <p>{CART_NOTHING}</p>
+          )}
+          {result.left_out.length > 0 && <p>{leftOutLine(result.left_out.map((i) => i.name))}</p>}
+          {result.refused.length > 0 && <p>{refusedLine(result.refused.map((i) => i.name))}</p>}
+          {result.url && <p className="card__meta">{CART_NOTE}</p>}
+        </div>
+      )}
+    </div>
   );
 }

@@ -6,7 +6,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 
 import type { MatchedAllergen, SnackItem } from "../lib/api";
-import { SnackItemCard } from "./Snacks";
+import { SnackCartPanel, SnackItemCard } from "./Snacks";
 
 // The Snacks tab's item card (docs/snack-list-plan.md decision 7, 2026-11-13; behind SNACK_LIST).
 
@@ -40,11 +40,13 @@ function item(over: Partial<SnackItem>): SnackItem {
 }
 
 const noop = async () => {};
-function render(i: SnackItem, canManage = true): string {
+type CardProps = Parameters<typeof SnackItemCard>[0];
+function render(i: SnackItem, canManage = true, extra: Partial<CardProps> = {}): string {
   return renderToStaticMarkup(
-    createElement(MemoryRouter, null, createElement(SnackItemCard, { item: i, profile: MAYA, canManage, onRemove: noop, onSaveNote: noop })),
+    createElement(MemoryRouter, null, createElement(SnackItemCard, { item: i, profile: MAYA, canManage, onRemove: noop, onSaveNote: noop, ...extra })),
   );
 }
+const carts: Partial<CardProps> = { cartsEnabled: true, onToggle: () => {}, onLinkAmazon: noop };
 
 test("a clean item: the verdict card's own words in its colour, the product, who approved it, both shop links in a new tab", () => {
   const html = render(item({}));
@@ -139,9 +141,89 @@ test("the page takes the shell's chosen profile, keeps the server's order, and r
 });
 
 test("the search box (SNACK_SEARCH) sits above the list only while its own switch is on", () => {
-  assert.match(PAGE, /const \{ snackListEnabled, snackSearchEnabled, loading \} = useAuth\(\);/);
+  assert.match(PAGE, /const \{ snackListEnabled, snackSearchEnabled, snackCartsEnabled, loading \} = useAuth\(\);/);
   assert.match(PAGE, /\{snackSearchEnabled && <SnackSearch profile=\{profile\} \/>\}/);
   const box = PAGE.indexOf("<SnackSearch");
   const list = PAGE.indexOf('className="card-list snacks__list"');
   assert.ok(box > 0 && box < list, "the box comes before the list");
+});
+
+// ---- Carts (the addendum's part B, 2026-11-14; behind SNACK_CARTS) ----
+
+test("with carts off (the default) nothing of part B is drawn", () => {
+  const html = render(item({ amazon: { asin: "B07PGL2ZSL", linked_by: "Grandma", linked_at: "2026-11-13T16:00:00Z" } }));
+  assert.doesNotMatch(html, /checkbox|Link on Amazon|Amazon link added|Amazon cart/);
+});
+
+test("carts on: an item with shop links gets a checkbox named for the product; a manager gets Link on Amazon; a follower gets the checkbox only", () => {
+  const manager = render(item({}), true, carts);
+  assert.match(manager, /<input type="checkbox" aria-label="Select Plain Rice Crackers for the Amazon cart"\/>/);
+  assert.match(manager, /<button type="button">Link on Amazon<\/button>/);
+  assert.doesNotMatch(manager, /Amazon link added|Remove Amazon link/);
+  const follower = render(item({}), false, carts);
+  assert.match(follower, /aria-label="Select Plain Rice Crackers for the Amazon cart"/);
+  assert.doesNotMatch(follower, /Link on Amazon/);
+  assert.match(render(item({}), true, { ...carts, selected: true }), /<input type="checkbox" aria-label="[^"]+" checked=""/);
+});
+
+test("a linked item says who linked it and when, Shop on Amazon is the server's product link, and the manager may change or remove the link", () => {
+  const html = render(
+    item({
+      amazon: { asin: "B07PGL2ZSL", linked_by: "Grandma", linked_at: "2026-11-13T16:00:00Z" },
+      shop: { amazon: "https://www.amazon.com/dp/B07PGL2ZSL", instacart: "https://www.instacart.com/store/s?k=x", affiliate: false },
+    }),
+    true,
+    carts,
+  );
+  assert.match(html, /<p class="card__meta snack-item__amazon">Amazon link added by Grandma, Nov 13<\/p>/);
+  assert.match(html, /href="https:\/\/www\.amazon\.com\/dp\/B07PGL2ZSL"[^>]*>Shop on Amazon</);
+  assert.match(html, /<button type="button">Change Amazon link<\/button><button type="button">Remove Amazon link<\/button>/);
+  assert.match(render(item({ amazon: { asin: "B07PGL2ZSL", linked_by: null, linked_at: "2026-11-13T16:00:00Z" } }), true, carts), /Amazon link added Nov 13</);
+});
+
+test("a Contains item, which the server sends without shop links, gets no checkbox and no Link on Amazon even with carts on", () => {
+  const html = render(
+    item({ original: { result: "contains_allergen", matched_allergens: [row("Peanut", { matched: true, source: "tag", classification: "contains" })] }, headline: "contains_allergen", shop: null }),
+    true,
+    carts,
+  );
+  assert.doesNotMatch(html, /checkbox|Link on Amazon|Amazon cart/);
+});
+
+function panel(over: Partial<Parameters<typeof SnackCartPanel>[0]> = {}): string {
+  return renderToStaticMarkup(createElement(SnackCartPanel, { count: 0, busy: false, result: null, error: null, onBuild: () => {}, ...over }));
+}
+
+test("the cart panel: the button counts the selection and is disabled with none; building says so", () => {
+  assert.match(panel(), /<button type="button" class="button-primary" disabled="">Add selected to Amazon cart<\/button>/);
+  assert.match(panel({ count: 2 }), /<button type="button" class="button-primary">Add selected to Amazon cart \(2\)<\/button>/);
+  assert.match(panel({ count: 2, busy: true }), /disabled="">Building the cart…</);
+  assert.match(panel({ error: "Couldn't build the cart. Try again." }), /<p role="alert">Couldn&#x27;t build the cart\. Try again\.<\/p>/);
+});
+
+test("the cart panel's result: the one link in a new tab, who went in, who was left out and why, who was refused and why, and the standing note", () => {
+  const html = panel({
+    count: 3,
+    result: {
+      url: "https://www.amazon.com/gp/aws/cart/add.html?ASIN.1=B07PGL2ZSL&Quantity.1=1",
+      included: [{ id: "i-1", name: "Plain Rice Crackers", asin: "B07PGL2ZSL" }],
+      left_out: [{ id: "i-2", name: "Oat Biscuits" }],
+      refused: [{ id: "i-3", name: "Crunchy Peanut Bar" }],
+    },
+  });
+  assert.match(html, /<div role="status" class="snacks__cart-result"><p>1 item is in the cart link\.<\/p>/);
+  assert.match(html, /<a class="button-link" href="https:\/\/www\.amazon\.com\/gp\/aws\/cart\/add\.html\?ASIN\.1=B07PGL2ZSL&amp;Quantity\.1=1" target="_blank" rel="noopener noreferrer">Open the Amazon cart<\/a>/);
+  assert.match(html, /Left out, no Amazon link yet: Oat Biscuits\./);
+  assert.match(html, /Not added — it reads “Contains an allergen” now: Crunchy Peanut Bar\./);
+  assert.match(html, /Amazon opens in a new tab with these items in its add-to-cart step; sign in there to finish\. Scan each item when it arrives\./);
+  const nothing = panel({ count: 1, result: { url: null, included: [], left_out: [], refused: [{ id: "i-3", name: "Crunchy Peanut Bar" }] } });
+  assert.match(nothing, /Nothing could go in the cart\./);
+  assert.doesNotMatch(nothing, /Open the Amazon cart|sign in there/);
+});
+
+test("the page builds the cart on the server from the ticked ids, clears the selection when the profile changes, and shows the panel only with carts on and something to shop for", () => {
+  assert.match(PAGE, /setCartResult\(await buildSnackCart\(profile!\.id, \[\.\.\.selected\]\)\)/);
+  assert.match(PAGE, /useEffect\(\(\) => \{\n\s+setSelected\(new Set\(\)\);[\s\S]*?\}, \[profile\?\.id\]\);/);
+  assert.match(PAGE, /\{snackCartsEnabled && shoppable\.length > 0 && \(\s*<SnackCartPanel/);
+  assert.doesNotMatch(PAGE, /cart\/add\.html/, "the client never assembles a cart link itself");
 });
