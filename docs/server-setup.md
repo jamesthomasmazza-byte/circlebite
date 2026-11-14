@@ -909,6 +909,72 @@ no verdicts); tap Plain Rice Crackers (Scan opens on Maya's card with "Add to Ma
 address carries only the profile); back on Snacks, search "peanut butter crackers" and tap "Search
 more" (real products, or the "couldn't reach" line if Open Food Facts is slow — try once more).
 
+## 11l. Snack carts — switch
+
+With `SNACK_CARTS=on`, three things join the Snacks tab (§11j), Amazon only — the Instacart cart was
+dropped Nov 14 (the Developer Platform isn't taking applications; `docs/snack-list-plan.md` addendum):
+
+- **"Link on Amazon"** on an item, for a manager: paste the product's amazon.com link. The server keeps
+  only the ASIN (ten characters, from `/dp/<ASIN>` or `/gp/product/<ASIN>`) and refuses anything else —
+  short links (a.co, amzn.to) included, because it would have to fetch them to learn what they are
+  (`server/src/snackList/amazonLink.ts`). Nothing pasted is stored; a `tag=` in the pasted address is
+  dropped with the rest. The item shows "Amazon link added by <name>, <date>", and its "Shop on Amazon"
+  goes to that product instead of a search.
+- **Checkboxes** on items that have shop links. A "Contains" item has none (the server already sends
+  it without links).
+- **"Add selected to Amazon cart"**, built on the server only (`server/src/snackList/cartLink.ts`):
+  `https://www.amazon.com/gp/aws/cart/add.html?ASIN.1=…&Quantity.1=1&…`, plus `AssociateTag` only when
+  `AMAZON_ASSOCIATE_TAG` is set. The server computes every selected item's verdict again exactly as the
+  list shows it and refuses a "Contains" item even if the client sent it; an item without an Amazon
+  link is named as left out; an id not on the list is ignored. Anyone who can read the list can build
+  a cart (a sitter shops too); nothing is written. The page opens the link in a new tab, where Amazon
+  shows the items in its add-to-cart step after sign-in (JT, Chrome, Nov 14).
+
+Its own switch, on top of `SNACK_LIST`: off by default, and off hides all three, sends every item's
+`amazon` as null whatever is stored, and makes the link and cart routes a plain 404. Independent of `SNACK_SEARCH`.
+
+**Data:** migration 0051 adds `amazon_asin`, `amazon_linked_by`, `amazon_linked_at` to
+`snack_list_items`, nullable. Links saved while the switch was on stay while it's off and come back
+with it. The judge seed links nothing (invented brands); a judge can search a real product, add it,
+link it and build a cart. A reseed clears whatever they linked.
+
+**Before turning it on:** JT's iPhone check with it on. Checked locally Nov 14 at 390×844 and
+1280×800, light and dark, 100/150% text, on and off (`docs/journal.md`, 2026-11-14; screenshots
+`docs/approvals/img/circlebite-snack-carts-*-2026-11-14.png`). **Order on the box:** deploy (§8, which
+applies migration 0051), then the switch. No reseed needed. Nothing after the freeze.
+
+**Turn it on:**
+
+```bash
+grep -q '^SNACK_CARTS=' ~/circlebite/.env \
+  && sed -i 's/^SNACK_CARTS=.*/SNACK_CARTS=on/' ~/circlebite/.env \
+  || echo "SNACK_CARTS=on" >> ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
+**Turn it off** (the rollback) — the checkboxes, the link button and the cart panel gone on each
+browser's next page load, the routes 404, the data stays:
+
+```bash
+sed -i 's/^SNACK_CARTS=.*/SNACK_CARTS=off/' ~/circlebite/.env
+sudo systemctl restart circlebite
+```
+
+**Check it on production after the switch** — from the Mac, signed out, nothing is created:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'content-type: application/json' -d '{"itemIds":[]}' \
+  https://<domain>/api/profiles/00000000-0000-0000-0000-000000000000/snacks/cart
+#   401 with the switch on (the route exists and wants a session); 404 with it off
+```
+
+Then, signed in as judge1 on the phone, on Maya's Snacks tab: a checkbox on the oat biscuits and the
+crackers, none on the peanut bar; "Link on Amazon" on the crackers, paste a real amazon.com product
+address (the line reads "Amazon link added by Judge 1" and Shop on Amazon opens that product); tick
+both and tap "Add selected to Amazon cart (2)" (1 item in the cart link, the biscuits named as left
+out); "Open the Amazon cart" opens Amazon in a new tab with the item; "Remove Amazon link" puts the
+search link back.
+
 ## 12. Admin access — the AI accuracy page
 
 `users.is_admin` gates internal aggregate pages (the AI accuracy page today, the review queue
