@@ -803,8 +803,10 @@ profile page, and "No allergies — just snack lists" in the guided setup. Off b
 exactly today's three tabs, no "Add to" button, and every `/api/profiles/:id/snacks` route a plain
 404 (`docs/snack-list-plan.md`; `server/src/routes/snackList.ts`, `server/src/snackList/`).
 
-**Data:** migration 0050, `snack_list_items`. Items saved while the switch was on stay in the
-database while it is off, untouched, and come back when it's on again. The judge seed (§16) gives
+**Data:** migration 0050, `snack_list_items`; migration 0052 adds Open Food Facts' front image URLs to
+`products` (saved on lookup and on search; the seed's products have none and draw a placeholder). Items
+saved while the switch was on stay in the database while it is off, untouched, and come back when it's
+on again. The judge seed (§16) gives
 Maya three items in every judge world.
 
 **Optional, affiliate:** `AMAZON_ASSOCIATE_TAG`, blank by default. Set, it is appended to each

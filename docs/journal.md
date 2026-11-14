@@ -3062,10 +3062,24 @@ profile: no note, no pills, a checkbox on the peanut bar, no verdict block on it
 150% text, dark at 390, 1280 light and dark, list and detail. No horizontal scroll anywhere. Server
 701 tests, client 535. Screenshots `docs/approvals/img/circlebite-snacks-mockup-*-2026-11-14.png`.
 
-**Photos (item 9) wait on JT's OK:** `products` has no image columns and the lookup asks Open Food Facts
-for a fixed field list, so this is a migration plus two more fields on both the product lookup and the
-text search; existing rows get theirs on their next lookup after the 24-hour cache (the seed rows never,
-by design) unless a one-off backfill is run; production sends no Content-Security-Policy header at all
-(nginx, checked Nov 14), so nothing blocks `images.openfoodfacts.org` today.
+**Photos, item 9** (JT's OK: migration, both fields on the lookup and the search, no backfill, no CSP
+change). `products` had no image columns and the lookup asked Open Food Facts for a fixed field list, so:
+migration 0052 adds `image_front_small_url` and `image_front_url`, nullable; one shared field list
+(`OFF_PRODUCT_FIELDS`) now carries the two image fields for the product read and the text search alike;
+a URL is kept only when it is https on an openfoodfacts.org host (`offImageUrl`), so a record can never
+point the page at another host; the product lookup and the search's upsert write them; the list sends
+`product.image_small` and `product.image` (`ae12d30`). On the client (`b59904d`) every photo has
+`referrerpolicy="no-referrer"`, rows load lazily, and an image that fails to load gives way to the
+placeholder (a new src gets a fresh try). Existing rows get theirs on their next lookup after the
+24-hour cache; the seed's invented products never, by design. Production sends no
+Content-Security-Policy header at all (nginx; checked Nov 14), so nothing blocks
+`images.openfoodfacts.org`; adding one is in the backlog for after judging (`7d92093`).
 
-**Not checked here:** JT's iPhone. Not deployed.
+*Checked:* as judge1 on Maya, a real product found by "Search more" (Kallø rice cakes) and added from
+the result showed its front photo on the row at 60×60 and on its page at 210px, while the three seeded
+rows kept the placeholder; the row and page screenshots are
+`circlebite-snacks-mockup-photo-list-390` and `-photo-detail-390`. The broken-image fallback is covered
+by the tests. Server 704 tests, client 537.
+
+**Not checked here:** JT's iPhone. Not deployed: items 1–9 go in one deploy, which applies migration
+0052; no switch change, no reseed.
