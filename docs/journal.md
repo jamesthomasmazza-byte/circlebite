@@ -3291,3 +3291,16 @@ and printed, never a failure; the invented products and staged reports unchanged
 **Deploy, then a plain reseed** (`npm run seed:judge`, no `--rotate-passwords`): the reseed is what
 puts the items in; the deploy alone changes nothing judges see. Maya's seeded items are recreated, so
 the plain reseed is enough; the product rows and their shared links survive it.
+
+## 2026-11-15 — Deployed and reseeded: the two real products are on Maya's list in every world
+
+Release `20261115220052` (`7d01246`) went out, health 200, the client bundle unchanged (seed only).
+JT then ran the plain reseed from his own terminal (no `--rotate-passwords`; judge passwords kept).
+Its summary: "Seeded 179 accounts, 135 profiles, 530 scans, 220 snack list items, 24 NPS rows." and
+"Real products on Maya's list in every world: Oreo Chocolate Sandwich Cookies; PopCorners Kettle
+Corn." — no "Skipped" line, so both barcodes matched a found row. The counts are the expected ones:
+442 + 2 × 44 scans and 132 + 2 × 44 items, two per world across the four judges and the 40-world
+pool. The §16a curl checks from the Mac passed afterwards: a wrong token and an empty body both
+answer `{"error":"not_found"}`, and `/judge` carries `X-Robots-Tag: noindex, nofollow` and
+`Referrer-Policy: no-referrer`. Still ahead of the send: step 4's private-window check of the link
+itself (one world spent) and step 5, the Password Pusher.
