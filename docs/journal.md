@@ -3205,3 +3205,9 @@ link carries `AssociateTag=`, `GET /api/profiles/:id/snacks` returns `affiliate:
 tab shows the one-line disclosure ("Amazon links may earn CircleBite a commission. That never changes a
 verdict or the order of this list."). Nothing in a verdict or the list's order reads the tag. The
 one-tap cart (`c372efe`) was not yet pushed when this happened; its deploy lines stand.
+
+## 2026-11-15 — Deployed: the one-tap Amazon cart
+
+Release `20261115191146` (`c372efe`, `18da45e`): bundle `index-B2-EL2TC.js` confirmed served from
+circlebite.app, `/api/features` 200. No migration, no switch change, no reseed. Not yet checked on JT's
+phone.
