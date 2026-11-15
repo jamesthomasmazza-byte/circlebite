@@ -101,7 +101,8 @@ Tapping a result opens the **existing typed-barcode scan** for that barcode and 
 verdict card, its warnings and "Add to <name>'s snacks" are the ones already built: every item is still one
 exact barcode with a real verdict. Search never adds anything by itself and shows no verdicts in the
 results list (a result isn't checked until it's opened). If Open Food Facts is slow or down, local results
-still show and "Search more" says it couldn't reach it.
+still show and "Search more" says it couldn't reach it (Nov 15: after one server-side retry of a 503,
+429 or timeout, 1.5 s later, from the same budget; skipped, as "busy", when the budget is empty).
 
 **B. Carts (`SNACK_CARTS`).**
 - **"Link on Amazon"** per item (managers): paste an amazon.com product link; the server keeps only the

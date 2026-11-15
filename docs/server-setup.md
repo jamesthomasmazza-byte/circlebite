@@ -892,7 +892,13 @@ them, in memory, reset on restart, no migration:
 
 Only real calls count. A failed call (timeout at 15 seconds, 503, network) says "couldn't reach Open
 Food Facts right now", never "nothing matched". Measured Nov 14: a no-match search can take 12
-seconds to answer; a nonsense word got a 503 at once.
+seconds to answer; a nonsense word got a 503 at once. **One retry (JT, Nov 15):** a 503, a 429 or a
+timeout is tried once more after 1.5 seconds, inside the same request, so the page keeps "Asking Open
+Food Facts…" up. The retry is a real call: it is taken from the minute's budget and the account's
+hour like the first. With the minute's budget empty the retry is skipped and the page says busy; with
+the account's hour used up there is no retry and the first failure stands as "couldn't reach". A
+failure a retry wouldn't mend (another status, an unreadable reply, a network error) fails at once.
+A request can therefore take up to about 32 seconds (15 + 1.5 + 15).
 
 **Before turning it on:** JT's iPhone check with it on. Checked locally Nov 14 at 390×844 and
 1280×800, light and dark, 100/150% text, on and off (`docs/journal.md`, 2026-11-14; screenshots

@@ -24,7 +24,15 @@ export type SearchHit = {
   raw: unknown;
 };
 
-export type SearchOutcome = { status: "ok"; hits: SearchHit[] } | { status: "failed" };
+/**
+ * "failed" with `retry`: true for the failures that pass in a moment — a 503 (Open Food Facts' own
+ * global limit, or a blip), a 429, a timeout — so the route may try once more (JT, Nov 15); false
+ * for anything else (another status, an unreadable reply, a network error), which a second call
+ * seconds later would only repeat.
+ */
+export type SearchOutcome = { status: "ok"; hits: SearchHit[] } | { status: "failed"; retry: boolean };
+
+const RETRY_STATUSES = new Set([429, 503]);
 
 export const SEARCH_PAGE_SIZE = 20;
 // Longer than a product lookup's 8 seconds: measured Nov 14, a text search with no matches took 11.8
@@ -64,7 +72,7 @@ export function searchUrl(query: string): URL {
  * "ok" with the hits worth showing: a barcode the scan route would accept, and a name or a brand to
  * show (a hit with neither can't be told apart from another). One hit per barcode. "failed" for a
  * timeout, network error, any non-2xx (the 503 of a global limit included) or an unreadable reply:
- * the route says it couldn't reach Open Food Facts, never that nothing matched.
+ * the route says it couldn't reach Open Food Facts, never that nothing matched. Never throws.
  */
 export async function searchProducts(query: string): Promise<SearchOutcome> {
   try {
@@ -72,10 +80,10 @@ export async function searchProducts(query: string): Promise<SearchOutcome> {
       headers: { "User-Agent": env.offUserAgent },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
-    if (!res.ok) return { status: "failed" };
+    if (!res.ok) return { status: "failed", retry: RETRY_STATUSES.has(res.status) };
 
     const data = (await res.json()) as OffSearchResponse | null;
-    if (!data || typeof data !== "object" || !Array.isArray(data.products)) return { status: "failed" };
+    if (!data || typeof data !== "object" || !Array.isArray(data.products)) return { status: "failed", retry: false };
 
     const seen = new Set<string>();
     const hits: SearchHit[] = [];
@@ -100,7 +108,12 @@ export async function searchProducts(query: string): Promise<SearchOutcome> {
       });
     }
     return { status: "ok", hits };
-  } catch {
-    return { status: "failed" };
+  } catch (err) {
+    return { status: "failed", retry: isTimeout(err) };
   }
+}
+
+/** What AbortSignal.timeout throws when the 15 seconds run out. */
+function isTimeout(err: unknown): boolean {
+  return err instanceof Error && err.name === "TimeoutError";
 }

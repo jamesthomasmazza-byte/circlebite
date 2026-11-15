@@ -3211,3 +3211,32 @@ one-tap cart (`c372efe`) was not yet pushed when this happened; its deploy lines
 Release `20261115191146` (`c372efe`, `18da45e`): bundle `index-B2-EL2TC.js` confirmed served from
 circlebite.app, `/api/features` 200. No migration, no switch change, no reseed. Not yet checked on JT's
 phone.
+
+## 2026-11-15 — Built: one server-side retry for "Search more" (not deployed)
+
+**JT:** when Open Food Facts answers 503 or 429, or times out, retry once on the server after about
+1.5 seconds before showing "busy"; the retry counts against the same per-minute budget and is skipped
+when the budget is empty; "Asking Open Food Facts…" stays up meanwhile.
+
+- `server/src/snackSearch/offSearch.ts`: a failed outcome now says whether a retry is worth it —
+  `retry: true` for a 503, a 429 or a timeout (`AbortSignal.timeout`'s `TimeoutError`), false for any
+  other status, an unreadable reply or a network error. Still never throws.
+- `server/src/routes/snackSearch.ts`: after a retryable failure the route waits `SEARCH_RETRY_DELAY_MS`
+  (1500) and takes from the limits again, exactly as for the first call: "ok" → the one retry, whose
+  answer is the result; "busy" (the minute's eight are spent) → 503 `search_busy`, no retry; the
+  account's hour used up → no retry and the first failure stands as 502 `search_unavailable`. A
+  failure a retry wouldn't mend is a 502 at once. The pause is injectable (`resetSnackSearchState(now,
+  pause)`), so tests advance a clock instead of sleeping.
+- Client: unchanged. The retry happens inside the one request, so the waiting line
+  (`role="status"`, "Asking Open Food Facts…") stays until the answer; nothing on the client times out.
+  A request can now take up to about 32 s (15 + 1.5 + 15).
+- Tests: `offSearch.test.ts` pins which failures carry `retry` (a 500 added as a non-retry case);
+  `snackSearch.test.ts` covers a 503, a 429 and a timeout each mended by the retry with the waits
+  recorded as `[1500]` and the retry counted (six more calls, then the ninth is busy), two 503s → 502
+  with two calls, non-retryable failures → one call and no wait, the budget-empty skip → 503 busy with
+  the first call out and the retry not, and a judge-link account's eighth call of the hour failing →
+  502 with no retry. Server 713 tests; client untouched (541).
+- Docs: `docs/server-setup.md` §11k, the plan addendum. JUDGES.md's "try once more" line still holds.
+
+**Not checked here:** against the live service (a 503 can't be ordered up). Not deployed: no
+migration, no switch change, no reseed.

@@ -26,16 +26,21 @@ export const snackSearchRouter = Router();
 export const QUERY_MIN = 2;
 export const QUERY_MAX = 80;
 const LOCAL_LIMIT = 20;
+/** The pause before the one retry of a 503, 429 or timeout (JT, Nov 15). */
+export const SEARCH_RETRY_DELAY_MS = 1500;
 
 export type SearchResult = { barcode: string; name: string | null; brand: string | null };
 
-// One limiter and one cache for the process; `resetSnackSearchState` lets tests start clean or run
-// against their own clock.
+// One limiter and one cache for the process; `resetSnackSearchState` lets tests start clean, run
+// against their own clock and skip the retry's pause.
+const realWait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 let limits = new SearchLimits();
 let cache = new SearchCache<SearchResult[]>();
-export function resetSnackSearchState(now?: () => number): void {
+let wait = realWait;
+export function resetSnackSearchState(now?: () => number, pause?: (ms: number) => Promise<void>): void {
   limits = new SearchLimits(now);
   cache = new SearchCache<SearchResult[]>(now);
+  wait = pause ?? realWait;
 }
 
 function requireSnackSearchEnabled(_req: unknown, _res: unknown, next: (err?: unknown) => void) {
@@ -97,11 +102,24 @@ snackSearchRouter.get(
 
     // Only a real call counts, and it counts whether or not Open Food Facts answers: the IP budget
     // was spent either way.
-    const outcome = limits.take(req.user!.id, isJudgeLinkAccount(req.user!.email));
+    const judgeLink = isJudgeLinkAccount(req.user!.email);
+    const outcome = limits.take(req.user!.id, judgeLink);
     if (outcome === "user_limit") throw new HttpError(429, "search_limit");
     if (outcome === "busy") throw new HttpError(503, "search_busy");
 
-    const found = await searchProducts(query);
+    let found = await searchProducts(query);
+    // One retry (JT, Nov 15) when the failure is the kind that passes — a 503, a 429, a timeout —
+    // after a pause, and only if the same budgets have room: it is a real call like the first, so it
+    // is taken from the minute's budget and the account's hour. With the minute's budget empty the
+    // retry is skipped and the page says busy; with the account's hour used up there is no retry and
+    // the first failure stands. The page keeps "Asking Open Food Facts…" up throughout: it is one
+    // request to it.
+    if (found.status === "failed" && found.retry) {
+      await wait(SEARCH_RETRY_DELAY_MS);
+      const again = limits.take(req.user!.id, judgeLink);
+      if (again === "busy") throw new HttpError(503, "search_busy");
+      if (again === "ok") found = await searchProducts(query);
+    }
     // Said as what it is (principle 2): not "nothing matched".
     if (found.status === "failed") throw new HttpError(502, "search_unavailable");
 

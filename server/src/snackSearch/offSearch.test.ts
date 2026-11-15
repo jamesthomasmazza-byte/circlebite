@@ -91,11 +91,12 @@ test("no matches is ok with no hits, not a failure", async () => {
   assert.deepEqual(await searchProducts("zzzz"), { status: "ok", hits: [] });
 });
 
-for (const [name, setup] of [
-  ["a 503 (a global limit)", () => respond(503, "<html>Page temporarily unavailable</html>")],
-  ["a 429", () => respond(429, "")],
-  ["unreadable JSON on a 200", () => respond(200, "{not json")],
-  ["a 200 without a products array", () => respond(200, JSON.stringify({ count: 1 }))],
+for (const [name, setup, retry] of [
+  ["a 503 (a global limit)", () => respond(503, "<html>Page temporarily unavailable</html>"), true],
+  ["a 429", () => respond(429, ""), true],
+  ["a 500", () => respond(500, ""), false],
+  ["unreadable JSON on a 200", () => respond(200, "{not json"), false],
+  ["a 200 without a products array", () => respond(200, JSON.stringify({ count: 1 })), false],
   [
     "a network error",
     () => {
@@ -103,6 +104,7 @@ for (const [name, setup] of [
         throw new TypeError("fetch failed");
       }) as typeof fetch;
     },
+    false,
   ],
   [
     "a timeout",
@@ -111,10 +113,11 @@ for (const [name, setup] of [
         throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
       }) as typeof fetch;
     },
+    true,
   ],
 ] as const) {
-  test(`${name} is failed, and nothing throws`, async () => {
+  test(`${name} is failed, retry ${retry} (JT, Nov 15: a 503, 429 or timeout gets one more try), and nothing throws`, async () => {
     setup();
-    assert.deepEqual(await searchProducts("peanut"), { status: "failed" });
+    assert.deepEqual(await searchProducts("peanut"), { status: "failed", retry });
   });
 }

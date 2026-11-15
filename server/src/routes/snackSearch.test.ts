@@ -76,7 +76,7 @@ const barcodes = (c: Captured) => results(c).map((r) => r.barcode);
 // The fake Open Food Facts: counts calls, answers what it's told to.
 const realFetch = globalThis.fetch;
 let offCalls = 0;
-let offAnswer: () => Response = () => new Response("", { status: 503 });
+let offAnswer: () => Response | Promise<Response> = () => new Response("", { status: 503 });
 function offAnswers(products: unknown[]) {
   offAnswer = () => new Response(JSON.stringify({ count: products.length, products }), { status: 200, headers: { "content-type": "application/json" } });
 }
@@ -104,8 +104,16 @@ before(async () => {
   );
 });
 
+let waits: number[] = [];
 beforeEach(() => {
-  resetSnackSearchState(() => clock);
+  waits = [];
+  resetSnackSearchState(
+    () => clock,
+    async (ms) => {
+      waits.push(ms);
+      clock += ms;
+    },
+  );
   offCalls = 0;
   globalThis.fetch = (async () => {
     offCalls += 1;
@@ -199,17 +207,85 @@ test("more: hits come back as results, each written to products as a product loo
   assert.equal(offCalls, 1, "a cache hit makes no call");
 });
 
-test("more: when Open Food Facts doesn't answer, the route says so (502), never that nothing matched; the call still counted", async () => {
+test("more: when Open Food Facts doesn't answer twice, the route says so (502), never that nothing matched; both calls counted, nothing cached", async () => {
   offAnswer = () => new Response("<html>Page temporarily unavailable</html>", { status: 503 });
   const r = await more("peanut");
   assert.equal(r.status, 502);
   assert.deepEqual(r.body, { error: "search_unavailable" });
-  assert.equal(offCalls, 1);
+  assert.equal(offCalls, 2, "the first call and its one retry");
+  assert.deepEqual(waits, [1500]);
   offAnswers([]);
   const empty = await more("peanut");
   assert.equal(empty.status, 200, "a failure is not cached");
   assert.deepEqual(results(empty), []);
-  assert.equal(offCalls, 2);
+  assert.equal(offCalls, 3);
+});
+
+// The one retry (JT, Nov 15): a 503, 429 or timeout is tried once more after 1.5 s, from the same
+// budgets; anything else fails at once.
+test("more: a 503, a 429 or a timeout is retried once after 1.5 s and the retry's answer is the result; the retry counts against the minute's budget", async () => {
+  for (const [what, failure] of [
+    ["503", () => new Response("", { status: 503 })],
+    ["429", () => new Response("", { status: 429 })],
+    ["timeout", () => Promise.reject(new DOMException("The operation was aborted due to timeout", "TimeoutError"))],
+  ] as const) {
+    resetSnackSearchState(() => clock, async (ms) => void waits.push(ms));
+    waits = [];
+    offCalls = 0;
+    let calls = 0;
+    offAnswer = () => {
+      calls += 1;
+      return calls === 1 ? failure() : new Response(JSON.stringify({ products: [{ code: OFF_B, product_name: "Rice Crackers", brands: "Hearthfield" }] }), { status: 200 });
+    };
+    const r = await more(`retry ${what}`);
+    assert.equal(r.status, 200, what);
+    assert.deepEqual(results(r), [{ barcode: OFF_B, name: "Rice Crackers", brand: "Hearthfield" }], what);
+    assert.equal(offCalls, 2, what);
+    assert.deepEqual(waits, [1500], what);
+    // Two of the minute's eight went on that one request: six more, then busy.
+    offAnswers([]);
+    for (let i = 0; i < 6; i++) assert.equal((await more(`${what} fill ${i}`, { id: `fill-${i}`, email: `f${i}@example.com` })).status, 200, `${what} fill ${i + 1}`);
+    assert.equal((await more(`${what} ninth`, { id: "ninth", email: "ninth@example.com" })).status, 503, `${what}: the budget counted the retry`);
+  }
+});
+
+test("more: a failure that a retry wouldn't mend — a 500, unreadable JSON, a network error — is a 502 at once, one call, no wait", async () => {
+  for (const failure of [() => new Response("", { status: 500 }), () => new Response("{not json", { status: 200 }), () => Promise.reject(new TypeError("fetch failed"))]) {
+    offCalls = 0;
+    waits = [];
+    offAnswer = failure;
+    const r = await more(`plain ${offCalls}${Math.random()}`);
+    assert.equal(r.status, 502);
+    assert.equal(offCalls, 1);
+    assert.deepEqual(waits, []);
+  }
+});
+
+test("more: with the minute's budget empty the retry is skipped and the page is told busy; with the account's hour used up there is no retry and the first failure stands", async () => {
+  offAnswers([]);
+  for (let i = 0; i < 7; i++) assert.equal((await more(`spend ${i}`, { id: `spend-${i}`, email: `s${i}@example.com` })).status, 200);
+  offAnswer = () => new Response("", { status: 503 });
+  const eighth = await more("eighth", { id: "eighth", email: "eighth@example.com" });
+  assert.equal(eighth.status, 503);
+  assert.deepEqual(eighth.body, { error: "search_busy" });
+  assert.equal(offCalls, 8, "the eighth call went out; its retry did not");
+  assert.deepEqual(waits, [1500]);
+
+  // A judge-link account's 8th call of the hour fails: its retry would be the 9th, so none; a 502.
+  resetSnackSearchState(() => clock, async (ms) => void waits.push(ms));
+  waits = [];
+  offCalls = 0;
+  offAnswers([]);
+  for (let i = 0; i < 7; i++) {
+    assert.equal((await more(`judge hour ${i}`, JUDGE)).status, 200);
+    clock += 60_000;
+  }
+  offAnswer = () => new Response("", { status: 503 });
+  const last = await more("judge hour 8", JUDGE);
+  assert.equal(last.status, 502);
+  assert.deepEqual(last.body, { error: "search_unavailable" });
+  assert.equal(offCalls, 8);
+  assert.deepEqual(waits, [1500]);
 });
 
 test("more: a regular account's 21st real call in an hour is a 429, a judge-link account's 9th; cache hits don't count", async () => {
