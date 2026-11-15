@@ -3240,3 +3240,10 @@ when the budget is empty; "Asking Open Food Facts…" stays up meanwhile.
 
 **Not checked here:** against the live service (a 503 can't be ordered up). Not deployed: no
 migration, no switch change, no reseed.
+
+## 2026-11-15 — Deployed: the Search more retry
+
+Release `20261115193049` (`e9f4a5b`): the release reported healthy, `/api/features` 200. The client
+bundle is the same `index-B2-EL2TC.js` as the last release, as expected — this change is server only.
+The retry itself can't be exercised on demand (it needs a 503, 429 or timeout from Open Food Facts);
+the route's tests stand in. No migration, no switch change, no reseed.
