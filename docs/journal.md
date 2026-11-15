@@ -3195,3 +3195,13 @@ Four requests in the whole run, one per settled selection. Screenshots
 tests; the server is untouched.
 
 **Not checked here:** JT's phone. Not deployed: no migration, no switch change, no reseed.
+
+## 2026-11-15 — Production: `AMAZON_ASSOCIATE_TAG` set
+
+JT set `AMAZON_ASSOCIATE_TAG=circlebite-20` in `~/circlebite/.env` on the box and restarted the service
+(the tag is an identifier, not a secret, and lives in the env file as §11j says). From the restart, on
+release `20261114193215`: every item's "Shop on Amazon" and each product link carry `tag=`, the cart
+link carries `AssociateTag=`, `GET /api/profiles/:id/snacks` returns `affiliate: true`, and the Snacks
+tab shows the one-line disclosure ("Amazon links may earn CircleBite a commission. That never changes a
+verdict or the order of this list."). Nothing in a verdict or the list's order reads the tag. The
+one-tap cart (`c372efe`) was not yet pushed when this happened; its deploy lines stand.
