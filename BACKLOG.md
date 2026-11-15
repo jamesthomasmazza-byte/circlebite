@@ -34,7 +34,7 @@ things that don't touch production remain.
   *Done on JT's iPhone, on production: live picture, "Got it", and landscape clear of the tab bar
   on 2026-10-26 (`076eefb`); portrait with Stop camera above the tab bar, and "Got it" then the
   result in portrait, on 2026-10-27 (`docs/journal.md`).*
-- [ ] Owner-only acknowledgement check on production.
+- [x] Owner-only acknowledgement check on production. *Done by JT on production, Nov 15.*
 - [x] **RSVP by Nov 9** (Prof. Yoest's Nov 7 email). *Sent Nov 7, after his email. It told him the
   judge link will come in the final submission, not during judging week, and asked about the video's
   focus, scoring, format and delivery. His answer is pending (`docs/approvals/conditions.md`,
@@ -80,12 +80,8 @@ things that don't touch production remain.
   landscape was fine.*
 - **Faster scans** (JT, Oct 29). New. Measure first; nothing that could change what the model
   reads before a synthetic label test set exists.
-  - [ ] **Step 0, timing logs:** one line per scan, durations and sizes only (principle 5).
-    *Built Oct 30: `038a07e` (server), `bc682df` (phone header), `f50411c` (summary); not yet
-    deployed. Done once two or three days of timings are summarized (`docs/server-setup.md` §8b).*
-    *Deployed Oct 30 at about 12:15 PM ET in `248509c` (release `20261030161438`), backup first;
-    false-safety check passed (James on `…076`, "Contains an allergen"). First lines from JT's
-    iPhone in `docs/journal.md`.*
+  - **Step 0, timing logs:** moved to "Deferred until after judging" on Nov 15 (JT); the lines
+    are live, the summary is not done.
   - [x] **A, compress and cache the static files:** nginx gzip for JS, CSS, JSON and SVG
     (`docs/server-setup.md` §8a). Hashed `/assets` files cached for a year, `immutable`; everything
     else `no-cache`.
@@ -110,27 +106,8 @@ things that don't touch production remain.
 
 ### Week of Nov 2 — medium risk, deploy the same week
 
-5. [ ] **Decode only inside the scanner box,** behind `SCANNER_REGION` (off = today's full-frame
-   read). Moved from "Deferred". `decodeFromVideoDevice` reads the whole frame with no region
-   option, so this needs our own loop — copy the box's part of each frame into a small canvas and
-   call `decodeFromCanvas` — replacing a camera path that works today. Test on 2+ phones before
-   switching it on.
-   *Built 2026-10-27 (`5c99f50`, `43d0724`), deployed off that day in `74ea011`. Decodes inside the
-   box plus 5% (`REGION_ALLOWANCE`, to tune after the phone tests). An admin can turn it on for one
-   phone from the Account page's Admin section (Profile tab → Account & settings; Profile → Admin
-   until Nov 6) before the switch goes on; rollback is `SCANNER_REGION=off` and a
-   restart (`docs/server-setup.md` §11b).*
-   *Phone 1 passed, 2026-10-27 about 12:00 ET: JT's iPhone, on production, with "Decode only inside
-   the box, this device" On. Portrait and landscape alike: a barcode inside the box gave "Got it",
-   then the result; a barcode beside the box didn't read, and the label-photo offer appeared at
-   about 8 s. One real package read correctly inside the box.*
-   *Switched on for everyone on production, 2026-10-27 about 12:23 ET: JT's decision after the one
-   phone above passed, ahead of the "2+ phones" this item set. Checked by JT: the running process
-   shows `SCANNER_REGION=on` (and `CIRCLE_ESCALATIONS=on`), health ok; with his phone set back to
-   Server default, inside the box reads and beside it doesn't. Rollback: `SCANNER_REGION=off` and a
-   restart (`docs/server-setup.md` §11b).*
-   *Still owed before the Nov 16 freeze (not Nov 20: a fix after the freeze can't be deployed): one Android phone, and a curved or small package. Not yet tried
-   either: the same packages with the device choice Off.*
+5. **Decode only inside the scanner box** (`SCANNER_REGION`): on in production since Oct 27; moved
+   to "Deferred until after judging" on Nov 15 (JT) with its owed phone checks.
 6. [x] **Approve/decline circle requests.** Moved from "Deferred". Today an invite is a link the
    invitee accepts, so the Circle tab lists only invites waiting to be accepted (JT, 2026-10-23); a
    request flow is a new feature. Plan first, checked against Prof. Yoest's conditions: the
@@ -275,7 +252,7 @@ Four client-side items, in this order. No server change except item 11's flag, n
 new dependency. Item 11 is the one that can slip. Decisions: `docs/principles.md`, Decision
 precedents, Nov 5.
 
-8. [ ] **Change history collapsed, Condition 2 kept.** On the profile page, unseen entries render
+8. [x] **Change history collapsed, Condition 2 kept.** On the profile page, unseen entries render
    first in a block that never collapses ("New, not yet reviewed (k)", with "I've seen these").
    Seen ones go in a closed `<details>`, "Earlier changes (N)", or "Change history (N)" when nothing
    is unseen. N counts only the collapsed entries. A failed load is never collapsed. Tests prove
@@ -285,13 +262,15 @@ precedents, Nov 5.
    *Built Nov 5: `4109d94`, `dd12d9b` and the heading fix after them; checked locally at 390×844 on
    the judge seed, screenshots and note in `docs/approvals/conditions.md`, Condition 2. Not yet
    deployed.*
-9. [ ] **"Add an allergen" as a button** that opens the existing form. The allergen list stays
+   *Deployed Nov 10 (release `20261111002238`); phone-checked by JT, Nov 15.*
+9. [x] **"Add an allergen" as a button** that opens the existing form. The allergen list stays
    visible, and severity still has no default. A profile with no allergens opens with the form
    already open.
    *Built Nov 5: `b225a02`, `163c3ec`. Checked locally at 390×844, light and dark, on the judge
    seed: Maya's list with the button under it, the form opened with no severity chosen, Cancel
    bringing the button back, and a temporary empty profile (deleted afterwards) opening with the
    form already open. Not yet deployed.*
+   *Deployed Nov 10 (release `20261111002238`); phone-checked by JT, Nov 15.*
 9a. [x] **The allergen list as compact rows** (added by JT, Nov 5, after item 9; lettered so items
    10 and 11 keep their numbers). Each allergen is one row: the name, the verdict card's severity
    pill, and "traces: unsafe" or "traces: caution". For a manager the row is a `<details>`: opening
@@ -302,7 +281,7 @@ precedents, Nov 5.
    *Built Nov 5 (`AllergenItem.tsx`). Checked locally at 390×844, light and dark, on the judge
    seed: Maya with 4 allergens, one a temporary "treenuts" needing a look (deleted afterwards). Its
    notice showed on the closed row, and Enter on a row's summary opened it. Not yet deployed.*
-10. [ ] **Invites and invite management move to the Circle tab:** the invite forms, the
+10. [x] **Invites and invite management move to the Circle tab:** the invite forms, the
    one-time link, and Revoke and Remove go inside each managed circle's card. The profile page
    keeps one link to it. A new link shows only in the card it was made for (a test).
    *Built Nov 5 (`client/src/CircleManage.tsx`). Display names only on the tab, as before (the
@@ -312,6 +291,7 @@ precedents, Nov 5.
    A link made in Maya's card showed there and not in Leo's. Leo's card said "Sam Okafor — owner"
    and "You — co-manager", with no Remove. The test invite was cancelled afterwards. Not yet
    deployed.*
+   *Deployed Nov 10 (release `20261111002238`); phone-checked by JT, Nov 15.*
 11. [ ] **Scan sounds, behind `SCAN_SOUNDS`** (off by default on the server). A neutral beep on a
    camera read. An alert for "Contains an allergen" and a softer one for "May contain". Nothing for
    "No listed allergens found" or "Unable to confirm". Generated with Web Audio, with no files and
@@ -338,6 +318,7 @@ precedents, Nov 5.
    *Later Nov 6 (JT): Settings became the Account page, at the same `/settings`, and took the
    Profile tab's Account and Admin sections too, so the Profile tab lists people only. Scan sounds
    is unchanged there, still after "Your profiles".*
+   *Nov 15 (JT): stays off for judging (`SCAN_SOUNDS` off); iPhone test not done.*
 12. [x] **Circle tab redesign, behind `CIRCLE_REDESIGN`** (JT's mockup, Nov 6; off by default).
    A circle switcher (one pill per profile you manage or follow, opening on Scanning for), a
    picture of the circle with initials only, one list of people and waiting invites ("Invite link ·
@@ -355,7 +336,7 @@ precedents, Nov 5.
    server's switch was off.*
    *Switched on in production by JT, Nov 6, about 3:34 PM ET, on release `f56fc74` (deployed the
    same day; `docs/journal.md`, Nov 6). To switch it off: `docs/server-setup.md` §11f.*
-13. [ ] **Scan tab redesign, behind `SCAN_REDESIGN`** (JT's mockup, Nov 6; off by default). A layout
+13. [x] **Scan tab redesign, behind `SCAN_REDESIGN`** (JT's mockup, Nov 6; off by default). A layout
    only: the camera as the screen, Scan's own "Scanning for" pill in place of the header there,
    allergen chips (names only), Recent for the chosen profile, Barcode | Label photo | Type it, the
    result in a sheet over the camera, and a label camera with a tall frame, a shutter and a
@@ -383,6 +364,7 @@ precedents, Nov 5.
    *Switched on again in production at JT's request, Nov 6, on release `a490f1f`, deployed first so
    the fixed layout was live before the switch. JT's iPhone check and the cameras are still owed; to
    switch it off: `docs/server-setup.md` §11g.*
+   *Deployed Nov 10 (release `20261111002238`); phone-checked by JT, Nov 15. Stays on for judging.*
 14. [x] **Profile tab and profile page redesign, behind `PROFILE_REDESIGN`** (JT's mockup, Nov 6; off
    by default). Profile rows with initials avatars and an unseen-changes count; a profile page with a
    top bar and "⋯" (the owner's Delete), an avatar header with stats, and Allergens | Scans | Changes
@@ -410,10 +392,22 @@ Prof. Yoest's two Nov 13 replies (`docs/approvals/2026-11-13-yoest-video-expiry-
 - [ ] **Video per his answers:** problem in ~30 s, then the live scan and verdict (escalates, never
   clears), then the circle; no code tour; business case in one sentence. Unlisted YouTube; the same link
   at the top of `README.md`.
-- [ ] **Snack lists** (`docs/snack-list-plan.md`), suggested by the judge who funds the award; JT, Nov 13.
+- [x] **Snack lists** (`docs/snack-list-plan.md`), suggested by the judge who funds the award; JT, Nov 13.
   Behind `SNACK_LIST`. Shop links work; affiliate income does not, by design, until after judging.
   **Gate: Sunday Nov 15, noon ET**, deployed, phone-checked and on, or it stays off and becomes the
   roadmap slide. Deploys before the reseed; the judge seed gives Maya a list in every world.
+  *Built Nov 13 (`f1ffa78` … `2e4a2b3`, migration 0050, Maya's three seeded items `307cdd2`);
+  deployed Nov 13/14 (release `20261114015031`), `SNACK_LIST=on` and phone-checked by JT, Nov 14.
+  Rebuilt to JT's mockup Nov 14 (rows, pill, detail page, product photos, migration 0052;
+  `docs/journal.md`). `AMAZON_ASSOCIATE_TAG` set on the box Nov 15, so the disclosure line shows.*
+- [x] **Snack search and carts** (JT, Nov 14; `docs/snack-list-plan.md` addendum): search in the Snacks
+  tab (`SNACK_SEARCH`), Amazon links per item and a multi-item Amazon cart, and an Instacart cart if JT
+  gets a production key (`SNACK_CARTS`). Same Sunday-noon gate; off if not solid.
+  *Search built Nov 14 (`fb6311e` … `167804d`), deployed (release `20261114162823`), `SNACK_SEARCH=on`
+  Nov 14; one server-side retry added Nov 15 (`e9f4a5b`). Carts built Nov 14, Amazon only
+  (`96b0c19` … `520a723`, migration 0051), on in production Nov 14; a shared product link for admins
+  (`2ac581d`, migration 0053) and the one-tap cart (`c372efe`) followed. The Instacart cart was
+  dropped Nov 14: the Developer Platform isn't taking applications (addendum).*
 - [ ] **Snack search and carts** (JT, Nov 14; `docs/snack-list-plan.md` addendum): search in the Snacks
   tab (`SNACK_SEARCH`), Amazon links per item and a multi-item Amazon cart, and an Instacart cart if JT
   gets a production key (`SNACK_CARTS`). Same Sunday-noon gate; off if not solid.
@@ -506,7 +500,9 @@ room to fix what the click-through finds.
   Open Food Facts product photos, which load from images.openfoodfacts.org).
   *After the freeze, and not a redeploy: it changes the box's settings and data, not the code. The
   link also stops by itself at `JUDGE_LINK_EXPIRES`.*
-- [ ] Confirm the AI key works, **before the freeze**: Console "Last used", plus a label photo.
+- [x] Confirm the AI key works, **before the freeze**: Console "Last used", plus a label photo.
+  *Done by JT, Nov 15: a label photo on production (a Conagra label) was read by the model and came
+  back "Unable to confirm" as designed.*
 - [ ] **Two lines to Prof. Yoest that the judge worlds held on production** (his Oct 29 ask), after
   the reseed: the checks are in `docs/judge-card-plan.md` §4.
 - [ ] **Paper scan of the judge card**, promised to Prof. Yoest on Nov 5
@@ -1468,7 +1464,7 @@ preparation that needs no deploy.*
       *Nov 7: the judges now get the judge link, not logins, in the final submission email sent
       before the Nov 16 freeze (see "Before the Nov 16 freeze"). Registration is closed, so the
       invitation to register is moot unless `REGISTRATION` is switched on.*
-- [ ] `AI_DAILY_SPEND_CAP_CENTS` defaults to 200 ($2.00/day) — sized when a scan meant exactly one
+- [x] `AI_DAILY_SPEND_CAP_CENTS` defaults to 200 ($2.00/day) — sized when a scan meant exactly one
       Anthropic call (Path B's `reasonVerdict`). Path C makes it two (extraction, then reasoning),
       and a failed extraction still spends one call before it can even fail. The adaptive flow
       (Path D) can now make it three on a single combined scan — Path B's own reasoning call for a
@@ -1479,13 +1475,16 @@ preparation that needs no deploy.*
       judging-week value deliberately, not by leaving the default in place and hoping — before
       `LABEL_SCAN` gets flipped on for judging, not after. It is a production setting, so decide and set
       it before the Nov 16 freeze.
+      *Set Nov 15 (JT): `AI_DAILY_SPEND_CAP_CENTS=1000` on the box for judging; revisit after Nov 30.*
 - [ ] Confirm to Prof. Yoest that the instance stays running through judging *(R10)*
-- [ ] **Check the production AI key hasn't expired before judging.** "circlebite prod" expired
+- [x] **Check the production AI key hasn't expired before judging.** "circlebite prod" expired
       Oct 10 without anything saying so (`docs/journal.md`, 2026-10-16/17). The current key,
       "circlebite prod 2026-10", expires Dec 31, 2026. Before the Nov 16 freeze: the Console shows it active
       with a recent "Last used", a label photo on production gets a real result, and
       `journalctl -u circlebite | grep 'AI step failed'` is quiet. Rotate before Dec 31 per
       `docs/server-setup.md` §6a, whatever happens with judging.
+      *Done by JT, Nov 15: a label photo on production read a Conagra label and returned "Unable to
+      confirm" as designed. The Dec 31 rotation still stands.*
 - [ ] Freeze the code: **Mon Nov 16, 11:59 PM ET** (was Nov 13). Judges grade the last commit on `main`
       before then, and nothing is redeployed to AWS after it
       (`docs/approvals/2026-11-07-yoest-contest-reminders.md`).
@@ -1571,3 +1570,39 @@ Out of scope per `CONTEST_RULES.md` §7 — do not start these before judging en
   2026-11-05 (while testing `f5ab9bd`). It passed on four reruns: three of the file alone and the
   next full run. Same file as the flaky follower-removal test above; cause not investigated, and
   the failing assertion wasn't captured. Investigate after judging.
+- **Step 0, timing logs** (moved here Nov 15, JT; from "Faster scans", Week of Oct 26): one line per
+  scan, durations and sizes only (principle 5). *Built Oct 30: `038a07e` (server), `bc682df` (phone
+  header), `f50411c` (summary). Deployed Oct 30 at about 12:15 PM ET in `248509c` (release
+  `20261030161438`), backup first; false-safety check passed (James on `…076`, "Contains an
+  allergen"). First lines from JT's iPhone in `docs/journal.md`.* The two-or-three-day summary
+  (`docs/server-setup.md` §8b) is the part still owed; after Nov 30.
+- **Item 5, decode only inside the scanner box** (moved here Nov 15, JT; from "Week of Nov 2").
+  `SCANNER_REGION` is on in production since Oct 27 and stays on; what waits is the owed checks
+  below. The item as it stood:
+  5. [ ] **Decode only inside the scanner box,** behind `SCANNER_REGION` (off = today's full-frame
+     read). Moved from "Deferred". `decodeFromVideoDevice` reads the whole frame with no region
+     option, so this needs our own loop — copy the box's part of each frame into a small canvas and
+     call `decodeFromCanvas` — replacing a camera path that works today. Test on 2+ phones before
+     switching it on.
+     *Built 2026-10-27 (`5c99f50`, `43d0724`), deployed off that day in `74ea011`. Decodes inside the
+     box plus 5% (`REGION_ALLOWANCE`, to tune after the phone tests). An admin can turn it on for one
+     phone from the Account page's Admin section (Profile tab → Account & settings; Profile → Admin
+     until Nov 6) before the switch goes on; rollback is `SCANNER_REGION=off` and a
+     restart (`docs/server-setup.md` §11b).*
+     *Phone 1 passed, 2026-10-27 about 12:00 ET: JT's iPhone, on production, with "Decode only inside
+     the box, this device" On. Portrait and landscape alike: a barcode inside the box gave "Got it",
+     then the result; a barcode beside the box didn't read, and the label-photo offer appeared at
+     about 8 s. One real package read correctly inside the box.*
+     *Switched on for everyone on production, 2026-10-27 about 12:23 ET: JT's decision after the one
+     phone above passed, ahead of the "2+ phones" this item set. Checked by JT: the running process
+     shows `SCANNER_REGION=on` (and `CIRCLE_ESCALATIONS=on`), health ok; with his phone set back to
+     Server default, inside the box reads and beside it doesn't. Rollback: `SCANNER_REGION=off` and a
+     restart (`docs/server-setup.md` §11b).*
+     *Still owed, now after Nov 30 (was "before the Nov 16 freeze"): one Android phone, and a curved
+     or small package. Not yet tried either: the same packages with the device choice Off.*
+- Apply the server's pending OS updates and restart the box (JT, Nov 15; after Nov 30, nothing is
+  redeployed before then).
+- Instacart affiliate application (JT, Nov 15; the Developer Platform's cart API wasn't taking
+  applications on Nov 14).
+- Amazon Creators API, once the associate tag has 10 sales in 30 days (JT, Nov 15).
+- Label-read timing logs and a model bake-off for the label read (JT, Nov 15).
