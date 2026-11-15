@@ -3247,3 +3247,15 @@ Release `20261115193049` (`e9f4a5b`): the release reported healthy, `/api/featur
 bundle is the same `index-B2-EL2TC.js` as the last release, as expected — this change is server only.
 The retry itself can't be exercised on demand (it needs a 503, 429 or timeout from Open Food Facts);
 the route's tests stand in. No migration, no switch change, no reseed.
+
+## 2026-11-15 — Production: `AI_DAILY_SPEND_CAP_CENTS` raised to 1000
+
+While checking why afternoon label-photo scans (JT and judge1, about 4:20 PM ET) read "the ingredients
+statement looked cut off", JT found the in-app daily AI cap on the box was the default (200 cents a UTC
+day, across label extractions and reasoning calls; `server/src/verdict/spendGuard.ts`) and set
+`AI_DAILY_SPEND_CAP_CENTS=1000` in `~/circlebite/.env`, then restarted the service. The console-side
+cap on the key is separate and unchanged. From the code: the "cut off" line is only ever the model's
+own `complete: false` on a parsed answer; a call skipped at the cap is recorded as
+`failure_reason = spend_cap_exceeded` and shows the generic "couldn't check that photo" line instead.
+The read-only query and the journal commands for today's calls were given to JT; results not yet seen
+here. The restart also emptied the in-memory search limits and cache, as any restart does.
