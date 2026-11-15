@@ -48,11 +48,16 @@ page: the full verdict with every allergen that was checked, the note, "Scan it 
 stores can send a different version. Screening aid, not a guarantee.", and the actions. The peanut
 bar reads **Contains: Peanut** (its note, "Approved before Maya's peanut allergy was confirmed": the
 verdict is live, so an allergen added later flags an old item): the app never offers to shop for a
-Contains item, and its page shows "Label wrong? Report a correction" instead. The other two carry
-"Shop on Amazon" and "Shop on Instacart", plain search links that open in a new tab. As Maya's owner
-you can add a note or remove an item from its page; on Noor, whom you follow, you can only read. To
-add one, search for it on the tab (below), or scan it for Maya and tap "Add to Maya's snacks" under
-its card.
+Contains item, and its page shows "Label wrong? Report a correction" instead. The crackers and the
+biscuits are invented brands with no photo and no Amazon page, so they carry "Shop on Amazon" and
+"Shop on Instacart" as plain search links that open in a new tab. **Two real products** are on the
+list beside them, **Oreo Chocolate Sandwich Cookies** and **PopCorners Kettle Corn**, with
+their product photos from Open Food Facts and a row that says "· On Amazon": their Amazon links were
+set once, for every family, by the app's admin, so "Shop on Amazon" goes straight to the product.
+Their verdicts are computed for Maya like any other item's; nothing about them is staged. As Maya's
+owner you can add a note or remove an item from its page; on Noor, whom you follow, you can only
+read. To add one, search for it on the tab (below), or scan it for Maya and tap "Add to Maya's snacks"
+under its card.
 
 If the Snacks tab also has a **search box**, type a name or brand: results come first from products
 this app has already seen; with none, Open Food Facts is asked at once, and "Search more" asks it when
@@ -62,17 +67,17 @@ product reads "Contains an allergen" or "May contain". Tapping the result's name
 full card on Scan. Nothing goes on the list by itself. If Open Food Facts is slow or busy the page says
 it couldn't reach it; try once more.
 
-If rows have a **checkbox** on the right, the Amazon cart is on: as Maya's owner, an item's page has
-"Link on Amazon", which opens the Amazon search in a new tab and a box for the product's amazon.com
-address, of which only the product code is kept (after that the button reads "Shop on Amazon" and goes
-straight to the product, the row says "· On Amazon", and the page has a small "Change Amazon link").
-A Contains row reads "Not for cart" instead of a checkbox. Tick rows and the bar above the tabs, "Add
-N to Amazon cart", becomes one link that opens Amazon with them in its add-to-cart step (it is a
-disabled button for the moment the link is being built). The app builds that link on its own server
-and checks each item's verdict again first: a "Contains an allergen" item is never put in a cart, and
-an item without an Amazon link is named as left out. The
-seeded products are invented brands with no Amazon page, so to try it end to end, search a real
-product, add it to Maya's list, link it, and build the cart.
+If the Oreo and PopCorners rows have a **checkbox** on the right, the Amazon cart is on. Tick them both:
+the bar above the tabs reads "Add 2 to Amazon cart" within a second and is itself the link — one tap
+opens Amazon in a new tab with both in its add-to-cart step (sign in there to finish; nothing is
+bought by the app). It is a disabled button only for the moment the link is being built. The app
+builds that link on its own server and checks each item's verdict again first: a "Contains an
+allergen" item is never put in a cart (the peanut bar reads "Not for cart" instead of a checkbox), and
+an item without an Amazon link is named as left out. The invented items have no checkbox because they
+have no Amazon page; as Maya's owner you can give any item one with "Link on Amazon" on its page,
+which opens the Amazon search in a new tab and a box for the product's amazon.com address, of which
+only the product code is kept. The list shows a one-line note that Amazon links may earn CircleBite a
+commission; that never changes a verdict or the order of the list.
 
 If there is no Snacks tab, the feature stayed switched off for judging and nothing above applies.
 

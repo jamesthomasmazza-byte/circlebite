@@ -3259,3 +3259,35 @@ own `complete: false` on a parsed answer; a call skipped at the cap is recorded 
 `failure_reason = spend_cap_exceeded` and shows the generic "couldn't check that photo" line instead.
 The read-only query and the journal commands for today's calls were given to JT; results not yet seen
 here. The restart also emptied the in-memory search limits and cache, as any restart does.
+
+## 2026-11-15 — Built: two real products on Maya's seeded snack list (not deployed, not reseeded)
+
+**JT:** before the judge link goes out, every judge world's Maya should hold two real products beside
+the three invented items, matched by barcode to production's `products` rows that carry a
+product-level Amazon link; no reports, notes or corrections on them, ever; a missing row is skipped
+and printed, never a failure; the invented products and staged reports unchanged.
+
+- `seedData.ts` `REAL_SNACK_PRODUCTS`: Oreo Chocolate Sandwich Cookies (`044000074579`) and PopCorners
+  Kettle Corn (`0810607023285`), the barcodes exactly as production stores them (JT's read-only
+  query, Nov 15, listing the rows with a shared link). Goldfish was asked for first; production has
+  no row with a link for it, and JT chose PopCorners instead. `realSnackIds(n, i)`: scans 13–14 and
+  items 4–5 in each cast's range.
+- `judgeSeed.ts` `addRealSnackProducts`: reads the rows (found, tags, ingredients, raw data, last
+  updated); for each found row and every world, a barcode scan by the judge for Maya with the real
+  matcher over the row's data, `product_data` the row's own (as a live scan stores it), and the item
+  from that scan with no note. The rows are read only: never written, marked or deleted (a reseed
+  removes only seed-marked product rows, as before). No row, or not found: skipped with the reason.
+  The summary carries `realSnackProducts {added, skipped}`; the CLI prints "Real products on Maya's
+  list in every world: …" and "Skipped real product …: …"; the scan and item counts include them.
+- Tests (`judgeSeed.test.ts`, 27 in the file; server 714): the fresh-seed assertions count the
+  invented items by barcode; a new test plants found rows with a shared link for the barcodes the
+  database lacks, reseeds, checks every world's two items and scans (judge as scanner, source
+  barcode, the row's data), no correction or note on the barcodes, the rows byte-for-byte as before,
+  then removes the planted rows, reseeds, and sees both skipped by name, no item left, the invented
+  three intact, and the snapshot back at the baseline. A local plain seed printed both skip lines.
+- Docs: JUDGES.md's Snacks section (the two real products with photos, "· On Amazon", and the one-tap
+  "Add 2 to Amazon cart"); `docs/server-setup.md` §11l.
+
+**Deploy, then a plain reseed** (`npm run seed:judge`, no `--rotate-passwords`): the reseed is what
+puts the items in; the deploy alone changes nothing judges see. Maya's seeded items are recreated, so
+the plain reseed is enough; the product rows and their shared links survive it.

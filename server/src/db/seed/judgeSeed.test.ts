@@ -11,6 +11,7 @@ import { getProfileAccess } from "../../authorization/profiles.js";
 import { loadCommunityAdditions } from "../../corrections/communityAdditions.js";
 import { claimKey, CORROBORATION_THRESHOLD, countCorroboratingFamilies, recordCorrection } from "../../corrections/recordCorrection.js";
 import { env } from "../../env.js";
+import { SEED_PRODUCT_MARKER } from "../../lib/productLookup.js";
 import { SEED_EMAIL_DOMAIN } from "../../lib/seedMarker.js";
 import { scansRouter } from "../../routes/scans.js";
 import { loadUnseenChanges } from "../../profileChanges/acks.js";
@@ -34,6 +35,8 @@ import {
   JUDGE_LINK_POOL,
   JUDGE_LINK_POOL_EMAILS,
   JUDGE_LINK_POOL_SIZE,
+  REAL_SNACK_PRODUCTS,
+  realSnackIds,
   LOGIN_KEYS,
   NPS_ROWS,
   PEOPLE,
@@ -243,10 +246,12 @@ test("fresh seed: four judges can sign in, each holding every circle role, with 
   assert.equal(baseline.nps.length, 24);
   assert.ok(baseline.nps.every((r) => r.source === "seed" && r.user_id === null));
 
-  // Maya's snack list (docs/snack-list-plan.md step 10): three items in every world, from her own
-  // scans, with the scan's barcode, two with a note, approved by the judge and by Priya.
+  // Maya's snack list (docs/snack-list-plan.md step 10): three invented items in every world, from her
+  // own scans, with the scan's barcode, two with a note, approved by the judge and by Priya. The real
+  // products (JT, Nov 15) are counted apart: this database may or may not hold their rows.
+  const worlds = JUDGE_CASTS.length + JUDGE_LINK_POOL.length;
   for (const cast of [...JUDGE_CASTS, ...JUDGE_LINK_POOL]) {
-    const items = baseline.snackItems.filter((i) => i.allergen_profile_id === PROFILES[cast.maya].id);
+    const items = baseline.snackItems.filter((i) => i.allergen_profile_id === PROFILES[cast.maya].id && SEED_BARCODES.includes(i.barcode));
     assert.equal(items.length, 3, `world ${cast.n}`);
     for (const item of items) {
       const scan = SCANS.find((s) => s.id === item.scan_id);
@@ -256,13 +261,92 @@ test("fresh seed: four judges can sign in, each holding every circle role, with 
     assert.equal(items.filter((i) => i.note !== null).length, 2, `world ${cast.n}: two notes`);
     assert.deepEqual(new Set(items.map((i) => i.added_by)), new Set([PEOPLE[cast.judge].id, PEOPLE[cast.priya].id]));
   }
-  assert.equal(summary.snackItems, SNACK_ITEMS.length);
+  assert.equal(summary.snackItems, SNACK_ITEMS.length + summary.realSnackProducts.added.length * worlds);
+  assert.equal(summary.scans, SCANS.length + summary.realSnackProducts.added.length * worlds);
+  assert.equal(summary.realSnackProducts.added.length + summary.realSnackProducts.skipped.length, REAL_SNACK_PRODUCTS.length, "every real product is either added or named as skipped");
   // The three verdicts the tab shows: clean, may contain, contains — on Maya's own allergens.
   const cast1 = JUDGE_CASTS[0];
   const results = baseline.snackItems
-    .filter((i) => i.allergen_profile_id === PROFILES[cast1.maya].id)
+    .filter((i) => i.allergen_profile_id === PROFILES[cast1.maya].id && SEED_BARCODES.includes(i.barcode))
     .map((i) => baseline.scans.find((s) => s.id === i.scan_id)!.result);
   assert.deepEqual(new Set(results), new Set(["safe", "may_contain_caution", "contains_allergen"]));
+});
+
+// The real products on Maya's list (JT, Nov 15): matched by barcode to `products` rows this database
+// holds; the seed never writes those rows and never reports, notes or corrects on them; a missing or
+// not-found row is skipped and named, never a failure. Rows are planted here for the barcodes this
+// database lacks, and removed after, so the suite leaves the database as it found it.
+test("the real products: on Maya's list in every world from a judge's scan of the existing row, the row untouched, no note and no report; skipped by name when the row is missing", async () => {
+  const barcodes = REAL_SNACK_PRODUCTS.map((p) => p.barcode);
+  const before = (await pool.query<{ barcode: string }>("SELECT barcode FROM products WHERE barcode = ANY($1)", [barcodes])).rows.map((r) => r.barcode);
+  const planted = barcodes.filter((b) => !before.includes(b));
+  // A real-looking row: found, with tags and an image, and a product-level Amazon link an admin set.
+  for (const barcode of planted) {
+    await pool.query(
+      `INSERT INTO products (barcode, found, name, brand, ingredients_text, allergens_tags, traces_tags, raw_data, fetched_at,
+                             image_front_small_url, amazon_asin, amazon_asin_set_at)
+       VALUES ($1, true, $2, 'Test Brand', 'wheat flour, sugar, milk', '{gluten,milk}', '{}', '{"source":"test"}', now(),
+               'https://images.openfoodfacts.org/images/products/test/front.200.jpg', 'B000000001', now())`,
+      [barcode, `Planted ${barcode}`],
+    );
+  }
+  const rowsBefore = (await pool.query("SELECT barcode, found, name, raw_data, amazon_asin, fetched_at FROM products WHERE barcode = ANY($1) ORDER BY barcode", [barcodes])).rows;
+  try {
+    const summary = await runJudgeSeed({ judgePasswordHashes, otherPasswordHash, force: false, rotatePasswords: false });
+    // Every real product whose row is found goes on; none is a failure.
+    const found = (await pool.query<{ barcode: string }>("SELECT barcode FROM products WHERE barcode = ANY($1) AND found", [barcodes])).rows.map((r) => r.barcode);
+    assert.deepEqual(summary.realSnackProducts.added, REAL_SNACK_PRODUCTS.filter((p) => found.includes(p.barcode)).map((p) => p.label));
+    assert.ok(summary.realSnackProducts.added.length >= planted.length, "the planted rows were added");
+    for (const cast of [...JUDGE_CASTS, ...JUDGE_LINK_POOL]) {
+      for (const [index, real] of REAL_SNACK_PRODUCTS.entries()) {
+        if (!found.includes(real.barcode)) continue;
+        const ids = realSnackIds(cast.n, index);
+        const { rows: items } = await pool.query(
+          "SELECT allergen_profile_id, barcode, scan_id, added_by, note FROM snack_list_items WHERE id = $1",
+          [ids.item],
+        );
+        assert.equal(items.length, 1, `world ${cast.n}: ${real.label} is on the list`);
+        assert.deepEqual(items[0], { allergen_profile_id: PROFILES[cast.maya].id, barcode: real.barcode, scan_id: ids.scan, added_by: PEOPLE[cast.judge].id, note: null });
+        const { rows: scans } = await pool.query(
+          "SELECT scanner_id, allergen_profile_id, barcode, source, result, product_data FROM scans WHERE id = $1",
+          [ids.scan],
+        );
+        assert.equal(scans.length, 1, `world ${cast.n}: its scan exists`);
+        assert.equal(scans[0].scanner_id, PEOPLE[cast.judge].id);
+        assert.equal(scans[0].allergen_profile_id, PROFILES[cast.maya].id);
+        assert.equal(scans[0].barcode, real.barcode);
+        assert.equal(scans[0].source, "barcode");
+        assert.ok(["safe", "may_contain_caution", "contains_allergen", "unable_to_confirm"].includes(scans[0].result));
+        assert.notDeepEqual(scans[0].product_data, { [SEED_PRODUCT_MARKER]: true }, "the real row's own data, not the seed marker");
+      }
+    }
+    // Never a report, a note or a correction on a real product, and the rows exactly as they were.
+    const { rows: corrections } = await pool.query("SELECT count(*)::int AS n FROM product_corrections WHERE barcode = ANY($1)", [barcodes]);
+    assert.equal(corrections[0].n, 0);
+    const { rows: noted } = await pool.query("SELECT count(*)::int AS n FROM snack_list_items WHERE barcode = ANY($1) AND note IS NOT NULL", [barcodes]);
+    assert.equal(noted[0].n, 0);
+    const rowsAfter = (await pool.query("SELECT barcode, found, name, raw_data, amazon_asin, fetched_at FROM products WHERE barcode = ANY($1) ORDER BY barcode", [barcodes])).rows;
+    assert.deepEqual(rowsAfter, rowsBefore, "the products rows are read only");
+    // Seeded barcodes stay invented: no real barcode is among them, so no seeded report can name one.
+    assert.ok(barcodes.every((b) => !SEED_BARCODES.includes(b)));
+  } finally {
+    await pool.query("DELETE FROM products WHERE barcode = ANY($1)", [planted]);
+  }
+  // With the planted rows gone, the next reseed skips them by name, removes the items with the worlds,
+  // and still succeeds; the invented list is untouched.
+  const again = await runJudgeSeed({ judgePasswordHashes, otherPasswordHash, force: false, rotatePasswords: false });
+  const plantedLabels = REAL_SNACK_PRODUCTS.filter((p) => planted.includes(p.barcode)).map((p) => p.label);
+  for (const label of plantedLabels) {
+    const skip = again.realSnackProducts.skipped.find((s) => s.label === label);
+    assert.ok(skip && /no products row for barcode \d+ on this database/.test(skip.reason), `${label} skipped and said: ${JSON.stringify(again.realSnackProducts.skipped)}`);
+  }
+  const { rows: left } = await pool.query("SELECT count(*)::int AS n FROM snack_list_items WHERE barcode = ANY($1)", [planted]);
+  assert.equal(left[0].n, 0, "a skipped product leaves no item behind");
+  for (const cast of JUDGE_CASTS) {
+    const { rows } = await pool.query("SELECT count(*)::int AS n FROM snack_list_items WHERE allergen_profile_id = $1 AND barcode = ANY($2)", [PROFILES[cast.maya].id, SEED_BARCODES]);
+    assert.equal(rows[0].n, 3, `world ${cast.n}: the invented items as before`);
+  }
+  assert.deepEqual(await snapshot(), baseline, "back to the fresh seed's state");
 });
 
 // The demo escalation on PRODUCTS.reported is the cross-family example judges are pointed at. It

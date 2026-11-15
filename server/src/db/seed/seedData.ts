@@ -456,5 +456,29 @@ export const NPS_ROWS: { id: string; score: number; reason: string | null }[] = 
 
 export const SEED_BARCODES = Object.values(PRODUCTS).map((p) => p.barcode);
 
+// ---- Real products on Maya's list (JT, 2026-11-15) -------------------------------------------------
+// Two real products (Oreo, PopCorners; JT chose PopCorners over Goldfish, which production had no link
+// for) beside the three invented items in every world, so the judges see product photos
+// and the one-tap Amazon cart without searching: each is matched by barcode to a `products` row
+// production already holds (the rows an admin gave a product-level Amazon link). The seed never
+// writes, refreshes or deletes those rows and never puts a report, a note or a correction on them: it
+// only adds Maya's item, from a barcode scan it records for her (judgeSeed.ts). A barcode with no
+// found row when the seed runs is skipped and named in the summary — never a failure, since a fresh
+// database (the tests', a new box) has none of them.
+export type RealSnackProduct = { key: string; label: string; barcode: string };
+export const REAL_SNACK_PRODUCTS: RealSnackProduct[] = [
+  // Barcodes as production's rows store them (read-only query, Nov 15): Oreo 12 digits, PopCorners 13.
+  { key: "oreo", label: "Oreo Chocolate Sandwich Cookies", barcode: "044000074579" },
+  { key: "popcorners", label: "PopCorners Kettle Corn", barcode: "0810607023285" },
+];
+/** Cast n's row k in a namespace — the same arithmetic addCast uses, for rows made outside it. */
+export function castSeedId(n: number, namespace: number, k: number): string {
+  return seedId(namespace, (n - 1) * CAST_ID_STRIDE + k);
+}
+/** The real products' scan and item ids in cast n: scans 13 and 14, items 4 and 5, past the template's. */
+export function realSnackIds(n: number, index: number): { scan: string; item: string } {
+  return { scan: castSeedId(n, 6, 13 + index), item: castSeedId(n, 8, 4 + index) };
+}
+
 /** Every correction row the seed writes: the cross-family demo and the circle's pending reports. */
 export const SEEDED_REPORTS = [...COMMUNITY_REPORTS, ...CIRCLE_REPORTS];

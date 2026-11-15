@@ -982,6 +982,15 @@ link it and build a cart. A reseed clears whatever they linked.
 `docs/approvals/img/circlebite-snack-carts-*-2026-11-14.png`). **Order on the box:** deploy (§8, which
 applies migration 0051), then the switch. No reseed needed. Nothing after the freeze.
 
+**Two real products on Maya's list (JT, Nov 15; `seedData.ts` `REAL_SNACK_PRODUCTS`):** the judge seed
+also puts Oreo Chocolate Sandwich Cookies and PopCorners Kettle Corn on Maya's list in
+every world, matched by barcode to the `products` rows this box already holds — the rows an admin gave
+a product-level Amazon link — so judges see photos and the one-tap cart without searching. The seed
+reads those rows only: it never writes, marks or deletes them, and never stages a report, a note or a
+correction on them. If a barcode has no found row when the seed runs, that product is skipped and the
+run prints `Skipped real product …: no products row …`; the seed does not fail. The summary line's
+scan and item counts include them when added (two scans and two items per world, 44 worlds).
+
 **Turn it on:**
 
 ```bash

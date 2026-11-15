@@ -57,6 +57,12 @@ async function main(): Promise<void> {
     console.log(
       `Seeded ${summary.accounts} accounts, ${summary.profiles} profiles, ${summary.scans} scans, ${summary.snackItems} snack list items, ${summary.npsRows} NPS rows.`,
     );
+    // The real products on Maya's list (seedData.ts REAL_SNACK_PRODUCTS): added in every world, or
+    // skipped because this database has no found row for the barcode. A skip is not a failure.
+    if (summary.realSnackProducts.added.length > 0) {
+      console.log(`Real products on Maya's list in every world: ${summary.realSnackProducts.added.join("; ")}.`);
+    }
+    for (const s of summary.realSnackProducts.skipped) console.log(`Skipped real product ${s.label}: ${s.reason}.`);
     console.log("Judge logins — each line goes in that judge's own one-time link, and nowhere else:");
     for (const line of credentialLines(summary.judgeCredentials, passwords)) console.log(`  ${line}`);
     console.log("Post-deploy check login (docs/server-setup.md §8) — yours only, never in a judge's link:");

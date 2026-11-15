@@ -33,6 +33,10 @@ import {
   SEED_BARCODES,
   SEEDED_REPORTS,
   SNACK_ITEMS,
+  JUDGE_CASTS,
+  JUDGE_LINK_POOL,
+  REAL_SNACK_PRODUCTS,
+  realSnackIds,
   type SeedCommunityReport,
 } from "./seedData.js";
 
@@ -114,7 +118,11 @@ export type SeedSummary = {
   accounts: number;
   profiles: number;
   scans: number;
+  /** Every snack list item written: the invented ones, plus one per world for each real product added. */
   snackItems: number;
+  /** The real products (seedData.ts REAL_SNACK_PRODUCTS): which went on Maya's list in every world, and
+   *  which were skipped for want of a found `products` row on this database, with the reason. */
+  realSnackProducts: { added: string[]; skipped: { label: string; reason: string }[] };
   npsRows: number;
 };
 
@@ -255,7 +263,7 @@ export async function seedJudge(client: PoolClient, options: SeedOptions): Promi
   await client.query("DELETE FROM users WHERE id = ANY($1)", [seededUserIds]);
 
   // 5. Fresh.
-  await createSeed(client, { loginHashes, otherPasswordHash: options.otherPasswordHash });
+  const realSnackProducts = await createSeed(client, { loginHashes, otherPasswordHash: options.otherPasswordHash });
 
   return {
     judgeCredentials: credentials.filter((c) => c.judgeKey !== CHECK_ACCOUNT_KEY),
@@ -264,13 +272,20 @@ export async function seedJudge(client: PoolClient, options: SeedOptions): Promi
     judgeCorrectionsRejected: judgeCorrectionsRejected ?? 0,
     accounts: Object.keys(PEOPLE).length,
     profiles: Object.keys(PROFILES).length,
-    scans: SCANS.length,
-    snackItems: SNACK_ITEMS.length,
+    scans: SCANS.length + realSnackProducts.added.length * WORLDS.length,
+    snackItems: SNACK_ITEMS.length + realSnackProducts.added.length * WORLDS.length,
+    realSnackProducts,
     npsRows: NPS_ROWS.length,
   };
 }
 
-async function createSeed(client: PoolClient, options: { loginHashes: Record<string, string>; otherPasswordHash: string }) {
+/** Every judge world: the four judges' casts and the link pool's. */
+const WORLDS = [...JUDGE_CASTS, ...JUDGE_LINK_POOL];
+
+async function createSeed(
+  client: PoolClient,
+  options: { loginHashes: Record<string, string>; otherPasswordHash: string },
+): Promise<SeedSummary["realSnackProducts"]> {
   for (const [key, person] of Object.entries(PEOPLE)) {
     // Only the judges and the check account can sign in, each with their own password. Everyone else
     // gets an unusable hash of random bytes nobody ever sees: they exist to be a judge's circle, or a
@@ -385,6 +400,7 @@ async function createSeed(client: PoolClient, options: { loginHashes: Record<str
       [item.id, PROFILES[item.profile].id, PRODUCTS[scan.product].barcode, scan.id, PEOPLE[item.addedBy].id, item.note, scan.daysAgo],
     );
   }
+  const realSnackProducts = await addRealSnackProducts(client);
 
   // Inserted pending, then put through the same threshold step a real report runs
   // (recordCorrection.ts) — the seed never writes 'corroborated' itself. If the threshold ever rises
@@ -430,6 +446,84 @@ async function createSeed(client: PoolClient, options: { loginHashes: Record<str
       row.reason,
     ]);
   }
+  return realSnackProducts;
+}
+
+type RealProductRow = {
+  barcode: string;
+  found: boolean;
+  name: string | null;
+  brand: string | null;
+  ingredients_text: string | null;
+  allergens_tags: string[];
+  traces_tags: string[];
+  raw_data: unknown;
+  product_last_updated: Date | null;
+};
+
+/**
+ * The real products on Maya's list (seedData.ts REAL_SNACK_PRODUCTS; JT, Nov 15), in every world: a
+ * barcode scan by the judge over the `products` row as it stands, with the real matcher, exactly as
+ * a live scan of that barcode would record it (routes/scans.ts: the row's own data in product_data),
+ * and the item from that scan, as POST /profiles/:id/snacks does it. The row itself is read only —
+ * never written, never marked, never deleted by a reseed, which removes only the seed's own rows —
+ * and nothing is ever reported, noted or corrected on it by the seed. No found row: skipped and said.
+ */
+async function addRealSnackProducts(client: PoolClient): Promise<SeedSummary["realSnackProducts"]> {
+  const { rows } = await client.query<RealProductRow>(
+    `SELECT barcode, found, name, brand, ingredients_text, allergens_tags, traces_tags, raw_data, product_last_updated
+     FROM products WHERE barcode = ANY($1)`,
+    [REAL_SNACK_PRODUCTS.map((p) => p.barcode)],
+  );
+  const byBarcode = new Map(rows.map((r) => [r.barcode, r]));
+  const added: string[] = [];
+  const skipped: { label: string; reason: string }[] = [];
+  for (const [index, real] of REAL_SNACK_PRODUCTS.entries()) {
+    const row = byBarcode.get(real.barcode);
+    if (!row) {
+      skipped.push({ label: real.label, reason: `no products row for barcode ${real.barcode} on this database` });
+      continue;
+    }
+    if (!row.found) {
+      skipped.push({ label: real.label, reason: `products row ${real.barcode} is not a found product` });
+      continue;
+    }
+    const product = { found: true, allergensTags: row.allergens_tags, tracesTags: row.traces_tags, ingredientsText: row.ingredients_text };
+    for (const cast of WORLDS) {
+      const profile = PROFILES[cast.maya];
+      const { verdict, matchedAllergens } = computeVerdict(
+        profile.allergens.map((a) => ({ name: a.name, severity: a.severity, treatTracesAsUnsafe: a.treatTracesAsUnsafe })),
+        product,
+      );
+      const ids = realSnackIds(cast.n, index);
+      await client.query(
+        `INSERT INTO scans
+           (id, scanner_id, allergen_profile_id, barcode, product_name, product_brand, ingredients_text,
+            product_data, product_last_updated, result, matched_allergens, source, community_corrections_applied, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'barcode', '[]', now() - make_interval(days => 1))`,
+        [
+          ids.scan,
+          PEOPLE[cast.judge].id,
+          profile.id,
+          row.barcode,
+          row.name,
+          row.brand,
+          row.ingredients_text,
+          JSON.stringify(row.raw_data),
+          row.product_last_updated,
+          verdict,
+          JSON.stringify(matchedAllergens),
+        ],
+      );
+      await client.query(
+        `INSERT INTO snack_list_items (id, allergen_profile_id, barcode, scan_id, added_by, note, created_at)
+         VALUES ($1, $2, $3, $4, $5, NULL, now() - make_interval(days => 1))`,
+        [ids.item, profile.id, row.barcode, ids.scan, PEOPLE[cast.judge].id],
+      );
+    }
+    added.push(real.label);
+  }
+  return { added, skipped };
 }
 
 /**
