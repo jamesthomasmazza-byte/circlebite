@@ -110,10 +110,12 @@ still show and "Search more" says it couldn't reach it.
   Amazon goes to that product instead of a search.
 - **Checkboxes** on items that have shop links (never on "Contains" items, which the server already sends
   without links), and two buttons for the selection:
-  - **Add selected to Amazon cart** — selected items with an ASIN, one link:
+  - **Add N to Amazon cart** — selected items with an ASIN, one link:
     `https://www.amazon.com/gp/aws/cart/add.html?ASIN.1=…&Quantity.1=1&…`, plus `AssociateTag` only when
     `AMAZON_ASSOCIATE_TAG` is set. Checked Nov 14 in Chrome: Amazon carries every ASIN through to its
-    add-to-cart step after sign-in. Items without an ASIN are named as left out.
+    add-to-cart step after sign-in. Items without an ASIN are named as left out. **Nov 14, one tap:**
+    the link is built as the ticks settle (debounced, same route and re-checks) and the bar's button
+    is that link, disabled only while building or with nothing ticked.
   - ~~**Shop selected on Instacart**~~ — **Nov 14: Instacart Developer Platform not accepting applications
     (no waitlist); Instacart cart dropped, affiliate program after judging.** The per-item "Shop on
     Instacart" search links stay as they are.

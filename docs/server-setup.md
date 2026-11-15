@@ -942,13 +942,17 @@ dropped Nov 14 (the Developer Platform isn't taking applications; `docs/snack-li
   link", and its one control reads "Shop on Amazon" and goes to that product instead of a search.
 - **Checkboxes** on items that have shop links. A "Contains" item has none (the server already sends
   it without links).
-- **"Add selected to Amazon cart"**, built on the server only (`server/src/snackList/cartLink.ts`):
+- **"Add N to Amazon cart"**, built on the server only (`server/src/snackList/cartLink.ts`):
   `https://www.amazon.com/gp/aws/cart/add.html?ASIN.1=…&Quantity.1=1&…`, plus `AssociateTag` only when
   `AMAZON_ASSOCIATE_TAG` is set. The server computes every selected item's verdict again exactly as the
   list shows it and refuses a "Contains" item even if the client sent it; an item without an Amazon
   link is named as left out; an id not on the list is ignored. Anyone who can read the list can build
-  a cart (a sitter shops too); nothing is written. The page opens the link in a new tab, where Amazon
-  shows the items in its add-to-cart step after sign-in (JT, Chrome, Nov 14).
+  a cart (a sitter shops too); nothing is written. One tap (JT, Nov 14): the page asks for the link
+  as the ticks settle (400 ms after the last one, one `POST …/snacks/cart` per settled selection, none
+  with nothing ticked) and renders the bar's "Add N to Amazon cart" as that link itself, opening a new
+  tab where Amazon shows the items in its add-to-cart step after sign-in (JT, Chrome, Nov 14). While
+  the link is being built, or with nothing ticked, the bar is a disabled button; the left-out and
+  refused lines sit under it. N on the link is the number the link adds.
 
 Its own switch, on top of `SNACK_LIST`: off by default, and off hides all three, sends every item's
 `amazon` as null whatever is stored, and makes the link and cart routes a plain 404. Independent of `SNACK_SEARCH`.
@@ -998,9 +1002,8 @@ was still off; `docs/journal.md`).
 Then, signed in as judge1 on the phone, on Maya's Snacks tab: a checkbox on the oat biscuits and the
 crackers, none on the peanut bar; "Link on Amazon" on the crackers, paste a real amazon.com product
 address (the line reads "Amazon link added by Judge 1" and Shop on Amazon opens that product); tick
-both and tap "Add selected to Amazon cart (2)" (1 item in the cart link, the biscuits named as left
-out); "Open the Amazon cart" opens Amazon in a new tab with the item; "Remove Amazon link" puts the
-search link back.
+both: the bar reads "Add 1 to Amazon cart" once built, with the biscuits named as left out under it;
+tapping it opens Amazon in a new tab with the item; "Remove Amazon link" puts the search link back.
 
 ## 12. Admin access — the AI accuracy page
 

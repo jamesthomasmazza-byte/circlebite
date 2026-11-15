@@ -10,19 +10,16 @@ import { JUDGE_LINK_NOT_FOUND } from "../lib/judgeLink";
 import { addProfileHref } from "../lib/profileSections";
 import {
   AFFILIATE_DISCLOSURE,
-  CART_BUILDING,
+  CART_DEBOUNCE_MS,
   CART_FAILED,
   CART_NOTE,
-  CART_NOTHING,
   cartBarLabel,
-  cartIncludedLine,
   emptyLine,
   itemCount,
   leftOutLine,
   LIST_FAILED,
   listTitle,
   NO_PROFILE,
-  OPEN_CART,
   refusedLine,
   SCREENING_NOTE,
 } from "../lib/snackListCopy";
@@ -35,7 +32,8 @@ import { scanningForId } from "../lib/tabs";
  * is now, computed from stored data with no AI call. One screening note under the title instead of a
  * disclaimer per item; a row opens the item's detail page (SnackDetail.tsx), which holds the full
  * verdict, the note and every action. The Amazon-cart checkbox sits at the right of each row and a
- * sticky bar above the tab bar builds the cart on the server. The profile is the shell's chosen one,
+ * sticky bar above the tab bar carries the cart link, built on the server as soon as the ticked set
+ * settles, so the cart is one tap (JT, Nov 14). The profile is the shell's chosen one,
  * the same value as Scan's pill, so moving between Scan and Snacks keeps the same child.
  */
 export function Snacks() {
@@ -46,17 +44,56 @@ export function Snacks() {
   const [error, setError] = useState<string | null>(null);
   const [reads, setReads] = useState(0);
   // Carts (SNACK_CARTS): the ticked items, by id. Cleared when the profile changes; an id that left
-  // the list is dropped when the list reloads. The cart itself is built on the server from these ids.
+  // the list is dropped when the list reloads. The cart itself is built on the server from these ids,
+  // by the effect below, each time the set settles; `cartTries` is bumped to try again after a failure.
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [cartBusy, setCartBusy] = useState(false);
   const [cartResult, setCartResult] = useState<CartBuild | null>(null);
   const [cartError, setCartError] = useState<string | null>(null);
+  const [cartTries, setCartTries] = useState(0);
 
   useEffect(() => {
     setSelected(new Set());
     setCartResult(null);
     setCartError(null);
   }, [profile?.id]);
+
+  // One tap (JT, Nov 14): the cart link is built as the selection changes — debounced, so a run of
+  // ticks is one request — and the bar renders it as the link itself once it's back. The same route
+  // and the same re-checks as before: a "Contains" item is never in it. A response from an earlier
+  // selection is dropped; nothing is asked for with nothing ticked. The list reloading (`reads`)
+  // builds again, since a link or verdict may have changed under a ticked item.
+  const selectedKey = [...selected].join(",");
+  useEffect(() => {
+    if (!profile || !snackCartsEnabled) return;
+    if (selected.size === 0) {
+      setCartBusy(false);
+      setCartResult(null);
+      setCartError(null);
+      return;
+    }
+    let live = true;
+    setCartBusy(true);
+    setCartResult(null);
+    setCartError(null);
+    const timer = setTimeout(() => {
+      buildSnackCart(profile.id, [...selected])
+        .then((r) => {
+          if (live) setCartResult(r);
+        })
+        .catch(() => {
+          if (live) setCartError(CART_FAILED);
+        })
+        .finally(() => {
+          if (live) setCartBusy(false);
+        });
+    }, CART_DEBOUNCE_MS);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `selected` is read through selectedKey
+  }, [selectedKey, profile?.id, snackCartsEnabled, reads, cartTries]);
 
   useEffect(() => {
     if (!profile || !snackListEnabled) return;
@@ -117,21 +154,6 @@ export function Snacks() {
       else next.add(id);
       return next;
     });
-    setCartResult(null);
-  }
-
-  async function buildCart() {
-    if (selected.size === 0) return;
-    setCartBusy(true);
-    setCartError(null);
-    setCartResult(null);
-    try {
-      setCartResult(await buildSnackCart(profile!.id, [...selected]));
-    } catch {
-      setCartError(CART_FAILED);
-    } finally {
-      setCartBusy(false);
-    }
   }
 
   return (
@@ -183,58 +205,57 @@ export function Snacks() {
       {/* The bar once anything on the list can go in a cart: a linked item for anyone, or an item a
           manager could link. The count is the ticked, linked items. */}
       {snackCartsEnabled && (linkable > 0 || (canManage && shoppable.length > 0)) && (
-        <SnackCartBar count={selected.size} busy={cartBusy} result={cartResult} error={cartError} onBuild={() => void buildCart()} />
+        <SnackCartBar count={selected.size} busy={cartBusy} result={cartResult} error={cartError} onRetry={() => setCartTries((n) => n + 1)} />
       )}
     </main>
   );
 }
 
 /**
- * The sticky bar above the tab bar (JT's mockup, Nov 14): "Add N to Amazon cart" for the ticked
- * items, disabled at none, and what the server made of them — the one cart link, who went in, who
- * was left out for want of an Amazon link, and who was refused because the server's own re-check
- * reads "Contains an allergen" now.
+ * The sticky bar above the tab bar (JT's mockup, Nov 14; one tap, Nov 14): "Add N to Amazon cart" is
+ * the cart link itself once the server has built it — a new tab, Amazon's add-to-cart step — and a
+ * disabled button while it is being built or with nothing ticked. Under it, what the server made of
+ * the selection: who was left out for want of an Amazon link, who was refused because its own
+ * re-check reads "Contains an allergen" now, and the note on what happens next. N on the link is the
+ * number the link adds; on the button, the number ticked. After a failure the button is live again
+ * and tries once more.
  */
 export function SnackCartBar({
   count,
   busy,
   result,
   error,
-  onBuild,
+  onRetry,
 }: {
   count: number;
   busy: boolean;
   result: CartBuild | null;
   error: string | null;
-  onBuild: () => void;
+  onRetry: () => void;
 }) {
+  const ready = !busy && result !== null;
+  const url = ready ? result.url : null;
   return (
     <div className="snacks__cart-bar" aria-label="Amazon cart">
+      <p className="snacks__cart-actions">
+        {url ? (
+          <a className="button-link button-link--primary" href={url} target="_blank" rel="noopener noreferrer">
+            {cartBarLabel(result!.included.length)}
+          </a>
+        ) : (
+          <button type="button" className="button-primary" disabled={busy || count === 0 || error === null} aria-busy={busy || undefined} onClick={onRetry}>
+            {cartBarLabel(count)}
+          </button>
+        )}
+      </p>
       {error && <p role="alert">{error}</p>}
-      {result && (
+      {ready && (result.left_out.length > 0 || result.refused.length > 0 || url) && (
         <div role="status" className="snacks__cart-result">
-          {result.url ? (
-            <>
-              <p>{cartIncludedLine(result.included.length)}</p>
-              <p>
-                <a className="button-link" href={result.url} target="_blank" rel="noopener noreferrer">
-                  {OPEN_CART}
-                </a>
-              </p>
-            </>
-          ) : (
-            <p>{CART_NOTHING}</p>
-          )}
           {result.left_out.length > 0 && <p>{leftOutLine(result.left_out.map((i) => i.name))}</p>}
           {result.refused.length > 0 && <p>{refusedLine(result.refused.map((i) => i.name))}</p>}
-          {result.url && <p className="card__meta">{CART_NOTE}</p>}
+          {url && <p className="card__meta">{CART_NOTE}</p>}
         </div>
       )}
-      <p className="snacks__cart-actions">
-        <button type="button" className="button-primary" disabled={busy || count === 0} onClick={onBuild}>
-          {busy ? CART_BUILDING : cartBarLabel(count)}
-        </button>
-      </p>
     </div>
   );
 }

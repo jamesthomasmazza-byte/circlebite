@@ -4110,9 +4110,11 @@ button.scan-tile {
   margin: 0;
 }
 
-.snacks__cart-actions button {
+.snacks__cart-actions button,
+.snacks__cart-actions .button-link {
   width: 100%;
   margin: 0;
+  justify-content: center;
 }
 
 .snacks__cart-result {
@@ -4313,8 +4315,10 @@ button.scan-tile {
   box-shadow: var(--shadow);
 }
 
-.snacks__cart-bar .snacks__cart-result {
-  margin: 0 0 var(--space-3);
+/* The lines under the link (one tap, Nov 14): who was left out, who was refused, what happens next. */
+.snacks__cart-bar .snacks__cart-result,
+.snacks__cart-bar [role="alert"] {
+  margin: var(--space-3) 0 0;
 }
 
 /* ---------- The detail page (routes/SnackDetail.tsx) ---------- */

@@ -3157,3 +3157,41 @@ here as a flake to watch, most likely the check servers still releasing the data
 
 **Not checked here:** JT's phone with his admin account. Not deployed: the deploy applies migration
 0053; no switch change, no reseed.
+
+## 2026-11-14 — Deployed: the shared product Amazon link; built: the one-tap Amazon cart (not deployed)
+
+Release `20261114193215` went out (migration 0053 applied, bundle `index-LQiV9ftc.js` verified, health
+200); no switch change, no reseed.
+
+**The one-tap cart (JT):** "Add N to Amazon cart" used to build the link on tap and then show a second
+"Open the Amazon cart" link — two taps, and a popup blocker's worth of trouble on a phone. Now the page
+asks the server for the link as the ticked set changes, and the bar's button *is* the link.
+
+- `client/src/routes/Snacks.tsx`: an effect keyed on the selection (and on the list reloading, since a
+  link or verdict may have changed under a ticked item) waits `CART_DEBOUNCE_MS` (400 ms) and then
+  posts to the same `POST /profiles/:id/snacks/cart`, with the same re-checks; a response from an
+  earlier selection is dropped (`live` flag, timer cleared), and nothing is asked for with nothing
+  ticked. `SnackCartBar` renders a disabled button ("Add N to Amazon cart", N = ticked, `aria-busy`
+  while building) at none or while building, and once built an `<a href>` to the link, `target="_blank"
+  rel="noopener noreferrer"`, labelled with the number the link adds. Under it, as before, the
+  left-out and refused lines and the "Amazon opens in a new tab…" note; the "N items are in the cart
+  link" line and "Open the Amazon cart" are gone (the label says both). After a failure the button is
+  live and tries once more ("Couldn't build the cart. Try again."). A "Contains" item still never
+  reaches the link: it has no checkbox, and the server refuses it regardless.
+- Copy: `cartButtonLabel`, `CART_BUILDING`, `OPEN_CART`, `CART_NOTHING`, `cartIncludedLine` removed;
+  `CART_DEBOUNCE_MS` added. CSS: the bar's link fills the width like the button; the lines sit under it.
+- Docs: README, JUDGES.md, `docs/server-setup.md` §11l, the plan addendum.
+
+**Local check** (Chrome, 390, judge1 on Maya's list with the crackers and biscuits linked through the
+API for the check, unlinked after; a second server with all three switches on): the bar at none is a
+disabled "Add 0 to Amazon cart"; right after a tick a disabled, `aria-busy` "Add 1 to Amazon cart";
+once built an `<a>` "Add 1 to Amazon cart" to `…/gp/aws/cart/add.html?ASIN.1=B07PGL2ZSL&Quantity.1=1`,
+new tab, `noopener noreferrer`, the note under it; a second tick → disabled, then "Add 2 to Amazon
+cart" carrying both ASINs; three quick toggles inside the debounce → one request; all unticked → no
+request and the disabled "Add 0"; tapping the link opened a new tab at the add-to-cart address
+(closed at once; Amazon itself not fetched). Dark at 150%: no horizontal scroll, the link 66 px tall.
+Four requests in the whole run, one per settled selection. Screenshots
+`circlebite-snacks-onetap-{none,one,two}-390-2026-11-14.png` and `…-one-390-150-dark-…`. Client 541
+tests; the server is untouched.
+
+**Not checked here:** JT's phone. Not deployed: no migration, no switch change, no reseed.

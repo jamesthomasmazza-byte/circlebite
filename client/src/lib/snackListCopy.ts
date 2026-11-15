@@ -172,23 +172,14 @@ export function selectForCartLabel(productName: string | null): string {
   return `Select ${productName ?? "this product"} for the Amazon cart`;
 }
 
-export function cartButtonLabel(count: number): string {
-  return count > 0 ? `Add selected to Amazon cart (${count})` : "Add selected to Amazon cart";
-}
-
-export const CART_BUILDING = "Building the cart…";
-export const OPEN_CART = "Open the Amazon cart";
+/** One tap (JT, Nov 14): the link is built as the ticks settle; a run of ticks is one request. */
+export const CART_DEBOUNCE_MS = 400;
 export const CART_FAILED = "Couldn't build the cart. Try again.";
-export const CART_NOTHING = "Nothing could go in the cart.";
 /** Under the cart link, every time: what happens next and the standing rule. */
 export const CART_NOTE = "Amazon opens in a new tab with these items in its add-to-cart step; sign in there to finish. Scan each item when it arrives.";
 
 function nameList(names: string[]): string {
   return names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
-}
-
-export function cartIncludedLine(count: number): string {
-  return count === 1 ? "1 item is in the cart link." : `${count} items are in the cart link.`;
 }
 
 /** Selected, allowed, but no Amazon link yet — named, so a manager knows what to link. */

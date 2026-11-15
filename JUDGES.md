@@ -67,9 +67,10 @@ If rows have a **checkbox** on the right, the Amazon cart is on: as Maya's owner
 address, of which only the product code is kept (after that the button reads "Shop on Amazon" and goes
 straight to the product, the row says "· On Amazon", and the page has a small "Change Amazon link").
 A Contains row reads "Not for cart" instead of a checkbox. Tick rows and the bar above the tabs, "Add
-N to Amazon cart", gives one link that opens Amazon with them in its add-to-cart step. The app
-builds that link on its own server and checks each item's verdict again first: a "Contains an
-allergen" item is never put in a cart, and an item without an Amazon link is named as left out. The
+N to Amazon cart", becomes one link that opens Amazon with them in its add-to-cart step (it is a
+disabled button for the moment the link is being built). The app builds that link on its own server
+and checks each item's verdict again first: a "Contains an allergen" item is never put in a cart, and
+an item without an Amazon link is named as left out. The
 seeded products are invented brands with no Amazon page, so to try it end to end, search a real
 product, add it to Maya's list, link it, and build the cart.
 

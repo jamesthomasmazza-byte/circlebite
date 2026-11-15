@@ -106,8 +106,8 @@ Snack search (November 14, behind `SNACK_SEARCH`): a search box on that tab, thi
 records first and Open Food Facts' text search through the server, cached and limited; a result opens
 the existing scan and never carries a verdict of its own. Snack carts (November 14, behind
 `SNACK_CARTS`, Amazon only): a manager links an item to its amazon.com product (only the product code
-is kept), and "Add selected to Amazon cart" is one link built on the server, which re-checks every
-item's verdict and refuses a "Contains" item.
+is kept), and "Add N to Amazon cart" is one link built on the server as items are ticked, which
+re-checks every item's verdict and refuses a "Contains" item.
 
 ## Rules
 

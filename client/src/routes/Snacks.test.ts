@@ -69,34 +69,46 @@ test("the page: the title row with the count, one screening note under it (not o
   assert.match(PAGE, /\{snackCartsEnabled && \(linkable > 0 \|\| \(canManage && shoppable\.length > 0\)\) && \(\s*<SnackCartBar/);
   assert.match(PAGE, /const linked = new Set\(l\.items\.filter\(\(i\) => i\.amazon && i\.shop\)\.map\(\(i\) => i\.id\)\);/, "only linked items stay ticked");
   assert.match(PAGE, /canManage=\{canManage\}\s*selected=\{selected\.has\(item\.id\)\}\s*onToggle=\{\(\) => toggle\(item\.id\)\}\s*onLinkAmazon=\{async \(url\) => \{\s*await linkSnackOnAmazon\(profile\.id, item\.id, url\);/);
-  assert.match(PAGE, /setCartResult\(await buildSnackCart\(profile!\.id, \[\.\.\.selected\]\)\)/);
+  // One tap (JT, Nov 14): the cart is built as the ticks settle, never by a button; a stale response is dropped.
+  assert.match(PAGE, /const selectedKey = \[\.\.\.selected\]\.join\(","\);/);
+  assert.match(PAGE, /if \(selected\.size === 0\) \{\s*setCartBusy\(false\);\s*setCartResult\(null\);\s*setCartError\(null\);\s*return;/);
+  assert.match(PAGE, /const timer = setTimeout\(\(\) => \{\s*buildSnackCart\(profile\.id, \[\.\.\.selected\]\)\s*\.then\(\(r\) => \{\s*if \(live\) setCartResult\(r\);/);
+  assert.match(PAGE, /\}, CART_DEBOUNCE_MS\);\s*return \(\) => \{\s*live = false;\s*clearTimeout\(timer\);/);
+  assert.match(PAGE, /\}, \[selectedKey, profile\?\.id, snackCartsEnabled, reads, cartTries\]\);/);
+  assert.match(PAGE, /<SnackCartBar count=\{selected\.size\} busy=\{cartBusy\} result=\{cartResult\} error=\{cartError\} onRetry=\{\(\) => setCartTries\(\(n\) => n \+ 1\)\} \/>/);
+  assert.doesNotMatch(PAGE, /onBuild|buildCart\(|CART_BUILDING|OPEN_CART|cartIncludedLine/);
   assert.doesNotMatch(PAGE, /cart\/add\.html|DISCLAIMER_SHORT|SCAN_WHEN_IT_ARRIVES|EMPTY_SCAN_LINK|SnackItemCard|\.sort\(/);
   assert.match(PAGE, /const \{ chosenProfileId, profiles, profilesLoaded \} = useScanningFor\(\);/);
   assert.match(PAGE, /if \(!loading && !snackListEnabled\) \{/);
 });
 
 function bar(over: Partial<Parameters<typeof SnackCartBar>[0]> = {}): string {
-  return renderToStaticMarkup(createElement(SnackCartBar, { count: 0, busy: false, result: null, error: null, onBuild: () => {}, ...over }));
+  return renderToStaticMarkup(createElement(SnackCartBar, { count: 0, busy: false, result: null, error: null, onRetry: () => {}, ...over }));
 }
 
-test("the cart bar: Add N to Amazon cart, disabled at none; building says so; the result above the button names who went in, who was left out and why, who was refused and why", () => {
+const BUILT = {
+  url: "https://www.amazon.com/gp/aws/cart/add.html?ASIN.1=B07PGL2ZSL&Quantity.1=1",
+  included: [{ id: "i-1", name: "Plain Rice Crackers", asin: "B07PGL2ZSL" }],
+  left_out: [{ id: "i-3", name: "Oat Biscuits" }],
+  refused: [{ id: "i-2", name: "Crunchy Peanut Bar" }],
+};
+
+test("the cart bar, one tap: a disabled button at none and while building; the link itself once built, in a new tab, counting what it adds; left out and refused named under it", () => {
   assert.match(bar(), /<div class="snacks__cart-bar" aria-label="Amazon cart"><p class="snacks__cart-actions"><button type="button" class="button-primary" disabled="">Add 0 to Amazon cart<\/button><\/p><\/div>/);
-  assert.match(bar({ count: 2 }), /<button type="button" class="button-primary">Add 2 to Amazon cart<\/button>/);
-  assert.match(bar({ count: 2, busy: true }), /disabled="">Building the cart…</);
-  assert.match(bar({ error: "Couldn't build the cart. Try again." }), /<p role="alert">Couldn&#x27;t build the cart\. Try again\.<\/p>/);
-  const html = bar({
-    count: 3,
-    result: {
-      url: "https://www.amazon.com/gp/aws/cart/add.html?ASIN.1=B07PGL2ZSL&Quantity.1=1",
-      included: [{ id: "i-1", name: "Plain Rice Crackers", asin: "B07PGL2ZSL" }],
-      left_out: [{ id: "i-3", name: "Oat Biscuits" }],
-      refused: [{ id: "i-2", name: "Crunchy Peanut Bar" }],
-    },
-  });
-  assert.match(html, /<div role="status" class="snacks__cart-result"><p>1 item is in the cart link\.<\/p>/);
-  assert.match(html, /<a class="button-link" href="https:\/\/www\.amazon\.com\/gp\/aws\/cart\/add\.html\?ASIN\.1=B07PGL2ZSL&amp;Quantity\.1=1" target="_blank" rel="noopener noreferrer">Open the Amazon cart<\/a>/);
-  assert.match(html, /Left out, no Amazon link yet: Oat Biscuits\./);
-  assert.match(html, /Not added — it reads “Contains an allergen” now: Crunchy Peanut Bar\./);
-  assert.match(html, /Scan each item when it arrives\./);
-  assert.match(bar({ count: 1, result: { url: null, included: [], left_out: [], refused: [{ id: "i-2", name: "Crunchy Peanut Bar" }] } }), /Nothing could go in the cart\./);
+  assert.match(bar({ count: 2, busy: true }), /<button type="button" class="button-primary" disabled="" aria-busy="true">Add 2 to Amazon cart<\/button><\/p><\/div>/, "building: the same words, disabled, no lines yet");
+  const html = bar({ count: 3, result: BUILT });
+  assert.match(html, /<p class="snacks__cart-actions"><a class="button-link button-link--primary" href="https:\/\/www\.amazon\.com\/gp\/aws\/cart\/add\.html\?ASIN\.1=B07PGL2ZSL&amp;Quantity\.1=1" target="_blank" rel="noopener noreferrer">Add 1 to Amazon cart<\/a><\/p>/, "the link adds one, whatever was ticked");
+  assert.match(html, /<div role="status" class="snacks__cart-result"><p>Left out, no Amazon link yet: Oat Biscuits\.<\/p><p>Not added — it reads “Contains an allergen” now: Crunchy Peanut Bar\.<\/p><p class="card__meta">Amazon opens in a new tab/);
+  assert.doesNotMatch(html, /<button|Open the Amazon cart|in the cart link/);
+  // A result from an earlier selection never shows as the link while the next build is under way.
+  assert.match(bar({ count: 3, busy: true, result: BUILT }), /<button type="button" class="button-primary" disabled="" aria-busy="true">Add 3 to Amazon cart<\/button><\/p><\/div>/);
+  // Everything ticked refused: no link, the button stays disabled, the refused line says why.
+  const refused = bar({ count: 1, result: { url: null, included: [], left_out: [], refused: [{ id: "i-2", name: "Crunchy Peanut Bar" }] } });
+  assert.match(refused, /<button type="button" class="button-primary" disabled="">Add 1 to Amazon cart<\/button><\/p><div role="status" class="snacks__cart-result"><p>Not added — it reads “Contains an allergen” now: Crunchy Peanut Bar\.<\/p><\/div>/);
+  assert.doesNotMatch(refused, /<a |Amazon opens in a new tab/);
+  // A failure: the line, and the button live again to try once more.
+  assert.match(bar({ count: 2, error: "Couldn't build the cart. Try again." }), /<button type="button" class="button-primary">Add 2 to Amazon cart<\/button><\/p><p role="alert">Couldn&#x27;t build the cart\. Try again\.<\/p><\/div>/);
+  // Contains items never reach the link: the server's included list is all the link carries.
+  const two = bar({ count: 2, result: { ...BUILT, url: "https://www.amazon.com/gp/aws/cart/add.html?ASIN.1=B07PGL2ZSL&Quantity.1=1&ASIN.2=B000000002&Quantity.2=1", included: [...BUILT.included, { id: "i-4", name: "Seed Bars", asin: "B000000002" }], left_out: [], refused: [] } });
+  assert.match(two, /ASIN\.2=B000000002&amp;Quantity\.2=1" target="_blank" rel="noopener noreferrer">Add 2 to Amazon cart<\/a><\/p><div role="status" class="snacks__cart-result"><p class="card__meta">Amazon opens/);
 });

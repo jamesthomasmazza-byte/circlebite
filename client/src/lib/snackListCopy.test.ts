@@ -76,11 +76,8 @@ test("the list's path carries the profile, which the shell takes as its choice",
 
 // ---- Carts (the addendum's part B, 2026-11-14) ----
 
-test("the cart's words: the button counts, the lines name what went in, what was left out and why, what was refused and why", () => {
-  assert.equal(copy.cartButtonLabel(0), "Add selected to Amazon cart");
-  assert.equal(copy.cartButtonLabel(3), "Add selected to Amazon cart (3)");
-  assert.equal(copy.cartIncludedLine(1), "1 item is in the cart link.");
-  assert.equal(copy.cartIncludedLine(2), "2 items are in the cart link.");
+test("the cart's words: the lines name what was left out and why, what was refused and why; the debounce is short", () => {
+  assert.equal(copy.CART_DEBOUNCE_MS, 400);
   assert.equal(copy.leftOutLine([]), "");
   assert.equal(copy.leftOutLine(["Oat Biscuits"]), "Left out, no Amazon link yet: Oat Biscuits.");
   assert.equal(copy.leftOutLine(["A", "B", "C"]), "Left out, no Amazon link yet: A, B and C.");
