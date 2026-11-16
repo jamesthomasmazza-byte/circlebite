@@ -3305,6 +3305,18 @@ answer `{"error":"not_found"}`, and `/judge` carries `X-Robots-Tag: noindex, nof
 `Referrer-Policy: no-referrer`. Still ahead of the send: step 4's private-window check of the link
 itself (one world spent) and step 5, the Password Pusher.
 
+## 2026-11-16 — Deployed the whole-label copy change
+
+The first deploy attempt timed out on SSH; the cause was the port-22 security group rule (source "My
+IP", `docs/server-setup.md` §1), which JT refreshed again to the Mac's current address before SSH
+went through. Release `20261116155152` then deployed `aac3c9c`: on a standalone label photo where the
+model read a complete, legible label and found none of the profile's allergens, the "Unable to
+confirm" card now opens with "We read the whole label and found none of <name>'s allergens listed. A
+photo can't confirm it, so check the package." Copy only; the verdict, its colours, the grouped
+unchecked note and every other path are unchanged. Health 200 after the switch, the served bundle
+`index-BYyruJja.js` carries the new sentence. No reseed after it: the judge worlds are exactly as the
+Nov 15 plain reseed left them.
+
 ## 2026-11-16 — Final submission sent
 
 The demo video link (2:34, https://youtu.be/eZO2tymZH8U) was added at the top of `README.md` (`ad8b601`), and the submission email went out on Nov 16.
