@@ -3,6 +3,8 @@
 **JT Mazza — CUA Busch School AI Vibe Coding Contest, Fall 2026**
 mazzajt@cua.edu · Individual entry
 
+**Demo video (2:34):** https://youtu.be/eZO2tymZH8U
+
 ## MVP statement
 
 CircleBite answers one question: does this grocery product list anything this specific child is
