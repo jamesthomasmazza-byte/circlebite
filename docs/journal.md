@@ -3304,3 +3304,7 @@ pool. The §16a curl checks from the Mac passed afterwards: a wrong token and an
 answer `{"error":"not_found"}`, and `/judge` carries `X-Robots-Tag: noindex, nofollow` and
 `Referrer-Policy: no-referrer`. Still ahead of the send: step 4's private-window check of the link
 itself (one world spent) and step 5, the Password Pusher.
+
+## 2026-11-16 — Final submission sent
+
+The demo video link (2:34, https://youtu.be/eZO2tymZH8U) was added at the top of `README.md` (`ad8b601`), and the submission email went out on Nov 16.
