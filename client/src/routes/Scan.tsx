@@ -67,6 +67,7 @@ import {
   showsUncheckedNote,
   uncheckedBasis,
   uncheckedNote,
+  wholeLabelReadLine,
 } from "../lib/evidenceCopy";
 import { allergenLine, profileOptionText } from "../lib/profileLineCopy";
 import { couldntReadHeading, DISCLAIMER, EMERGENCY, VERDICT_LABEL } from "../lib/verdictCopy";
@@ -999,6 +1000,14 @@ export function Scan() {
           </header>
 
           <div className="verdict-card__body">
+
+          {/* A standalone label photo read whole, with none of the profile's allergens on it: say
+              that first, and why a photo still can't confirm it (JT, 2026-11-16). Copy only — the
+              verdict, the grouped note and everything below are untouched. */}
+          {(() => {
+            const line = wholeLabelReadLine(result, shown, resultProfileLabel);
+            return line && <p className="verdict-card__whole-label">{line}</p>;
+          })()}
 
           {result.identity_mismatch && (
             <p role="note">

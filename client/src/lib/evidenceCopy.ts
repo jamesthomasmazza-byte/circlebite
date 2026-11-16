@@ -32,6 +32,24 @@ export function onlyUncheckedGaps(matched: Pick<MatchedAllergen, "classification
   );
 }
 
+/** The one line under "Unable to confirm" on a standalone label photo (Path C) when the model read a
+ *  complete, legible label and found none of the profile's allergens: every allergen "unchecked",
+ *  nothing contains, may contain or unresolved, and the reasoning step finished. A card exists at all
+ *  only when the read was complete and legible (an illegible or cut-off read never makes one), so
+ *  that part needs no check here. Says what was read and why it still can't confirm: the verdict,
+ *  the grouped note and everything else on the card stay as they are. Null on every other path,
+ *  including a photo added to a barcode scan (JT, 2026-11-16). */
+export function wholeLabelReadLine(
+  scan: Pick<ScanResult, "source" | "ingredient_check_incomplete">,
+  shown: { result: ScanResult["result"]; matched_allergens: Pick<MatchedAllergen, "classification">[] },
+  profileLabel: string | null,
+): string | null {
+  if (scan.source !== "label_photo" || scan.ingredient_check_incomplete) return null;
+  if (shown.result !== "unable_to_confirm" || !onlyUncheckedGaps(shown.matched_allergens)) return null;
+  const whose = profileLabel ? `${profileLabel}'s` : "your";
+  return `We read the whole label and found none of ${whose} allergens listed. A photo can't confirm it, so check the package.`;
+}
+
 type CardScan = Pick<ScanResult, "explanation" | "ingredient_check_incomplete" | "matched_allergens">;
 
 /** Whether the server's sentence leads the card. Normally it's dropped when it's only the generic

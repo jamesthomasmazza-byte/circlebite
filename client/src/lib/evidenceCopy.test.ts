@@ -12,7 +12,41 @@ import {
   showsUncheckedNote,
   uncheckedBasis,
   uncheckedNote,
+  wholeLabelReadLine,
 } from "./evidenceCopy";
+
+// The Nov 15 production case: a complete, legible label read, none of the profile's allergens on
+// it, "Unable to confirm" with every allergen unchecked (JT, 2026-11-16).
+const WHOLE_LABEL = {
+  scan: { source: "label_photo" as const, ingredient_check_incomplete: false },
+  shown: { result: "unable_to_confirm" as const, matched_allergens: [{ classification: "unchecked" as const }, { classification: "unchecked" as const }] },
+};
+
+test("wholeLabelReadLine: a label photo read whole with none of the profile's allergens gets the line, named", () => {
+  assert.equal(
+    wholeLabelReadLine(WHOLE_LABEL.scan, WHOLE_LABEL.shown, "Maya"),
+    "We read the whole label and found none of Maya's allergens listed. A photo can't confirm it, so check the package.",
+  );
+  assert.match(wholeLabelReadLine(WHOLE_LABEL.scan, WHOLE_LABEL.shown, null)!, /^We read the whole label and found none of your allergens listed\./);
+  assert.doesNotMatch(wholeLabelReadLine(WHOLE_LABEL.scan, WHOLE_LABEL.shown, "Maya")!, /\bsafe\b/i);
+});
+
+test("wholeLabelReadLine: null on every other path", () => {
+  const { scan, shown } = WHOLE_LABEL;
+  // A photo added to a barcode scan, a barcode scan, a typed barcode.
+  assert.equal(wholeLabelReadLine({ ...scan, source: "combined" }, shown, "Maya"), null);
+  assert.equal(wholeLabelReadLine({ ...scan, source: "barcode" }, shown, "Maya"), null);
+  assert.equal(wholeLabelReadLine({ ...scan, source: "manual" }, shown, "Maya"), null);
+  // The reasoning step didn't finish: the card's "couldn't finish checking" sentence stands alone.
+  assert.equal(wholeLabelReadLine({ ...scan, ingredient_check_incomplete: true }, shown, "Maya"), null);
+  // Something was found, or couldn't be resolved: the rows say it.
+  assert.equal(wholeLabelReadLine(scan, { ...shown, result: "contains_allergen", matched_allergens: [{ classification: "contains" }, { classification: "unchecked" }] }, "Maya"), null);
+  assert.equal(wholeLabelReadLine(scan, { ...shown, matched_allergens: [{ classification: "unresolved" }, { classification: "unchecked" }] }, "Maya"), null);
+  // A profile with no allergens has nothing that was looked for.
+  assert.equal(wholeLabelReadLine(scan, { ...shown, matched_allergens: [] }, "Maya"), null);
+  // Escalated after the read (a circle or community report changed the headline): not this line.
+  assert.equal(wholeLabelReadLine(scan, { ...shown, result: "may_contain_caution" }, "Maya"), null);
+});
 
 test("provenanceLine: a combined scan with no product record never claims the product database was checked", () => {
   // The 2026-09-28 live case (barcode 2113792886078): "Unknown product", then "Checked against the
